@@ -8,16 +8,16 @@ import { setTimeout as delay } from "node:timers/promises";
 import { verifyVideoDelivery } from "../packages/test-harness/editing/hevc-delivery.mjs";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const receipt = JSON.parse(readFileSync(join(root, "dist/release/release.json")));
+// The install kit is the archive SHA256SUMS names; release.mjs owns that name.
+const kit = readFileSync(join(root, "dist/release/SHA256SUMS"), "utf8")
+  .split("\n")
+  .map((line) => line.split("  ")[1])
+  .find((name) => name?.endsWith(".zip"));
 const scratch = mkdtempSync("/tmp/yap-release-");
 let child, exited, cleanupError, spawnError;
 try {
   const moved = join(scratch, "Relocated release");
-  execFileSync("ditto", [
-    "-x",
-    "-k",
-    join(root, `dist/release/Yap-${receipt.tag}-macos-arm64.zip`),
-    moved,
-  ]);
+  execFileSync("ditto", ["-x", "-k", join(root, "dist/release", kit), moved]);
   const app = join(moved, "Yap.app");
   execFileSync("codesign", ["--verify", "--deep", "--strict", app]);
   const node = join(app, "Contents/Resources/node/bin/node");

@@ -1,21 +1,21 @@
 import assert from "node:assert/strict";
 import { spawnSync, execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const receipt = JSON.parse(readFileSync(join(root, "dist/release/release.json")));
+// The install kit is the archive SHA256SUMS names; release.mjs owns that name.
+const kit = readFileSync(join(root, "dist/release/SHA256SUMS"), "utf8")
+  .split("\n")
+  .map((line) => line.split("  ")[1])
+  .find((name) => name?.endsWith(".zip"));
 const scratch = mkdtempSync("/tmp/yap-release-");
 try {
   const moved = join(scratch, "Relocated release");
-  execFileSync("ditto", [
-    "-x",
-    "-k",
-    join(root, `dist/release/Yap-${receipt.tag}-macos-arm64.zip`),
-    moved,
-  ]);
+  execFileSync("ditto", ["-x", "-k", join(root, "dist/release", kit), moved]);
   const update = join(scratch, "Update archive");
   execFileSync("ditto", [
     "-x",
@@ -28,6 +28,14 @@ try {
   for (const path of [app, updateApp])
     execFileSync("codesign", ["--verify", "--deep", "--strict", path]);
   execFileSync("codesign", ["--verify", "--strict", join(moved, "yap")]);
+  // The app installs the command from its own bundled launcher; the kit ships the same bytes.
+  const bundledLauncher = join(app, "Contents/Resources/bin/yap");
+  assert.ok(existsSync(bundledLauncher), "The release app must carry its bundled launcher");
+  execFileSync("codesign", ["--verify", "--strict", bundledLauncher]);
+  assert.ok(
+    readFileSync(join(moved, "yap")).equals(readFileSync(bundledLauncher)),
+    "The kit's yap must be identical to the bundled launcher",
+  );
   const tree = (path) =>
     execFileSync("/usr/sbin/mtree", ["-c", "-p", path, "-k", "type,mode,link,sha256digest"], {
       encoding: "utf8",

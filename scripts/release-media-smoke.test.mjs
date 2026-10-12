@@ -50,11 +50,15 @@ test("relocated media verification reports service startup refusal without runni
     );
     writeFileSync(join(scratch, "bin/codesign"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
     writeFileSync(join(scratch, "dist/release/release.json"), JSON.stringify({ tag: "v0.1.3" }));
+    writeFileSync(
+      join(scratch, "dist/release/SHA256SUMS"),
+      `${"0".repeat(64)}  Yap-macos-arm64.zip\n${"0".repeat(64)}  release.json\n`,
+    );
     execFileSync("ditto", [
       "-c",
       "-k",
       join(scratch, "kit"),
-      join(scratch, "dist/release/Yap-v0.1.3-macos-arm64.zip"),
+      join(scratch, "dist/release/Yap-macos-arm64.zip"),
     ]);
     const result = spawnSync(process.execPath, [join(scratch, "scripts/release-media-smoke.mjs")], {
       encoding: "utf8",

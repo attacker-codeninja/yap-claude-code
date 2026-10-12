@@ -1070,16 +1070,19 @@ export async function startProjectService(options: {
           case "skill.install":
           case "skill.uninstall":
           case "skill.update":
+          case "cli.status":
+          case "cli.install":
+          case "cli.uninstall":
             return controller
               ? await controller.call(operation.operation, operation.params)
-              : operationError(
-                  operation.operation.startsWith("skill.")
-                    ? "SKILL_UNAVAILABLE"
-                    : "UPDATE_UNAVAILABLE",
-                  operation.operation.startsWith("skill.")
-                    ? "No native skill manager is connected."
-                    : "No native updater is connected.",
-                );
+              : operation.operation.startsWith("skill.")
+                ? operationError("SKILL_UNAVAILABLE", "No native skill manager is connected.")
+                : operation.operation.startsWith("cli.")
+                  ? operationError(
+                      "CLI_UNAVAILABLE",
+                      "No native command-line tool manager is connected.",
+                    )
+                  : operationError("UPDATE_UNAVAILABLE", "No native updater is connected.");
           case "service.health":
             return {
               ok: true,

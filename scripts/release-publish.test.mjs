@@ -34,7 +34,7 @@ if(args[0]==='api' && args[1]===${JSON.stringify(`repos/{owner}/{repo}/commits/r
 `,
     { mode: 0o755 },
   );
-  const kit = `Yap-${tag}-macos-arm64.zip`;
+  const kit = "Yap-macos-arm64.zip";
   const sha = (name) =>
     createHash("sha256")
       .update(readFileSync(join(scratch, name)))

@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { bundleFacts, verifiedFramework } from "./release-info.mjs";
 import { releaseSigningInputs, signReleaseTree } from "./release-signing.mjs";
 import { findIdentity } from "./signing-identity.mjs";
+import { bundleSkillsInstaller } from "./skills-installer.mjs";
 import { stageFFmpeg, verifyFFmpeg } from "../helpers/ffmpeg/prepare.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -71,6 +72,7 @@ const service = join(app, "Contents/Resources/service");
 const skill = join(app, "Contents/Resources/skill");
 rmSync(skill, { recursive: true, force: true });
 execFileSync("ditto", [join(root, "skills/yap"), skill]);
+bundleSkillsInstaller(root, join(app, "Contents/Resources"));
 const ffmpegDirectory = join(app, "Contents/Resources/ffmpeg");
 rmSync(ffmpegDirectory, { recursive: true, force: true });
 const identity = signingIdentity();

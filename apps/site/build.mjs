@@ -1,0 +1,218 @@
+// Renders the static website into dist/ from content.mjs. No dependencies.
+// Run `node site/build.mjs`; Vercel runs it with the site directory as the root.
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import * as content from "./content.mjs";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const artwork = join(here, "../../.github/readme");
+const staticFiles = ["style.css", "main.js", "favicon.svg"];
+
+/** Production origin: explicit SITE_URL, else Vercel's production domain, else local preview. */
+function defaultSiteUrl() {
+  if (process.env.SITE_URL) return process.env.SITE_URL;
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  return vercel ? `https://${vercel}` : "http://localhost:4173";
+}
+
+const escape = (text) =>
+  text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+
+/** Inline `code` in copy becomes <code>; everything else is escaped. */
+const prose = (text) => escape(text).replace(/`([^`]+)`/g, "<code>$1</code>");
+
+/** The README owns the human-facing prompt too; refuse to publish a different one. */
+function checkPromptMatchesReadme(readme) {
+  const quoted = readme
+    .split("\n")
+    .filter((line) => line.startsWith("> "))
+    .map((line) => line.slice(2))
+    .join(" ");
+  if (!quoted.includes(content.agentPrompt))
+    throw new Error(
+      `README "Get started" prompt no longer matches site/content.mjs agentPrompt:\n  ${content.agentPrompt}`,
+    );
+}
+
+/**
+ * A tangle of loops that shrink until the line runs straight: messy talk in, clear video out.
+ * Deterministic, so the page is byte-stable between builds.
+ */
+function scribblePath() {
+  const points = [];
+  for (let i = 0; i <= 640; i++) {
+    const t = i / 640;
+    const radius = 78 * (1 - t) ** 1.7;
+    const angle = t * Math.PI * 2 * 11;
+    const wobble = Math.sin(t * 41) * 9 * (1 - t);
+    points.push([
+      60 + t * 700 + radius * 1.15 * Math.cos(angle),
+      140 + radius * Math.sin(angle) + wobble,
+    ]);
+  }
+  points.push([838, 140]);
+  return "M" + points.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(" L");
+}
+
+const blob = (id) => `<svg class="blob" id="${id}" viewBox="0 0 120 130" aria-hidden="true">
+  <path d="M60 6c30 0 52 22 54 58 2 34-18 60-54 60S4 100 6 64C8 28 30 6 60 6z" fill="var(--ink)"/>
+  <g class="eyes"><circle cx="44" cy="58" r="8" fill="var(--paper)"/><circle cx="78" cy="58" r="8" fill="var(--paper)"/></g>
+</svg>`;
+
+const copyButton = (label, source) =>
+  `<button class="copy" type="button" data-copy="${source}"><span class="copy-label">${label}</span><span class="copy-done" aria-live="polite"></span></button>`;
+
+function renderPage(siteUrl) {
+  const { meta, links, agentPrompt, requirements } = content;
+  const og = `${siteUrl}/art/header.png`;
+  return `<!doctype html>
+<!-- AI agents: plain-text instructions are at /llms.txt -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escape(meta.title)}</title>
+<meta name="description" content="${escape(meta.description)}">
+<link rel="canonical" href="${siteUrl}/">
+<link rel="alternate" type="text/plain" href="/llms.txt" title="Instructions for AI agents">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:title" content="${escape(meta.title)}">
+<meta property="og:description" content="${escape(meta.description)}">
+<meta property="og:url" content="${siteUrl}/">
+<meta property="og:image" content="${og}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#fbf7ef">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Caveat:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="/style.css">
+<script>document.documentElement.dataset.mode = /[?&#]agent\\b/.test(location.href) || localStorage.getItem("yap-mode") === "agent" ? "agent" : "human";</script>
+</head>
+<body>
+<header class="bar">
+  <a class="brand" href="/" aria-label="Yap home">${blob("brand-blob")}<span>Yap</span></a>
+  <div class="mode" role="group" aria-label="Who is reading?">
+    <button type="button" data-set-mode="human"><span class="long">I'm a </span>human</button>
+    <button type="button" data-set-mode="agent"><span class="long">I'm an </span>agent</button>
+  </div>
+  <a class="gh" href="${links.repo}">GitHub</a>
+</header>
+
+<main class="human-view">
+  <section class="hero">
+    <p class="kicker hand">for Claude Code, Codex &amp; any agent</p>
+    <h1>Just yap.<br><span>Your agent makes it a great video.</span></h1>
+    <p class="lede">Record your screen or camera and say it however it comes out. Yap gives your agent the eyes, ears and hands to turn it into what you meant.</p>
+
+    <figure class="scribble" aria-hidden="true">
+      <svg viewBox="0 0 1000 280">
+        <path class="tangle" d="${scribblePath()}" pathLength="1"/>
+        <g class="card"><rect x="840" y="78" width="140" height="124" rx="14"/><path class="play" d="M896 118v44l36-22z"/></g>
+        <text class="hand note-talk" x="40" y="34">you, yapping</text>
+        <text class="hand note-agent" x="560" y="250">your agent irons it out</text>
+      </svg>
+      <div class="rider">${blob("hero-blob")}</div>
+    </figure>
+
+    <div class="ctas">
+      <div class="cta download">
+        <a class="button" id="download" href="${links.releases}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 20h16"/></svg>
+          Download for Mac
+        </a>
+        <p class="fine"><span id="version">Latest release</span> · ${requirements} · Free</p>
+      </div>
+      <div class="or hand" aria-hidden="true">or</div>
+      <div class="cta prompt">
+        <p class="hand prompt-label">tell your agent to do it all</p>
+        <blockquote id="agent-prompt">${escape(agentPrompt)}</blockquote>
+        ${copyButton("Copy prompt", "agent-prompt")}
+        <p class="fine">Paste into Claude Code or Codex. It installs the app, the <code>yap</code> CLI and the skill.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="asks">
+    <h2>Things you can just say</h2>
+    <ul>${content.asks.map((ask) => `<li>“${escape(ask)}”</li>`).join("")}</ul>
+  </section>
+
+  <section class="how">
+    <h2>How it works</h2>
+    ${content.howItWorks
+      .map(
+        (item) => `<article>
+      <img src="/art/${item.image}" alt="${escape(item.alt)}" loading="lazy" decoding="async" width="1672" height="580">
+      <div><h3>${escape(item.title)}</h3><p>${prose(item.body)}</p></div>
+    </article>`,
+      )
+      .join("\n    ")}
+  </section>
+
+  <section class="promises">
+    ${content.promises.map((item) => `<div><h3>${escape(item.title)}</h3><p>${prose(item.body)}</p></div>`).join("\n    ")}
+  </section>
+
+  <section class="setup" id="setup">
+    <h2>Setting it up</h2>
+    <div class="columns">
+      <div class="for-humans">
+        <h3><span class="hand">for</span> humans</h3>
+        <ol>${content.humanSteps.map((step) => `<li><strong>${prose(step.title)}</strong><p>${prose(step.body)}</p></li>`).join("")}</ol>
+      </div>
+      <div class="for-agents">
+        <h3><span class="hand">for</span> agents</h3>
+        <p>Everything an agent needs is plain text at <a href="/llms.txt">/llms.txt</a>, or flip the switch up top.</p>
+        <div class="terminal" role="presentation"><div class="dots"><i></i><i></i><i></i><span>llms.txt</span></div><pre>${escape(content.llmsText())}</pre></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<main class="agent-view">
+  <p class="agent-banner"># You're reading the agent view. Same words as <a href="/llms.txt">/llms.txt</a> ${copyButton("Copy all", "agent-text")}</p>
+  <pre id="agent-text">${escape(content.llmsText())}</pre>
+</main>
+
+<footer class="foot">
+  ${blob("foot-blob")}
+  <p>Yap is free, local and open on <a href="${links.repo}">GitHub</a>. <a href="${links.releases}">Releases</a> · <a href="/llms.txt">llms.txt</a> · <a href="${links.agentSetup}">Agent setup</a></p>
+</footer>
+<script type="module" src="/main.js"></script>
+</body>
+</html>
+`;
+}
+
+export function build({
+  out = join(here, "dist"),
+  siteUrl = defaultSiteUrl(),
+  readme = readFileSync(join(here, "../../README.md"), "utf8"),
+} = {}) {
+  checkPromptMatchesReadme(readme);
+  siteUrl = siteUrl.replace(/\/$/, "");
+  rmSync(out, { recursive: true, force: true });
+  mkdirSync(join(out, "art"), { recursive: true });
+  writeFileSync(join(out, "index.html"), renderPage(siteUrl));
+  writeFileSync(join(out, "llms.txt"), content.llmsText());
+  writeFileSync(
+    join(out, "robots.txt"),
+    `User-agent: *\nAllow: /\n\nSitemap: ${siteUrl}/sitemap.xml\n`,
+  );
+  writeFileSync(
+    join(out, "sitemap.xml"),
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${siteUrl}/</loc></url>\n</urlset>\n`,
+  );
+  for (const file of staticFiles) copyFileSync(join(here, file), join(out, file));
+  for (const item of [{ image: "header.png" }, ...content.howItWorks])
+    copyFileSync(join(artwork, item.image), join(out, "art", item.image));
+  return out;
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) console.log(`Built ${build()}`);

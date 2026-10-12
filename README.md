@@ -133,7 +133,7 @@ Requires **Apple Silicon and macOS 26 or newer**.
 The zero-effort route is to let your agent install it. Open Claude Code or Codex
 and say:
 
-> Install the yap skill and the Yap app by following
+> Install the yap skill, the Yap app and the yap CLI by following
 > https://github.com/dzhng/yap#agent-setup
 
 Then record something and ask for the video you want.
@@ -178,14 +178,15 @@ npx --yes skills@1.7.0 add /absolute/path/to/yap/skills/yap \
 
 Inspect existing destinations first and verify the full folder and discovery
 links afterward, following the lifecycle reference. Start a fresh agent session
-and confirm discovery (`$yap` for Codex, `/yap` for Claude). App updates never edit
-skill files.
+and confirm discovery (`$yap` for Codex, `/yap` for Claude). With the app's
+Install skill setting on (the default), every app launch, including the relaunch
+after an update, replaces the global skill with the copy bundled in the app.
 
 ### 2. Install the app and CLI from the latest release
 
 Use the [latest stable GitHub release](https://github.com/dzhng/yap/releases/latest),
-not a source build. Download its `Yap-<tag>-macos-arm64.zip`,
-`release.json` and `SHA256SUMS` together. In the download directory, run
+not a source build. Download its `SHA256SUMS`, `release.json` and the ZIP that
+`SHA256SUMS` names (`Yap-macos-arm64.zip`) together. In the download directory, run
 `shasum -a 256 -c SHA256SUMS` before extracting. Check the receipt's architecture,
 minimum macOS version and signing status.
 
@@ -261,6 +262,9 @@ for personal keep/remove judgments.
   retained-evidence owners.
   The [conditional alignment worker](helpers/alignment/README.md) preserves the
   supplied-text interpretation and full native operands of its pinned provider.
+
+The [website](apps/site/README.md) is the public download page, with the same
+instructions as plain text for agents.
 
 The consumer [yap skill](skills/yap/SKILL.md) teaches external agents
 how to edit for the user with the toolkit. Repository development skills live

@@ -71,7 +71,7 @@ handlers. Install/update stages a complete pinned folder through `npx skills`,
 letting it discover supported harnesses, and replaces the global Yap skill when
 maintenance is enabled. Disable maintenance before customizing the global skill. The CLI waits for install/update/uninstall to settle by default; use `--no-wait` for an immediate acknowledgement.
 For the complete operation reference, read [capability catalog](references/capability-catalog.md).
-App updating never changes these files.
+An app update does not edit these files itself, but with maintenance enabled the relaunched app refreshes the global skill from the copy bundled in the new release.
 
 For update-health questions, inspect the installed `service.health --help` and
 actual reply. Discover advertised `update.status`, `update.check` and

@@ -10,6 +10,7 @@ import {
   chmodSync,
   unlinkSync,
   existsSync,
+  readFileSync,
 } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -25,6 +26,7 @@ test("archive smoke avoids production host/launcher execution and rejects change
       "kit/Yap.app/Contents/MacOS",
       "kit/Yap.app/Contents/Resources/node/bin",
       "kit/Yap.app/Contents/Resources/cli",
+      "kit/Yap.app/Contents/Resources/bin",
     ])
       mkdirSync(join(scratch, path), { recursive: true });
     copyFileSync(
@@ -36,6 +38,8 @@ test("archive smoke avoids production host/launcher execution and rejects change
     const app = join(scratch, "kit/Yap.app");
     writeFileSync(join(app, "Contents/MacOS/Yap"), trap, { mode: 0o755 });
     writeFileSync(join(scratch, "kit/yap"), trap, { mode: 0o755 });
+    const bundledLauncher = join(app, "Contents/Resources/bin/yap");
+    writeFileSync(bundledLauncher, trap, { mode: 0o755 });
     writeFileSync(
       join(app, "Contents/MacOS/yap-native"),
       `#!${process.execPath}\nconsole.log(JSON.stringify({id:'release-smoke',ok:true,data:{platform:'macos'}}));\n`,
@@ -47,7 +51,10 @@ test("archive smoke avoids production host/launcher execution and rejects change
       `console.log(JSON.stringify(process.argv.includes('--version') ? {name:'yap',version:'0.1.3'} : {version:'0.1.3',operations:[{name:'edit.apply'}]}));\n`,
     );
     symlinkSync("cli/main.mjs", join(app, "Contents/Resources/alias"));
-    writeFileSync(join(scratch, "bin/codesign"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+    const verified = join(scratch, "codesign.log");
+    writeFileSync(join(scratch, "bin/codesign"), `#!/bin/sh\necho "$@" >> '${verified}'\n`, {
+      mode: 0o755,
+    });
     const release = join(scratch, "dist/release");
     writeFileSync(
       join(release, "release.json"),
@@ -58,12 +65,11 @@ test("archive smoke avoids production host/launcher execution and rejects change
         updateArchive: { name: "update.zip" },
       }),
     );
-    execFileSync("ditto", [
-      "-c",
-      "-k",
-      join(scratch, "kit"),
-      join(release, "Yap-v0.1.3-macos-arm64.zip"),
-    ]);
+    writeFileSync(
+      join(release, "SHA256SUMS"),
+      `${"0".repeat(64)}  Yap-macos-arm64.zip\n${"0".repeat(64)}  release.json\n`,
+    );
+    execFileSync("ditto", ["-c", "-k", join(scratch, "kit"), join(release, "Yap-macos-arm64.zip")]);
     const updateApp = join(scratch, "update/Yap.app");
     const packageUpdate = () =>
       execFileSync("ditto", ["-c", "-k", "--keepParent", updateApp, join(release, "update.zip")]);
@@ -78,6 +84,33 @@ test("archive smoke avoids production host/launcher execution and rejects change
     const valid = run();
     assert.equal(valid.status, 0, valid.stdout + valid.stderr);
     assert.equal(existsSync(forbidden), false);
+    assert.match(
+      readFileSync(verified, "utf8"),
+      /^--verify --strict .*\/Relocated release\/Yap\.app\/Contents\/Resources\/bin\/yap$/m,
+    );
+    const packageKit = () =>
+      execFileSync("ditto", [
+        "-c",
+        "-k",
+        join(scratch, "kit"),
+        join(release, "Yap-macos-arm64.zip"),
+      ]);
+    for (const [mutation, message] of [
+      ["missing", /bundled launcher/],
+      ["different", /identical to the bundled launcher/],
+    ]) {
+      if (mutation === "missing") unlinkSync(bundledLauncher);
+      else writeFileSync(bundledLauncher, trap + "// changed\n", { mode: 0o755 });
+      packageKit();
+      rmSync(join(scratch, "update"), { recursive: true });
+      execFileSync("ditto", [app, updateApp]);
+      packageUpdate();
+      const broken = run();
+      assert.equal(broken.status, 1, broken.stdout + broken.stderr);
+      assert.match(broken.stderr, message);
+    }
+    writeFileSync(bundledLauncher, trap, { mode: 0o755 });
+    packageKit();
     for (const mutation of ["bytes", "mode", "link"]) {
       rmSync(join(scratch, "update"), { recursive: true });
       execFileSync("ditto", [app, updateApp]);
@@ -98,12 +131,7 @@ test("archive smoke avoids production host/launcher execution and rejects change
       join(app, "Contents/Resources/cli/main.mjs"),
       `console.log(JSON.stringify({name:'yap',version:'0.0.0',operations:[{name:'edit.apply'}]}));\n`,
     );
-    execFileSync("ditto", [
-      "-c",
-      "-k",
-      join(scratch, "kit"),
-      join(release, "Yap-v0.1.3-macos-arm64.zip"),
-    ]);
+    execFileSync("ditto", ["-c", "-k", join(scratch, "kit"), join(release, "Yap-macos-arm64.zip")]);
     rmSync(join(scratch, "update"), { recursive: true });
     execFileSync("ditto", [app, updateApp]);
     packageUpdate();

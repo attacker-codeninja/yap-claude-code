@@ -171,6 +171,31 @@ test("socket requests expose native skill lifecycle controls", async () => {
   });
 });
 
+test("socket requests expose native command-line tool controls", async () => {
+  const f = await projectServiceControlFixture(cleanups, async () => ({ ok: true, data: {} }));
+  const seen: string[] = [];
+  f.events.on("call", ({ request }) => {
+    seen.push(request.operation);
+    f.input.write(
+      JSON.stringify({
+        event: "result",
+        response: { id: request.id, ok: true, data: { state: request.operation } },
+      }) + "\n",
+    );
+  });
+  for (const operation of ["cli.status", "cli.install", "cli.uninstall"]) {
+    expect(await f.call(operation, {})).toMatchObject({
+      ok: true,
+      data: { state: operation },
+    });
+  }
+  expect(seen).toEqual(["cli.status", "cli.install", "cli.uninstall"]);
+  expect(await f.call("cli.install", { extra: true })).toMatchObject({
+    ok: false,
+    error: { code: "INVALID_PARAMS" },
+  });
+});
+
 test("prepared admission keeps update inspection and opt-out accessible while product work remains fenced", async () => {
   const f = await projectServiceControlFixture(cleanups, async () => ({ ok: true, data: {} }));
   f.events.on("call", ({ request }) => {

@@ -114,6 +114,83 @@ struct passwd *fixture_getpwuid(uid_t uid) { static struct passwd account; accou
   }
 });
 
+test("the launcher finds the app at YAP_APP, then home Applications, then system Applications", () => {
+  const scratch = mkdtempSync(join(tmpdir(), "yap-launcher-lookup-"));
+  try {
+    const accountHome = join(scratch, "Account home");
+    const home = join(scratch, "Home");
+    const system = join(scratch, "System Applications");
+    mkdirSync(accountHome);
+    mkdirSync(join(home, "Applications"), { recursive: true });
+    mkdirSync(system);
+    const accountShim = join(scratch, "account.c");
+    writeFileSync(
+      accountShim,
+      `#include <pwd.h>
+struct passwd *fixture_getpwuid(uid_t uid) { static struct passwd account; account.pw_uid=uid; account.pw_dir=${JSON.stringify(accountHome)}; return &account; }
+`,
+    );
+    const launcher = join(scratch, "yap");
+    execFileSync("clang", [
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-Dgetpwuid=fixture_getpwuid",
+      `-DYAP_SYSTEM_APPLICATIONS=${JSON.stringify(system)}`,
+      "scripts/launcher/main.c",
+      accountShim,
+      "-o",
+      launcher,
+    ]);
+    const fakeApp = (path) => {
+      const bin = join(path, "Contents/Resources/node/bin");
+      mkdirSync(bin, { recursive: true });
+      writeFileSync(join(bin, "node"), `#!/bin/sh\nprintf '%s\\n' "$YAP_APP" "$0" "$@"\n`, {
+        mode: 0o755,
+      });
+      return path;
+    };
+    const env = { ...process.env, HOME: home };
+    delete env.YAP_APP;
+    const entry = (overrides) => {
+      const result = spawnSync(launcher, ["--help"], {
+        env: { ...env, ...overrides },
+        encoding: "utf8",
+      });
+      return { status: result.status, stdout: result.stdout };
+    };
+    const entered = (app) => ({
+      status: 0,
+      stdout: [
+        app,
+        join(app, "Contents/Resources/node/bin/node"),
+        join(app, "Contents/Resources/cli/main.mjs"),
+        "--help",
+        "",
+      ].join("\n"),
+    });
+
+    const missing = entry({});
+    assert.equal(missing.status, 74);
+    assert.deepEqual(JSON.parse(missing.stdout).error, {
+      code: "SERVICE_UNAVAILABLE",
+      message: "Bundled Node could not start; verify the installed app",
+      retryable: false,
+    });
+
+    const systemApp = fakeApp(join(system, "Yap.app"));
+    assert.deepEqual(entry({}), entered(systemApp));
+
+    const homeApp = fakeApp(join(home, "Applications/Yap.app"));
+    assert.deepEqual(entry({}), entered(homeApp));
+
+    const overrideApp = fakeApp(join(scratch, "Override.app"));
+    assert.deepEqual(entry({ YAP_APP: overrideApp }), entered(overrideApp));
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+});
+
 test("bundled media tools preserve arguments, streams and exit status while excluding installation", async () => {
   const scratch = mkdtempSync(join(tmpdir(), "yap-media-launcher-"));
   const accountHome = join(scratch, "Account home");

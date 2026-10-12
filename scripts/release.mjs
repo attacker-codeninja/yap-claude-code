@@ -129,7 +129,8 @@ async function packageRelease(tag) {
   const work = mkdtempSync(join(out, "package-"));
   const tools = mkdtempSync(join(out, "tools-"));
   const app = join(work, "Yap.app");
-  const archive = join(out, `Yap-${tag}-macos-arm64.zip`);
+  // A fixed kit name keeps releases/latest/download/<name> stable; the tag lives in release.json.
+  const archive = join(out, "Yap-macos-arm64.zip");
   const temporaryArchive = `${archive}.part-${process.pid}`;
   try {
     run("tar", ["-xf", join(inputs, sparkleTools.archive), "-C", tools]);
@@ -181,7 +182,10 @@ async function packageRelease(tag) {
       const arch = execFileSync("lipo", ["-archs", executable], { encoding: "utf8" }).trim();
       if (arch !== "arm64") throw new Error(`Expected arm64 executable: ${executable} (${arch})`);
     }
-    const launcher = join(work, "yap");
+    // The app carries its launcher as nested code; the kit's top-level `yap` is a copy of
+    // the signed bundled bytes, so the app can install the same command it was shipped with.
+    const launcher = join(resources, "bin/yap");
+    mkdirSync(dirname(launcher), { recursive: true });
     run("xcrun", [
       "clang",
       "-Wall",
@@ -215,7 +219,8 @@ async function packageRelease(tag) {
       manifest.ffmpegReceiptSha256 = await sha(join(ffmpegDirectory, "receipt.json"));
       writeFileSync(manifestFile, JSON.stringify(manifest, null, 2) + "\n");
       signReleaseTree(app, identity, keychain, { signedResources });
-      signReleaseTree(launcher, identity, keychain);
+      if (!existsSync(launcher)) throw new Error("Release app is missing its bundled launcher");
+      copyFileSync(launcher, join(work, "yap"));
       const updateArchive = join(out, `Yap-${tag}-update-macos-arm64.zip`);
       run("ditto", ["-c", "-k", "--sequesterRsrc", "--keepParent", app, updateArchive]);
       const tool = join(tools, "bin/sign_update");

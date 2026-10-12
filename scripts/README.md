@@ -97,6 +97,11 @@ provenance bind acquired bytes. Package receipts bind source and runtime identit
 checksums bind delivered bytes. The install kit and app-only update ZIP contain
 the same finalized signed app; the kit's checksums remain scoped to the kit and
 receipt, while Sparkle authenticates the update ZIP and finalized feed.
+The kit keeps one fixed name across versions, so
+`releases/latest/download/Yap-macos-arm64.zip` always fetches the newest one; the
+tag lives in its receipt. Publication, smoke checks, evals and the installation
+procedure find the kit as the ZIP that `SHA256SUMS` names, which also covers
+older releases with versioned kit names.
 The [signing owner](release-signing.mjs) requires externally supplied durable
 credentials and public fingerprints, imports the identity into an ephemeral
 keychain, authorizes headless signing only within that keychain, and signs nested

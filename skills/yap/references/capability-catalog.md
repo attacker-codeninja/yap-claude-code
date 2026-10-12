@@ -87,15 +87,17 @@ updater. `skill.status`, `skill.install`, `skill.uninstall`, and `skill.update`
 expose the global Yap consumer-skill lifecycle. When skill maintenance is
 enabled, install/update stages a complete pinned folder and lets `npx skills`
 discover supported harnesses (including Codex and Claude), replacing any
-existing global Yap skill. Disable maintenance before customizing the global
-skill; uninstall removes only the installation managed by Yap.
+existing global Yap skill, including symlinks and installs Yap did not make.
+Disable maintenance before customizing the global skill; uninstall removes the
+paths Yap recorded plus any global Yap skill discovered at that moment, and
+removes nothing when Yap holds no receipt.
 
 Mutation skill operations return an updating status and operationId; poll
-`skill.status` for terminal state and diagnostics. Settings shows a
-compact state; the CLI remains the diagnostic surface for paths, source
-revision, discovery links, ownership and errors. Lifecycle reconciliation runs
-at app launch, after an app update, when maintenance is re-enabled, and on an
-explicit `skill.update`; it does not use a periodic timer.
+`skill.status` for terminal state and diagnostics. Settings shows only the
+maintenance toggle; the CLI is the surface for state, paths, source revision,
+discovery links, ownership and errors. Lifecycle reconciliation runs at every
+app launch (including the relaunch after an app update), when maintenance is
+re-enabled, and on an explicit `skill.update`; it does not use a periodic timer.
 
 If an installed build does not advertise a name above, report the mismatch and
 follow the available schema. Do not invent an operation or silently substitute

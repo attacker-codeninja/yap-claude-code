@@ -9,6 +9,10 @@
 #include <errno.h>
 #include <limits.h>
 
+#ifndef YAP_SYSTEM_APPLICATIONS
+#define YAP_SYSTEM_APPLICATIONS "/Applications"
+#endif
+
 static int fail(const char *code, const char *message, int retryable, int status) {
     printf("{\"id\":\"launcher\",\"ok\":false,\"error\":{\"code\":\"%s\",\"message\":\"%s\",\"retryable\":%s}}\n", code, message, retryable ? "true" : "false");
     return status;
@@ -44,12 +48,18 @@ int main(int argc, char **argv) {
         return fail("SERVICE_UNAVAILABLE", "Cannot acquire installation lock", 0, 74);
     }
     // No access to the replaceable bundle occurs before shared exclusion is held.
+    // Lookup order: $YAP_APP, then the home Applications copy if present, then the system one.
     const char *override = getenv("YAP_APP");
     if (override && *override) {
         if (snprintf(app, sizeof(app), "%s", override) >= (int)sizeof(app))
             return fail("SERVICE_UNAVAILABLE", "App path is too long", 0, 74);
-    } else if (snprintf(app, sizeof(app), "%s/Applications/Yap.app", appHome) >= (int)sizeof(app))
-        return fail("SERVICE_UNAVAILABLE", "App path is too long", 0, 74);
+    } else {
+        if (snprintf(app, sizeof(app), "%s/Applications/Yap.app", appHome) >= (int)sizeof(app))
+            return fail("SERVICE_UNAVAILABLE", "App path is too long", 0, 74);
+        if ((stat(app, &named) != 0 || !S_ISDIR(named.st_mode)) &&
+            snprintf(app, sizeof(app), "%s/Yap.app", YAP_SYSTEM_APPLICATIONS) >= (int)sizeof(app))
+            return fail("SERVICE_UNAVAILABLE", "App path is too long", 0, 74);
+    }
     setenv("YAP_APP", app, 1);
     if (argc > 1 && (!strcmp(argv[1], "ffmpeg") || !strcmp(argv[1], "ffprobe"))) {
         if (snprintf(path, sizeof(path), "%s/Contents/Resources/ffmpeg/bin/%s", app, argv[1]) >= (int)sizeof(path))

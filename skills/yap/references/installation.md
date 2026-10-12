@@ -23,12 +23,14 @@ rate-limit or download failure is a blocker, not evidence of installation.
   curl -fL https://api.github.com/repos/dzhng/yap/releases/latest -o latest.json
   yap_tag=$(/usr/bin/plutil -extract tag_name raw -o - latest.json)
   yap_release="https://github.com/dzhng/yap/releases/download/$yap_tag"
-  curl -fL "$yap_release/Yap-$yap_tag-macos-arm64.zip" -o "Yap-$yap_tag-macos-arm64.zip"
-  curl -fL "$yap_release/release.json" -o release.json
   curl -fL "$yap_release/SHA256SUMS" -o SHA256SUMS
+  curl -fL "$yap_release/release.json" -o release.json
+  yap_zip=$(awk '/\.zip$/ { print $2 }' SHA256SUMS)
+  test -n "$yap_zip"
+  curl -fL "$yap_release/$yap_zip" -o "$yap_zip"
   shasum -a 256 -c SHA256SUMS
   cat release.json
-  ditto -x -k "Yap-$yap_tag-macos-arm64.zip" unpacked
+  ditto -x -k "$yap_zip" unpacked
   printf 'Verified release extracted at: %s\n' "$yap_download/unpacked"
 )
 ```
@@ -142,7 +144,8 @@ CLI, Node, service and workers, so they update together; the external launcher s
 in place. An already-running CLI remains its old generation until it exits. The
 app's automatic-update preference persists; turning it off cancels download or
 staged installation until replacement has been finally authorized. After that
-point it applies to the successor. Skill files are refreshed separately through
+point it applies to the successor. The update does not edit skill files itself;
+with skill maintenance on, the relaunched app refreshes the global skill through
 the skill lifecycle.
 
 Read advertised `service.health` update state and errors literally. `UPDATING`

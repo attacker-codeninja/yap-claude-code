@@ -31,7 +31,6 @@ export async function releaseCli({ tag = "latest", cache, image }) {
   const release = JSON.parse(
     await download(`https://api.github.com/repos/dzhng/yap/releases/${endpoint}`),
   );
-  const archiveName = `Yap-${release.tag_name}-macos-arm64.zip`;
   const directory = join(cache, release.tag_name);
   await mkdir(directory, { recursive: true });
   try {
@@ -45,11 +44,19 @@ export async function releaseCli({ tag = "latest", cache, image }) {
     if (error.code !== "ENOENT") throw error;
   }
   const bytes = {};
-  for (const name of [archiveName, "release.json", "SHA256SUMS"]) {
+  const fetchAsset = async (name) => {
     const asset = release.assets.find((asset) => asset.name === name);
     if (!asset) throw new Error(`Release asset missing: ${name}`);
     bytes[name] = await download(asset.browser_download_url);
-  }
+  };
+  await fetchAsset("SHA256SUMS");
+  // The install kit is the archive SHA256SUMS names (versioned before the fixed kit name).
+  const archiveName = bytes.SHA256SUMS.toString("utf8")
+    .split("\n")
+    .map((line) => line.split("  ")[1])
+    .find((name) => name?.endsWith(".zip"));
+  if (!archiveName) throw new Error("SHA256SUMS names no install kit");
+  for (const name of [archiveName, "release.json"]) await fetchAsset(name);
   const receipt = verifyRelease({
     archive: bytes[archiveName],
     receipt: bytes["release.json"],

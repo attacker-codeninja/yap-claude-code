@@ -1398,6 +1398,24 @@ export const operationSchema = z.discriminatedUnion("operation", [
       "Start a durable refresh of the account-level Yap consumer skill through the pinned npx skills installer, replacing an existing global Yap skill and verifying all discovered harness destinations. The response is an updating status with an operationId; poll skill.status for completion.",
     ),
   z
+    .object({ operation: z.literal("cli.status"), params: z.object({}).strict() })
+    .strict()
+    .describe(
+      "Report the app-managed yap command at ~/.local/bin/yap: state (installed, missing, different, unavailable or needs_attention), path, whether it is on PATH, the shell profile Yap edited if any, and any error. unavailable means this app build carries no launcher or runs outside an Applications folder.",
+    ),
+  z
+    .object({ operation: z.literal("cli.install"), params: z.object({}).strict() })
+    .strict()
+    .describe(
+      "Install or refresh ~/.local/bin/yap from the launcher bundled in the running app, replacing a different file there, and add Yap's marked PATH line to the login-shell profile when no startup file already puts ~/.local/bin on PATH. Synchronous; returns cli.status.",
+    ),
+  z
+    .object({ operation: z.literal("cli.uninstall"), params: z.object({}).strict() })
+    .strict()
+    .describe(
+      "Remove ~/.local/bin/yap only while it is identical to the bundled launcher, and remove only Yap's marked PATH block. Synchronous; returns cli.status.",
+    ),
+  z
     .object({ operation: z.literal("service.health"), params: z.object({}).strict() })
     .strict()
     .describe(
@@ -1535,6 +1553,9 @@ const waits: Partial<Record<OperationName, number>> = {
   "skill.install": nativeCall,
   "skill.uninstall": nativeCall,
   "skill.update": nativeCall,
+  "cli.status": nativeCall,
+  "cli.install": nativeCall,
+  "cli.uninstall": nativeCall,
   "capture.sources": nativeCall,
   "capture.status": nativeCall,
   "capture.pause": nativeCall,

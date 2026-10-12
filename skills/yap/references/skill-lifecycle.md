@@ -205,9 +205,12 @@ actual discovery link targets. Verify unrelated settings and other skills remain
 unchanged. Retain the backup until the user decides it can be removed. A local
 install's future refresh repeats this fetch/diff/explicit-update sequence. Yap's
 app maintenance refreshes the global installation whenever maintenance is enabled,
-including a prior install without a Yap receipt. It never edits project-local
-installs. When maintenance is disabled, it removes only the installation Yap
-most recently managed.
+replacing every global Yap skill it discovers (including symlinks and installs
+without a Yap receipt) and discarding its temporary backup once the refresh
+verifies; a failed refresh restores the backup. It never edits project-local
+installs. Disabling maintenance removes the global paths Yap recorded plus any
+global Yap skill discovered at that moment; without a Yap receipt it removes
+nothing.
 
 
 ## App and CLI lifecycle operations
@@ -230,7 +233,8 @@ The protocol mutation response includes `state: "updating"` and an `operationId`
 the CLI waits for the terminal state by default (use `--no-wait` for an immediate
 acknowledgement). Other protocol clients poll `skill.status` for the terminal
 state and any retained error or backup path.
-The app reconciles at launch, after app update and when maintenance is
-re-enabled. There is no periodic background timer. Settings displays only the
-compact state (`Installed`, `Updating…`, `Not installed`, `Disabled` or `Needs
-attention`); use the CLI for detailed diagnostics.
+The app reconciles at every launch (including the relaunch after an app update)
+and when maintenance is re-enabled. There is no periodic background timer.
+Settings shows only the maintenance toggle; read state (`installed`, `updating`,
+`missing`, `unmanaged`, `disabled` or `needs_attention`) and diagnostics from
+`skill.status`.
