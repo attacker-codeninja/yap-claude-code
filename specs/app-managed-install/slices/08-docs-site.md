@@ -20,7 +20,6 @@ against the current deployed page. Deploy after release.
 
 **Firewall.** No code outside `apps/site`.
 
-**Deploy.** Vercel project `justyap` on the user's personal scope ("David Zhang's
-projects"), `SITE_URL=https://justyap.io`; `www.justyap.io`, `justyap.dev` and
-`www.justyap.dev` redirect via `apps/site/vercel.json`. Once merged, connect the repo
-with Root Directory `apps/site`; until then deploy the built `dist/` directly.
+**Deploy.** Vercel project `justyap` on the user's personal scope, connected to the
+repository with Root Directory `apps/site`; pushes to `main` deploy. `SITE_URL=https://justyap.io`;
+`www.justyap.io`, `justyap.dev` and `www.justyap.dev` redirect via `apps/site/vercel.json`.

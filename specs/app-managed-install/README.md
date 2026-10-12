@@ -126,4 +126,3 @@ Open (need a person at the Mac):
 
 - A missing LFS fixture reports a misleading "bytes differ"; a clear "fixture not
   fetched" error needs the six test-harness fixture loaders moved onto one owner.
-- Connect the Vercel project to the repo (Root Directory `apps/site`) so pushes deploy.

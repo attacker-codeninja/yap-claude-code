@@ -32,7 +32,8 @@ robots use `SITE_URL`, else Vercel's production domain, else a local origin.
 
 ## Deploying on Vercel
 
-Import the repository and set **Root Directory** to `apps/site`; [vercel.json](vercel.json)
-supplies the build. Keep "Include files outside the root directory" enabled
-(the default), because the build reads the README and artwork. Set `SITE_URL`
-once a custom domain is attached.
+The Vercel project is connected to the repository with **Root Directory** `apps/site`,
+so every push to `main` deploys; [vercel.json](vercel.json) supplies the build. Keep
+"Include files outside the root directory" enabled, because the build reads the
+README and artwork. `SITE_URL` is set on the project. A deploy spends most of its
+time cloning the repository, whose archived evidence is large.
