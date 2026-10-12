@@ -108,11 +108,14 @@ export function temporary(prefix) {
 /**
  * Launches the packaged app the way Finder would, and keeps its diagnostics readable. Its
  * preferences live in a scratch defaults domain beside its home, never this person's own, and
- * the Settings window stays closed unless a check names a domain of its own.
+ * the Settings window stays closed unless a check names a domain of its own. Agent setup is
+ * always off.
  */
 export function launch(home, environment = {}, args = []) {
   const defaults = join(home, "preferences");
   if (!environment.YAP_DEFAULTS) setDefault(defaults, "showSettingsAtLaunch", "-bool", "NO");
+  // The app runs with this person's real HOME; agent setup would rewrite their command and skill.
+  setDefault(environment.YAP_DEFAULTS ?? defaults, "setUpAgents", "-bool", "NO");
   const child = spawn(app, args, {
     cwd: "/",
     env: {

@@ -14,7 +14,13 @@ the slice you pick up. Pre-launch: no users, no migrations, no compatibility shi
 and an unprimed critique of every new visual (fixes applied; one item moved to the
 release-day checklist).
 
-**Pick up at** the full check, then the Codex review, then the release. Each slice names
+**Full check (2026-10-12).** Types and lint pass. Every package's tests pass except
+failures that also fail on the unchanged base on this Mac: one CLI wait test (hangs),
+six macOS capture tests (this Mac's capture environment), and test-harness tests that
+need unfetched LFS fixtures. Codex was at capacity; an independent Claude review ran
+instead and its findings are fixed.
+
+**Pick up at** the release, then the release-day checklist below. Each slice names
 its tests; run only those. Run the full check once, after slice 08, then release
 with the `release` skill (the user delegated tagging).
 
