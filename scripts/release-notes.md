@@ -6,6 +6,16 @@ The capture menu keeps its dark appearance after selecting a recording area and
 shows the latest recording below the action buttons with Play and Copy agent prompt
 actions. Screen recordings now include the pointer in the captured video.
 
+## 0.1.33
+
+Yap starts faster with models installed. Startup no longer re-hashes every prepared
+model runtime (several seconds warm, a minute or more cold for the speaker model);
+a model whose receipt and runtime file list still match is ready at once, while
+anything missing or changed is verified and repaired as before, and every run still
+checks the runtime's bytes. A repair that fails now shows as failed in service
+health. The first `yap` command after install gives the app a minute to start
+instead of ten seconds; finding a running Yap still takes at most ten.
+
 ## 0.1.32
 
 Exports into the same folder now queue instead of failing each other with
