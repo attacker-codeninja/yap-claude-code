@@ -24,15 +24,17 @@ final class HomeLifecycle: AgentSetup {
         }
     }
 
-    /// At launch: with the preference on, make both current; with it off, leave the home alone.
-    func reconcile(enabled: Bool) {
-        if enabled { setEnabled(true) }
-    }
+    /// Called on the main thread once a background skill install or removal settles, so the
+    /// Settings status line can stop reading "updating".
+    var settled: (() -> Void)?
 
-    /// From Settings: install or remove both. The command is synchronous; the skill settles later.
+    /// Install or remove both: at launch and from Settings. The command is synchronous; the skill
+    /// settles later.
     func setEnabled(_ enabled: Bool) {
         _ = enabled ? command.install() : command.uninstall()
-        skill.setEnabled(enabled)
+        skill.setEnabled(enabled) { [weak self] in
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.settled?() } }
+        }
     }
 
     /// One line for Settings, from what is on disk now; it runs no installer.

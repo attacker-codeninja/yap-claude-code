@@ -50,8 +50,8 @@ enum LaunchDecision {
         /// Not in an Applications folder. `original` is the copy on disk to move, or nil when a
         /// translocated launch could not resolve it (the caller can only offer Quit).
         case offerMove(original: URL?)
-        /// Activate the running copy and quit.
-        case handOff(pid: pid_t)
+        /// Reopen the running copy, which shows its Settings, and quit.
+        case handOff(RunningCopy)
     }
 
     static let updateRelaunchArgument = "--yap-update-relaunch"
@@ -71,7 +71,7 @@ enum LaunchDecision {
         // Dev builds run beside an installed Yap with their own home, so only releases are single.
         // A running copy comes before location: moving would trash the bundle it runs from.
         guard isRelease else { return .proceed }
-        if let other = running.first { return .handOff(pid: other.pid) }
+        if let other = running.first { return .handOff(other) }
         let original = originalLocation(of: bundle, translocation: translocation)
         guard let original, isInApplicationsFolder(original, home: home) else {
             return .offerMove(original: original)

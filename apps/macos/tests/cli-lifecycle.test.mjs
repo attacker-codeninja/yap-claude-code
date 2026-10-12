@@ -58,7 +58,7 @@ test("install replaces a different file", () => {
   const paths = setup("different", { launcher });
   mkdirSync(join(paths.home, ".local/bin"), { recursive: true });
   writeFileSync(paths.command, "#!/bin/sh\necho personal\n", { mode: 0o644 });
-  writeFileSync(join(paths.home, ".zshrc"), 'export PATH="$HOME/.local/bin:$PATH"\n');
+  writeFileSync(join(paths.home, ".zshenv"), 'export PATH="$HOME/.local/bin:$PATH"\n');
   const [before, installed] = runHome(driver, paths, "cli.status", "cli.install");
   assert.equal(before.state, "different");
   assert.deepEqual(installed, { onPath: true, path: paths.command, state: "installed" });
@@ -67,7 +67,7 @@ test("install replaces a different file", () => {
   // Already covered by the person's own startup file, so no profile is edited.
   assert.equal(existsSync(join(paths.home, ".zprofile")), false);
   assert.equal(
-    readFileSync(join(paths.home, ".zshrc"), "utf8"),
+    readFileSync(join(paths.home, ".zshenv"), "utf8"),
     'export PATH="$HOME/.local/bin:$PATH"\n',
   );
 });

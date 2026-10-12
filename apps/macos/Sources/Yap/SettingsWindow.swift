@@ -58,6 +58,9 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     /// An accessory app is never frontmost on its own, so a person opening the window activates it.
     /// A launch a check drives orders the same window in behind everything instead: taking the
     /// screen from whoever is at the Mac is no part of what such a run verifies.
+    /// Re-reads the agent setup status line, e.g. after a background install settles.
+    func refreshAgentSummary() { model.refreshAgentSummary() }
+
     func show() {
         let window = self.window ?? makeWindow()
         refreshSystemState()

@@ -119,7 +119,8 @@ final class RecordingControls: NSObject {
         statusItem.button?.setAccessibilityLabel("Yap")
         readPermissions()
         render()
-        homeLifecycle.reconcile(enabled: preferences.setUpAgents)
+        homeLifecycle.settled = { [weak self] in self?.settings.refreshAgentSummary() }
+        if preferences.setUpAgents { homeLifecycle.setEnabled(true) }
     }
 
     func configureUpdates(_ updates: UpdateControls,

@@ -34,7 +34,7 @@ struct Launch: Decodable {
     switch decision {
     case .proceed: print("proceed")
     case .offerMove(let original): print("offerMove \\(original?.path ?? "nil")")
-    case .handOff(let pid): print("handOff \\(pid)")
+    case .handOff(let copy): print("handOff \\(copy.pid) \\(copy.bundleURL.path)")
     }
     if CommandLine.arguments.count > 2 {
       let state = Translocation.of(URL(fileURLWithPath: CommandLine.arguments[2]))
@@ -105,11 +105,14 @@ test("translocated offers a move of the original", () => {
 });
 
 test("second copy hands off", () => {
-  assert.equal(decide({ bundle: "/Applications/Yap.app", running: [4242] }), "handOff 4242");
+  assert.equal(
+    decide({ bundle: "/Applications/Yap.app", running: [4242] }),
+    "handOff 4242 /Applications/Yap.app",
+  );
   // A running copy wins over the move offer: moving would trash the live install it runs from.
   assert.equal(
     decide({ bundle: "/Users/someone/Downloads/Yap.app", running: [4242] }),
-    "handOff 4242",
+    "handOff 4242 /Applications/Yap.app",
   );
 });
 

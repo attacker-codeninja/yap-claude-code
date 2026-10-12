@@ -99,6 +99,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let running = NSRunningApplication.runningApplications(withBundleIdentifier: identifier)
             .filter { $0.processIdentifier != getpid() }
             .compactMap { app in app.bundleURL.map { RunningCopy(pid: app.processIdentifier, bundleURL: $0) } }
+            // Dev builds share the bundle identifier but run beside an installed Yap.
+            .filter { Bundle(url: $0.bundleURL).map(LaunchDecision.isRelease) == true }
         let decision = LaunchDecision.decide(
             bundle: bundle, home: accountHome(), isRelease: LaunchDecision.isRelease(.main),
             arguments: arguments, running: running, translocation: translocation)
@@ -106,9 +108,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .proceed:
             return LaunchDecision.originalLocation(of: bundle, translocation: translocation)
                 .map { LaunchDecision.isInApplicationsFolder($0, home: accountHome()) } ?? false
-        case .handOff(let pid):
-            diagnostic("another copy is running (pid \(pid)); handing off")
-            NSRunningApplication(processIdentifier: pid)?.activate()
+        case .handOff(let copy):
+            diagnostic("another copy is running (pid \(copy.pid)); handing off")
+            // A menu-bar app has nothing to activate; reopening it is what brings up its Settings.
+            NSWorkspace.shared.openApplication(at: copy.bundleURL, configuration: NSWorkspace.OpenConfiguration()) { _, _ in
+                DispatchQueue.main.async { NSApplication.shared.terminate(nil) }
+            }
+            return nil
         case .offerMove(let original):
             NSApplication.shared.activate()
             if let original, MoveToApplicationsPrompt.show(original: original) == .move {
@@ -193,7 +199,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                 } else if operation.hasPrefix("skill.") || operation.hasPrefix("cli.") {
                                     guard let controls = self?.controls else {
                                         answer(.failure(operation.hasPrefix("cli.")
-                                            ? ServiceFailure(code: "CLI_UNAVAILABLE", message: "No native command manager is connected.")
+                                            ? ServiceFailure(code: "CLI_UNAVAILABLE", message: "No native command-line tool manager is connected.")
                                             : ServiceFailure(code: "SKILL_UNAVAILABLE", message: "No native skill manager is connected.")))
                                         return
                                     }

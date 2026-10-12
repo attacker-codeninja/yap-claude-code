@@ -53,9 +53,8 @@ const target = (shell, existing = []) => call("target", shell, existing.join(","
 
 test("an uncommented PATH .local/bin line in the login shell's own startup files suppresses the block", () => {
   const line = '  path=($HOME/bin $path)\n  export PATH="$HOME/.local/bin:$PATH"\n';
-  for (const file of [".zshenv", ".zprofile", ".zshrc"])
-    assert.equal(covered({ [file]: line }), true, file);
-  for (const file of [".bash_profile", ".bash_login", ".profile", ".bashrc"])
+  for (const file of [".zshenv", ".zprofile"]) assert.equal(covered({ [file]: line }), true, file);
+  for (const file of [".bash_profile", ".bash_login", ".profile"])
     assert.equal(covered({ [file]: line }, "/bin/bash"), true, file);
 });
 
@@ -67,6 +66,9 @@ test("startup files another shell reads do not count", () => {
     "zsh ignores bash files",
   );
   assert.equal(covered({ ".zshrc": line }, "/bin/bash"), false, "bash ignores zsh files");
+  // Agents run non-interactive login shells (zsh -lc), which read neither rc file.
+  assert.equal(covered({ ".zshrc": line }), false, "zsh -lc skips .zshrc");
+  assert.equal(covered({ ".bashrc": line }, "/bin/bash"), false, "bash -lc skips .bashrc");
   assert.equal(
     covered({ ".zshrc": line, ".profile": line }, "/opt/homebrew/bin/fish"),
     false,
@@ -75,7 +77,7 @@ test("startup files another shell reads do not count", () => {
 });
 
 test("covered heuristics", () => {
-  assert.equal(covered({ ".zshrc": "export PATH=~/.local/bin:$PATH" }), true);
+  assert.equal(covered({ ".zprofile": "export PATH=~/.local/bin:$PATH" }), true);
   assert.equal(covered({ ".zshrc": "alias ll='ls -l'\n", ".profile": "" }), false);
   assert.equal(
     covered({ ".zshrc": 'export PATH="$HOME/bin:$PATH"\n' }),

@@ -46,7 +46,7 @@ final class SkillArtifact {
 
     /// Starts the install or removal in the background; `skill.status` reads `updating` until it settles.
     @discardableResult
-    func setEnabled(_ enabled: Bool) -> String {
+    func setEnabled(_ enabled: Bool, settled: @escaping @Sendable () -> Void = {}) -> String {
         let home = self.home
         let resources = self.resources
         let operationId = UUID().uuidString
@@ -54,6 +54,7 @@ final class SkillArtifact {
         DispatchQueue.global(qos: .utility).async {
             if enabled { Self.install(home: home, resources: resources, operationId: operationId) }
             else { Self.uninstall(home: home, resources: resources, operationId: operationId) }
+            settled()
         }
         return operationId
     }

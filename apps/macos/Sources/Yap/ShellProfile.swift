@@ -10,12 +10,13 @@ enum ShellProfile {
     /// Every startup file Yap may have edited, zsh and bash alike, relative to the home.
     static let startupFiles = [".zshenv", ".zprofile", ".zshrc", ".bash_profile", ".bash_login", ".profile", ".bashrc"]
 
-    /// The startup files the login shell actually reads; only their PATH lines count.
+    /// The startup files a login shell reads even when it is not interactive, as agents run it
+    /// (`zsh -lc`); only their PATH lines count. `.zshrc` and `.bashrc` are interactive-only.
     /// A shell Yap doesn't know reads none of them.
     static func files(shell: String) -> [String] {
         switch (shell as NSString).lastPathComponent {
-        case "bash": return [".bash_profile", ".bash_login", ".profile", ".bashrc"]
-        case "zsh", "": return [".zshenv", ".zprofile", ".zshrc"]
+        case "bash": return [".bash_profile", ".bash_login", ".profile"]
+        case "zsh", "": return [".zshenv", ".zprofile"]
         default: return []
         }
     }

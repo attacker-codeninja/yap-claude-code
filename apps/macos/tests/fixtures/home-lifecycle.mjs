@@ -51,7 +51,7 @@ export function compileHomeDriver(scratch) {
             switch operation {
             case "wait": print(settle())
             case "reconcile":
-                lifecycle.reconcile(enabled: true)
+                lifecycle.setEnabled(true)
                 print(settle())
             default: print(line(lifecycle.handle(operation)))
             }
