@@ -102,7 +102,8 @@ async function digest(path) {
   for await (const bytes of createReadStream(path)) h.update(bytes);
   return h.digest("hex");
 }
-let failure;
+// A shutdown failure is rethrown only after the run itself succeeded, so it never masks the run's error.
+let shutdownFailure;
 try {
   await service.start();
   const source = join(out, "source.wav");
@@ -265,7 +266,6 @@ try {
   };
   report.passed = true;
 } catch (error) {
-  failure = error;
   report.failure = { message: error.message, stack: error.stack };
   throw error;
 } finally {
@@ -273,7 +273,6 @@ try {
   else process.env.YAP_TEST_UNAVAILABLE_OPERATIONS = priorUnavailableOperations;
   clearInterval(observer);
   while (sampling) await new Promise((resolve) => setImmediate(resolve));
-  let shutdownFailure;
   try {
     await service.stop();
   } catch (error) {
@@ -290,6 +289,6 @@ try {
   } finally {
     await rm(home, { recursive: true, force: true });
   }
-  if (shutdownFailure && !failure) throw shutdownFailure;
 }
+if (shutdownFailure) throw shutdownFailure;
 console.log(JSON.stringify(report.observations, null, 2));

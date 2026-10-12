@@ -166,7 +166,6 @@ export async function verifyRetainedMulticamNativeDelivery(reportPath, fixturesD
     report.preview?.fileSha256,
   );
   const previewPath = previewArtifact.path;
-  const previewBytes = previewArtifact.bytes;
   const previewFrames = await decodeFrames(previewPath, report.selections.length, { exact: true });
   if (hash(Buffer.concat(previewFrames)) !== report.preview?.rgbSha256)
     refuse("NATIVE_PREVIEW", "Retained preview RGB bytes differ");

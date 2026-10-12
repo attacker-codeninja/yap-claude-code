@@ -25,7 +25,8 @@ test("historical provenance has structural validation independent of current exe
 });
 
 test("durable receipt fields are explicit and never silently discard unknown metadata", () => {
-  const { top_p, ...missing } = settings;
+  const missing: Partial<typeof settings> = { ...settings };
+  delete missing.top_p;
   expect(voiceGenerationSchema.safeParse(missing).success).toBe(false);
   expect(
     voiceGenerationSchema.safeParse({ ...settings, futureMetadata: "retained-or-refused" }).success,

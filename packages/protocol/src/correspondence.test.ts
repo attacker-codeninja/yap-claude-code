@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { expect, test } from "vitest";
 import { operationSchema } from "./operations.js";
 import { correspondenceMeasurementSchema, correspondenceReceiptSchema } from "./correspondence.js";
 

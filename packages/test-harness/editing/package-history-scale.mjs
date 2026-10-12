@@ -194,6 +194,8 @@ async function inventory(path) {
     );
   return manifest;
 }
+// A shutdown failure is rethrown only after the run itself succeeded, so it never masks the run's error.
+let shutdownFailure;
 try {
   const source = join(donor, "source.wav");
   await copyFile(join(root, "specs/done/agent-editing/assets/18-voice/reference.wav"), source);
@@ -474,9 +476,9 @@ try {
   } catch (error) {
     report.passed = false;
     report.shutdownError = error.message;
-    throw error;
-  } finally {
-    report.controllerPeakRSSBytes = process.resourceUsage().maxRSS * 1024;
-    await writeFile(join(out, "report.json"), JSON.stringify(report, null, 2) + "\n");
+    shutdownFailure = error;
   }
+  report.controllerPeakRSSBytes = process.resourceUsage().maxRSS * 1024;
+  await writeFile(join(out, "report.json"), JSON.stringify(report, null, 2) + "\n");
 }
+if (shutdownFailure) throw shutdownFailure;

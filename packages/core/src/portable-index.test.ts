@@ -76,7 +76,11 @@ test("portable source images and filtered coverage survive library removal and r
     limit: 200,
   });
   const withoutPaths = (values: typeof entries) =>
-    values.map(({ frame: { file, ...frame }, ...entry }) => ({ ...entry, frame }));
+    values.map((entry) => {
+      const frame: Partial<typeof entry.frame> = { ...entry.frame };
+      delete frame.file;
+      return { ...entry, frame };
+    });
   expect(withoutPaths(movedFirst.entries)).toEqual(withoutPaths(first.entries));
   expect(withoutPaths(movedNext.entries)).toEqual(withoutPaths(next.entries));
   const allCoverage: ReturnType<typeof index.coveragePage>["coverage"] = [];

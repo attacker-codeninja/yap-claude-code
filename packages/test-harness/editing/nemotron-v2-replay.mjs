@@ -3,7 +3,6 @@ import { createHash } from "node:crypto";
 import { gunzipSync } from "node:zlib";
 import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { diarizationScore } from "../speech/feasibility/score.mjs";
 
 const PROTOCOL_SHA256 = "bb1db7ee30b51eb0ad57e24c4e5962a569b387e57dd8b4fa21a0c5a3abb54bd6";

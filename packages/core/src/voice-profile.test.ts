@@ -110,7 +110,8 @@ test("nucleus boundaries preserve wire zeros and distinguish disabling from filt
 
 test("receipt settings never invent omitted worker fields from request defaults", () => {
   const settings = resolveVoiceSettings().requested;
-  const { top_p, ...incomplete } = settings;
+  const incomplete: Partial<typeof settings> = { ...settings };
+  delete incomplete.top_p;
   expect(voiceReceiptSchema.shape.generation.safeParse(incomplete).success).toBe(false);
   expect(voiceReceiptSchema.shape.generation.parse(settings)).toEqual(settings);
 });

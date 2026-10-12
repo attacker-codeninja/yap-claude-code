@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { expect, test } from "vitest";
 import { admitCorrespondence, verifyCorrespondenceReceipt } from "./correspondence.js";
 import { CatalogError } from "./catalog.js";
 

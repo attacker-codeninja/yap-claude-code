@@ -61,6 +61,8 @@ const manifest = {
 };
 const destination = new URL("../../packages/core/src/model-data/", import.meta.url);
 const { runtimeArtifact, ...descriptor } = manifest;
+// The module literal splices the JSON members inline so `entries` can join runtimeArtifact as the imported inventory.
+const members = (value) => JSON.stringify(value).slice(1, -1);
 await writeFile(
   new URL("alignment-runtime.generated.json", destination),
   JSON.stringify(entries) + "\n",
@@ -71,10 +73,9 @@ await writeFile(
     'import type { ModelManifest, RuntimeEntry } from "../model-types.js";\n' +
     'import entries from "./alignment-runtime.generated.json" with { type: "json" };\n' +
     "export const alignmentManifest: ModelManifest = {" +
-    "..." +
-    JSON.stringify(descriptor) +
-    ",runtimeArtifact:{..." +
-    JSON.stringify(runtimeArtifact) +
+    members(descriptor) +
+    ",runtimeArtifact:{" +
+    members(runtimeArtifact) +
     ",entries:entries as RuntimeEntry[]}};\n",
 );
 console.log(

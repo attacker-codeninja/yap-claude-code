@@ -264,7 +264,7 @@ try {
   } else {
     const mixes = [];
     for (const file of (await readdir(nativeEvidence))
-      .filter((name) => /^mix-/.test(name))
+      .filter((name) => name.startsWith("mix-"))
       .sort()) {
       const mix = JSON.parse(await readFile(join(nativeEvidence, file), "utf8"));
       assert.equal(mix.request.retimeImplementationId, retimeImplementationId);

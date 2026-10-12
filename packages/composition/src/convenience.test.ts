@@ -845,7 +845,7 @@ test("piecewise angle declarations retain bounded local offsets without retiming
   const result = applyBatch(empty, [
     { operation: "track.add", track: { kind: "video", order: 0 }, label: "a-track" },
     { operation: "track.add", track: { kind: "video", order: 1 }, label: "b-track" },
-    ...assets.map((asset, index) => ({
+    ...assets.map((asset) => ({
       operation: "place" as const,
       label: asset.id,
       clip: {

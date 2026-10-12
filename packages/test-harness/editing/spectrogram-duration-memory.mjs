@@ -48,6 +48,11 @@ function inspect(home) {
     db.close();
   }
 }
+function withoutPlacement(clip) {
+  const copy = { ...clip };
+  delete copy.placement;
+  return copy;
+}
 function support(document, seconds) {
   assert.equal(document.clips.length, 10000);
   assert.equal(document.tracks.length, 1);
@@ -202,8 +207,8 @@ try {
       assert.equal(authored.id, revisionId);
       assert.deepEqual(support(authored.document, seconds), report.support);
       assert.deepEqual(
-        authored.document.clips.map(({ placement, ...clip }) => clip),
-        original.revision.document.clips.map(({ placement, ...clip }) => clip),
+        authored.document.clips.map(withoutPlacement),
+        original.revision.document.clips.map(withoutPlacement),
       );
       await writeFile(join(out, `revision-${seconds}.json`), JSON.stringify(authored));
       trial.revisionId = revisionId;

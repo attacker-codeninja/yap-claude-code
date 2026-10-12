@@ -81,11 +81,10 @@ async function picture(selection, atUs, target, point, name, canvas) {
     name,
   );
   await run(pixelTool, [file, file + ".rgba"]);
+  // evidence is what the report retains; rgba is the decoded frame the checks compare.
   return {
-    file,
-    receipt: response,
+    evidence: { file, receipt: response, sha256: hash(await readFile(file)) },
     rgba: await readFile(file + ".rgba"),
-    sha256: hash(await readFile(file)),
   };
 }
 async function project(source, canvas, stages) {
@@ -222,8 +221,7 @@ try {
     assert.ok(alpha.some((v, i) => i % 4 === 3 && v > 128));
     assert.ok(alpha.some((v, i) => i % 4 === 3 && v === 0));
     references.push(alpha);
-    const { rgba, ...retained } = result;
-    report.references.push(retained);
+    report.references.push(result.evidence);
   }
   for (const canvas of [
     { width: 256, height: 160 },
@@ -309,7 +307,7 @@ try {
               canvas,
             );
           const maximumAlphaError = error(result.rgba, expected, true);
-          await writeFile(result.file + ".expected-alpha.rgba", expected);
+          await writeFile(result.evidence.file + ".expected-alpha.rgba", expected);
           assert.ok(
             maximumAlphaError <= 2,
             `${name}/${index}/${stage.name}: alpha error ${maximumAlphaError}`,
@@ -327,11 +325,10 @@ try {
             error(Buffer.alloc(expected.length), result.rgba, true) > 2,
             "Missing pointer escaped alpha gate",
           );
-          const { rgba, ...retained } = result;
           row.pictures.push({
             index,
             stage: stage.name,
-            ...retained,
+            ...result.evidence,
             maximumAlphaError,
             onePixelShiftRejected: true,
             missingPointerRejected: true,
@@ -370,12 +367,10 @@ try {
           error(dry.rgba, rendered.rgba) > 2,
           "Output rotation did not move asymmetric pointer",
         );
-        const { rgba: dryRgba, ...retainedDry } = dry,
-          { rgba: renderedRgba, ...retainedRendered } = rendered;
         row.output.push({
           index,
-          dry: retainedDry,
-          rendered: retainedRendered,
+          dry: dry.evidence,
+          rendered: rendered.evidence,
           maximumRotationError,
           omittedRotationRejected: true,
         });

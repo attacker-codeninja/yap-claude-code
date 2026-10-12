@@ -377,7 +377,9 @@ export class ProjectPackages {
                 : row,
             ),
           };
-    const { sourceRange, ...selection } = input;
+    // The ready answer has the live path's shape, which carries no observation range.
+    const selection: Partial<typeof input> = { ...input };
+    delete selection.sourceRange;
     return {
       ...selection,
       state: "ready",
@@ -1338,8 +1340,9 @@ export class ProjectPackages {
           frame: { ...value.frame, file: `${ordinal}.png` },
         });
       }
-      let afterSequence: number | undefined;
-      do {
+      // undefined reads the first page; null means the previous page was the last.
+      let afterSequence: number | null | undefined;
+      while (afterSequence !== null) {
         const page = recordsStore.coveragePage({
           identity,
           ...(afterSequence === undefined ? {} : { afterSequence }),
@@ -1347,9 +1350,8 @@ export class ProjectPackages {
         });
         for (const { sequence: _sequence, ...coverage } of page.coverage)
           await record({ kind: "coverage", coverage });
-        if (page.nextSequence === null) break;
         afterSequence = page.nextSequence;
-      } while (true);
+      }
       if (records.length !== entry.metadata.candidateCount + entry.metadata.coverageCount)
         throw new CatalogError("INVALID_STORAGE", "Screenshot index inventory changed");
       return { ...entry, records, images };

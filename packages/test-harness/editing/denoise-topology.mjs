@@ -125,6 +125,8 @@ async function audio(params, name) {
   report.checks[name] = { receipt: ready, sha256: hash(bytes), ms: performance.now() - at };
   return pcm(bytes);
 }
+// A shutdown failure is rethrown only after the run itself succeeded, so it never masks the run's error.
+let shutdownFailure;
 try {
   await service.start();
   const assets = [];
@@ -404,15 +406,15 @@ try {
   } catch (error) {
     report.passed = false;
     report.shutdownFailure = error.message;
-    throw error;
+    shutdownFailure = error;
+  }
+  report.observations.sampledServicePeakRSS = peakRSS;
+  report.observations.controllerPeakRSS = process.resourceUsage().maxRSS * 1024;
+  report.serviceLogs = service.logs;
+  try {
+    await writeFile(join(out, "report.json"), JSON.stringify(report, null, 2));
   } finally {
-    report.observations.sampledServicePeakRSS = peakRSS;
-    report.observations.controllerPeakRSS = process.resourceUsage().maxRSS * 1024;
-    report.serviceLogs = service.logs;
-    try {
-      await writeFile(join(out, "report.json"), JSON.stringify(report, null, 2));
-    } finally {
-      await rm(home, { recursive: true, force: true });
-    }
+    await rm(home, { recursive: true, force: true });
   }
 }
+if (shutdownFailure) throw shutdownFailure;

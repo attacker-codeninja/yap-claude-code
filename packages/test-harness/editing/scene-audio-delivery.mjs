@@ -3,8 +3,8 @@ import { randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { JourneyService, hash, poll, root, run } from "./source-evidence-fixture.mjs";
-import { sample, waveHeader, writeSourceWave } from "./audio-project-fixture.mjs";
+import { JourneyService, hash, poll, run } from "./source-evidence-fixture.mjs";
+import { waveHeader, writeSourceWave } from "./audio-project-fixture.mjs";
 
 const { values } = parseArgs({ options: { out: { type: "string" }, help: { type: "boolean" } } });
 if (values.help) {

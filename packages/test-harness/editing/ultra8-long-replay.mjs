@@ -13,7 +13,6 @@ const assets = join(
 );
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const readJson = async (path) => JSON.parse(await readFile(path, "utf8"));
-const readGzipJson = async (path) => JSON.parse(gunzipSync(await readFile(path)));
 
 function overlap(reference, prediction, duration) {
   const points = [

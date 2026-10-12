@@ -201,6 +201,29 @@ test("orphan fixture reaps the stopped native child when consumer assertions fai
   assert.deepEqual(await recoverPackageWorkspaces(f.parent, worker), { recovered: 1 });
 });
 
+/** Kills a native child and waits until it no longer exists, so fixture removal never races it. */
+async function reapNativeChild(pid) {
+  try {
+    process.kill(pid, "SIGKILL");
+  } catch (error) {
+    if (error.code !== "ESRCH") throw error;
+  }
+  const deadline = Date.now() + 3000;
+  while (isAlive(pid)) {
+    assert.ok(Date.now() < deadline, "Native process must terminate before fixture removal");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+}
+function isAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    if (error.code === "ESRCH") return false;
+    throw error;
+  }
+}
+
 test(
   "normal fixture IPC disconnect terminates and reaps its stopped native child",
   { timeout: 10000 },
@@ -216,6 +239,8 @@ test(
     );
     const closed = once(owner, "exit");
     let pid;
+    // A reap failure is rethrown only after the test body passed, so it never masks the body's error.
+    let reapFailure;
     try {
       const [message] = await Promise.race([
         once(owner, "message"),
@@ -237,22 +262,12 @@ test(
       await closed;
       if (pid) {
         try {
-          process.kill(pid, "SIGKILL");
+          await reapNativeChild(pid);
         } catch (error) {
-          if (error.code !== "ESRCH") throw error;
-        }
-        const deadline = Date.now() + 3000;
-        while (true) {
-          try {
-            process.kill(pid, 0);
-          } catch (error) {
-            if (error.code === "ESRCH") break;
-            throw error;
-          }
-          assert.ok(Date.now() < deadline, "Native process must terminate before fixture removal");
-          await new Promise((resolve) => setTimeout(resolve, 10));
+          reapFailure = error;
         }
       }
     }
+    if (reapFailure) throw reapFailure;
   },
 );
