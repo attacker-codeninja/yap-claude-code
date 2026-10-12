@@ -125,7 +125,7 @@ test(
     assert.deepEqual(takes(app.home), [], "An abandoned count allocates no take at all");
     assert.equal(
       find(await app.rows(), "capture.startOrStop").title,
-      "Start Recording",
+      "Start recording",
       "Once the count is gone the row offers to start again",
     );
 

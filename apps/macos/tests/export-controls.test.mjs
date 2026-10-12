@@ -560,10 +560,11 @@ import YapControls
         let current = try! JSONSerialization.jsonObject(with: await service.call("project.get", ["projectId": projectId])) as! [String: Any]
         precondition(current["currentRevisionId"] as? String != pinnedRevision, "The library edit did advance")
 
-        // The same destination is occupied now, so the service refuses to replace it.
+        // A file Yap never published occupies this destination. Only an unchanged file matching
+        // Yap's own publication receipt may be replaced without overwrite, so the service refuses.
         let occupied = ExportController(
             call: { operation, params throws(ServiceFailure) in try await service.call(operation, params) },
-            choose: { _, _ in URL(fileURLWithPath: directory).appendingPathComponent("demo.mp4") },
+            choose: { _, _ in URL(fileURLWithPath: directory).appendingPathComponent("occupied.mp4") },
             reveal: { _ in }, changed: {}, failure: { failures.append($0) })
         occupied.export(projectId, kind: .video)
         await until(60, occupied.tick) { occupied.state.records.first?.state == "failed" || !failures.isEmpty }
@@ -582,7 +583,7 @@ import YapControls
         precondition(restarted.state.records.map(\.exportId) == [failed],
             "Only the unfinished export is rediscovered: \(restarted.state.records.map(\.exportId))")
         let found = restarted.state.records[0]
-        precondition(found.state == "failed" && found.directory == directory && found.leaf == "demo.mp4",
+        precondition(found.state == "failed" && found.directory == directory && found.leaf == "occupied.mp4",
             "The rediscovered export states its admitted destination without app storage")
         restarted.abandon(failed)
         await until(30, {}) { restarted.state.records.isEmpty || !restarted.state.failures.isEmpty }
@@ -599,6 +600,8 @@ import YapControls
 }
 `,
       );
+      const foreign = "bytes no Yap export published";
+      await writeFile(join(output, "occupied.mp4"), foreign);
       safeToRemove = false;
       const result = await new Promise((resolve, reject) => {
         const child = spawn(
@@ -626,9 +629,14 @@ import YapControls
       assert.match(result.stdout, /PASS native exports commit/);
       const [, committed] = result.stdout.match(/EXPORTS committed=(\S+) failed=(\S+)/);
       assert.deepEqual(
-        readdirSync(output),
-        ["demo.mp4"],
+        readdirSync(output).sort(),
+        ["demo.mp4", "occupied.mp4"],
         "abandonment leaves no private staging behind",
+      );
+      assert.equal(
+        await readFile(join(output, "occupied.mp4"), "utf8"),
+        foreign,
+        "a refused export leaves the file it would have replaced untouched",
       );
       const exported = await readFile(join(output, "demo.mp4"));
       assert.ok(exported.length > 0, `committed export ${committed} has bytes`);

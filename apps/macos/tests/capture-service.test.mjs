@@ -663,11 +663,24 @@ test("a start whose answer is lost replays onto its own take instead of starting
   assert.deepEqual(takes(home), [recordingId]);
 
   release(home);
-  await waitFor(
-    () => finalized(home, recordingId),
+  // Released, the start lands and the stop the service sent at its deadline ends it. Native
+  // closes that take's media and reports how it ended; the catalog stores that report rather
+  // than authoring a recovery of its own. Whether a frame arrived before the stop is the device's
+  // answer, so the outcome is checked against the take's own journal, not assumed here.
+  const ended = await waitFor(
+    async () => {
+      const facts = await succeeds(home, "recording.get", { recordingId });
+      return ["complete", "interrupted"].includes(facts.state) && facts;
+    },
     20_000,
     () => "The held start never finished its own take",
   );
+  assert.ok(finalized(home, recordingId), "The take's journal records its capture as finished");
+  const terminal = journal(home, recordingId)
+    .filter((record) => record.event === "lifecycle")
+    .at(-1).data;
+  assert.equal(ended.state, terminal.state, "The stored outcome is the one native journaled");
+  if (terminal.state === "interrupted") assert.equal(ended.interruptionReason, terminal.reason);
   instance.kill("SIGTERM");
   await instance.exited;
 
@@ -685,7 +698,8 @@ test("a start whose answer is lost replays onto its own take instead of starting
     20_000,
     () => "Recovered recording/source facts did not settle",
   );
-  assert.equal(settled.state, "interrupted");
+  assert.equal(settled.state, ended.state, "A restart keeps the outcome native reported");
+  assert.equal(settled.interruptionReason, ended.interruptionReason);
   // The receipt outlived the service that wrote it: the same request still names that one take.
   assert.deepEqual(await succeeds(home, "capture.start", request), settled);
   assert.deepEqual(takes(home), [recordingId]);

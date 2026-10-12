@@ -90,6 +90,9 @@ final class RecordingControls: NSObject {
     private var pendingRefresh = false
     private var pendingStorageRefresh = false
     private var cameraPreviewImage: NSImage?
+    /// The clock a check asked the floating controls to show. Every render reconciles the controls
+    /// with the state, so a request that is not held here is gone on the next status tick.
+    private var observedOverlay: RecordingOverlay.Presentation?
     private var lastCameraPreviewUpdate = Date.distantPast
     private let cameraPreviewContext = CIContext()
 
@@ -170,7 +173,8 @@ final class RecordingControls: NSObject {
     /// see how they are laid out then. Only the fixture observer reaches this.
     func showOverlay(elapsed: String) {
         guard ControlsProbe.observed else { return }
-        overlay.update(.init(elapsed: elapsed, paused: false, symbol: "record.circle.fill"))
+        observedOverlay = .init(elapsed: elapsed, paused: false, symbol: "record.circle.fill")
+        render()
     }
 
     @objc private func toggleCapture() {
@@ -665,7 +669,7 @@ final class RecordingControls: NSObject {
         let shortcuts = ShortcutDefaults(bindings: bindings, registered: held)
         capturePopover.update(captureInput())
         libraryWindow.update(state: state, exports: exports.state)
-        overlay.update(RecordingOverlay.presentation(for: state))
+        overlay.update(RecordingOverlay.presentation(for: state) ?? observedOverlay)
         let cameraActive = state.isLive && (state.selection.source == .camera || state.selection.cameraDeviceId != nil)
         overlay.updatePreview(cameraActive && preferences.showCameraPreview ? cameraPreviewImage : nil)
         settings.update(state, shortcuts: shortcuts)
