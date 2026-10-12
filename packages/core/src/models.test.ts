@@ -498,6 +498,29 @@ test("concurrent verification waits for current bytes while other model requests
   expect(await models.status("voice")).toEqual({ state: "invalid" });
 });
 
+test("service readiness answers from preparation receipts without waiting on runtime verification", async () => {
+  const f = await voiceFixture(),
+    models = f.owner();
+  await models.prepare("voice", new AbortController().signal, f.sources);
+  // An explicit verification of the prepared runtime bytes is still hashing.
+  let verified = false;
+  const explicit = models.status("voice").then((value) => {
+    verified = true;
+    return value;
+  });
+  expect(models.statuses()).toEqual([
+    { modelId: "tiny", purpose: "transcription", status: { state: "absent" } },
+    { modelId: "voice", purpose: "voice", status: { state: "ready" } },
+  ]);
+  expect(verified).toBe(false);
+  expect(await explicit).toEqual({ state: "ready" });
+  // The receipt still catches a replaced prepared file without hashing its bytes.
+  const model = join(f.models, "voice", "r1", "tiny-model", "vocab.json");
+  await rename(model, model + ".old");
+  await writeFile(model, contents["vocab.json"]!);
+  expect(models.statuses()[1]!.status).toEqual({ state: "invalid" });
+});
+
 test("canceling a local runtime admission drains its private stage without affecting another model", async () => {
   const f = await voiceFixture(),
     models = f.owner(),

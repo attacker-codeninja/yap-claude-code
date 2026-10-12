@@ -636,14 +636,17 @@ export class Models {
   async status(modelId: string) {
     return this.selected(modelId).status();
   }
-  async statuses() {
-    return Promise.all(
-      [...this.preparations].map(async ([modelId, model]) => ({
-        modelId,
-        purpose: model.manifest.purpose,
-        status: await model.status(),
-      })),
-    );
+  /**
+   * Readiness from each preparation receipt, for the cheap service health check. Runtime bytes
+   * are verified by preparation, explicit `status` and before every execution, never here: a
+   * full hash grows with the installed runtime and would make health as slow as the largest one.
+   */
+  statuses() {
+    return [...this.preparations].map(([modelId, model]) => ({
+      modelId,
+      purpose: model.manifest.purpose,
+      status: model.snapshot(),
+    }));
   }
   prepare(modelId: string, signal: AbortSignal, sources: ModelSources = {}) {
     return this.selected(modelId).prepare(signal, sources);

@@ -1419,7 +1419,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
     .object({ operation: z.literal("service.health"), params: z.object({}).strict() })
     .strict()
     .describe(
-      "Read local service readiness without starting capture. Includes every registered model's purpose and readiness; preparing models report receivedBytes, totalBytes and etaMs so an agent can wait without guessing.",
+      "Read local service readiness without starting capture. Includes every registered model's purpose and readiness from its preparation receipt; preparing models report receivedBytes, totalBytes and etaMs so an agent can wait without guessing. Use model.status to verify a model's installed bytes; execution verifies them again.",
     ),
   z
     .object({ operation: z.literal("service.tools"), params: z.object({}).strict() })

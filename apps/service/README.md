@@ -74,7 +74,9 @@ plans; [native workers](../../helpers/mac/README.md) execute physical media work
 Authoring support and execution readiness are separate. Capability discovery
 must report actual prepared/native requirements rather than inventing a fallback.
 
-`service.health` remains a cheap listener-readiness check. Explicit `service.tools`
+`service.health` remains a cheap listener-readiness check. Its model readiness comes
+from preparation receipts; hashing a prepared runtime grows with its size, so that
+stays with preparation, explicit `model.status` and execution. Explicit `service.tools`
 discovery verifies the selected app's bundled tool receipt and resource hashes,
 then probes its executable version and configuration under bounded work. Missing
 or altered tools report unavailable without blocking native operation discovery.

@@ -1095,7 +1095,7 @@ export async function startProjectService(options: {
                 home: options.home,
                 node: process.versions.node,
                 uptimeMs: Math.round(performance.now() - started),
-                models: await models.statuses(),
+                models: models.statuses(),
               },
             };
           case "service.tools":
