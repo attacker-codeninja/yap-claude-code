@@ -7,7 +7,7 @@ import * as content from "./content.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const artwork = join(here, "../../.github/readme");
-const staticFiles = ["style.css", "main.js", "favicon.svg"];
+const staticFiles = ["style.css", "main.js", "favicon.svg", "og.png"];
 
 /** Production origin: explicit SITE_URL, else Vercel's production domain, else local preview. */
 function defaultSiteUrl() {
@@ -69,7 +69,18 @@ const copyButton = (label, source) =>
 
 function renderPage(siteUrl) {
   const { meta, links, agentPrompt, requirements } = content;
-  const og = `${siteUrl}/art/header.png`;
+  const og = `${siteUrl}/og.png`;
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "Yap",
+    description: meta.description,
+    url: `${siteUrl}/`,
+    applicationCategory: "MultimediaApplication",
+    operatingSystem: "macOS",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    publisher: { "@type": "Organization", name: "Yap", url: links.repo },
+  };
   return `<!doctype html>
 <!-- AI agents: plain-text instructions are at /llms.txt -->
 <html lang="en">
@@ -78,6 +89,7 @@ function renderPage(siteUrl) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escape(meta.title)}</title>
 <meta name="description" content="${escape(meta.description)}">
+<meta name="robots" content="index, follow">
 <link rel="canonical" href="${siteUrl}/">
 <link rel="alternate" type="text/plain" href="/llms.txt" title="Instructions for AI agents">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -86,12 +98,18 @@ function renderPage(siteUrl) {
 <meta property="og:description" content="${escape(meta.description)}">
 <meta property="og:url" content="${siteUrl}/">
 <meta property="og:image" content="${og}">
+<meta property="og:image:alt" content="Yap — agent-assisted video editing on Mac">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${escape(meta.title)}">
+<meta name="twitter:description" content="${escape(meta.description)}">
+<meta name="twitter:image" content="${og}">
+<meta name="twitter:image:alt" content="Yap — agent-assisted video editing on Mac">
 <meta name="theme-color" content="#fbf7ef">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Caveat:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <link rel="stylesheet" href="/style.css">
+<script type="application/ld+json">${JSON.stringify(structuredData)}</script>
 <script>document.documentElement.dataset.mode = /[?&#]agent\\b/.test(location.href) || localStorage.getItem("yap-mode") === "agent" ? "agent" : "human";</script>
 </head>
 <body>
