@@ -843,7 +843,12 @@ function nativeTranscript(
         encoderPrecision: "int8",
         computeUnits: "cpuAndNeuralEngine",
       },
-      segments: lines.map(({ words, ...line }) => structuredClone(line)),
+      // Receipt segments carry everything but their words.
+      segments: lines.map((line) => {
+        const segment: Omit<typeof line, "words"> & { words?: unknown } = structuredClone(line);
+        delete segment.words;
+        return segment;
+      }),
       wordCount: 7,
       execution: request.execution,
       available: lines.map((line) => line.source),
