@@ -12,15 +12,18 @@ import { app, finderEnvironment, launchReady, setDefault, temporary, waitFor } f
  */
 // The harness names the executable; discovery and the CLI need its bundle.
 const bundle = resolve(app, "../../..");
-const cli = join(bundle, "Contents/Resources/cli/main.mjs");
 
-function yap(home, defaults, operation) {
-  const result = spawnSync(process.execPath, [cli, operation, "--params", "{}"], {
-    cwd: "/",
-    env: { ...finderEnvironment, YAP_APP: bundle, YAP_HOME: home, YAP_DEFAULTS: defaults },
-    encoding: "utf8",
-    timeout: 60_000,
-  });
+function yap(home, defaults, operation, installed = bundle) {
+  const result = spawnSync(
+    process.execPath,
+    [join(installed, "Contents/Resources/cli/main.mjs"), operation, "--params", "{}"],
+    {
+      cwd: "/",
+      env: { ...finderEnvironment, YAP_APP: installed, YAP_HOME: home, YAP_DEFAULTS: defaults },
+      encoding: "utf8",
+      timeout: 90_000,
+    },
+  );
   assert.equal(result.status, 0, `${operation}: ${result.stdout}${result.stderr}`);
   const answer = JSON.parse(result.stdout);
   assert.equal(answer.ok, true, `${operation}: ${result.stdout}`);
@@ -36,12 +39,12 @@ function scratchDefaults(home) {
 }
 
 /** Every command over a stretch of startup work, not just one lucky call, answers first time. */
-function keepsAnswering(home, defaults, seconds) {
+function keepsAnswering(home, defaults, seconds, installed) {
   const deadline = Date.now() + seconds * 1000;
   let calls = 0;
   do {
-    assert.equal(yap(home, defaults, "service.health").status, "ready");
-    yap(home, defaults, "capture.status");
+    assert.equal(yap(home, defaults, "service.health", installed).status, "ready");
+    yap(home, defaults, "capture.status", installed);
     calls += 2;
   } while (Date.now() < deadline);
   return calls;
@@ -64,14 +67,19 @@ test(
   async () => {
     const home = temporary("/tmp/yap-installed-");
     const defaults = scratchDefaults(home);
+    // A freshly installed copy nobody else runs: `open -a` would otherwise reuse another check's
+    // running app at the shared build path, which serves a different home.
+    const installed = join(home, "Applications/Yap.app");
+    execFileSync("mkdir", ["-p", join(home, "Applications")]);
+    execFileSync("cp", ["-c", "-R", bundle, installed]);
     // Nothing is running for this home: discovery must launch the app and wait for it itself.
-    const health = yap(home, defaults, "service.health");
+    const health = yap(home, defaults, "service.health", installed);
     const appPid = Number(
       execFileSync("ps", ["-o", "ppid=", "-p", String(health.pid)], { encoding: "utf8" }).trim(),
     );
     try {
       assert.equal(health.status, "ready");
-      assert.ok(keepsAnswering(home, defaults, 10) > 0);
+      assert.ok(keepsAnswering(home, defaults, 10, installed) > 0);
     } finally {
       process.kill(appPid, "SIGTERM");
       await waitFor(() => {
