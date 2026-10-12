@@ -20,7 +20,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import { CatalogError } from "./catalog.js";
-import { speakerModel } from "./model-registry.js";
+import { registeredModels, speakerModel } from "./model-registry.js";
 import { parakeetModel, Models, type ModelManifest } from "./models.js";
 
 const cleanups: (() => Promise<unknown> | void)[] = [];
@@ -823,6 +823,81 @@ test("unavailable runtime execution refuses before acquiring any upstream bytes"
   expect(await f.staged()).toEqual([]);
 });
 
+test("registered runtimes prepared from the same pinned inputs record identical files with one mode", () => {
+  // Preparation extracts the pinned interpreter archive preserving its member modes and
+  // installs pinned wheels under a fixed mask, so the same bytes at the same path are
+  // always prepared with the same mode. A registration that disagrees can never verify.
+  const recorded = new Map<string, { model: string; mode: number }>();
+  const disagreements: string[] = [];
+  for (const model of registeredModels) {
+    const runtime = model.runtimeArtifact;
+    if (!runtime?.acquisition) continue;
+    const archive = runtime.acquisition.files.find(
+      (file) => file.path === runtime.acquisition!.interpreterArchive,
+    )!;
+    for (const entry of runtime.entries) {
+      if (entry.kind !== "file") continue;
+      const key = `${archive.sha256} ${entry.path} ${entry.sha256}`;
+      const first = recorded.get(key);
+      if (!first) recorded.set(key, { model: model.name, mode: entry.mode });
+      else if (first.mode !== entry.mode)
+        disagreements.push(
+          `${entry.path}: ${first.model} ${first.mode.toString(8)}, ${model.name} ${entry.mode.toString(8)}`,
+        );
+    }
+  }
+  expect(disagreements).toEqual([]);
+});
+
+test("registered preparation recipes keep pip console wrappers out of every assembled dependency tree", async () => {
+  // Only the installer is simulated: it writes a console wrapper with a private build
+  // shebang wherever pip's target mode would. The pinned recipe itself runs unchanged.
+  const installer = `#!/usr/bin/python3 -I
+import json, sys
+from pathlib import Path
+a = sys.argv[1:]
+if "venv" in a:
+    Path(a[-1], "lib/python3.12/site-packages").mkdir(parents=True)
+elif "--target" in a:
+    target = Path(a[a.index("--target") + 1])
+    (target / "bin").mkdir(exist_ok=True)
+    (target / "bin/wrapper").write_text("#!/private/build/environment/bin/python")
+elif any(x.endswith("assemble.py") for x in a):
+    bundle = Path(a[a.index("--out") + 1], "bundle")
+    bundle.mkdir(parents=True)
+    trees = [a[i + 1] for i, x in enumerate(a) if x in ("--primary", "--supplemental")]
+    (bundle / "wrappers.json").write_text(json.dumps([str(p) for t in trees for p in Path(t).glob("bin/*")]))
+`;
+  const prepared: Record<string, unknown> = {};
+  for (const model of registeredModels) {
+    const acquisition = model.runtimeArtifact?.acquisition;
+    if (!acquisition) continue;
+    const root = await realpath(await mkdtemp("/tmp/yap-recipe-"));
+    cleanups.push(() => rm(root, { recursive: true, force: true }));
+    const python = join(root, "base/bin/python3.12");
+    await mkdir(join(root, "base/bin"), { recursive: true });
+    await writeFile(python, installer, { mode: 0o755 });
+    const recipe = join(root, "recipe/prepare.py");
+    await mkdir(join(root, "recipe"));
+    await writeFile(recipe, acquisition.resources.find((r) => r.path === "prepare.py")!.content);
+    const inputs = join(root, "inputs"),
+      directory = join(root, "content");
+    await mkdir(inputs);
+    await mkdir(directory);
+    const request = join(root, "request.json");
+    await writeFile(
+      request,
+      JSON.stringify({ inputs, base: join(root, "base"), directory, acquisition }),
+    );
+    execFileSync("/usr/bin/python3", ["-I", "-B", recipe, request], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    prepared[model.name] = JSON.parse(await readFile(join(directory, "wrappers.json"), "utf8"));
+  }
+  expect(Object.keys(prepared)).not.toEqual([]);
+  for (const wrappers of Object.values(prepared)) expect(wrappers).toEqual([]);
+});
+
 test("the registered original speaker advertises first-party auto-preparation", async () => {
   const home = await mkdtemp("/tmp/yap-original-speaker-");
   cleanups.push(() => rm(home, { recursive: true, force: true }));
@@ -844,8 +919,8 @@ test("the registered original speaker advertises first-party auto-preparation", 
   });
   expect(models.list().find((entry) => entry.modelId === "speaker-runtime-control")).toMatchObject({
     purpose: "speaker",
-    descriptorDigest: "f9fba304e5f821bad2ec406013616a9a36a78faa5bea7bcd76cabbc3cfd06f01",
-    runtimeDigest: "8f55df1092cca3527e5f892de2c3277f6588630f72ba60c197a84c3db026750e",
+    descriptorDigest: "0616f0f01006fbaa76ebaaffc169da816b2f9afdb9288ae17d37e7357bdaf8a6",
+    runtimeDigest: "42c54f575cb3c0ce6a469ea39182b64e33f35a5ab30eceb593ec055dcda61df2",
     modelDigest: "ed338c0f61f62a177b04c10e2c01c8f9e987ed006c0bbe4681c9a565acc8f338",
     preparation: { runtimeSourceRequired: false, modelSourceRequired: false },
   });

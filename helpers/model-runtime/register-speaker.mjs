@@ -5,6 +5,13 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
+const [measuredInventory] = process.argv.slice(2);
+if (process.argv.length > 3) {
+  console.error(
+    "Usage: node helpers/model-runtime/register-speaker.mjs [<verified-assembly-manifest.json>]",
+  );
+  process.exit(2);
+}
 const inputs = JSON.parse(
   await readFile(new URL("alignment-inputs.json", import.meta.url), "utf8"),
 );
@@ -32,7 +39,9 @@ const project = (value) => {
 };
 const layers = new Map();
 for (const entry of inventory) {
-  const match = entry.path.match(/^python\/lib\/python3\.12\/model-layers\/(\d+)\/([^/]+)-[^/]+\.dist-info\/METADATA$/);
+  const match = entry.path.match(
+    /^python\/lib\/python3\.12\/model-layers\/(\d+)\/([^/]+)-[^/]+\.dist-info\/METADATA$/,
+  );
   if (match) layers.set(canonical(match[2]), `supplemental/${match[1]}`);
 }
 const installs = [];
@@ -42,9 +51,10 @@ for (const group of inputs.installs) {
     // Source builds need their build backend in ordinary startup; keep the
     // pinned build tools and their source outputs in primary. Supplemental
     // trees are only for the pre-measured binary dependency layers.
-    const target = group.sourceBuild || ["setuptools", "wheel"].includes(project(path))
-      ? undefined
-      : layers.get(project(path));
+    const target =
+      group.sourceBuild || ["setuptools", "wheel"].includes(project(path))
+        ? undefined
+        : layers.get(project(path));
     const key = target ?? "primary";
     if (!byTarget.has(key)) byTarget.set(key, []);
     byTarget.get(key).push(path);
@@ -85,4 +95,23 @@ await writeFile(
     nativePolicy,
   }) + "\n",
 );
-console.log(JSON.stringify({ destination, files: files.length, installs: installs.length }));
+// The registered inventory is measured from preparing exactly this acquisition, so a
+// changed recipe resource must be re-measured before registration.
+let runtime;
+if (measuredInventory) {
+  const entries = JSON.parse(await readFile(measuredInventory, "utf8"));
+  for (const path of ["execution/worker.py", "execution/launch.py"]) {
+    const entry = entries.find((entry) => entry.path === path);
+    const source = resources.find((resource) => resource.path === path.split("/")[1]);
+    if (entry?.sha256 !== source?.sha256)
+      throw new Error("Measured execution entry differs from current source: " + path);
+  }
+  await writeFile(
+    join(root, "packages/core/src/model-data/speaker-runtime.generated.json"),
+    JSON.stringify(entries) + "\n",
+  );
+  runtime = { entries: entries.length, digest: hash(JSON.stringify(entries)) };
+}
+console.log(
+  JSON.stringify({ destination, files: files.length, installs: installs.length, runtime }),
+);

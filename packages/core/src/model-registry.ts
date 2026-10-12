@@ -240,7 +240,7 @@ export const speakerModel: ModelManifest = {
   autoPrepare: true,
   runtimeArtifact: {
     ...originalSpeakerManifest.runtimeArtifact!,
-    digest: "8f55df1092cca3527e5f892de2c3277f6588630f72ba60c197a84c3db026750e",
+    digest: "42c54f575cb3c0ce6a469ea39182b64e33f35a5ab30eceb593ec055dcda61df2",
     acquisition: speakerRuntimeAcquisition as RuntimeAcquisition,
     entries: speakerRuntimeEntries as RuntimeEntry[],
   },
