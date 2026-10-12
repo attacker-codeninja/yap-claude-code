@@ -8,7 +8,7 @@ final class HomeLifecycle: AgentSetup {
     private let skill: SkillArtifact
     private let command: CommandArtifact
 
-    init(home: URL = accountHome(), resources: AppResources = .main, inApplications: Bool = true) {
+    init(home: URL = accountHome(), resources: AppResources = .main, inApplications: Bool) {
         skill = SkillArtifact(home: home, resources: resources)
         command = CommandArtifact(home: home, launcher: resources.launcher, inApplications: inApplications)
     }

@@ -31,7 +31,8 @@ export function compileHomeDriver(scratch) {
         let arguments = CommandLine.arguments
         let lifecycle = HomeLifecycle(
             home: URL(fileURLWithPath: arguments[1]),
-            resources: AppResources(root: URL(fileURLWithPath: arguments[2])))
+            resources: AppResources(root: URL(fileURLWithPath: arguments[2])),
+            inApplications: true)
         func line(_ result: Result<Data, ServiceFailure>) -> String {
             switch result {
             case .success(let data): return String(decoding: data, as: UTF8.self)
@@ -117,6 +118,9 @@ esac
 `,
   );
   chmodSync(node, 0o755);
+  // Like a release build, the service manifest records the bundled Node.
+  mkdirSync(join(resources, "service"), { recursive: true });
+  writeFileSync(join(resources, "service/runtime.json"), JSON.stringify({ nodePath: "../node/bin/node" }));
   if (launcher) {
     mkdirSync(join(resources, "bin"), { recursive: true });
     writeFileSync(join(resources, "bin/yap"), launcher, { mode: 0o755 });

@@ -24,16 +24,17 @@ let package = Package(
             ],
             linkerSettings: [.linkedLibrary("archive.2")]),
         .systemLibrary(name: "CLibArchive"),
-        .target(name: "YapCapture", dependencies: ["YapMedia"]),
-        .target(name: "YapFrames", dependencies: ["YapMedia"]),
-        .target(name: "YapAudio", dependencies: ["YapMedia", .product(name: "YapDenoise", package: "denoise"), .product(name: "YapStretch", package: "stretch")]),
+        .target(name: "YapCapture", dependencies: ["YapMedia"], exclude: ["README.md"]),
+        .target(name: "YapFrames", dependencies: ["YapMedia"], exclude: ["README.md"]),
+        .target(name: "YapAudio", dependencies: ["YapMedia", .product(name: "YapDenoise", package: "denoise"), .product(name: "YapStretch", package: "stretch")], exclude: ["README.md"]),
         .target(
             name: "YapSpeech",
             dependencies: [
                 "YapAudio", "YapMedia",
                 .product(name: "FluidAudio", package: "FluidAudio"),
-            ]),
-        .target(name: "YapMedia"),
+            ],
+            exclude: ["README.md"]),
+        .target(name: "YapMedia", exclude: ["README.md"]),
         .executableTarget(name: "CameraReproduction", dependencies: ["YapCapture", "YapMedia", "YapWire", "YapAudio"], path: "Tests/CameraReproduction"),
         .executableTarget(
             name: "YapCaptureTests",

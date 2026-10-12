@@ -1,7 +1,6 @@
 import Foundation
 
-/// The account-level consumer skill, one part of `HomeLifecycle`. App updates and skill updates are
-/// separate. Installing replaces every global skill named `yap` with the bundled one through the
+/// The account-level consumer skill, one part of `HomeLifecycle`. Installing replaces every global skill named `yap` with the bundled one through the
 /// bundled `skills` installer run by the app's own Node, so it needs no host npm or network; a
 /// failed install restores what it replaced. The receipt records ownership for later removal.
 @MainActor
@@ -35,16 +34,14 @@ final class SkillArtifact {
 
     private let home: URL
     private let resources: AppResources
-    private let fileManager: FileManager
     private nonisolated static let source = "https://github.com/dzhng/yap/tree/main/skills/yap"
     private nonisolated static let installer = "skills@1.7.0"
     private nonisolated static let knownPaths = [".agents/skills/yap", ".codex/skills/yap", ".claude/skills/yap"]
     private nonisolated static let operationLock = NSLock()
 
-    init(home: URL, resources: AppResources, fileManager: FileManager = .default) {
+    init(home: URL, resources: AppResources) {
         self.home = home.standardizedFileURL
         self.resources = resources
-        self.fileManager = fileManager
     }
 
     /// Starts the install or removal in the background; `skill.status` reads `updating` until it settles.
@@ -52,12 +49,11 @@ final class SkillArtifact {
     func setEnabled(_ enabled: Bool) -> String {
         let home = self.home
         let resources = self.resources
-        let fileManager = self.fileManager
         let operationId = UUID().uuidString
         writeState(LifecycleState(state: "updating", operationId: operationId, error: nil, backupPath: nil))
         DispatchQueue.global(qos: .utility).async {
-            if enabled { Self.install(home: home, resources: resources, fileManager: fileManager, operationId: operationId) }
-            else { Self.uninstall(home: home, resources: resources, fileManager: fileManager, operationId: operationId) }
+            if enabled { Self.install(home: home, resources: resources, operationId: operationId) }
+            else { Self.uninstall(home: home, resources: resources, operationId: operationId) }
         }
         return operationId
     }
@@ -79,14 +75,14 @@ final class SkillArtifact {
     var summaryState: String {
         if let state = readState()?.state { return state }
         guard let receipt = readReceipt(), receipt.managed else { return "missing" }
-        return receipt.paths.allSatisfy { fileManager.fileExists(atPath: $0) } ? "installed" : "needs_attention"
+        return receipt.paths.allSatisfy { FileManager.default.fileExists(atPath: $0) } ? "installed" : "needs_attention"
     }
 
     private var receiptURL: URL { home.appendingPathComponent(".config/yap/skill-install.json") }
     private var stateURL: URL { home.appendingPathComponent(".config/yap/skill-state.json") }
 
     private func readReceipt() -> Receipt? {
-        Self.decodeReceipt(at: receiptURL, home: home, fileManager: fileManager)
+        Self.decodeReceipt(at: receiptURL, home: home)
     }
 
     private func readState() -> LifecycleState? {
@@ -94,7 +90,7 @@ final class SkillArtifact {
         return try? JSONDecoder().decode(LifecycleState.self, from: data)
     }
 
-    private func writeState(_ state: LifecycleState) { Self.writeState(state, home: home, fileManager: fileManager) }
+    private func writeState(_ state: LifecycleState) { Self.writeState(state, home: home) }
 
     private func statusData(state explicitState: String? = nil, operationId: String? = nil, discover: Bool = true) -> Data {
         // State before receipt: an install writes its receipt before clearing its state, so this
@@ -102,16 +98,16 @@ final class SkillArtifact {
         let state = readState()
         let receipt = readReceipt()
         let discovered = receipt.map { (entries: $0.entries, error: Optional<String>.none) }
-            ?? (discover ? Self.discover(home: home, resources: resources, fileManager: fileManager) : (entries: Self.fallbackEntries(home: home, fileManager: fileManager), error: nil))
+            ?? (discover ? Self.discover(home: home, resources: resources) : (entries: Self.fallbackEntries(home: home), error: nil))
         let paths = (receipt?.paths ?? discovered.entries.filter { $0.name == "yap" }.map(\.path))
             .filter { Self.safePath($0, under: home) }.sorted()
-        let existing = paths.filter { fileManager.fileExists(atPath: $0) }
+        let existing = paths.filter { FileManager.default.fileExists(atPath: $0) }
         let effective = explicitState ?? state?.state ?? {
             if receipt?.managed == true { return existing.count == paths.count ? "installed" : "needs_attention" }
             return discovered.entries.contains(where: { $0.name == "yap" }) ? "unmanaged" : "missing"
         }()
         let details: [[String: Any]] = paths.map { path in
-            ["path": path, "exists": fileManager.fileExists(atPath: path),
+            ["path": path, "exists": FileManager.default.fileExists(atPath: path),
              "symlink": Self.isSymlink(URL(fileURLWithPath: path))]
         }
         var value: [String: Any] = [
@@ -132,70 +128,70 @@ final class SkillArtifact {
         return (try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])) ?? Data("{}".utf8)
     }
 
-    private nonisolated static func install(home: URL, resources: AppResources, fileManager: FileManager, operationId: String) {
+    private nonisolated static func install(home: URL, resources: AppResources, operationId: String) {
         operationLock.lock()
         defer { operationLock.unlock() }
-        let stage = fileManager.temporaryDirectory.appendingPathComponent("yap-skill-\(operationId)", isDirectory: true)
+        let stage = FileManager.default.temporaryDirectory.appendingPathComponent("yap-skill-\(operationId)", isDirectory: true)
         let backup = stage.appendingPathComponent("backup", isDirectory: true)
         var completed = false
         var backedUp: [String] = []
-        defer { if completed { try? fileManager.removeItem(at: stage) } }
+        defer { if completed { try? FileManager.default.removeItem(at: stage) } }
         do {
-            try fileManager.createDirectory(at: backup, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: backup, withIntermediateDirectories: true)
             let installer = try bundledInstaller(resources)
             guard let skillSource = resources.skillSource else { throw LifecycleError.missing("bundled skill") }
-            let before = discoveredPaths(home: home, resources: resources, fileManager: fileManager)
-            for path in Set(before + knownPaths.map { home.appendingPathComponent($0).path }) where fileManager.fileExists(atPath: path) || isSymlink(URL(fileURLWithPath: path)) {
+            let before = discoveredPaths(home: home, resources: resources)
+            for path in Set(before + knownPaths.map { home.appendingPathComponent($0).path }) where FileManager.default.fileExists(atPath: path) || isSymlink(URL(fileURLWithPath: path)) {
                 let saved = backup.appendingPathComponent(relativePath(path, home: home))
-                try fileManager.createDirectory(at: saved.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try copyPreservingSymlink(from: URL(fileURLWithPath: path), to: saved, fileManager: fileManager)
+                try FileManager.default.createDirectory(at: saved.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try copyPreservingSymlink(from: URL(fileURLWithPath: path), to: saved)
                 backedUp.append(relativePath(path, home: home))
-                try fileManager.removeItem(atPath: path)
+                try FileManager.default.removeItem(atPath: path)
             }
-            if fileManager.fileExists(atPath: receiptURL(home: home).path) {
+            if FileManager.default.fileExists(atPath: receiptURL(home: home).path) {
                 let savedReceipt = backup.appendingPathComponent(".config/yap/skill-install.json")
-                try fileManager.createDirectory(at: savedReceipt.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try copyPreservingSymlink(from: receiptURL(home: home), to: savedReceipt, fileManager: fileManager)
+                try FileManager.default.createDirectory(at: savedReceipt.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try copyPreservingSymlink(from: receiptURL(home: home), to: savedReceipt)
                 backedUp.append(".config/yap/skill-install.json")
-                try fileManager.removeItem(at: receiptURL(home: home))
+                try FileManager.default.removeItem(at: receiptURL(home: home))
             }
             let status = try run(installer, ["add", skillSource.path, "--all", "--global", "--yes"], home: home)
             guard status.code == 0 else { throw LifecycleError.command(status.output) }
-            let after = discover(home: home, resources: resources, fileManager: fileManager)
+            let after = discover(home: home, resources: resources)
             let entries = after.entries.filter { $0.name == "yap" && $0.scope == "global" }
             let paths = entries.map(\.path).filter { safePath($0, under: home) }
             let canonical = home.appendingPathComponent(".agents/skills/yap").path
-            guard paths.contains(canonical), paths.allSatisfy({ fileManager.fileExists(atPath: URL(fileURLWithPath: $0).appendingPathComponent("SKILL.md").path) }) else {
+            guard paths.contains(canonical), paths.allSatisfy({ FileManager.default.fileExists(atPath: URL(fileURLWithPath: $0).appendingPathComponent("SKILL.md").path) }) else {
                 throw LifecycleError.verification
             }
             let receipt = Receipt(managed: true, source: source, installer: Self.installer, paths: paths, entries: entries,
                                   operationId: operationId, installedAt: ISO8601DateFormatter().string(from: Date()))
-            try fileManager.createDirectory(at: receiptURL(home: home).deletingLastPathComponent(), withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: receiptURL(home: home).deletingLastPathComponent(), withIntermediateDirectories: true)
             try JSONEncoder().encode(receipt).write(to: receiptURL(home: home), options: .atomic)
-            try? fileManager.removeItem(at: stateURL(home: home))
+            try? FileManager.default.removeItem(at: stateURL(home: home))
             completed = true
         } catch {
-            restore(backup: backup, home: home, fileManager: fileManager, paths: backedUp)
-            writeState(LifecycleState(state: "needs_attention", operationId: operationId, error: error.localizedDescription, backupPath: backup.path), home: home, fileManager: fileManager)
+            restore(backup: backup, home: home, paths: backedUp)
+            writeState(LifecycleState(state: "needs_attention", operationId: operationId, error: error.localizedDescription, backupPath: backup.path), home: home)
         }
     }
 
-    private nonisolated static func uninstall(home: URL, resources: AppResources, fileManager: FileManager, operationId: String) {
+    private nonisolated static func uninstall(home: URL, resources: AppResources, operationId: String) {
         operationLock.lock()
         defer { operationLock.unlock() }
-        guard let receipt = decodeReceipt(at: receiptURL(home: home), home: home, fileManager: fileManager), receipt.managed else {
-            writeState(LifecycleState(state: "disabled", operationId: operationId, error: nil, backupPath: nil), home: home, fileManager: fileManager)
+        guard let receipt = decodeReceipt(at: receiptURL(home: home), home: home), receipt.managed else {
+            writeState(LifecycleState(state: "disabled", operationId: operationId, error: nil, backupPath: nil), home: home)
             return
         }
-        let paths = Set(receipt.paths + discoveredPaths(home: home, resources: resources, fileManager: fileManager))
+        let paths = Set(receipt.paths + discoveredPaths(home: home, resources: resources))
         do {
-            for path in paths where safePath(path, under: home) { try? fileManager.removeItem(atPath: path) }
-            let remaining = paths.filter { fileManager.fileExists(atPath: $0) }
+            for path in paths where safePath(path, under: home) { try? FileManager.default.removeItem(atPath: path) }
+            let remaining = paths.filter { FileManager.default.fileExists(atPath: $0) }
             guard remaining.isEmpty else { throw LifecycleError.verification }
-            try? fileManager.removeItem(at: receiptURL(home: home))
-            try? fileManager.removeItem(at: stateURL(home: home))
+            try? FileManager.default.removeItem(at: receiptURL(home: home))
+            try? FileManager.default.removeItem(at: stateURL(home: home))
         } catch {
-            writeState(LifecycleState(state: "needs_attention", operationId: operationId, error: error.localizedDescription, backupPath: nil), home: home, fileManager: fileManager)
+            writeState(LifecycleState(state: "needs_attention", operationId: operationId, error: error.localizedDescription, backupPath: nil), home: home)
         }
     }
 
@@ -210,16 +206,16 @@ final class SkillArtifact {
         }
     }
 
-    private nonisolated static func discover(home: URL, resources: AppResources, fileManager: FileManager) -> (entries: [InstalledSkill], error: String?) {
+    private nonisolated static func discover(home: URL, resources: AppResources) -> (entries: [InstalledSkill], error: String?) {
         do {
             let result = try run(bundledInstaller(resources), ["ls", "--global", "--json"], home: home)
-            guard result.code == 0 else { return (fallbackEntries(home: home, fileManager: fileManager), result.output) }
+            guard result.code == 0 else { return (fallbackEntries(home: home), result.output) }
             return (try JSONDecoder().decode([InstalledSkill].self, from: Data(result.output.utf8)), nil)
-        } catch { return (fallbackEntries(home: home, fileManager: fileManager), error.localizedDescription) }
+        } catch { return (fallbackEntries(home: home), error.localizedDescription) }
     }
 
-    private nonisolated static func discoveredPaths(home: URL, resources: AppResources, fileManager: FileManager) -> [String] {
-        discover(home: home, resources: resources, fileManager: fileManager).entries.filter { $0.name == "yap" && $0.scope == "global" }.map(\.path)
+    private nonisolated static func discoveredPaths(home: URL, resources: AppResources) -> [String] {
+        discover(home: home, resources: resources).entries.filter { $0.name == "yap" && $0.scope == "global" }.map(\.path)
     }
 
     /// The pinned installer and the interpreter that runs it, both from this build.
@@ -232,28 +228,28 @@ final class SkillArtifact {
         return (node, script.path)
     }
 
-    private nonisolated static func fallbackEntries(home: URL, fileManager: FileManager) -> [InstalledSkill] {
+    private nonisolated static func fallbackEntries(home: URL) -> [InstalledSkill] {
         knownPaths.map { relative in
             let path = home.appendingPathComponent(relative).path
             return InstalledSkill(name: "yap", path: path, scope: "global", agents: nil, source: nil, sourceUrl: nil, sourceType: nil)
-        }.filter { fileManager.fileExists(atPath: $0.path) || isSymlink(URL(fileURLWithPath: $0.path)) }
+        }.filter { FileManager.default.fileExists(atPath: $0.path) || isSymlink(URL(fileURLWithPath: $0.path)) }
     }
 
-    private nonisolated static func restore(backup: URL, home: URL, fileManager: FileManager, paths: [String]) {
+    private nonisolated static func restore(backup: URL, home: URL, paths: [String]) {
         for item in paths.sorted(by: { $0.count < $1.count }) {
             let source = backup.appendingPathComponent(item)
-            guard fileManager.fileExists(atPath: source.path) || isSymlink(source) else { continue }
+            guard FileManager.default.fileExists(atPath: source.path) || isSymlink(source) else { continue }
             let destination = home.appendingPathComponent(item)
-            if fileManager.fileExists(atPath: destination.path) || isSymlink(destination) { try? fileManager.removeItem(at: destination) }
-            try? fileManager.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try? copyPreservingSymlink(from: source, to: destination, fileManager: fileManager)
+            if FileManager.default.fileExists(atPath: destination.path) || isSymlink(destination) { try? FileManager.default.removeItem(at: destination) }
+            try? FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try? copyPreservingSymlink(from: source, to: destination)
         }
     }
 
-    private nonisolated static func copyPreservingSymlink(from source: URL, to destination: URL, fileManager: FileManager) throws {
+    private nonisolated static func copyPreservingSymlink(from source: URL, to destination: URL) throws {
         if isSymlink(source) {
-            try fileManager.createSymbolicLink(atPath: destination.path, withDestinationPath: try fileManager.destinationOfSymbolicLink(atPath: source.path))
-        } else { try fileManager.copyItem(at: source, to: destination) }
+            try FileManager.default.createSymbolicLink(atPath: destination.path, withDestinationPath: try FileManager.default.destinationOfSymbolicLink(atPath: source.path))
+        } else { try FileManager.default.copyItem(at: source, to: destination) }
     }
 
     private nonisolated static func isSymlink(_ url: URL) -> Bool {
@@ -270,19 +266,19 @@ final class SkillArtifact {
     private nonisolated static func receiptURL(home: URL) -> URL { home.appendingPathComponent(".config/yap/skill-install.json") }
     private nonisolated static func stateURL(home: URL) -> URL { home.appendingPathComponent(".config/yap/skill-state.json") }
 
-    private nonisolated static func decodeReceipt(at url: URL, home: URL, fileManager: FileManager) -> Receipt? {
+    private nonisolated static func decodeReceipt(at url: URL, home: URL) -> Receipt? {
         guard let data = try? Data(contentsOf: url) else { return nil }
         if let receipt = try? JSONDecoder().decode(Receipt.self, from: data) { return receipt }
         guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               object["managed"] as? Bool == true else { return nil }
         let paths = knownPaths.map { home.appendingPathComponent($0).path }
-            .filter { fileManager.fileExists(atPath: $0) || isSymlink(URL(fileURLWithPath: $0)) }
+            .filter { FileManager.default.fileExists(atPath: $0) || isSymlink(URL(fileURLWithPath: $0)) }
         return Receipt(managed: true, source: object["source"] as? String ?? source, installer: installer,
                        paths: paths, entries: [], operationId: nil, installedAt: "")
     }
 
-    private nonisolated static func writeState(_ state: LifecycleState, home: URL, fileManager: FileManager) {
-        do { try fileManager.createDirectory(at: stateURL(home: home).deletingLastPathComponent(), withIntermediateDirectories: true); try JSONEncoder().encode(state).write(to: stateURL(home: home), options: .atomic) } catch { }
+    private nonisolated static func writeState(_ state: LifecycleState, home: URL) {
+        do { try FileManager.default.createDirectory(at: stateURL(home: home).deletingLastPathComponent(), withIntermediateDirectories: true); try JSONEncoder().encode(state).write(to: stateURL(home: home), options: .atomic) } catch { }
     }
 
     private nonisolated static func run(_ installer: (node: String, script: String), _ arguments: [String], home: URL) throws -> (code: Int32, output: String) {

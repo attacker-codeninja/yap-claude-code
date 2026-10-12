@@ -33,7 +33,7 @@ struct CommandArtifact {
     /// The account's login shell, which picks the startup file the block goes in.
     let shell: String
 
-    init(home: URL, launcher: URL?, inApplications: Bool = true,
+    init(home: URL, launcher: URL?, inApplications: Bool,
          shell: String = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh") {
         self.home = home
         self.launcher = launcher

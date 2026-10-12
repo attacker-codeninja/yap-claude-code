@@ -96,14 +96,13 @@ final class RecordingControls: NSObject {
     /// Bounded status cadence, including controls issued by another client.
     private static let tick: TimeInterval = 0.5
 
-    init(home: String, preferences: Preferences, quit: @escaping () -> Void) {
+    /// `inApplications` is the launch decision's answer: whether this app lives in an Applications
+    /// folder, which is where the yap command may point.
+    init(home: String, preferences: Preferences, inApplications: Bool, quit: @escaping () -> Void) {
         self.home = home
         self.quit = quit
         self.preferences = preferences
-        self.homeLifecycle = HomeLifecycle(
-            inApplications: LaunchDecision.originalLocation(
-                of: Bundle.main.bundleURL, translocation: Translocation.of(Bundle.main.bundleURL)
-            ).map { LaunchDecision.isInApplicationsFolder($0, home: accountHome()) } ?? false)
+        self.homeLifecycle = HomeLifecycle(inApplications: inApplications)
         state = ControlsState(recording: preferences.recording)
         let overridePath = GlobalShortcuts.overridePath(home: home)
         super.init()

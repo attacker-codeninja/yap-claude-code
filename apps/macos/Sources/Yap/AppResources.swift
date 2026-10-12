@@ -12,8 +12,8 @@ func accountHome() -> URL {
 /// every build carries the consumer skill and the pinned `skills` installer. An absent resource is
 /// `nil`, never a guess elsewhere on the machine.
 struct AppResources: Sendable {
-    /// The interpreter this build recorded: the bundled Node when present, otherwise the one the
-    /// service manifest names. `NodeRuntime` validates it before anything runs.
+    /// The interpreter the service manifest records (release builds point it at the bundled Node).
+    /// `NodeRuntime` validates it before anything runs.
     let node: String
     let launcher: URL?
     let skillSource: URL?
@@ -34,11 +34,7 @@ struct AppResources: Sendable {
         launcher = existing("bin/yap", executable: true)
         skillSource = existing("skill/SKILL.md").map { $0.deletingLastPathComponent() }
         skillsInstaller = existing("skills-installer/cli.mjs")
-        if let bundled = existing("node/bin/node", executable: true) {
-            node = bundled.path
-        } else {
-            node = Self.recordedNode(service: root.appendingPathComponent("service", isDirectory: true)) ?? ""
-        }
+        node = Self.recordedNode(service: root.appendingPathComponent("service", isDirectory: true)) ?? ""
     }
 
     private struct Manifest: Decodable { let nodePath: String }

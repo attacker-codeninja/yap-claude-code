@@ -43,9 +43,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             probeTask = Task { await runCaptureProbe(values, selected: probe) }
             return
         }
-        guard admitLaunch(Array(arguments)) else { return }
+        guard let inApplications = admitLaunch(Array(arguments)) else { return }
         let preferences = Preferences(defaults: defaultsDomain())
-        controls = RecordingControls(home: personalRoot(), preferences: preferences) { [weak self] in
+        controls = RecordingControls(
+            home: personalRoot(), preferences: preferences, inApplications: inApplications
+        ) { [weak self] in
             self?.quit()
         }
         // The capture fixture is an ordinary launch that additionally opens this app's own window
@@ -88,19 +90,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Decides once, before anything starts, whether this copy runs: an update relaunch always
     /// does; a release outside an Applications folder offers to move itself; a second copy hands
-    /// off to the running one. Returns false when this copy is quitting instead.
-    private func admitLaunch(_ arguments: [String]) -> Bool {
+    /// off to the running one. Returns whether the app lives in an Applications folder, or nil when
+    /// this copy is quitting instead.
+    private func admitLaunch(_ arguments: [String]) -> Bool? {
         let bundle = Bundle.main.bundleURL
+        let translocation = Translocation.of(bundle)
         let identifier = Bundle.main.bundleIdentifier ?? "com.dzhng.yap"
         let running = NSRunningApplication.runningApplications(withBundleIdentifier: identifier)
             .filter { $0.processIdentifier != getpid() }
             .compactMap { app in app.bundleURL.map { RunningCopy(pid: app.processIdentifier, bundleURL: $0) } }
         let decision = LaunchDecision.decide(
             bundle: bundle, home: accountHome(), isRelease: LaunchDecision.isRelease(.main),
-            arguments: arguments, running: running, translocation: Translocation.of(bundle))
+            arguments: arguments, running: running, translocation: translocation)
         switch decision {
         case .proceed:
-            return true
+            return LaunchDecision.originalLocation(of: bundle, translocation: translocation)
+                .map { LaunchDecision.isInApplicationsFolder($0, home: accountHome()) } ?? false
         case .handOff(let pid):
             diagnostic("another copy is running (pid \(pid)); handing off")
             NSRunningApplication(processIdentifier: pid)?.activate()
@@ -126,7 +131,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         NSApplication.shared.terminate(nil)
-        return false
+        return nil
     }
 
     /// Opening the app again while it runs, from Finder or Spotlight, is how a person asks to see it.
