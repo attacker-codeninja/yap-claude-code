@@ -703,7 +703,10 @@ test("reopened recovery admits a verified primary while allocated camera recover
   });
   cleanup.push(async () => release());
   await expect.poll(() => requests).toHaveLength(2);
-  expect(requests.map((value) => value.sourceAuthority)).toEqual([
+  // Primary and camera recover concurrently (capture.ts), so only the set of requests is fixed.
+  const byKind = (value: Record<string, unknown>) =>
+    (value.sourceAuthority as { kind: string }).kind === "primary" ? 0 : 1;
+  expect([...requests].sort((a, b) => byKind(a) - byKind(b)).map((value) => value.sourceAuthority)).toEqual([
     { kind: "primary", sourceId: take.sourceId },
     {
       kind: "camera",
