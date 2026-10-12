@@ -109,7 +109,7 @@ If your user asked you to install Yap, the request is:
 
     ${agentPrompt}
 
-You install the app; the app installs the rest. The [installation procedure](${links.installation}) has the exact commands: check the Mac, download and checksum-verify the latest release (\`${links.kit}\`), place Yap.app in /Applications or ~/Applications, and open it. Within a few seconds the app installs \`~/.local/bin/yap\`, the yap skill for every agent it finds, and a PATH line when one is missing. Then verify with \`~/.local/bin/yap cli.status\`, \`skill.status\` and \`service.health\` (use the full path: the PATH line reaches only new shells) and report a short checklist. [Agent setup](${links.agentSetup}) is the same in the README.
+You install the app; the app installs the rest. The [installation procedure](${links.installation}) has the exact commands: check the Mac, resolve the latest release's tag once and download its \`SHA256SUMS\`, \`release.json\` and kit from that tag (the \`latest/download\` links can briefly mix two releases right after one is published), checksum-verify them, place Yap.app in /Applications or ~/Applications, and open it. Within a few seconds the app installs \`~/.local/bin/yap\`, the yap skill for every agent it finds, and a PATH line when one is missing. Then verify with \`~/.local/bin/yap cli.status\`, \`skill.status\` and \`service.health\` (use the full path: the PATH line reaches only new shells) and report a short checklist. [Agent setup](${links.agentSetup}) is the same in the README.
 
 Facts that change what you do:
 
