@@ -17,9 +17,9 @@ suite passed (exit 0) before release, including fixes to pre-existing failures.
 **Pick up at** the two open release-day checks below, then [close-spec](../../.agents/skills/close-spec/SKILL.md).
 
 **Warnings.**
-- `skills` installer: set `DISABLE_TELEMETRY=1` when the app runs it (probe P7).
-- Codex was at capacity during planning; all three drafts were Claude. A Codex
-  review of the finished diff is the substitute second-family check.
+- Codex was at capacity throughout (planning drafts and review), so every draft and
+  review was Claude, without a second model family. Two independent Claude reviews
+  ran; their findings are fixed.
 
 **TODO**
 - [x] 00 Probes — [slices/00-probes.md](slices/00-probes.md)
@@ -31,7 +31,8 @@ suite passed (exit 0) before release, including fixes to pre-existing failures.
 - [x] 06 Launch decision: location and one copy — [slices/06-launch-decision.md](slices/06-launch-decision.md)
 - [x] 07 Move to Applications — [slices/07-move.md](slices/07-move.md)
 - [x] 08 Docs, skill, site — [slices/08-docs-site.md](slices/08-docs-site.md)
-- [ ] Full check, Codex review, release, release-day checklist (below)
+- [x] Full check, independent review, release v0.1.29
+- [ ] Two release-day checks that need a person at the Mac (below), then close-spec
 
 Update this section before ending your pass.
 
@@ -84,7 +85,7 @@ and disclosed at the time; everything else the user chose.
 | Q2b | The skill warns about a project-level `yap` copy in the current folder; never deletes | The app cannot scan every project |
 | Q3 | Site: sticky note with Open in Claude Code (`claude-cli://open?q=`), Open in Codex (`codex://new?prompt=`), Copy prompt | Both links pre-fill without sending (Codex verified on a real Mac); copy always works |
 | Q4 | Bundled pinned installer, run with the app's Node; host `npx` search deleted | No Node or npm needed; proven to make no shell-outs |
-| Q5 | PATH block only when none of the login shell's own startup files has an uncommented line naming `PATH` and `.local/bin`; bash gets it in the first of `.bash_profile`/`.bash_login`/`.profile` that exists; other shells get no edit; an unreadable profile is never rewritten; docs and the skill use `~/.local/bin/yap` | Predictable, runs nothing; never shadows `.profile` or corrupts a dotfile; Dock-launched agents read no profile |
+| Q5 | PATH block only when none of the startup files a non-interactive login shell reads (`.zshenv`/`.zprofile`; bash's `.bash_profile`/`.bash_login`/`.profile`) has an uncommented line naming `PATH` and `.local/bin`; bash gets it in the first of `.bash_profile`/`.bash_login`/`.profile` that exists; other shells get no edit; an unreadable profile is never rewritten; docs and the skill use `~/.local/bin/yap` | Predictable, runs nothing; never shadows `.profile` or corrupts a dotfile; Dock-launched agents read no profile |
 | Q6 | A release build (has `SUFeedURL`) outside `/Applications` or `~/Applications` shows a playful modal ("Almost there!" / Move it home / Quit); Move copies to `~/Applications`, relaunches, trashes the original; a same-or-newer installed copy is opened instead; an older one is replaced (old to Trash) | A command pointing at a translocated path breaks; dev builds in `dist/` are exempt |
 | Q7 | One release copy at a time: a second copy activates the running one and quits, before any move offer; an update relaunch proceeds; dev builds are exempt | A losing copy otherwise runs serviceless forever (observed); a move must never trash a running install; test runs use their own home |
 | Q8 | One spec, committed slices, one release | `main`'s install docs must never describe behavior the latest release lacks |

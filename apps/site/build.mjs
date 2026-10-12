@@ -1,5 +1,5 @@
 // Renders the static website into dist/ from content.mjs. No dependencies.
-// Run `node site/build.mjs`; Vercel runs it with the site directory as the root.
+// Run `node apps/site/build.mjs`; Vercel runs it with apps/site as the root.
 import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,7 +35,7 @@ function checkPromptMatchesReadme(readme) {
     .join(" ");
   if (!quoted.includes(content.agentPrompt))
     throw new Error(
-      `README "Get started" prompt no longer matches site/content.mjs agentPrompt:\n  ${content.agentPrompt}`,
+      `README "Get started" prompt no longer matches apps/site/content.mjs agentPrompt:\n  ${content.agentPrompt}`,
     );
 }
 

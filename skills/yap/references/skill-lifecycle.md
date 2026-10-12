@@ -231,8 +231,10 @@ The same handlers are available through Settings and the public CLI:
   harnesses rather than a hand-maintained path list. The app supplies its bundled
   `skills/yap` folder as the source; a new app release carries the latest skill.
 - `skill.update` starts the same pinned replacement explicitly.
-- `skill.uninstall` starts removal of the managed global installation when
-  maintenance is disabled; it does not touch project-local installs.
+- `skill.uninstall` starts removal of the managed global installation; it does not
+  touch project-local installs. The operations act whatever the Settings row says,
+  but while **Set up my agents** is on the next launch installs the skill again, so
+  turn the row off to keep it removed.
 
 The protocol mutation response includes `state: "updating"` and an `operationId`;
 the CLI waits for the terminal state by default (use `--no-wait` for an immediate

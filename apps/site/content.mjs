@@ -109,13 +109,7 @@ If your user asked you to install Yap, the request is:
 
     ${agentPrompt}
 
-You install the app; the app installs the rest. Follow [Agent setup](${links.agentSetup}) and the [installation procedure](${links.installation}); in short:
-
-1. Check the Mac: Apple Silicon (\`uname -m\` is arm64) and macOS 26 or newer.
-2. Download \`SHA256SUMS\`, \`release.json\` and the kit it names from the latest release (\`${links.kit}\`), and run \`shasum -a 256 -c SHA256SUMS\`.
-3. Extract with \`ditto -x -k\`. If Yap.app is already in /Applications or ~/Applications, quit it and replace that copy; otherwise install to ~/Applications/Yap.app.
-4. Open it (\`open ~/Applications/Yap.app\`). Within a few seconds the app installs \`~/.local/bin/yap\`, the yap skill for every agent it finds, and a PATH line when one is missing.
-5. Verify with \`~/.local/bin/yap cli.status\`, \`~/.local/bin/yap skill.status\` and \`~/.local/bin/yap service.health\` (use the full path: the new PATH line reaches only new shells), then report a short checklist to the user.
+You install the app; the app installs the rest. The [installation procedure](${links.installation}) has the exact commands: check the Mac, download and checksum-verify the latest release (\`${links.kit}\`), place Yap.app in /Applications or ~/Applications, and open it. Within a few seconds the app installs \`~/.local/bin/yap\`, the yap skill for every agent it finds, and a PATH line when one is missing. Then verify with \`~/.local/bin/yap cli.status\`, \`skill.status\` and \`service.health\` (use the full path: the PATH line reaches only new shells) and report a short checklist. [Agent setup](${links.agentSetup}) is the same in the README.
 
 Facts that change what you do:
 

@@ -100,17 +100,33 @@ Use the installed CLI's schemas even when this skill is newer than that release.
 
 ## When the app reports a problem
 
-`cli.status` or `skill.status` returning `needs_attention`, `different` or
-`unavailable` carries an `error` or reason. Common causes:
+What each state means:
 
-- **Set up my agents is off.** Ask the user before turning it back on.
-- **The app is outside an Applications folder.** It shows a "Move it home" prompt
-  and quits; move it, or reinstall with the steps above.
-- **A write failed** (permissions on `~/.local/bin` or a profile file). Report the
-  error; do not change ownership or permissions without the user.
+- **`missing`** (command or skill): Settings → **Set up my agents** is probably off.
+  Ask the user before turning it back on, or run `cli.install` / `skill.install`.
+- **`needs_attention`**: a write failed and the reply carries an `error` (for example
+  an unwritable `~/.local/bin` or a profile file that isn't UTF-8 text). Report it;
+  do not change ownership or permissions without the user.
+- **`different`**: `~/.local/bin/yap` is some other file; `cli.install` replaces it.
+- **`unavailable`**: this build carries no launcher (a source build).
+- **No answer at all** with the app outside an Applications folder: it showed a
+  "Move it home" prompt and quit. Reinstall with the steps above.
 
-Only then install by hand. The command: copy `Yap.app/Contents/Resources/bin/yap`
-to `~/.local/bin/yap` with a same-directory staged rename and make it executable.
+Install by hand only when those don't resolve it. The command must be written as
+fresh bytes, not copied (a copy keeps a quarantine flag and stays blocked):
+
+```sh
+(
+  set -eu
+  yap_app="$HOME/Applications/Yap.app"   # or /Applications/Yap.app
+  mkdir -p "$HOME/.local/bin"
+  yap_staged=$(mktemp "$HOME/.local/bin/yap.installing.XXXXXX")
+  cat "$yap_app/Contents/Resources/bin/yap" > "$yap_staged"
+  chmod 755 "$yap_staged"
+  mv "$yap_staged" "$HOME/.local/bin/yap"
+)
+```
+
 The skill: follow [skill lifecycle](skill-lifecycle.md).
 
 ## App updates and recovery

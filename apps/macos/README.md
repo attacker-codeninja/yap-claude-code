@@ -133,7 +133,7 @@ at every launch (including the relaunch after an update) it writes `~/.local/bin
 from the bundled launcher as fresh bytes, refreshes every global `yap` skill with the
 bundled `skills` installer and the app's own Node, and adds a marked PATH block only
 when no shell startup file already covers `~/.local/bin`. Turning it off removes the
-command while it is unchanged and only Yap's PATH block. The row's status line reads
+command while it is unchanged, only Yap's PATH block, and the global skill. The row's status line reads
 the disk; `cli.*` and `skill.*` operations carry the details for agents.
 
 A [launch decision](Sources/Yap/LaunchDecision.swift) runs before anything starts:

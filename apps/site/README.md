@@ -17,8 +17,8 @@ as plain text at `/llms.txt` for agents.
 - **Artwork has one home.** Illustrations are copied from `.github/readme` at
   build time; the site keeps no copies.
 - **No dependencies, no framework.** [build.mjs](build.mjs) writes static files
-  to `dist/`. The download button resolves the latest release ZIP in the browser
-  and falls back to the releases page.
+  to `dist/`. There is no download button: agents are the only install route, and
+  the page's Open in Claude Code / Open in Codex links only pre-fill the prompt.
 
 ## Build and check
 

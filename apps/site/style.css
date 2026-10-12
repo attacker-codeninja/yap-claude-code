@@ -240,34 +240,6 @@ h1 span {
 .ctas .prompt {
   width: min(100%, 44rem);
 }
-.button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  background: var(--ink);
-  color: var(--paper);
-  text-decoration: none;
-  font: 800 1.35rem var(--display);
-  padding: 1.05rem 1.6rem;
-  border-radius: 999px;
-  box-shadow: 5px 5px 0 var(--coral);
-  transition:
-    transform 0.15s,
-    box-shadow 0.15s;
-}
-.button:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 7px 7px 0 var(--coral);
-}
-.button svg {
-  width: 24px;
-  height: 24px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
 .fine {
   color: var(--muted);
   font-size: 0.85rem;

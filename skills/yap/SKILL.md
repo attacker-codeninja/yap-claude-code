@@ -74,8 +74,9 @@ For skill installation, comparison or explicit refresh, read
 are `skill.status`, `skill.install`, `skill.uninstall`, and `skill.update`, plus
 `cli.status`, `cli.install` and `cli.uninstall` for the `yap` command; the
 Settings row "Set up my agents" uses the same handlers. Install/update stages a complete pinned folder through the app's bundled `skills` installer,
-letting it discover supported harnesses, and replaces the global Yap skill when
-maintenance is enabled. Disable maintenance before customizing the global skill. The CLI waits for install/update/uninstall to settle by default; use `--no-wait` for an immediate acknowledgement.
+letting it discover supported harnesses, and replaces every global Yap skill. With
+**Set up my agents** on, every app launch does the same, so turn it off before
+customizing the global skill. The CLI waits for install/update/uninstall to settle by default; use `--no-wait` for an immediate acknowledgement.
 For the complete operation reference, read [capability catalog](references/capability-catalog.md).
 An app update does not edit these files itself, but with maintenance enabled the relaunched app refreshes the global skill from the copy bundled in the new release.
 
