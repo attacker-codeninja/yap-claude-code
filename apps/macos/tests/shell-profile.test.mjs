@@ -47,11 +47,19 @@ const covered = (files) => call("covered", JSON.stringify(files)).trim() === "tr
 
 test("an uncommented PATH .local/bin line in any startup file suppresses the block", () => {
   for (const file of [".zshenv", ".zprofile", ".zshrc", ".bash_profile", ".bashrc", ".profile"]) {
-    assert.equal(covered({ [file]: '  path=($HOME/bin $path)\n  export PATH="$HOME/.local/bin:$PATH"\n' }), true, file);
+    assert.equal(
+      covered({ [file]: '  path=($HOME/bin $path)\n  export PATH="$HOME/.local/bin:$PATH"\n' }),
+      true,
+      file,
+    );
   }
   assert.equal(covered({ ".zshrc": "export PATH=~/.local/bin:$PATH" }), true);
   assert.equal(covered({ ".zshrc": "alias ll='ls -l'\n", ".profile": "" }), false);
-  assert.equal(covered({ ".zshrc": 'export PATH="$HOME/bin:$PATH"\n' }), false, "PATH without .local/bin");
+  assert.equal(
+    covered({ ".zshrc": 'export PATH="$HOME/bin:$PATH"\n' }),
+    false,
+    "PATH without .local/bin",
+  );
   assert.equal(covered({}), false);
 });
 

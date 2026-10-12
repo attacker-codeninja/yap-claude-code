@@ -1,6 +1,14 @@
 Yap is the macOS recording and agent-operated video toolkit. This release ships
-`Yap.app`, the `yap` CLI and the `com.dzhng.yap` app identity. Install the complete
-kit for this identity; capture permissions must be granted to Yap separately.
+`Yap.app`, the `yap` CLI and the `com.dzhng.yap` app identity. Install the app for
+this identity; capture permissions must be granted to Yap separately.
+
+The app now sets up your agents itself. On every launch, including the relaunch
+after an update, it installs `~/.local/bin/yap` from its bundled launcher, refreshes
+the yap skill with its bundled installer (no Node or npm needed), and adds a marked
+PATH line when one is missing. Settings → Set up my agents turns this off. The
+release ZIP has a fixed name, `Yap-macos-arm64.zip`, and contains only the app and
+its receipt. Yap runs only from /Applications or ~/Applications, offers to move
+itself when opened anywhere else, and allows one running copy at a time.
 
 The capture menu keeps its dark appearance after selecting a recording area and
 shows the latest recording below the action buttons with Play and Copy agent prompt
@@ -94,30 +102,31 @@ observations require caller-supplied local inputs.
 
 This version uses catalog format 26 and portable package format 4. Earlier formats
 are refused; no migration or automatic deletion occurs. Apps on older catalog
-formats cannot auto-update to this version. Install the complete kit once with a
-fresh library; use its new CLI launcher for protected `yap ffmpeg` extras.
-The app updater does not replace external launchers or consumer skills.
+formats cannot auto-update to this version. Install the app once with a fresh
+library; it installs its own CLI launcher and skill.
 
 A developer preview of the macOS recording and agent-operated editing primitives.
 The toolkit makes zero editorial decisions and preserves source media.
 
 Requires **Apple Silicon and macOS 26 or newer**. Node and FFmpeg are included; the core
 transcription model prepares automatically while secondary model downloads remain explicit.
-The ZIP includes the app, CLI
-launcher and a receipt identifying the source commit and runtime. The primary
-agent interface is the yap skill and CLI.
+The ZIP includes the app and a receipt identifying the source commit and runtime.
+The app installs the `yap` CLI and the yap skill on launch; they are the primary
+agent interface.
 
-This build uses a **stable self-signed release identity and is not notarized**. After trying to open it, use
-System Settings → Privacy & Security → Open Anyway if macOS blocks the launch.
+This build uses a **stable self-signed release identity and is not notarized**. An agent
+download (`curl`) is never blocked; after a browser download, use System Settings →
+Privacy & Security → Open Anyway if macOS blocks the launch.
 Managed Macs may prohibit that override. Capture permissions are granted separately
 when you request recording.
 
-Follow [agent setup](https://github.com/dzhng/yap#agent-setup) to install
-the skill, then the app and CLI. The skill's
+Ask your agent to "Install Yap (the Mac app, which sets up the yap CLI and skill) by
+following https://justyap.io/llms.txt", or follow
+[agent setup](https://github.com/dzhng/yap#agent-setup). The skill's
 [installation procedure](https://github.com/dzhng/yap/blob/main/skills/yap/references/installation.md)
-owns checksum verification, destinations, PATH, updates and readiness checks.
+owns checksum verification, the app's location, updates and readiness checks.
 Installed releases check for authenticated app updates and wait for existing work and CLI/MCP processes to finish before replacing the bundle. Automatic checks can be disabled in Settings.
-Skill updates remain an explicit installation step.
+The relaunched app refreshes the CLI launcher and skill.
 MCP clients can optionally use the same launcher with `mcp` as its argument.
 See the [retained acceptance limits](https://github.com/dzhng/yap/blob/main/specs/done/agent-editing/release-closeout.md).
 Third-party notices are included. The pretrained RNNoise model's license has not

@@ -122,12 +122,25 @@ the coordinator owns installation admission for both scheduled and one-shot
 checks. Neither surface bypasses recording, service or launcher exclusion.
 Updater inspection and preference cancellation remain accessible during service
 admission because they acquire no media resources. Settings never writes another
-update preference. The Install skill checkbox controls the separate, receipt-backed
-home skill lifecycle. While it is on, every launch replaces all global Yap skill
-installs with the bundled copy, including ones Yap did not make; turning it off
-removes the recorded and currently discovered global installs. The checkbox shows
-no lifecycle state; `skill.status` reports it. Source and
-personal builds without release metadata show a manual-update explanation.
+update preference. Source and personal builds without release metadata show a
+manual-update explanation.
+
+## Agent setup and launch rules
+
+Settings → **Set up my agents** is one preference for everything the app installs
+into the home folder. The [home lifecycle](Sources/Yap/HomeLifecycle.swift) owns it:
+at every launch (including the relaunch after an update) it writes `~/.local/bin/yap`
+from the bundled launcher as fresh bytes, refreshes every global `yap` skill with the
+bundled `skills` installer and the app's own Node, and adds a marked PATH block only
+when no shell startup file already covers `~/.local/bin`. Turning it off removes the
+command while it is unchanged and only Yap's PATH block. The row's status line reads
+the disk; `cli.*` and `skill.*` operations carry the details for agents.
+
+A [launch decision](Sources/Yap/LaunchDecision.swift) runs before anything starts:
+an update relaunch always proceeds; a release build outside `/Applications` or
+`~/Applications` offers to [move itself](Sources/Yap/AppRelocator.swift) there; a
+second copy hands off to the running one and quits. Builds without an update feed
+are exempt from the location rule, so `dist/` builds run in place.
 
 The [offscreen settings renderer](tests/settings-view-shots.mjs) draws the production
 view with synthetic owner facts and checks that the form still scrolls to General.

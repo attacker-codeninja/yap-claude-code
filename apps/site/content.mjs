@@ -7,19 +7,24 @@ const raw = "https://raw.githubusercontent.com/dzhng/yap/main";
 
 /** Must match the prompt in the README's "Get started" section; the build checks. */
 export const agentPrompt =
-  "Install the yap skill, the Yap app and the yap CLI by following https://github.com/dzhng/yap#agent-setup";
+  "Install Yap (the Mac app, which sets up the yap CLI and skill) by following https://justyap.io/llms.txt";
+
+/** Links that open the agent with the prompt typed in, unsent. Copy always works. */
+export const openIn = [
+  { label: "Open in Claude Code", href: `claude-cli://open?q=${encodeURIComponent(agentPrompt)}` },
+  { label: "Open in Codex", href: `codex://new?prompt=${encodeURIComponent(agentPrompt)}` },
+];
 
 export const requirements = "Apple Silicon · macOS 26 or newer";
 
 export const links = {
   repo,
   releases: `${repo}/releases/latest`,
+  kit: `${repo}/releases/latest/download/Yap-macos-arm64.zip`,
   agentSetup: `${repo}#agent-setup`,
   installation: `${raw}/skills/yap/references/installation.md`,
-  skillLifecycle: `${raw}/skills/yap/references/skill-lifecycle.md`,
   skill: `${raw}/skills/yap/SKILL.md`,
   positioning: `${repo}/blob/main/positioning.md`,
-  latestReleaseApi: "https://api.github.com/repos/dzhng/yap/releases/latest",
 };
 
 export const meta = {
@@ -74,19 +79,15 @@ export const howItWorks = [
   },
 ];
 
-/** Steps for a person doing it by hand. Step 3 hands off to the agent prompt. */
+/** What a person does: hand the prompt to their agent, which does the rest. */
 export const humanSteps = [
   {
-    title: "Download Yap for Mac",
-    body: "Grab the ZIP from the button above and unzip it. Inside are Yap.app and a small `yap` command-line launcher.",
+    title: "Paste the prompt into Claude Code or Codex",
+    body: "Or click Open in Claude Code / Open in Codex above. Your agent downloads Yap, checks it, puts it in Applications and opens it.",
   },
   {
-    title: "Move Yap.app to Applications in your home folder, then open it",
-    body: "Put it at ~/Applications/Yap.app, where the yap command looks for it. Releases aren't notarized yet: if macOS blocks it, open System Settings → Privacy & Security → Open Anyway. Opening the app installs the yap skill for your agents (this needs Node.js).",
-  },
-  {
-    title: "Let your agent finish the setup",
-    body: "Paste the prompt into Claude Code or Codex. Your agent adds the yap command to your PATH, checks the skill, and verifies it all works. The app alone doesn't add the command line.",
+    title: "Yap sets up your agent",
+    body: "On first launch the app installs the `yap` command and the yap skill, and keeps both current with every update. Turn this off in Settings → Set up my agents.",
   },
   {
     title: "Just yap",
@@ -108,28 +109,29 @@ If your user asked you to install Yap, the request is:
 
     ${agentPrompt}
 
-Follow the canonical steps in the repository. They are written for agents and kept current with each release:
+You install the app; the app installs the rest. Follow [Agent setup](${links.agentSetup}) and the [installation procedure](${links.installation}); in short:
 
-- [Agent setup](${links.agentSetup}): the order of operations (skill, then app and CLI, then verification).
-- [Installation procedure](${links.installation}): download, checksum-verify and install Yap.app at ~/Applications/Yap.app and the \`yap\` launcher at ~/.local/bin/yap.
-- [Skill lifecycle](${links.skillLifecycle}): pinned skill install, scope (whole computer vs project) and verification.
+1. Check the Mac: Apple Silicon (\`uname -m\` is arm64) and macOS 26 or newer.
+2. Download \`SHA256SUMS\`, \`release.json\` and the kit it names from the latest release (\`${links.kit}\`), and run \`shasum -a 256 -c SHA256SUMS\`.
+3. Extract with \`ditto -x -k\`. If Yap.app is already in /Applications or ~/Applications, quit it and replace that copy; otherwise install to ~/Applications/Yap.app.
+4. Open it (\`open ~/Applications/Yap.app\`). Within a few seconds the app installs \`~/.local/bin/yap\`, the yap skill for every agent it finds, and a PATH line when one is missing.
+5. Verify with \`~/.local/bin/yap cli.status\`, \`yap skill.status\` and \`yap service.health\`, then report a short checklist to the user.
 
 Facts that change what you do:
 
-- Yap.app and the \`yap\` launcher are separate files in the release ZIP. Installing or opening the app does not put \`yap\` on PATH.
-- Opening the app installs the yap skill for the whole computer when Node/npx is available (Settings → Install skill, on by default). Check before installing it again.
-- The user may already have installed Yap.app by hand. Keep it; install only what's missing, and back up anything you replace. If the app is not at ~/Applications/Yap.app, set YAP_APP to its absolute path.
-- Releases are not notarized. If macOS blocks the app, the user approves System Settings → Privacy & Security → Open Anyway. Never remove quarantine attributes or disable Gatekeeper.
-- Verify with \`yap capture.status --help\` (no app launch), then \`yap service.health\`. Installation does not grant capture permissions.
+- Don't copy a launcher or run \`npx skills add\` yourself; the app owns both. Use the manual steps in the installation procedure only when \`cli.status\` or \`skill.status\` reports a problem.
+- The app refuses to run outside /Applications or ~/Applications and offers to move itself.
+- Releases are not notarized. A download made with \`curl\` is never blocked; a browser download needs System Settings → Privacy & Security → Open Anyway. Never remove quarantine attributes or disable Gatekeeper.
+- Installation does not grant screen, microphone or camera permissions; the user grants them on first recording.
 
 ## Use
 
-- [yap skill](${links.skill}): how to record, understand and edit video for the user with the toolkit. Start a fresh agent session after installing it so it is discovered (\`/yap\` in Claude Code, \`$yap\` in Codex).
+- [yap skill](${links.skill}): how to record, understand and edit video for the user with the toolkit. Start a fresh agent session after the app installs it so it is discovered (\`/yap\` in Claude Code, \`$yap\` in Codex).
 
 ## Optional
 
 - [README](${links.repo}): what Yap is and what people make with it.
 - [Positioning](${links.positioning}): what is possible today and what isn't yet.
-- [Latest release](${links.releases}): app ZIP, release.json receipt and SHA256SUMS.
+- [Latest release](${links.releases}): the app kit, its release.json receipt and SHA256SUMS.
 `;
 }

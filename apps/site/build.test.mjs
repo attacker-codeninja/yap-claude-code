@@ -42,3 +42,15 @@ test("the one indexed page is sitemapped, allowed and canonical at the productio
   assert.match(file("index.html"), /<link rel="canonical" href="https:\/\/yap\.example\/">/);
   assert.doesNotMatch(file("index.html"), /noindex/);
 });
+
+test("the page offers no download, only the agent route", () => {
+  const page = built()("index.html");
+  assert.doesNotMatch(page, /Download for Mac|href="[^"]*\.zip"|api\.github\.com/);
+});
+
+test("both open-in links carry the exact prompt, unsent", () => {
+  const page = built()("index.html");
+  const encoded = encodeURIComponent(agentPrompt);
+  assert.ok(page.includes(`claude-cli://open?q=${encoded}`));
+  assert.ok(page.includes(`codex://new?prompt=${encoded}`));
+});

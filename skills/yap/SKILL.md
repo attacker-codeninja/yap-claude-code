@@ -45,17 +45,23 @@ error code and reason, and do not retry an unchanged failed payload indefinitely
 
 ## Installation
 
-On first use, check `command -v yap`, then `yap capture.status --help`.
-For requested setup when the command or selected app is missing, install the
-**latest stable GitHub release** using [installation](references/installation.md): verify Apple Silicon
-and macOS 26+, download and checksum the release ZIP and receipt, install the app
-at `~/Applications/Yap.app` and the launcher at `~/.local/bin/yap`,
-then configure PATH and verify `service.health`. Node is bundled. Linux/Docker
-cannot run the native app; a portable JavaScript CLI bundle can independently
-run schema/transport tests there with Node, without proving native readiness.
-Report blocked launch or permissions accurately;
-help success alone is not service readiness. Do not build from source as a
-consumer-install fallback.
+On first use, check `command -v yap`; if it is missing, try `~/.local/bin/yap`
+(agents launched from the Dock may not read the shell profile that puts it on
+PATH). Then run `yap capture.status --help`. When the command or app is missing and
+the user asked for setup, follow [installation](references/installation.md): verify
+Apple Silicon and macOS 26+, download and checksum the latest release, place
+`Yap.app` in `/Applications` or `~/Applications`, and open it. The app installs the
+command, this skill and the PATH line; you do not. Then verify with `cli.status`,
+`skill.status` and `service.health` and report a short checklist. Linux/Docker
+cannot run the native app; a portable JavaScript CLI bundle can independently run
+schema/transport tests there with Node, without proving native readiness. Report
+blocked launch or permissions accurately; help success alone is not service
+readiness. Do not build from source as a consumer-install fallback.
+
+If the current project has its own copy of this skill (`.claude/skills/yap`,
+`.agents/skills/yap` or `.codex/skills/yap` under the project root), it may be stale
+and can shadow the app-maintained global skill: tell the user and suggest deleting
+it. Never delete it yourself.
 
 When advertised, `yap service.tools` returns the selected app's bundled Node
 path and verified media tools. Use that Node for the [consumer helpers](scripts/);
@@ -65,9 +71,9 @@ For extra media tasks outside core operations, use bundled FFmpeg through
 
 For skill installation, comparison or explicit refresh, read
 [skill lifecycle](references/skill-lifecycle.md). The public lifecycle operations
-are `skill.status`, `skill.install`, `skill.uninstall`, and `skill.update`;
-they are available through the CLI and the Settings surface uses the same
-handlers. Install/update stages a complete pinned folder through `npx skills`,
+are `skill.status`, `skill.install`, `skill.uninstall`, and `skill.update`, plus
+`cli.status`, `cli.install` and `cli.uninstall` for the `yap` command; the
+Settings row "Set up my agents" uses the same handlers. Install/update stages a complete pinned folder through the app's bundled `skills` installer,
 letting it discover supported harnesses, and replaces the global Yap skill when
 maintenance is enabled. Disable maintenance before customizing the global skill. The CLI waits for install/update/uninstall to settle by default; use `--no-wait` for an immediate acknowledgement.
 For the complete operation reference, read [capability catalog](references/capability-catalog.md).

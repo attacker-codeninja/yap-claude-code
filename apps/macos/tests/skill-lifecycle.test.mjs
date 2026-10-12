@@ -1,5 +1,14 @@
 import assert from "node:assert/strict";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { after, before, test } from "node:test";
@@ -24,7 +33,10 @@ test("skill status discovers every global harness destination", () => {
   const resources = makeResources(root);
   const [status] = runHome(driver, { home, resources }, "skill.status");
   assert.equal(status.state, "unmanaged");
-  assert.deepEqual(status.paths, [join(home, ".agents/skills/yap"), join(home, ".claude/skills/yap")]);
+  assert.deepEqual(status.paths, [
+    join(home, ".agents/skills/yap"),
+    join(home, ".claude/skills/yap"),
+  ]);
   assert.ok(status.destinations.every((destination) => destination.exists));
 });
 

@@ -20,6 +20,10 @@ import SwiftUI
 import YapControls
 
 enum ControlsProbe { static let observed = true }
+@MainActor final class ShotAgentSetup: AgentSetup {
+    func setEnabled(_ enabled: Bool) {}
+    func summary() -> String { "yap command + skill, kept current. All good ✓" }
+}
 @main struct Shots {
     @MainActor static func main() {
         NSApplication.shared.setActivationPolicy(.prohibited)
@@ -37,7 +41,7 @@ enum ControlsProbe { static let observed = true }
         for (theme, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
             for (name, updates) in states {
                 let preferences = Preferences(defaults: UserDefaults(suiteName: "\(scratch)/\(theme)-\(name)")!)
-                let model = SettingsModel(preferences: preferences, perform: { _ in }, update: { _, _ in })
+                let model = SettingsModel(preferences: preferences, perform: { _ in }, update: { _, _ in }, agentSetup: ShotAgentSetup())
                 model.state.permissions = ControlsState.Permissions(screen: .granted, microphone: .granted)
                 model.state.shortcutOverridePath = "/Users/example/.yap/shortcuts.json"
                 model.state.updates = updates

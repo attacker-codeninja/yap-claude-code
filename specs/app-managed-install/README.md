@@ -10,11 +10,11 @@ app installed only the skill, so a fresh app gave agents a skill without a comma
 *Last updated 2026-10-12.* You are resuming this feature. Read this README, then
 the slice you pick up. Pre-launch: no users, no migrations, no compatibility shims.
 
-**Status.** 00–03 and 06 are done and committed (06's `LaunchDecision` is not yet
-wired into `main.swift`; slice 07 wires it). 04 is in progress. 08's site, README
-agent setup and `installation.md` are drafted.
+**Status.** Slices 00–08 are implemented and committed, with their narrow tests green
+and an unprimed critique of every new visual (fixes applied; one item moved to the
+release-day checklist).
 
-**Pick up at** whichever of 04, 05, 07, 08 is unchecked, in that order. Each slice names
+**Pick up at** the full check, then the Codex review, then the release. Each slice names
 its tests; run only those. Run the full check once, after slice 08, then release
 with the `release` skill (the user delegated tagging).
 
@@ -29,10 +29,10 @@ with the `release` skill (the user delegated tagging).
 - [x] 02 Operations — [slices/02-operations.md](slices/02-operations.md)
 - [x] 03 Kit is the app only — [slices/03-kit.md](slices/03-kit.md)
 - [x] 04 Home lifecycle: command, skill, PATH — [slices/04-home-lifecycle.md](slices/04-home-lifecycle.md)
-- [ ] 05 Settings: one "Set up my agents" row — [slices/05-settings.md](slices/05-settings.md)
+- [x] 05 Settings: one "Set up my agents" row — [slices/05-settings.md](slices/05-settings.md)
 - [x] 06 Launch decision: location and one copy — [slices/06-launch-decision.md](slices/06-launch-decision.md)
-- [ ] 07 Move to Applications — [slices/07-move.md](slices/07-move.md)
-- [ ] 08 Docs, skill, site — [slices/08-docs-site.md](slices/08-docs-site.md)
+- [x] 07 Move to Applications — [slices/07-move.md](slices/07-move.md)
+- [x] 08 Docs, skill, site — [slices/08-docs-site.md](slices/08-docs-site.md)
 - [ ] Full check, Codex review, release, release-day checklist (below)
 
 Update this section before ending your pass.
@@ -110,3 +110,4 @@ Shipping each slice as its own release (docs in transition across releases).
 - An agent `curl` install: no Gatekeeper prompt at all.
 - A Sparkle update from the previous release relaunches once, keeps one copy, and refreshes the command.
 - `codesign --verify --deep --strict` on the published app.
+- The move prompt in the real app (open the release from `~/Downloads`): no stray square behind the icon in light mode (seen only in the offscreen render), Move it home lands in `~/Applications` and never prompts again (probe P5).

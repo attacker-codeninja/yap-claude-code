@@ -14,7 +14,9 @@ let executable;
 before(() => {
   scratch = mkdtempSync(join(tmpdir(), "yap-launch-decision-"));
   const stub = join(scratch, "Stub.swift");
-  writeFileSync(stub, `import Foundation
+  writeFileSync(
+    stub,
+    `import Foundation
 struct Launch: Decodable {
   let bundle: String; let home: String; let isRelease: Bool; let arguments: [String]
   let running: [Int32]; let translocated: String?; let original: String?
@@ -40,15 +42,28 @@ struct Launch: Decodable {
     }
   }
 }
-`);
+`,
+  );
   executable = join(scratch, "check");
-  execFileSync("swiftc", ["-swift-version", "6", "-parse-as-library", source, stub, "-o", executable], { stdio: "pipe" });
+  execFileSync(
+    "swiftc",
+    ["-swift-version", "6", "-parse-as-library", source, stub, "-o", executable],
+    { stdio: "pipe" },
+  );
 });
 
 after(() => rmSync(scratch, { recursive: true, force: true }));
 
 function decide(launch, ...extra) {
-  const full = { home: "/Users/someone", isRelease: true, arguments: [], running: [], translocated: null, original: null, ...launch };
+  const full = {
+    home: "/Users/someone",
+    isRelease: true,
+    arguments: [],
+    running: [],
+    translocated: null,
+    original: null,
+    ...launch,
+  };
   return execFileSync(executable, [JSON.stringify(full), ...extra], { encoding: "utf8" }).trim();
 }
 
@@ -61,11 +76,17 @@ test("both Applications folders proceed", () => {
   assert.equal(decide({ bundle: "/Applications/Yap.app" }), "proceed");
   assert.equal(decide({ bundle: "/Users/someone/Applications/Yap.app" }), "proceed");
   // A nested folder is not an Applications folder.
-  assert.equal(decide({ bundle: "/Applications/Tools/Yap.app" }), "offerMove /Applications/Tools/Yap.app");
+  assert.equal(
+    decide({ bundle: "/Applications/Tools/Yap.app" }),
+    "offerMove /Applications/Tools/Yap.app",
+  );
 });
 
 test("Downloads offers a move", () => {
-  assert.equal(decide({ bundle: "/Users/someone/Downloads/Yap.app" }), "offerMove /Users/someone/Downloads/Yap.app");
+  assert.equal(
+    decide({ bundle: "/Users/someone/Downloads/Yap.app" }),
+    "offerMove /Users/someone/Downloads/Yap.app",
+  );
 });
 
 test("translocated offers a move of the original", () => {
@@ -77,12 +98,18 @@ test("translocated offers a move of the original", () => {
   // Without the original there is nothing to move; the caller can only offer Quit.
   assert.equal(decide({ bundle: mount, translocated: mount }), "offerMove nil");
   // A translocated launch whose original already sits in Applications is in place.
-  assert.equal(decide({ bundle: mount, translocated: mount, original: "/Applications/Yap.app" }), "proceed");
+  assert.equal(
+    decide({ bundle: mount, translocated: mount, original: "/Applications/Yap.app" }),
+    "proceed",
+  );
 });
 
 test("second copy hands off", () => {
   assert.equal(decide({ bundle: "/Applications/Yap.app", running: [4242] }), "handOff 4242");
-  assert.equal(decide({ bundle: "/private/tmp/build/Yap.app", isRelease: false, running: [77] }), "handOff 77");
+  assert.equal(
+    decide({ bundle: "/private/tmp/build/Yap.app", isRelease: false, running: [77] }),
+    "handOff 77",
+  );
   // Location comes first: a misplaced copy offers the move rather than handing off.
   assert.equal(
     decide({ bundle: "/Users/someone/Downloads/Yap.app", running: [4242] }),
@@ -92,8 +119,14 @@ test("second copy hands off", () => {
 
 test("update relaunch never hands off", () => {
   const relaunch = ["/Applications/Yap.app/Contents/MacOS/Yap", "--yap-update-relaunch"];
-  assert.equal(decide({ bundle: "/Applications/Yap.app", arguments: relaunch, running: [4242] }), "proceed");
-  assert.equal(decide({ bundle: "/Users/someone/Downloads/Yap.app", arguments: relaunch }), "proceed");
+  assert.equal(
+    decide({ bundle: "/Applications/Yap.app", arguments: relaunch, running: [4242] }),
+    "proceed",
+  );
+  assert.equal(
+    decide({ bundle: "/Users/someone/Downloads/Yap.app", arguments: relaunch }),
+    "proceed",
+  );
 });
 
 test("`~` is $HOME", () => {

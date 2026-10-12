@@ -4,7 +4,7 @@ import Foundation
 /// (`CommandArtifact`) and the consumer skill (`SkillArtifact`). One owner answers every `cli.*`
 /// and `skill.*` operation, reconciles both at launch, and turns both on or off together.
 @MainActor
-final class HomeLifecycle: SkillLifecycle {
+final class HomeLifecycle: AgentSetup {
     private let skill: SkillArtifact
     private let command: CommandArtifact
 
@@ -24,8 +24,6 @@ final class HomeLifecycle: SkillLifecycle {
         }
     }
 
-    func perform(_ operation: String) { _ = handle(operation) }
-
     /// At launch: with the preference on, make both current; with it off, leave the home alone.
     func reconcile(enabled: Bool) {
         if enabled { setEnabled(true) }
@@ -40,6 +38,9 @@ final class HomeLifecycle: SkillLifecycle {
     /// One line for Settings, from what is on disk now; it runs no installer.
     func summary() -> String {
         let cli = command.status()
+        if cli.state == .installed, cli.onPath, skill.summaryState == "installed" {
+            return "yap command + skill, kept current. All good ✓"
+        }
         let commandText: String
         switch cli.state {
         case .installed: commandText = cli.onPath ? "Command installed" : "Command installed, not on PATH"

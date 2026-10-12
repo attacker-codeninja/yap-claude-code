@@ -32,7 +32,7 @@ public struct Preferences {
         static let microphoneDeviceId = "recording.microphoneDeviceId"
         static let microphoneDeviceName = "recording.microphoneDeviceName"
         static let systemAudio = "recording.systemAudio"
-        static let installSkill = "installSkill"
+        static let setUpAgents = "setUpAgents"
     }
 
     /// Standard menu-bar apps open their window at every launch until a person turns that off.
@@ -41,10 +41,10 @@ public struct Preferences {
         nonmutating set { defaults.set(newValue, forKey: Key.showSettingsAtLaunch) }
     }
 
-    /// Keeps the account-level Yap consumer skill installed and current when enabled.
-    public var installSkill: Bool {
-        get { defaults.object(forKey: Key.installSkill) as? Bool ?? true }
-        nonmutating set { defaults.set(newValue, forKey: Key.installSkill) }
+    /// Keeps the yap command and the consumer skill installed and current when enabled.
+    public var setUpAgents: Bool {
+        get { defaults.object(forKey: Key.setUpAgents) as? Bool ?? true }
+        nonmutating set { defaults.set(newValue, forKey: Key.setUpAgents) }
     }
 
     /// Where the Settings window was last closed, as AppKit describes a window frame.

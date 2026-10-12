@@ -133,13 +133,13 @@ Requires **Apple Silicon and macOS 26 or newer**.
 The zero-effort route is to let your agent install it. Open Claude Code or Codex
 and say:
 
-> Install the yap skill, the Yap app and the yap CLI by following
-> https://github.com/dzhng/yap#agent-setup
+> Install Yap (the Mac app, which sets up the yap CLI and skill) by following
+> https://justyap.io/llms.txt
 
 Then record something and ask for the video you want.
 
-Prefer doing it by hand? Follow [agent setup](#agent-setup) below. It takes a few
-minutes.
+Your agent installs the app; the app installs the rest. The [agent setup](#agent-setup)
+below is what it follows.
 
 ## Agent setup
 
@@ -147,66 +147,46 @@ These steps are written for the agent doing the install, so they're precise.
 Linux containers can exercise the portable CLI contracts but cannot run the native
 app or capture macOS media.
 
-### 1. Install the yap skill
-
-Install the complete [consumer skill](skills/yap) for the whole computer by
-default. If the user explicitly requests a project install, use that project.
-If scope is unspecified and the current directory looks like a project, ask
-whether to install for **this project or the whole computer** before writing.
-Being inside this repository does not itself authorize a project-local install.
-
-[Skill lifecycle](skills/yap/references/skill-lifecycle.md) owns pinned acquisition,
-installation, path/link verification and explicit refresh. Repository
-`.agents/skills` are development procedures; `skills/yap` is the consumer source.
-The installer requires Node/npm and `npx` separately from the app's bundled Node.
-
-From a checkout, use the absolute path to its consumer folder. For the whole
-computer (the default):
-
-```sh
-npx --yes skills@1.7.0 add /absolute/path/to/yap/skills/yap \
-  --skill yap --agent codex claude-code --global --yes
-```
-
-For an explicitly selected project, run from that project's root without
-`--global`:
-
-```sh
-npx --yes skills@1.7.0 add /absolute/path/to/yap/skills/yap \
-  --skill yap --agent codex claude-code --yes
-```
-
-Inspect existing destinations first and verify the full folder and discovery
-links afterward, following the lifecycle reference. Start a fresh agent session
-and confirm discovery (`$yap` for Codex, `/yap` for Claude). With the app's
-Install skill setting on (the default), every app launch, including the relaunch
-after an update, replaces the global skill with the copy bundled in the app.
-
-### 2. Install the app and CLI from the latest release
+### 1. Install the app from the latest release
 
 Use the [latest stable GitHub release](https://github.com/dzhng/yap/releases/latest),
 not a source build. Download its `SHA256SUMS`, `release.json` and the ZIP that
-`SHA256SUMS` names (`Yap-macos-arm64.zip`) together. In the download directory, run
+`SHA256SUMS` names (`Yap-macos-arm64.zip`) together, and run
 `shasum -a 256 -c SHA256SUMS` before extracting. Check the receipt's architecture,
 minimum macOS version and signing status.
 
-Extract the ZIP with `ditto -x -k <zip-path> <new-directory>`. Install its
-`Yap.app` at `~/Applications/Yap.app` and its `yap`
-launcher at `~/.local/bin/yap`; make the launcher executable and add
-`~/.local/bin` to PATH. Quit and back up an existing installation before replacing
-it. Node is bundled; consumers do not need Bun, Node or Swift installed separately.
+Extract with `ditto -x -k <zip-path> <new-directory>`. If `Yap.app` is already in
+`/Applications` or `~/Applications`, quit it and replace that copy; otherwise install
+at `~/Applications/Yap.app`. The app runs only from one of those two folders. Node is
+bundled; consumers do not need Bun, Node or Swift.
 
-The skill's [installation procedure](skills/yap/references/installation.md)
-contains executable download/install commands and upgrade, app-location and
-macOS launch guidance. Check the receipt's signing status; releases are not notarized.
-If blocked, the user must approve **Open Anyway** in System Settings → Privacy &
-Security. Installation does not grant capture permissions. When a first-class Yap
-speech feature is used, its registered pinned model/runtime is prepared automatically;
-external models remain recommendation-only.
+The skill's [installation procedure](skills/yap/references/installation.md) holds the
+executable commands. Releases are not notarized: a download made with `curl` is never
+blocked, while a browser download needs **Open Anyway** in System Settings → Privacy &
+Security. Never remove quarantine attributes. Installation does not grant capture
+permissions.
+
+### 2. Open the app; it installs the rest
+
+`open ~/Applications/Yap.app` (or the copy you replaced). With **Set up my agents**
+on (the default), the app installs and keeps current, at every launch including the
+relaunch after an update:
+
+- the `yap` command at `~/.local/bin/yap`, plus a marked PATH line in the login
+  shell profile when no startup file already puts `~/.local/bin` on PATH;
+- the [consumer skill](skills/yap) for every agent harness it finds, replacing any
+  global skill named `yap` with the copy bundled in the app.
+
+Don't copy a launcher or run `npx skills add` yourself. If `cli.status` or
+`skill.status` reports a problem, the installation procedure and the
+[skill lifecycle](skills/yap/references/skill-lifecycle.md) hold the manual fallback.
+Start a fresh agent session so the skill is discovered (`$yap` for Codex, `/yap` for Claude).
 
 ### 3. Verify before operating
 
 ```sh
+~/.local/bin/yap cli.status
+yap skill.status
 yap capture.status --help
 yap service.health
 ```
@@ -217,7 +197,8 @@ start recording. Save `yap --help` to a file when discovering operation names,
 then request help for only the operation you need. Parse each operation's JSON
 envelope, including failures; a successful request can still describe pending or
 failed background work. Follow the skill for pinned revisions, retry identities
-and verification of delivered media.
+and verification of delivered media. Report the result to the user as a short
+checklist: release tag, app location, command, skill and service health.
 
 ## Releases
 

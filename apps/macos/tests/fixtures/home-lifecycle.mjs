@@ -25,7 +25,7 @@ export function compileHomeDriver(scratch) {
   writeFileSync(
     driver,
     String.raw`import Foundation
-@MainActor protocol SkillLifecycle { func perform(_ operation: String) }
+@MainActor protocol AgentSetup { func setEnabled(_ enabled: Bool); func summary() -> String }
 @main struct Driver {
     @MainActor static func main() {
         let arguments = CommandLine.arguments
@@ -76,7 +76,10 @@ export function runHome(executable, { home, resources, env = {} }, ...operations
     env: { ...inherited, PATH: "/usr/bin:/bin", SHELL: "/bin/zsh", ...env, HOME: home },
     timeout: 120_000,
   });
-  return output.trim().split("\n").map((line) => JSON.parse(line));
+  return output
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line));
 }
 
 /**

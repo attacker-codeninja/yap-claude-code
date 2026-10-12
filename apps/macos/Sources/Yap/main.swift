@@ -43,6 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             probeTask = Task { await runCaptureProbe(values, selected: probe) }
             return
         }
+        guard admitLaunch(Array(arguments)) else { return }
         let preferences = Preferences(defaults: defaultsDomain())
         controls = RecordingControls(home: personalRoot(), preferences: preferences) { [weak self] in
             self?.quit()
@@ -83,6 +84,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             !arguments.contains("--yap-update-relaunch") {
             controls?.perform(.openSettings)
         }
+    }
+
+    /// Decides once, before anything starts, whether this copy runs: an update relaunch always
+    /// does; a release outside an Applications folder offers to move itself; a second copy hands
+    /// off to the running one. Returns false when this copy is quitting instead.
+    private func admitLaunch(_ arguments: [String]) -> Bool {
+        let bundle = Bundle.main.bundleURL
+        let identifier = Bundle.main.bundleIdentifier ?? "com.dzhng.yap"
+        let running = NSRunningApplication.runningApplications(withBundleIdentifier: identifier)
+            .filter { $0.processIdentifier != getpid() }
+            .compactMap { app in app.bundleURL.map { RunningCopy(pid: app.processIdentifier, bundleURL: $0) } }
+        let decision = LaunchDecision.decide(
+            bundle: bundle, home: accountHome(), isRelease: LaunchDecision.isRelease(.main),
+            arguments: arguments, running: running, translocation: Translocation.of(bundle))
+        switch decision {
+        case .proceed:
+            return true
+        case .handOff(let pid):
+            diagnostic("another copy is running (pid \(pid)); handing off")
+            NSRunningApplication(processIdentifier: pid)?.activate()
+        case .offerMove(let original):
+            NSApplication.shared.activate()
+            if let original, MoveToApplicationsPrompt.show(original: original) == .move {
+                let relocator = AppRelocator(effects: .live)
+                let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
+                do {
+                    let installed = try relocator.perform(
+                        relocator.plan(original: original, ownVersion: version, home: accountHome()),
+                        original: original)
+                    diagnostic("moved to \(installed.path); relaunching")
+                } catch {
+                    diagnostic("move failed: \(error.localizedDescription)")
+                    let alert = NSAlert()
+                    alert.messageText = "Yap couldn't move itself"
+                    alert.informativeText = "Drag Yap into your Applications folder in Finder, then open it again. (\(error.localizedDescription))"
+                    alert.runModal()
+                }
+            } else if original == nil {
+                _ = MoveToApplicationsPrompt.show(original: nil)
+            }
+        }
+        NSApplication.shared.terminate(nil)
+        return false
     }
 
     /// Opening the app again while it runs, from Finder or Spotlight, is how a person asks to see it.

@@ -80,22 +80,27 @@ tools.
 control explicit screen/audio/camera acquisition. `recording.*` operations
 remain the owner of retained recording discovery and cleanup.
 
-## App updates and Yap skill lifecycle
+## App updates, the yap command and skill lifecycle
 
 `update.status`, `update.check`, and `update.setEnabled` expose the native app
-updater. `skill.status`, `skill.install`, `skill.uninstall`, and `skill.update`
-expose the global Yap consumer-skill lifecycle. When skill maintenance is
-enabled, install/update stages a complete pinned folder and lets `npx skills`
-discover supported harnesses (including Codex and Claude), replacing any
+updater. `cli.status`, `cli.install` and `cli.uninstall` expose the app-managed
+`~/.local/bin/yap`: install writes the app's bundled launcher as fresh bytes and adds
+a marked PATH line only when no startup file already covers `~/.local/bin`;
+uninstall removes the command only while it is identical to the bundled one, and
+only the marked line. They are synchronous and return `cli.status`.
+`skill.status`, `skill.install`, `skill.uninstall`, and `skill.update`
+expose the global Yap consumer-skill lifecycle. When maintenance (Settings → Set
+up my agents) is enabled, install/update stages a complete pinned folder and lets
+the app's bundled `skills` installer discover supported harnesses (including Codex and Claude), replacing any
 existing global Yap skill, including symlinks and installs Yap did not make.
 Disable maintenance before customizing the global skill; uninstall removes the
 paths Yap recorded plus any global Yap skill discovered at that moment, and
 removes nothing when Yap holds no receipt.
 
 Mutation skill operations return an updating status and operationId; poll
-`skill.status` for terminal state and diagnostics. Settings shows only the
-maintenance toggle; the CLI is the surface for state, paths, source revision,
-discovery links, ownership and errors. Lifecycle reconciliation runs at every
+`skill.status` for terminal state and diagnostics. Settings shows one toggle and a
+one-line summary for the command and skill; the CLI is the surface for state,
+paths, source revision, discovery links, ownership and errors. Lifecycle reconciliation runs at every
 app launch (including the relaunch after an app update), when maintenance is
 re-enabled, and on an explicit `skill.update`; it does not use a periodic timer.
 

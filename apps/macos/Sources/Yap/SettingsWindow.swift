@@ -3,12 +3,15 @@ import YapControls
 import ServiceManagement
 import SwiftUI
 
-@MainActor protocol SkillLifecycle {
-    func perform(_ operation: String)
+/// What the "Set up my agents" row drives: the yap command and the skill, as one switch.
+@MainActor protocol AgentSetup {
+    func setEnabled(_ enabled: Bool)
+    func summary() -> String
 }
 
-@MainActor final class NoopSkillLifecycle: SkillLifecycle {
-    func perform(_ operation: String) {}
+@MainActor final class NoAgentSetup: AgentSetup {
+    func setEnabled(_ enabled: Bool) {}
+    func summary() -> String { "" }
 }
 
 /**
@@ -28,19 +31,19 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     private let model: SettingsModel
     private let preferences: Preferences
     private let refreshPermissions: () -> Void
-    private let skillManager: SkillLifecycle
+    private let agentSetup: AgentSetup
     private var window: NSWindow?
 
     init(
         preferences: Preferences, perform: @escaping (ControlsAction) -> Void,
         update: @escaping (String, [String: Any]) -> Void,
         refreshPermissions: @escaping () -> Void,
-        skillManager: SkillLifecycle = NoopSkillLifecycle()
+        agentSetup: AgentSetup = NoAgentSetup()
     ) {
         self.preferences = preferences
         self.refreshPermissions = refreshPermissions
-        self.skillManager = skillManager
-        model = SettingsModel(preferences: preferences, perform: perform, update: update, skillManager: skillManager)
+        self.agentSetup = agentSetup
+        model = SettingsModel(preferences: preferences, perform: perform, update: update, agentSetup: agentSetup)
         super.init()
         // Returning from System Settings activates this app again; that is when access changes.
         NotificationCenter.default.addObserver(
@@ -99,6 +102,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     private func refreshSystemState() {
         refreshPermissions()
         model.readLoginItem()
+        model.refreshAgentSummary()
     }
 
     private func makeWindow() -> NSWindow {
@@ -148,33 +152,39 @@ final class SettingsModel: ObservableObject {
     @Published var showCameraPreview: Bool {
         didSet { preferences.showCameraPreview = showCameraPreview }
     }
-    @Published var installSkill: Bool {
+    @Published var setUpAgents: Bool {
         didSet {
-            guard installSkill != oldValue else { return }
-            preferences.installSkill = installSkill
-            skillManager.perform(installSkill ? "skill.install" : "skill.uninstall")
+            guard setUpAgents != oldValue else { return }
+            preferences.setUpAgents = setUpAgents
+            agentSetup.setEnabled(setUpAgents)
+            refreshAgentSummary()
         }
     }
+    @Published private(set) var agentSummary = ""
     let perform: (ControlsAction) -> Void
     private let update: (String, [String: Any]) -> Void
     private let preferences: Preferences
-    private let skillManager: SkillLifecycle
+    private let agentSetup: AgentSetup
 
     /// Where a person states combinations of their own, as the controls state names it.
     var shortcutFile: String { state.shortcutOverridePath ?? "" }
 
     init(preferences: Preferences, perform: @escaping (ControlsAction) -> Void,
          update: @escaping (String, [String: Any]) -> Void,
-         skillManager: SkillLifecycle = NoopSkillLifecycle()) {
+         agentSetup: AgentSetup = NoAgentSetup()) {
         self.preferences = preferences
         self.perform = perform
         self.update = update
-        self.skillManager = skillManager
+        self.agentSetup = agentSetup
         showAtLaunch = preferences.showSettingsAtLaunch
         countdownBeforeRecording = preferences.countdownBeforeRecording
         showCameraPreview = preferences.showCameraPreview
-        installSkill = preferences.installSkill
+        setUpAgents = preferences.setUpAgents
+        agentSummary = agentSetup.summary()
     }
+
+    /// The row's status line reads the disk, so it is re-read whenever Settings may be looked at.
+    func refreshAgentSummary() { agentSummary = agentSetup.summary() }
 
     func setAutomaticUpdates(_ enabled: Bool) {
         guard state.updates.available, enabled != state.updates.enabled else { return }
@@ -276,7 +286,7 @@ struct SettingsView: View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                Text(detail).font(.callout).foregroundStyle(.secondary)
+                if !detail.isEmpty { Text(detail).font(.callout).foregroundStyle(.secondary) }
             }
             Spacer(minLength: 12)
             content()
@@ -355,8 +365,8 @@ struct SettingsView: View {
     private var generalSection: some View {
         Section {
             Toggle("Show this window when Yap starts", isOn: $model.showAtLaunch)
-            detailRow("Install skill", "Keeps Yap's home-directory consumer skill installed and current.") {
-                Toggle("", isOn: $model.installSkill).labelsHidden()
+            detailRow("Set up my agents", model.agentSummary) {
+                Toggle("", isOn: $model.setUpAgents).labelsHidden()
             }
             detailRow("Open at login", loginItemDescription) {
                 Toggle("", isOn: openAtLogin).labelsHidden()

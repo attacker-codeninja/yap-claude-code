@@ -84,7 +84,7 @@ final class RecordingControls: NSObject {
             self?.readPermissions()
             self?.render()
         },
-        skillManager: homeLifecycle)
+        agentSetup: homeLifecycle)
     private var ticker: Timer?
     private var reading = false
     private var pendingRefresh = false
@@ -100,7 +100,8 @@ final class RecordingControls: NSObject {
         self.home = home
         self.quit = quit
         self.preferences = preferences
-        self.homeLifecycle = HomeLifecycle()
+        self.homeLifecycle = HomeLifecycle(
+            inApplications: LaunchDecision.isInApplicationsFolder(Bundle.main.bundleURL, home: accountHome()))
         state = ControlsState(recording: preferences.recording)
         let overridePath = GlobalShortcuts.overridePath(home: home)
         super.init()
@@ -114,7 +115,7 @@ final class RecordingControls: NSObject {
         statusItem.button?.setAccessibilityLabel("Yap")
         readPermissions()
         render()
-        homeLifecycle.reconcile(enabled: preferences.installSkill)
+        homeLifecycle.reconcile(enabled: preferences.setUpAgents)
     }
 
     func configureUpdates(_ updates: UpdateControls,

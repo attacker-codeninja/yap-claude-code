@@ -1,4 +1,4 @@
-# Install the released app and CLI
+# Install the released app
 
 Use this procedure when `yap` or its selected app is missing. First check
 `uname -m` and `sw_vers -productVersion`: the app requires Apple Silicon (`arm64`)
@@ -39,109 +39,91 @@ Check that `release.json` names the selected tag, `arm64` and a compatible minim
 macOS version. It also reports signing and notarization. Keep the ZIP and receipt
 until installation has been verified. Stop on checksum failure.
 
-## Install
+## Install the app
 
-Use the verified extraction path printed above for `yap_unpacked`. These
-commands are for a fresh install and refuse existing destinations, including
-symlinks. For an update, quit the running app and retain the old bundle and launcher
-in a backup before replacing them. Do not replace a live app or discard its library.
+Use the verified extraction path printed above for `yap_unpacked`. The app runs
+only from `/Applications` or `~/Applications`. Update an existing copy in place;
+otherwise install to `~/Applications`. For an update, quit the running app first and
+keep the old bundle as a backup; never replace a live app or discard its library.
 
 ```sh
 (
   set -eu
   yap_unpacked="/absolute/path/printed/above/unpacked"
   yap_app="$HOME/Applications/Yap.app"
-  yap_launcher="$HOME/.local/bin/yap"
-  test ! -e "$yap_app"
-  test ! -L "$yap_app"
-  test ! -e "$yap_launcher"
-  test ! -L "$yap_launcher"
-  mkdir -p "$HOME/Applications" "$HOME/.local/bin"
+  test -d /Applications/Yap.app && yap_app=/Applications/Yap.app
+  if [ -e "$yap_app" ] || [ -L "$yap_app" ]; then
+    yap_backup=$(mktemp -d)
+    mv "$yap_app" "$yap_backup/"
+    printf 'Previous app retained at: %s\n' "$yap_backup/Yap.app"
+  fi
+  mkdir -p "$(dirname "$yap_app")"
   ditto "$yap_unpacked/Yap.app" "$yap_app"
-  cp "$yap_unpacked/yap" "$yap_launcher"
-  chmod +x "$yap_launcher"
+  open "$yap_app"
+  printf 'Opened: %s\n' "$yap_app"
 )
 ```
 
-After a successful install, set PATH in the current session:
+On launch, with **Settings → Set up my agents** on (the default), the app installs
+`~/.local/bin/yap`, the yap skill for every agent harness it finds, and a marked
+PATH line in the login shell profile when no startup file already puts
+`~/.local/bin` on PATH. It repeats this at every launch, including the relaunch
+after an update, so the command and skill always match the app. Do not copy a
+launcher or run `npx skills add` yourself.
 
-```sh
-export PATH="$HOME/.local/bin:$PATH"
-```
-
-Ensure the PATH addition also reaches future agent sessions, using the user's
-shell configuration or the agent launch environment. For another app location,
-set `YAP_APP` to that bundle's absolute path; the launcher defaults to
-`~/Applications/Yap.app`.
+A new PATH line reaches only new login shells. In the current session, and for
+agents launched from the Dock, call the command by its full path,
+`~/.local/bin/yap`.
 
 ## Verify installation separately from permissions
 
-1. Run `yap capture.status --help`. Its JSON schema proves launcher and
-   bundled runtime execution without launching the app.
-2. Run `yap service.health`. Inspect `ok` and the returned service status.
-   This may launch the installed app's service, but never starts capture.
+1. Run `~/.local/bin/yap cli.status` and `~/.local/bin/yap skill.status`. Expect
+   `installed` for both. These may launch the installed app's service; the first
+   launch can take a few seconds while the app sets up.
+2. Run `yap capture.status --help` (schema only, no app launch) and
+   `yap service.health`. Inspect `ok` and the returned service status.
 3. If macOS blocks launch, have the user try opening the installed app, then approve
-   System Settings → Privacy & Security → **Open Anyway**. Check the receipt's
-   signing status; these releases are not notarized. Managed Macs may prohibit
-   that override.
-   Do not remove quarantine attributes or disable Gatekeeper to bypass it.
+   System Settings → Privacy & Security → **Open Anyway**. Releases are not
+   notarized; a `curl` download is never blocked, a browser download is. Managed
+   Macs may prohibit that override. Do not remove quarantine attributes or disable
+   Gatekeeper to bypass it.
 4. Discover `capture.sources` and `capture.status` before an actual recording
    request. Screen, microphone and camera permissions are separate user actions.
    Yap-owned speech/voice models are prepared automatically when a requested
    first-class feature needs them; status and help reads never download models.
 
-Report the installed release tag, app/launcher paths and observed health result.
-If only help passed, say so; blocked app launch is not verified service readiness.
+Report a short checklist: release tag, app path, command (`cli.status` and whether
+it is on PATH), skill (`skill.status`), service health, and that permissions are
+granted at first recording. If only help passed, say so.
 Use the installed CLI's schemas even when this skill is newer than that release.
 
-## Refresh the media-tool launcher
+## When the app reports a problem
 
-After `service.tools` reports bundled media readiness, run `yap ffmpeg -version`
-and `yap ffprobe -version`. Both must exit successfully and identify the
-requested tool. An `UNKNOWN_OPERATION` or argument-parsing failure can mean the app
-updated while its external launcher stayed older. Tool readiness alone does not
-prove launcher support. Do not bypass update protection by running the raw path.
+`cli.status` or `skill.status` returning `needs_attention`, `different` or
+`unavailable` carries an `error` or reason. Common causes:
 
-Use the download-and-verify procedure above to obtain a complete release kit that
-supports media passthrough. If its launcher still does not recognize these commands,
-report the unavailable capability; installing a separate FFmpeg is not the remedy.
-Wait for existing CLI/MCP clients to finish. Retain the existing launcher and replace
-only that launcher from the verified kit using a same-directory staged rename:
+- **Set up my agents is off.** Ask the user before turning it back on.
+- **The app is outside an Applications folder.** It shows a "Move it home" prompt
+  and quits; move it, or reinstall with the steps above.
+- **A write failed** (permissions on `~/.local/bin` or a profile file). Report the
+  error; do not change ownership or permissions without the user.
 
-```sh
-(
-  set -eu
-  yap_unpacked="/absolute/path/printed/above/unpacked"
-  yap_launcher=$(command -v yap)
-  test -f "$yap_launcher"
-  test ! -L "$yap_launcher"
-  test -x "$yap_unpacked/yap"
-  yap_backup=$(mktemp -d)
-  cp -p "$yap_launcher" "$yap_backup/yap"
-  yap_staged=$(mktemp "${yap_launcher}.refresh.XXXXXX")
-  trap 'rm -f "$yap_staged"' EXIT
-  cp "$yap_unpacked/yap" "$yap_staged"
-  chmod +x "$yap_staged"
-  mv "$yap_staged" "$yap_launcher"
-  printf 'Previous launcher retained at: %s\n' "$yap_backup/yap"
-)
-```
-
-Repeat both version checks and ordinary CLI help. App and library contents remain
-in place; a missing or unready app requires the full installation procedure.
+Only then install by hand. The command: copy `Yap.app/Contents/Resources/bin/yap`
+to `~/.local/bin/yap` with a same-directory staged rename and make it executable.
+The skill: follow [skill lifecycle](skill-lifecycle.md).
 
 ## App updates and recovery
 
-An older installation without the updater or coordinated launcher needs one
-manual bootstrap using the complete app-plus-launcher kit above. Wait for accepted
+An older installation without the updater needs one manual bootstrap using the
+install steps above. Wait for accepted
 work and old client processes to finish before replacing it; never kill clients,
 cancel jobs or stop a recording merely to install an update. Retain the old bundle
 and launcher and leave the library intact.
 
 Updater-bearing releases download candidates automatically and install when the
 app, service and existing CLI clients permit it. The app bundle contains the actual
-CLI, Node, service and workers, so they update together; the external launcher stays
-in place. An already-running CLI remains its old generation until it exits. The
+CLI, Node, service and workers, so they update together; the relaunched app
+then refreshes `~/.local/bin/yap` from its bundled launcher. An already-running CLI remains its old generation until it exits. The
 app's automatic-update preference persists; turning it off cancels download or
 staged installation until replacement has been finally authorized. After that
 point it applies to the successor. The update does not edit skill files itself;
@@ -159,6 +141,6 @@ within the user's request.
 
 If an installed update cannot start, retain the reported failure and use the same
 verified download/install procedure for a specifically chosen previous release
-with the same catalog format. Back up the app/launcher, preserve the library, and
+with the same catalog format. Back up the app, preserve the library, and
 verify health after reinstalling. Do not promise arbitrary downgrades, automatic
 post-launch rollback or restoration of capture permissions from a checksum alone.

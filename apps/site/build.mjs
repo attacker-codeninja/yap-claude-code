@@ -121,19 +121,15 @@ function renderPage(siteUrl) {
     </figure>
 
     <div class="ctas">
-      <div class="cta download">
-        <a class="button" id="download" href="${links.releases}">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 20h16"/></svg>
-          Download for Mac
-        </a>
-        <p class="fine"><span id="version">Latest release</span> · ${requirements} · Free</p>
-      </div>
-      <div class="or hand" aria-hidden="true">or</div>
       <div class="cta prompt">
-        <p class="hand prompt-label">tell your agent to do it all</p>
+        <p class="hand prompt-label">tell your agent to install it</p>
         <blockquote id="agent-prompt">${escape(agentPrompt)}</blockquote>
-        ${copyButton("Copy prompt", "agent-prompt")}
-        <p class="fine">Paste into Claude Code or Codex. It installs the app, the <code>yap</code> CLI and the skill.</p>
+        <div class="actions">
+          ${content.openIn.map((link) => `<a class="open" href="${escape(link.href)}">${escape(link.label)}</a>`).join("\n          ")}
+          ${copyButton("Copy prompt", "agent-prompt")}
+        </div>
+        <p class="fine">The open buttons type the prompt into your agent without sending it.</p>
+        <p class="fine req">${requirements} · Free</p>
       </div>
     </div>
   </section>

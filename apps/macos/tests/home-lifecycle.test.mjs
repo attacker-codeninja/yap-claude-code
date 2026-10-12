@@ -33,7 +33,11 @@ test("routes skill and cli by prefix", () => {
     "update.status",
     "skill.bogus",
   );
-  assert.deepEqual(cli, { onPath: false, path: join(paths.home, ".local/bin/yap"), state: "missing" });
+  assert.deepEqual(cli, {
+    onPath: false,
+    path: join(paths.home, ".local/bin/yap"),
+    state: "missing",
+  });
   assert.equal(skill.state, "missing");
   assert.deepEqual(skill.paths, []);
   assert.deepEqual(unknown, { failure: "UNKNOWN_OPERATION" });
@@ -42,11 +46,24 @@ test("routes skill and cli by prefix", () => {
 
 test("reconcile installs both when enabled", () => {
   const paths = setup("reconcile");
-  const [skill, cli] = runHome(driver, { ...paths, env: { SHELL: "/bin/bash" } }, "reconcile", "cli.status");
+  const [skill, cli] = runHome(
+    driver,
+    { ...paths, env: { SHELL: "/bin/bash" } },
+    "reconcile",
+    "cli.status",
+  );
   assert.equal(skill.state, "installed", JSON.stringify(skill));
-  assert.equal(readFileSync(join(paths.home, ".agents/skills/yap/SKILL.md"), "utf8"), "bundled skill\n");
+  assert.equal(
+    readFileSync(join(paths.home, ".agents/skills/yap/SKILL.md"), "utf8"),
+    "bundled skill\n",
+  );
   const profile = join(paths.home, ".bash_profile");
-  assert.deepEqual(cli, { onPath: true, path: join(paths.home, ".local/bin/yap"), profile, state: "installed" });
+  assert.deepEqual(cli, {
+    onPath: true,
+    path: join(paths.home, ".local/bin/yap"),
+    profile,
+    state: "installed",
+  });
   assert.deepEqual(readFileSync(join(paths.home, ".local/bin/yap")), launcher);
   assert.equal(readFileSync(profile, "utf8"), block);
 });

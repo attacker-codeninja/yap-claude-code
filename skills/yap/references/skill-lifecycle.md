@@ -1,6 +1,11 @@
 # Skill lifecycle
 
-Use the published `npx skills@1.7.0` installer. Check `node --version`,
+The installed app maintains the global yap skill itself (see
+[App and CLI lifecycle operations](#app-and-cli-lifecycle-operations)); prefer
+`skill.status` and `skill.install` over the manual steps below. Use the manual
+steps for a project install, for comparison, or when the app reports a problem.
+
+For a manual install, use the published `npx skills@1.7.0` installer. Check `node --version`,
 `npm --version` and `npx --version`; Node/npm for this command are separate from
 the app's bundled runtime. If missing, report this prerequisite and use the
 user's existing runtime installation route. Do not build the app to obtain it.
@@ -221,10 +226,10 @@ The same handlers are available through Settings and the public CLI:
   compact state plus diagnostic paths, source revision, ownership and errors.
 - `skill.install` starts a durable operation that stages and verifies the complete
   current folder, then atomically replaces the global Yap skill.
-  `npx skills@1.7.0` discovers the supported harnesses rather than a hand-maintained
-  path list. The released app supplies its bundled current `skills/yap` folder as
-  the source, so refresh does not clone the full repository; a new app release
-  carries the latest upstream skill contents.
+  The app runs its bundled, pinned `skills@1.7.0` installer with its own Node, so
+  no host Node, npm or network is needed. The installer discovers the supported
+  harnesses rather than a hand-maintained path list. The app supplies its bundled
+  `skills/yap` folder as the source; a new app release carries the latest skill.
 - `skill.update` starts the same pinned replacement explicitly.
 - `skill.uninstall` starts removal of the managed global installation when
   maintenance is disabled; it does not touch project-local installs.
@@ -235,6 +240,7 @@ acknowledgement). Other protocol clients poll `skill.status` for the terminal
 state and any retained error or backup path.
 The app reconciles at every launch (including the relaunch after an app update)
 and when maintenance is re-enabled. There is no periodic background timer.
-Settings shows only the maintenance toggle; read state (`installed`, `updating`,
-`missing`, `unmanaged`, `disabled` or `needs_attention`) and diagnostics from
-`skill.status`.
+Maintenance is the Settings row **Set up my agents**, which covers both this skill
+and the `yap` command (`cli.status`, `cli.install`, `cli.uninstall`). Its status
+line summarizes both; read detailed state (`installed`, `updating`, `missing`,
+`unmanaged`, `disabled` or `needs_attention`) and diagnostics from `skill.status`.

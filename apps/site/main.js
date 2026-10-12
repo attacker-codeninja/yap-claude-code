@@ -24,21 +24,6 @@ for (const button of document.querySelectorAll("[data-copy]")) {
   });
 }
 
-// Point the button straight at the current install kit; on any failure it stays on the release page.
-// Once a release with the fixed kit name ships, link releases/latest/download/Yap-macos-arm64.zip
-// directly in content.mjs and delete this lookup.
-fetch("https://api.github.com/repos/dzhng/yap/releases/latest")
-  .then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
-  .then((release) => {
-    const zip = release.assets.find((asset) =>
-      /^Yap-(?:v[^-]+-)?macos-arm64\.zip$/.test(asset.name),
-    );
-    if (!zip) return;
-    document.getElementById("download").href = zip.browser_download_url;
-    document.getElementById("version").textContent = release.tag_name;
-  })
-  .catch(() => {});
-
 // The blobs watch the cursor.
 const eyes = [...document.querySelectorAll(".blob .eyes")];
 if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {

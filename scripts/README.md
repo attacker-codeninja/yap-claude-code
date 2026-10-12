@@ -134,9 +134,13 @@ same exclusion, without entering Node or the service. Tool arguments, streams an
 exit status pass through unchanged. Raw discovered executable paths remain useful
 inventory evidence; executing them directly bypasses the launcher's update protection.
 Direct tool output is outside managed export identity and publication.
-Automatic updates leave the external launcher in place; installations with an
-older launcher require the consumer installation reference's verified refresh
-before using its new media passthrough.
+Release apps carry the signed launcher at `Contents/Resources/bin/yap`, and the kit
+holds only the app and its receipt. The app writes `~/.local/bin/yap` from that
+copy at every launch, so an automatic update refreshes the command with its app.
+Every build also carries the pinned `skills` installer
+([bundled here](skills-installer.mjs)), which the app runs with its own Node.
+The launcher finds the app at `$YAP_APP`, then `~/Applications/Yap.app`, then
+`/Applications/Yap.app`.
 
 ## Personal source installation
 
