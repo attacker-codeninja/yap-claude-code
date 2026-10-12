@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync, execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,15 +27,15 @@ try {
   const updateApp = join(update, "Yap.app");
   for (const path of [app, updateApp])
     execFileSync("codesign", ["--verify", "--deep", "--strict", path]);
-  execFileSync("codesign", ["--verify", "--strict", join(moved, "yap")]);
-  // The app installs the command from its own bundled launcher; the kit ships the same bytes.
+  assert.deepEqual(
+    readdirSync(moved).sort(),
+    ["Yap.app", "release.json"],
+    "The kit must hold only Yap.app and release.json",
+  );
+  // The app installs the command from its own bundled launcher, the only copy shipped.
   const bundledLauncher = join(app, "Contents/Resources/bin/yap");
   assert.ok(existsSync(bundledLauncher), "The release app must carry its bundled launcher");
   execFileSync("codesign", ["--verify", "--strict", bundledLauncher]);
-  assert.ok(
-    readFileSync(join(moved, "yap")).equals(readFileSync(bundledLauncher)),
-    "The kit's yap must be identical to the bundled launcher",
-  );
   const tree = (path) =>
     execFileSync("/usr/sbin/mtree", ["-c", "-p", path, "-k", "type,mode,link,sha256digest"], {
       encoding: "utf8",

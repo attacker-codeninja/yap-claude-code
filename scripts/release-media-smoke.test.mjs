@@ -24,6 +24,7 @@ test("relocated media verification reports service startup refusal without runni
       "kit/Yap.app/Contents/MacOS",
       "kit/Yap.app/Contents/Resources/node/bin",
       "kit/Yap.app/Contents/Resources/service",
+      "kit/Yap.app/Contents/Resources/bin",
     ])
       mkdirSync(join(scratch, directory), { recursive: true });
     copyFileSync(
@@ -38,7 +39,7 @@ test("relocated media verification reports service startup refusal without runni
     const forbidden = join(scratch, "forbidden");
     const trap = `#!${process.execPath}\nrequire('node:fs').writeFileSync(${JSON.stringify(forbidden)},'unexpected');process.exit(79);\n`;
     writeFileSync(join(app, "Contents/MacOS/Yap"), trap, { mode: 0o755 });
-    writeFileSync(join(scratch, "kit/yap"), trap, { mode: 0o755 });
+    writeFileSync(join(app, "Contents/Resources/bin/yap"), trap, { mode: 0o755 });
     symlinkSync(process.execPath, join(app, "Contents/Resources/node/bin/node"));
     writeFileSync(
       join(app, "Contents/Resources/service/main.mjs"),

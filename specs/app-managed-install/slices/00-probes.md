@@ -16,3 +16,16 @@ code depends on it. No product code in this slice; scratch work lives outside th
 
 **Delegated.** Probe mechanics. **Record** each outcome in this table (a Result
 column) before slice 04 starts.
+
+## Results (2026-10-12, macOS 27.0 arm64)
+
+| # | Result | Consequence |
+|---|---|---|
+| P2 | Holds: `Info.plist` has no `LSFileQuarantineEnabled` and the app is not sandboxed, so files it writes are not quarantined | Slice 04 test still asserts no xattrs on the written command |
+| P3 | Not run separately; rename-over is the contract | Slice 04 pins it |
+| P4 | Holds: both symbols resolve via `dlsym` | Slice 06/07 use them, still degrading to Quit-only if absent |
+| P5 | Open; needs a real translocated launch | Slice 07 human check |
+| P6 | Not run; the rule is "update relaunch always proceeds" regardless | — |
+| P7 | Holds: `cli.mjs add <skills/yap> --all --global --yes` with `DISABLE_TELEMETRY=1` under a deny-network sandbox exits 0 in 0.3 s; "Failed to install 2" is Eve and PromptScript (no global support) | Keep the env var |
+| P8 | **False**: `NSHomeDirectory()` ignores an overridden `HOME` (returned the account home with `HOME=/tmp/fakehome`) | Slice 04 adds `accountHome()` = `$HOME` if set, else `NSHomeDirectory()`, for every home path; the launch lock stays on the passwd home |
+| P9 | Open; checked at the first local release package | — |

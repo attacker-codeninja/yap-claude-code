@@ -26,7 +26,6 @@ const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const { values } = parseArgs({
   options: {
     app: { type: "string" },
-    launcher: { type: "string" },
     "sign-update": { type: "string" },
     evidence: { type: "string" },
     "fail-successor-startup": { type: "boolean", default: false },
@@ -35,11 +34,11 @@ const { values } = parseArgs({
 });
 if (values.help) {
   console.log(
-    "node scripts/installed-update-lab.mjs --app <final signed .app> --launcher <final kit yap> --sign-update <pinned Sparkle bin/sign_update> --evidence <outside-git dir> [--fail-successor-startup]\nRequires approved YAP_RELEASE_* / YAP_SPARKLE_* credential env. Uses retained silent media and production compiled app, service, CLI and patched SDK. Startup-failure case removes only the candidate service entry file, then demonstrates manual reinstall. Deadline: 180 seconds after artifact preparation.",
+    "node scripts/installed-update-lab.mjs --app <final signed .app> --sign-update <pinned Sparkle bin/sign_update> --evidence <outside-git dir> [--fail-successor-startup]\nRequires approved YAP_RELEASE_* / YAP_SPARKLE_* credential env. Uses retained silent media and production compiled app, service, CLI and patched SDK. Startup-failure case removes only the candidate service entry file, then demonstrates manual reinstall. Deadline: 180 seconds after artifact preparation.",
   );
   process.exit(0);
 }
-for (const name of ["app", "launcher", "sign-update", "evidence"])
+for (const name of ["app", "sign-update", "evidence"])
   assert.ok(values[name], `Missing --${name}; use --help`);
 const signing = releaseSigningInputs();
 assert.ok(
@@ -183,7 +182,7 @@ try {
     architecture: process.arch,
   };
   const originalApp = realpathSync(values.app),
-    finalLauncher = realpathSync(values.launcher);
+    finalLauncher = join(originalApp, "Contents/Resources/bin/yap");
   const originalRuntime = JSON.parse(
     readFileSync(join(originalApp, "Contents/Resources/service/runtime.json")),
   );
@@ -194,14 +193,14 @@ try {
   };
   run("codesign", ["--verify", "--deep", "--strict", originalApp]);
   run("codesign", ["--verify", "--strict", finalLauncher]);
-  report.finalKitLauncher = {
+  report.finalLauncher = {
     sha256: digest(finalLauncher),
     signature: spawnSync("codesign", ["-dv", "--verbose=4", finalLauncher], {
       encoding: "utf8",
       timeout: 5000,
     }).stderr,
     scope:
-      "Exact final kit signature/static scope; live launcher uses documented fixture-only namespace substitution",
+      "Exact final bundled launcher signature/static scope; live launcher uses documented fixture-only namespace substitution",
   };
   report.engine = frameworkIdentity(join(originalApp, "Contents/Frameworks/Sparkle.framework"));
   report.payload = {};

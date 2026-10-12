@@ -10,27 +10,27 @@ app installed only the skill, so a fresh app gave agents a skill without a comma
 *Last updated 2026-10-12.* You are resuming this feature. Read this README, then
 the slice you pick up. Pre-launch: no users, no migrations, no compatibility shims.
 
-**Status.** Slices 01 (packaging and launcher) and 02 (operations) are implemented
-in the working tree, uncommitted, with their tests green. Everything else is open.
+**Status.** 00–03 and 06 are done and committed (06's `LaunchDecision` is not yet
+wired into `main.swift`; slice 07 wires it). 04 is in progress. 08's site, README
+agent setup and `installation.md` are drafted.
 
-**Pick up at slice 00 (probes)**, then build 03 → 08 in order. Each slice names
+**Pick up at** whichever of 04, 05, 07, 08 is unchecked, in that order. Each slice names
 its tests; run only those. Run the full check once, after slice 08, then release
 with the `release` skill (the user delegated tagging).
 
 **Warnings.**
-- The release kit still contains a top-level `yap`; slice 03 removes it.
 - `skills` installer: set `DISABLE_TELEMETRY=1` when the app runs it (probe P7).
 - Codex was at capacity during planning; all three drafts were Claude. A Codex
   review of the finished diff is the substitute second-family check.
 
 **TODO**
-- [ ] 00 Probes — [slices/00-probes.md](slices/00-probes.md)
+- [x] 00 Probes — [slices/00-probes.md](slices/00-probes.md)
 - [x] 01 Packaging and launcher — [slices/01-packaging.md](slices/01-packaging.md)
 - [x] 02 Operations — [slices/02-operations.md](slices/02-operations.md)
-- [ ] 03 Kit is the app only — [slices/03-kit.md](slices/03-kit.md)
+- [x] 03 Kit is the app only — [slices/03-kit.md](slices/03-kit.md)
 - [ ] 04 Home lifecycle: command, skill, PATH — [slices/04-home-lifecycle.md](slices/04-home-lifecycle.md)
 - [ ] 05 Settings: one "Set up my agents" row — [slices/05-settings.md](slices/05-settings.md)
-- [ ] 06 Launch decision: location and one copy — [slices/06-launch-decision.md](slices/06-launch-decision.md)
+- [x] 06 Launch decision: location and one copy — [slices/06-launch-decision.md](slices/06-launch-decision.md)
 - [ ] 07 Move to Applications — [slices/07-move.md](slices/07-move.md)
 - [ ] 08 Docs, skill, site — [slices/08-docs-site.md](slices/08-docs-site.md)
 - [ ] Full check, Codex review, release, release-day checklist (below)

@@ -11,7 +11,7 @@ published release. B retains final compiled app bytes. Both have a unique fixtur
 bundle identifier, local signed feed, and private lock namespace under the real
 account's cache directory. The production launcher source receives only that
 namespace substitution. A `HOME` override alone cannot isolate Sparkle's helper.
-The receipt records the exact final kit launcher separately: its signature and
+The receipt records the final app's bundled launcher separately: its signature and
 hash are static evidence, not a claim of byte parity with the fixture launcher.
 
 The [library fixture](library.mjs) reuses retained silent media, existing recording
