@@ -12,8 +12,12 @@ schema discovery do not require that process. App selection and library selectio
 are separate: an already-running app retains the home it started with, so choosing
 another home cannot silently redirect that instance.
 
-One deadline covers discovery and startup. Cancellation prevents a late app
-launch and ends pending transport work. Health probes do not execute the requested
+Discovery is bounded by the path it takes. Finding a running service gets a short
+deadline; when nothing is listening and discovery launches the app, the deadline
+restarts with a launch budget long enough for a cold first start. A caller's own
+budget replaces both and covers discovery and startup together. A timeout names
+the budget that elapsed. Cancellation prevents a late app launch and ends pending
+transport work. Health probes do not execute the requested
 operation; the caller sends it once after preparation.
 
 ## Uncertain writes remain uncertain

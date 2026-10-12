@@ -237,7 +237,7 @@ async function main() {
           waiting:
             "Skill install/update/uninstall wait by default for up to 120000 ms; use --no-wait for an immediate acknowledgement. Other long-running operations require --wait with a positive --timeout-ms up to 2147483647. One deadline covers discovery, admission, polling and delivery. Polls every 100 ms; never retries failures or resubmits writes. wait metadata distinguishes settled work, timed_out pending work (exit 2), and interrupted waiting (exit 1); success requires the requested output to be ready.",
           service:
-            "Without --socket, calls use $YAP_HOME/run/service.sock (default ~/.yap) and launch the personal app once, within ten seconds, when nothing answers there. --socket connects to that path directly and never launches an app.",
+            "Without --socket, calls use $YAP_HOME/run/service.sock (default ~/.yap) and launch the personal app once when nothing answers there. A running service has ten seconds to answer; an app that discovery launched has a minute to start serving. --socket connects to that path directly and never launches an app.",
           bundledMedia:
             "The released yap launcher also accepts ffmpeg or ffprobe followed by that tool's own arguments. It runs the selected app's bundled executable under installation exclusion without starting the service; streams and exit status belong to the media tool, not the operation JSON protocol.",
           timeUnits:

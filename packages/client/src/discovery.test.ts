@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile, chmod } from "node:fs/promises
 import { randomUUID } from "node:crypto";
 import { dirname, join } from "node:path";
 import { serviceRuntimeDirectory, serviceSocketPath } from "@yap/protocol";
-import { resolveServiceSocket } from "./discovery.js";
+import { DISCOVERY_BUDGET_MS, LAUNCH_BUDGET_MS, resolveServiceSocket } from "./discovery.js";
 
 /** Where a service of this personal root listens. */
 function socketIn(home: string): string {
@@ -61,6 +61,7 @@ vi.mock("node:fs/promises", async (original) => {
 
 const cleanup: (() => Promise<void>)[] = [];
 afterEach(async () => {
+  vi.useRealTimers();
   launcherRuns.length = 0;
   inspection.wait = undefined;
   inspection.entered = () => {};
@@ -173,6 +174,25 @@ createServer((socket) => {
 }).listen(socketPath);
 `;
 
+/** Serves its home only once the test creates `ready` in that home, so the test decides when startup ends. */
+const SERVES_ITS_HOME_WHEN_RELEASED = `
+const release = join(home, "ready");
+const waiting = setInterval(() => {
+  if (!require("node:fs").existsSync(release)) return;
+  clearInterval(waiting);
+  ${SERVES_ITS_HOME}
+}, 20);
+`;
+
+/**
+ * The discovery deadlines run on a fake clock so a test can spend whole budgets instantly; sockets,
+ * the launcher and the launched app stay real. Waiting on real progress uses vi.waitFor, which keeps
+ * real timers.
+ */
+function fakeDeadlines(): void {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+}
+
 it("uses a service that already answers without launching an app", async () => {
   const home = await personalHome();
   const socketPath = socketIn(home);
@@ -256,6 +276,58 @@ it("ends one attempt within the budget when the launched app never serves", asyn
   expect(elapsed).toBeGreaterThanOrEqual(budgetMs);
   expect(elapsed).toBeLessThan(budgetMs * 2);
   expect(await app.launches()).toEqual([home]);
+  expect(launcherRuns).toHaveLength(1);
+});
+
+it("gives an app it launched the launch budget, beyond the budget for a running service", async () => {
+  const home = await personalHome();
+  const app = await appBundle(SERVES_ITS_HOME_WHEN_RELEASED);
+  fakeDeadlines();
+  const discovery = resolveServiceSocket({ env: { YAP_HOME: home, YAP_APP: app.path } });
+  discovery.catch(() => {});
+  await vi.waitFor(async () => expect(await app.launches()).toEqual([home]), { timeout: 10_000 });
+  await vi.advanceTimersByTimeAsync(DISCOVERY_BUDGET_MS + 1_000);
+  await writeFile(join(home, "ready"), "");
+  expect(await discovery).toBe(socketIn(home));
+  expect(launcherRuns).toHaveLength(1);
+});
+
+it("ends a launch whose service never answers when the launch budget elapses", async () => {
+  const home = await personalHome();
+  const app = await appBundle(NEVER_SERVES);
+  fakeDeadlines();
+  let settled = false;
+  const discovery = resolveServiceSocket({ env: { YAP_HOME: home, YAP_APP: app.path } }).finally(
+    () => (settled = true),
+  );
+  discovery.catch(() => {});
+  await vi.waitFor(async () => expect(await app.launches()).toEqual([home]), { timeout: 10_000 });
+  await vi.advanceTimersByTimeAsync(LAUNCH_BUDGET_MS - 1_000);
+  expect(settled).toBe(false);
+  await vi.advanceTimersByTimeAsync(1_000);
+  await expect(discovery).rejects.toMatchObject({
+    code: "TIMEOUT",
+    message: expect.stringMatching(/launch budget.*No request was sent/),
+  });
+  expect(launcherRuns).toHaveLength(1);
+});
+
+it("ends discovery of a running service that never answers within the running budget", async () => {
+  const home = await personalHome();
+  await serve(socketIn(home), { answers: false });
+  const app = await appBundle(NEVER_SERVES);
+  fakeDeadlines();
+  const discovery = resolveServiceSocket({ env: { YAP_HOME: home, YAP_APP: app.path } });
+  discovery.catch(() => {});
+  // The first health probe gives up; discovery asks macOS for the app, which coalesces with a
+  // running instance. Something already listens, so this is not a cold start.
+  await vi.advanceTimersByTimeAsync(1_000);
+  await vi.waitFor(() => expect(launcherRuns).toHaveLength(1), { timeout: 10_000 });
+  await vi.advanceTimersByTimeAsync(DISCOVERY_BUDGET_MS);
+  await expect(discovery).rejects.toMatchObject({
+    code: "TIMEOUT",
+    message: expect.stringMatching(/running service.*No request was sent/),
+  });
   expect(launcherRuns).toHaveLength(1);
 });
 

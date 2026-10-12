@@ -12,7 +12,15 @@ import {
 } from "@yap/protocol";
 import { callLocal, LocalTransportError } from "./transport.js";
 
+/** Finding a service that is already running: a health answer takes milliseconds. */
 export const DISCOVERY_BUDGET_MS = DEFAULT_CALL_TIMEOUT_MS;
+/**
+ * Waiting for a service whose app discovery launched itself. A cold first launch spends its time
+ * before the service can answer: macOS assesses a freshly installed bundle (tens of seconds for
+ * an app carrying its own runtime), then the app, Node and the service start, on a Mac that may
+ * be busy. A minute covers that with room while still ending a launch that will never serve.
+ */
+export const LAUNCH_BUDGET_MS = 60_000;
 const LAUNCHER = "/usr/bin/open";
 
 export type ServiceSelection = {
@@ -20,6 +28,11 @@ export type ServiceSelection = {
   socketPath?: string | undefined;
   env?: NodeJS.ProcessEnv | undefined;
   signal?: AbortSignal | undefined;
+  /**
+   * One deadline for the whole discovery, including any launch. Without it, finding a running
+   * service has DISCOVERY_BUDGET_MS, and a launch that found nothing listening restarts the
+   * deadline at LAUNCH_BUDGET_MS.
+   */
   budgetMs?: number | undefined;
 };
 
@@ -27,7 +40,6 @@ export type ServiceSelection = {
 export async function resolveServiceSocket(options: ServiceSelection = {}): Promise<string> {
   if (options.socketPath !== undefined) return options.socketPath;
   const env = options.env ?? process.env;
-  const budgetMs = options.budgetMs ?? DISCOVERY_BUDGET_MS;
   const controller = new AbortController();
   const abort = () =>
     controller.abort(
@@ -36,24 +48,35 @@ export async function resolveServiceSocket(options: ServiceSelection = {}): Prom
   options.signal?.addEventListener("abort", abort, { once: true });
   if (options.signal?.aborted) abort();
   const socketPath = serviceSocketPath(serviceRuntimeDirectory(personalHome(env)));
-  const timer = setTimeout(
-    () =>
-      controller.abort(
-        new LocalTransportError(
-          "TIMEOUT",
-          `Service at ${socketPath} did not become ready within ${budgetMs} ms. No request was sent. ` +
-            "Check the app's service status, or pass an explicit socket.",
+  let timer: NodeJS.Timeout | undefined;
+  const expireAfter = (budgetMs: number, budget: string) => {
+    clearTimeout(timer);
+    timer = setTimeout(
+      () =>
+        controller.abort(
+          new LocalTransportError(
+            "TIMEOUT",
+            `Service at ${socketPath} did not become ready within the ${budgetMs} ms ${budget}. ` +
+              "No request was sent. Check the app's service status, or pass an explicit socket.",
+          ),
         ),
-      ),
-    budgetMs,
-  );
+      budgetMs,
+    );
+  };
+  if (options.budgetMs === undefined)
+    expireAfter(DISCOVERY_BUDGET_MS, "budget for a running service");
+  else expireAfter(options.budgetMs, "discovery budget");
+  const coldLaunch =
+    options.budgetMs === undefined
+      ? () => expireAfter(LAUNCH_BUDGET_MS, "launch budget")
+      : () => {};
   const signal = controller.signal;
   try {
     signal.throwIfAborted();
     // The race also bounds filesystem inspection, which has no AbortSignal API. The
     // discovery branch checks cancellation again before it can launch anything late.
     return await Promise.race([
-      discover(socketPath, env, signal),
+      discover(socketPath, env, signal, coldLaunch),
       new Promise<never>((_resolve, reject) =>
         signal.addEventListener("abort", () => reject(signal.reason), { once: true }),
       ),
@@ -68,8 +91,10 @@ async function discover(
   socketPath: string,
   env: NodeJS.ProcessEnv,
   signal: AbortSignal,
+  coldLaunch: () => void,
 ): Promise<string> {
-  if (await answering(socketPath, signal)) return socketPath;
+  const found = await probe(socketPath, signal);
+  if (found === "answering") return socketPath;
   signal.throwIfAborted();
   const bundle = env.YAP_APP ?? join(homedir(), "Applications", "Yap.app");
   if (!isAbsolute(bundle))
@@ -87,24 +112,33 @@ async function discover(
     );
   // Always carry the resolved home, including the default/empty-env case. LaunchServices
   // may inherit a different environment; an already-running app retains its original home.
+  // Only a launch that found nothing listening starts the app; one that found a silent listener
+  // coalesces with the running instance, so it keeps the running budget.
+  if (found === "absent") coldLaunch();
   await launch(bundle, personalHome(env), env.YAP_DEFAULTS, signal);
   while (true) {
     await delay(100, undefined, { signal });
-    if (await answering(socketPath, signal)) return socketPath;
+    if ((await probe(socketPath, signal)) === "answering") return socketPath;
   }
 }
 
-async function answering(socketPath: string, signal: AbortSignal): Promise<boolean> {
+/** "absent": nothing accepted the connection. "silent": something did, but gave no health answer. */
+async function probe(
+  socketPath: string,
+  signal: AbortSignal,
+): Promise<"answering" | "absent" | "silent"> {
   try {
     await callLocal(
       socketPath,
       { id: randomUUID(), operation: "service.health", params: {} },
       { timeoutMs: 1_000, signal },
     );
-    return true;
-  } catch {
+    return "answering";
+  } catch (error) {
     signal.throwIfAborted();
-    return false;
+    return error instanceof LocalTransportError && error.code === "CONNECTION_ERROR"
+      ? "absent"
+      : "silent";
   }
 }
 
