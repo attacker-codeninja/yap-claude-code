@@ -2,6 +2,12 @@ Yap is the macOS recording and agent-operated video toolkit. This release ships
 `Yap.app`, the `yap` CLI and the `com.dzhng.yap` app identity. Install the app for
 this identity; capture permissions must be granted to Yap separately.
 
+The capture menu keeps its dark appearance after selecting a recording area and
+shows the latest recording below the action buttons with Play and Copy agent prompt
+actions. Screen recordings now include the pointer in the captured video.
+
+## 0.1.29
+
 The app now sets up your agents itself. On every launch, including the relaunch
 after an update, it installs `~/.local/bin/yap` from its bundled launcher, refreshes
 the yap skill with its bundled installer (no Node or npm needed), and adds a marked
@@ -9,10 +15,6 @@ PATH line when one is missing. Settings → Set up my agents turns this off. The
 release ZIP has a fixed name, `Yap-macos-arm64.zip`, and contains only the app and
 its receipt. Yap runs only from /Applications or ~/Applications, offers to move
 itself when opened anywhere else, and allows one running copy at a time.
-
-The capture menu keeps its dark appearance after selecting a recording area and
-shows the latest recording below the action buttons with Play and Copy agent prompt
-actions. Screen recordings now include the pointer in the captured video.
 
 ## 0.1.28
 
