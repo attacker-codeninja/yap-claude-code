@@ -15,6 +15,7 @@ import {
   clipAssetIds,
   type Composition,
   type EditBatchResult,
+  omit,
 } from "@yap/composition";
 import { TranscriptStore } from "./transcript.js";
 import { seedTextOperations, textSeeds, validateTextSeeds } from "./text-seeds.js";
@@ -116,8 +117,7 @@ function editResult(
   result: ProjectEditResult & { edit: { document?: EditBatchResult["document"] } },
 ): ProjectEditResult {
   // Historical request receipts may contain the same document inside edit.
-  const { document: _document, ...edit } = result.edit;
-  return { revision: result.revision, edit };
+  return { revision: result.revision, edit: omit(result.edit, "document") };
 }
 export type ProjectHistoryCursor = {
   projectId: string;
@@ -253,7 +253,7 @@ export class ProjectStore {
       )
       .all(after, limit + 1);
     return {
-      projects: rows.slice(0, limit).map(({ sequence: _sequence, ...row }) => row as Project),
+      projects: rows.slice(0, limit).map((row) => omit(row, "sequence") as Project),
       nextCursor:
         rows.length > limit ? { afterSequence: rows[limit - 1]!.sequence as number } : null,
     };

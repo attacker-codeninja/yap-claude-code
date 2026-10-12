@@ -5,7 +5,7 @@ import { afterEach, expect, test } from "vitest";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { validateComposition, createCompiler, type TextSeedCue } from "@yap/composition";
+import { validateComposition, createCompiler, type TextSeedCue, omit } from "@yap/composition";
 import { Catalog } from "./catalog.js";
 import { AssetStore, compositionAsset } from "./assets.js";
 import { AcquisitionStore } from "./acquisitions.js";
@@ -310,7 +310,7 @@ test("missing or false generation/word/origin pins refuse atomically, including 
     expect(f.store.get(f.projectId).currentRevisionId).toBe(f.authored.revision.id);
   }
   const cue = f.cue(0),
-    { style, anchor: _anchor, separator: _separator, label: _label, trackId, ...pins } = cue;
+    { style, trackId, ...pins } = omit(cue, "anchor", "separator", "label");
   expect(() =>
     f.store.apply(f.projectId, {
       requestId: "forged",

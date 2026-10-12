@@ -1,4 +1,4 @@
-import { fromTime, compare, type SelectionRange } from "@yap/composition";
+import { fromTime, compare, type SelectionRange, omit } from "@yap/composition";
 import { z } from "zod";
 import { setImmediate } from "node:timers/promises";
 import { isDeepStrictEqual } from "node:util";
@@ -197,14 +197,13 @@ export class TranscriptProcessing {
       .safeParse(input);
     if (!parsed.success)
       throw new CatalogError("INVALID_PACKAGE", "Transcript publication has no decoder identity");
-    const {
-      encoderPrecision: _precision,
-      computeUnits: _units,
-      policy: _policy,
-      kindPolicy: _kind,
-      modelDigest,
-      ...pins
-    } = value.engine;
+    const { modelDigest, ...pins } = omit(
+      value.engine,
+      "encoderPrecision",
+      "computeUnits",
+      "policy",
+      "kindPolicy",
+    );
     const identity = this.sourceIdentity(
       selected,
       {

@@ -6,6 +6,7 @@ import {
   ceil,
   type SignedTimeValue,
   type TimeValue,
+  omit,
 } from "@yap/composition";
 import { z } from "zod";
 import { ResourceReferences } from "./references.js";
@@ -192,17 +193,14 @@ function invalid(message: string): never {
   throw new CatalogError("INVALID_EVIDENCE", message);
 }
 function metadata(row: Generation): SceneEvidenceMetadata {
-  const {
-    ownerKind,
-    ownerId,
-    source,
-    durationUs: _durationUs,
-    throughUs: _throughUs,
-    complete: _complete,
-    lastComparison: _lastComparison,
-    sourceState: _sourceState,
-    ...details
-  } = row;
+  const { ownerKind, ownerId, source, ...details } = omit(
+    row,
+    "durationUs",
+    "throughUs",
+    "complete",
+    "lastComparison",
+    "sourceState",
+  );
   const owner: SceneOwner =
     ownerKind === "recording"
       ? { kind: "recording", recordingId: ownerId }

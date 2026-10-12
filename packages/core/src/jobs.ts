@@ -1,3 +1,4 @@
+import { omit } from "@yap/composition";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { ResourceReferences, type ResourceKind } from "./references.js";
@@ -156,8 +157,8 @@ type ContextState = {
   closing?: Promise<void>;
 };
 type ClaimedJob = { job: Job; context?: never } | { job: ContextJob; context: ContextState };
-function contextValue({ queuedSequence: _sequence, ...job }: ContextRow): ContextJob {
-  return job;
+function contextValue(row: ContextRow): ContextJob {
+  return omit(row, "queuedSequence");
 }
 const contextLimit = 4;
 const contextJobLimit = 32;
@@ -213,13 +214,8 @@ function targetFrom({ targetKind, targetId, revisionId }: TargetRow): JobTarget 
   if (owner.kind === "recording") return { ...owner, revisionId: null };
   return owner.kind === "project" ? { ...owner, revisionId } : owner;
 }
-function toArtifact({
-  targetKind,
-  targetId,
-  revisionId,
-  attemptId: _attemptId,
-  ...row
-}: ArtifactRow & { attemptId?: string }): Artifact {
+function toArtifact(stored: ArtifactRow & { attemptId?: string }): Artifact {
+  const { targetKind, targetId, revisionId, ...row } = omit(stored, "attemptId");
   return { ...row, target: targetFrom({ targetKind, targetId, revisionId }) };
 }
 function toJob({ targetKind, targetId, revisionId, ...row }: JobRow): Job {
@@ -1289,7 +1285,7 @@ export class JobQueue {
           };
         }
         if (!row) return null;
-        const { queuedSequence: _sequence, ...fields } = row;
+        const fields = omit(row, "queuedSequence");
         if (!this.targets.isAvailable(targetFrom(fields))) {
           this.discard(row.jobId, `${row.targetKind}_unavailable`);
           continue;

@@ -9,6 +9,7 @@ import {
   isMediaClip,
   type ProcessingTap,
   type ExecutionWindowManifest,
+  omit,
 } from "@yap/composition";
 import { AssetStore, type AssetProbe } from "./assets.js";
 import { CatalogError, type Catalog } from "./catalog.js";
@@ -381,7 +382,7 @@ export class PreparedAudioStore {
       throw new CatalogError("INVALID_STORAGE", "Prepared audio has no project owner");
     const read = this.open(resourceId);
     try {
-      const { resourceId: _resource, identity: _identity, ...audio } = read.value;
+      const audio = omit(read.value, "resourceId", "identity");
       return portablePreparedAudioSchema.parse({
         projectId: publication.target.projectId,
         revisionId: publication.target.revisionId,

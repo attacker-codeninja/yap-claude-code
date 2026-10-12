@@ -1,3 +1,4 @@
+import { omit } from "@yap/composition";
 import { createHash, randomUUID } from "node:crypto";
 import { JobQueue } from "./jobs.js";
 import { DerivedCache } from "./cache.js";
@@ -501,7 +502,9 @@ test("demanded empty-picture coverage retains verified provenance after the job 
       f.scenes,
       noFrameRequests,
     );
-    expect(retained.coverage(f.identity, null, coverage, "retained")).toEqual(coverage.source);
+    expect(
+      retained.coverage({ identity: f.identity, candidate: null, coverage, admission: "retained" }),
+    ).toEqual(coverage.source);
     for (const changed of [
       { attemptId: "invented" },
       { supportDigest: "0".repeat(64) },
@@ -510,15 +513,15 @@ test("demanded empty-picture coverage retains verified provenance after the job 
       { implementationId: "another-renderer" },
     ]) {
       expect(() =>
-        retained.coverage(
-          f.identity,
-          null,
-          {
+        retained.coverage({
+          identity: f.identity,
+          candidate: null,
+          coverage: {
             ...coverage,
             observation: { kind: "frame", frame: { ...frame, ...changed } },
           },
-          "retained",
-        ),
+          admission: "retained",
+        }),
       ).toThrow("does not match");
     }
     expected = { ...coverage, sequence: 1 };
@@ -561,8 +564,7 @@ test("portable source index stages real PNGs, publishes atomically, replays, and
       source,
       sha256,
     };
-    for (const { sequence: _sequence, ...value } of coverage)
-      yield { kind: "coverage", coverage: value };
+    for (const value of coverage) yield { kind: "coverage", coverage: omit(value, "sequence") };
   }
   const validation = () =>
     sourceIndexDomain(

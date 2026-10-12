@@ -1,3 +1,4 @@
+import { omit } from "./omit.js";
 import { expect, test } from "vitest";
 import { applyBatch, CompositionError, validateComposition, projectToSource } from "./index.js";
 const input = {
@@ -1452,7 +1453,7 @@ test("insertion splits linked media and attachments then shifts named roots once
   for (const at of [0, 250000, 500000, 799999, 1300000, 1450000, 2499999]) {
     const originalAt = at < 800000 ? at : at - 500000;
     const values = (model: typeof before, time: number) =>
-      projectToSource(model, time).map(({ clipId: _clipId, ...value }) => value);
+      projectToSource(model, time).map((value) => omit(value, "clipId"));
     expect(values(after, at)).toEqual(values(before, originalAt));
   }
   expect(result.document.syncGroups.map((group) => group.clipIds.length)).toEqual([2, 2]);
@@ -2660,52 +2661,50 @@ test.each([
     window: { kind: "project", range: { startUs: 0, endUs: 200000 } },
   },
   { name: "stateful fallback", processor: { type: "rnnoise" } },
-])(
-  "placements beneath $name preserve scalar receipts and dependent edits",
-  ({ name: _name, ...step }) => {
-    const document = applyBatch(
-      { ...input, tracks: [{ id: "audio", kind: "audio", order: 0 }] },
-      [{ operation: "processing.set", target: { kind: "track", id: "audio" }, steps: [step] }],
-      { ...context, namespace: "processing" },
-    ).document;
-    const operations = [0, 1, 2].map((index) => ({
-      operation: "place",
-      label: `placed${index}`,
-      clip: {
-        trackId: "audio",
-        assetId: "source",
-        streamId: "a",
-        source: { kind: "range", range: { startUs: 200000, endUs: 300000 } },
-        placement: {
-          kind: "project",
-          range: { startUs: index * 100000, endUs: (index + 1) * 100000 },
-        },
+])("placements beneath $name preserve scalar receipts and dependent edits", (named) => {
+  const step = omit(named, "name");
+  const document = applyBatch(
+    { ...input, tracks: [{ id: "audio", kind: "audio", order: 0 }] },
+    [{ operation: "processing.set", target: { kind: "track", id: "audio" }, steps: [step] }],
+    { ...context, namespace: "processing" },
+  ).document;
+  const operations = [0, 1, 2].map((index) => ({
+    operation: "place",
+    label: `placed${index}`,
+    clip: {
+      trackId: "audio",
+      assetId: "source",
+      streamId: "a",
+      source: { kind: "range", range: { startUs: 200000, endUs: 300000 } },
+      placement: {
+        kind: "project",
+        range: { startUs: index * 100000, endUs: (index + 1) * 100000 },
       },
-    }));
-    const tail = {
-      operation: "remove",
-      clipIds: [{ label: "placed1" }],
-      scope: "selected",
-      ripple: "none",
-    };
-    const batched = applyBatch(document, [...operations, tail], context);
-    // Canvas no-ops preserve identities but force each placement through the scalar editor path.
-    const scalar = applyBatch(
-      document,
-      [
-        ...operations.flatMap((operation) => [operation, { operation: "canvas.set", canvas: {} }]),
-        tail,
-      ],
-      context,
-    );
-    expect(batched).toEqual({
-      ...scalar,
-      normalized: scalar.normalized
-        .filter((_, index) => index % 2 === 0)
-        .map((entry, operationIndex) => ({ ...entry, operationIndex })),
-    });
-  },
-);
+    },
+  }));
+  const tail = {
+    operation: "remove",
+    clipIds: [{ label: "placed1" }],
+    scope: "selected",
+    ripple: "none",
+  };
+  const batched = applyBatch(document, [...operations, tail], context);
+  // Canvas no-ops preserve identities but force each placement through the scalar editor path.
+  const scalar = applyBatch(
+    document,
+    [
+      ...operations.flatMap((operation) => [operation, { operation: "canvas.set", canvas: {} }]),
+      tail,
+    ],
+    context,
+  );
+  expect(batched).toEqual({
+    ...scalar,
+    normalized: scalar.normalized
+      .filter((_, index) => index % 2 === 0)
+      .map((entry, operationIndex) => ({ ...entry, operationIndex })),
+  });
+});
 
 function moveFixture(kind: "audio" | "video") {
   return validateComposition(

@@ -76,14 +76,14 @@ export type IndexDomain<D extends IndexRecords> = {
     path: string,
     previous: D["candidate"] | null,
   ): void;
-  coverage(
-    identity: D["identity"],
-    candidate: D["candidate"] | null,
-    coverage: D["coverage"],
-    admission: IndexAdmission,
-  ): { startUs: number; endUs: number };
+  coverage(input: {
+    identity: D["identity"];
+    candidate: D["candidate"] | null;
+    coverage: D["coverage"];
+    admission: IndexAdmission;
+  }): { startUs: number; endUs: number };
   merge(before: D["coverage"], next: D["coverage"]): D["coverage"] | null;
-  finishEntry?(identity: D["identity"], candidate: D["candidate"], coverageCount: number): void;
+  finishEntry?(coverageCount: number): void;
   finish(identity: D["identity"], candidateCount: number): void;
   retained?(
     identity: D["identity"],
@@ -554,7 +554,7 @@ export class ScreenshotIndexStore<
           join(directory, `${ordinal}.png`),
           previous,
         );
-        domain.finishEntry?.(identity, candidate, entry.coverageCount);
+        domain.finishEntry?.(entry.coverageCount);
         this.openImage(directory, row, entry).file.close();
         previous = candidate;
         if (ordinal % 100 === 99) await setImmediate(undefined, { signal });
@@ -571,7 +571,7 @@ export class ScreenshotIndexStore<
             coverage.ordinal === null
               ? null
               : (JSON.parse(this.entry(identity, coverage.ordinal).candidate) as D["candidate"]),
-          extent = domain.coverage(identity, candidate, coverage, "retained");
+          extent = domain.coverage({ identity, candidate, coverage, admission: "retained" });
         if (
           !integer(extent.startUs) ||
           !integer(extent.endUs) ||
@@ -662,7 +662,12 @@ export class ScreenshotIndexStore<
         coverage.ordinal === null
           ? null
           : (JSON.parse(this.entry(identity, coverage.ordinal).candidate) as D["candidate"]);
-      const extent = this.domain.coverage(identity, candidate, coverage, "produced");
+      const extent = this.domain.coverage({
+        identity,
+        candidate,
+        coverage,
+        admission: "produced",
+      });
       if (
         !integer(extent.startUs) ||
         !integer(extent.endUs) ||
@@ -724,11 +729,7 @@ export class ScreenshotIndexStore<
         )
         .all(...this.key(identity), ordinal) as Entry[];
       for (const entry of entries) {
-        this.domain.finishEntry?.(
-          identity,
-          JSON.parse(entry.candidate) as D["candidate"],
-          entry.coverageCount,
-        );
+        this.domain.finishEntry?.(entry.coverageCount);
         const file = this.openImage(directory, row, entry);
         file.file.close();
       }

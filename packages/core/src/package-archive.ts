@@ -71,7 +71,6 @@ export type ArchiveManifest = {
 };
 export type ArchiveManifestValidator<T extends ArchiveManifest> = (
   body: string,
-  revisions: ReadonlyMap<string, string>,
   limits: ArchiveLimits,
 ) => T;
 
@@ -97,7 +96,7 @@ export function verifyArchiveReceipt<T extends ArchiveManifest>(
     receipt.initialReadBytes > limits.initialReadBytes
   )
     return invalid("Archive receipt exceeds its limits");
-  const manifest = validate(receipt.manifest, new Map(Object.entries(receipt.revisions)), limits);
+  const manifest = validate(receipt.manifest, limits);
   const expected = new Map(manifest.inventory.map((entry) => [entry.path, entry]));
   const actual = new Map<string, z.infer<typeof memberSchema>>();
   const folded = new Map<string, string>();

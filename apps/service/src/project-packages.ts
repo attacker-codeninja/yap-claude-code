@@ -1,5 +1,6 @@
 import { portableProjectSpeakers, type PortableSpeakerCheckpoint } from "./portable-speakers.js";
 import { publishedOutput } from "@yap/protocol";
+import { omit } from "@yap/composition";
 import type { ProjectSpeakerInput, ProjectEvidenceCursor } from "@yap/core/project-evidence";
 import { randomUUID } from "node:crypto";
 import { resolveProjectPackageMetadata } from "./project-package-metadata.js";
@@ -259,7 +260,7 @@ export class ProjectPackages {
     const job = this.registry.submit(
       packageHandle,
       { artifact: "package.speakers", lane: "frame", input: JSON.stringify(input) },
-      async (context, signal, _lifetime, job) => {
+      async (context, signal, { job }) => {
         signal.throwIfAborted();
         const result = portableProjectSpeakers(
           context,
@@ -746,7 +747,7 @@ export class ProjectPackages {
     const job = this.registry.submit(
       packageHandle,
       { artifact: "package.adopt", lane: "heavy", input: JSON.stringify({ requestId }) },
-      async (context, signal, lifetime) => {
+      async (context, signal, { lifetime }) => {
         const manifest = context.manifest;
         const adoption = this.owners.projects.prepareAdoption({
           requestId,
@@ -1140,10 +1141,9 @@ export class ProjectPackages {
             if (resource.kind !== "prepared-audio") continue;
             const revisionId = adoption.revisionIds[resource.revisionId]!;
             const revision = adoption.revisions.find((value) => value.id === revisionId)!;
-            const { kind: _kind, ...portable } = resource;
             preparedAudio.push(
               await this.owners.preparedAudio.stagePortable(
-                portable,
+                omit(resource, "kind"),
                 projectCompositionFromRevision(
                   revision,
                   {
@@ -1348,8 +1348,8 @@ export class ProjectPackages {
           ...(afterSequence === undefined ? {} : { afterSequence }),
           limit: 100,
         });
-        for (const { sequence: _sequence, ...coverage } of page.coverage)
-          await record({ kind: "coverage", coverage });
+        for (const coverage of page.coverage)
+          await record({ kind: "coverage", coverage: omit(coverage, "sequence") });
         afterSequence = page.nextSequence;
       }
       if (records.length !== entry.metadata.candidateCount + entry.metadata.coverageCount)
@@ -1467,7 +1467,7 @@ export class ProjectPackages {
     const manifest = projectPackageManifest(
       pinned.snapshot,
       resources,
-      plan.map(({ identity: _identity, ...entry }) => entry),
+      plan.map((entry) => omit(entry, "identity")),
     );
     const body = JSON.stringify(manifest);
     validateProjectPackage(body, revisions, archiveLimits, resourceMetadata);

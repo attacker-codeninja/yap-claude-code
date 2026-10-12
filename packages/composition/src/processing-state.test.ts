@@ -1,3 +1,4 @@
+import { omit } from "./omit.js";
 import { sampleScalarSamples } from "./scalar-program.js";
 import { expect, test } from "vitest";
 import { applyBatch, createCompiler, validateComposition } from "./index.js";
@@ -61,7 +62,7 @@ test("pure splits share current state domains while matching independent clips d
     ...split.document,
     processing: split.document.processing.map((s) => ({
       ...s,
-      steps: s.steps.map(({ stateKey: _key, ...step }) => step),
+      steps: s.steps.map((step) => omit(step, "stateKey")),
     })),
   };
   expect(domains(independent).map((d) => d.sampleRange)).toEqual([

@@ -1,3 +1,4 @@
+import { omit } from "@yap/composition";
 import { mkdtemp, writeFile, rename, readFile, rm, open, type FileHandle } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -745,7 +746,7 @@ test("public asset headers and immutable ordinal pages preserve complete physica
       },
     ],
   }));
-  const { segments: _rows, ...header } = asset.streams[0]!;
+  const header = omit(asset.streams[0]!, "segments");
   expect(store.describe(asset.id)).toEqual({ ...asset, streams: [{ ...header, segmentCount: 3 }] });
   const first = store.segments(asset.id, "audio:0", { limit: 2 });
   expect(first.segments).toEqual(segments.slice(0, 2).map((row, ordinal) => ({ ordinal, ...row })));

@@ -338,7 +338,7 @@ export function projectIndexDomain(
         identity.maxLongEdge,
       );
     },
-    coverage(_identity, candidate, coverage) {
+    coverage({ candidate, coverage }) {
       if (coverage.equality === "sampled") {
         if (
           !candidate ||
@@ -357,7 +357,7 @@ export function projectIndexDomain(
         ? { ...before, project: { startUs: before.project.startUs, endUs: next.project.endUs } }
         : null;
     },
-    finishEntry(_identity, _candidate, coverageCount) {
+    finishEntry(coverageCount) {
       if (coverageCount !== 1)
         invalid("Each delivered project picture requires one complete sampled coverage interval");
     },

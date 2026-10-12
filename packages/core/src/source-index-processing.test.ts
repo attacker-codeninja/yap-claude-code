@@ -1,3 +1,4 @@
+import { omit } from "@yap/composition";
 import type { SourceSelection } from "./source-selection.js";
 import { portableSourceIndexMetadataSchema } from "./source-index.js";
 import { expect, test, vi } from "vitest";
@@ -660,7 +661,7 @@ test("complete source index files require a published matching generation", asyn
     )
     .run(f.selection.assetId);
   expect(f.retained.page({ identity: metadata }).entries).toEqual(
-    result.result.page!.entries.map(({ reference: _reference, ...entry }) => entry),
+    result.result.page!.entries.map((entry) => omit(entry, "reference")),
   );
   expect(() => f.index.publishedSource(reference)).toThrow("not published");
 });

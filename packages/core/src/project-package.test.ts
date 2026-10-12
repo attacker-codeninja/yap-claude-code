@@ -255,9 +255,7 @@ test("inventory-bound asset metadata is mandatory, exact and validated before cl
       entry.path === oversized.path ? oversized : entry,
     ),
   };
-  expect(() =>
-    parseProjectPackageManifest(JSON.stringify(tooLarge), revisions, archiveLimits),
-  ).toThrow(
+  expect(() => parseProjectPackageManifest(JSON.stringify(tooLarge), archiveLimits)).toThrow(
     expect.objectContaining({
       code: "LIMIT_EXCEEDED",
       details: {

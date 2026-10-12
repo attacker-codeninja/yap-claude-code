@@ -8,6 +8,7 @@ import {
   type SelectionRange,
   type SignedTimeValue,
   type TimeValue,
+  omit,
 } from "@yap/composition";
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
@@ -167,8 +168,7 @@ export function transcriptGenerationResource(
   return JSON.stringify([...ownerIdentity(identity.owner), identity.generation]);
 }
 export function portableTranscript(metadata: TranscriptMetadata): PortableTranscript {
-  const { source: _source, ...track } = metadata.track;
-  return portableTranscriptSchema.parse({ ...metadata, track });
+  return portableTranscriptSchema.parse({ ...metadata, track: omit(metadata.track, "source") });
 }
 export type TranscriptOwner = Extract<JobOwner, { kind: "recording" | "asset" }>;
 export type TranscriptIdentity = Readonly<{
@@ -629,13 +629,13 @@ export class TranscriptStore implements TranscriptRecords {
       const copied = await copyImportedFile(raw.path, output, signal, raw, 268435456);
       if (copied.bytes !== expected.raw.bytes || copied.sha256 !== expected.raw.sha256)
         throw new CatalogError("INVALID_PACKAGE", "Transcript raw bytes differ from inventory");
-      const {
-        encoderPrecision: _precision,
-        computeUnits: _units,
-        policy: _policy,
-        kindPolicy: _kind,
-        ...pins
-      } = expected.engine;
+      const pins = omit(
+        expected.engine,
+        "encoderPrecision",
+        "computeUnits",
+        "policy",
+        "kindPolicy",
+      );
       const indexed = await this.index({
         identity: expected,
         source: expected.source,

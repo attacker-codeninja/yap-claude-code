@@ -6,6 +6,7 @@ import {
   subtract,
   compare,
   type SignedTimeValue,
+  omit,
 } from "@yap/composition";
 import {
   verifySourceEvidence,
@@ -136,9 +137,9 @@ export const portableAcquisitionSchema = z
         "INVALID_PACKAGE",
         "Portable acquisition receipt must not contain a local path",
       );
-    const { file: _file, ...receipt } = validateSourceReceipt(
-      { ...value.receipt, file: "source.jsonl" },
-      value.sourceId,
+    const receipt = omit(
+      validateSourceReceipt({ ...value.receipt, file: "source.jsonl" }, value.sourceId),
+      "file",
     );
     return { ...value, receipt };
   });
@@ -158,7 +159,7 @@ function portableAcquisition(value: Acquisition): PortableAcquisition {
       "INVALID_STORAGE",
       "Acquisition evidence identity conflicts with its owner",
     );
-  const { file: _file, ...receipt } = value.evidence.receipt;
+  const receipt = omit(value.evidence.receipt, "file");
   return portableAcquisitionSchema.parse({
     id: value.id,
     sourceId: value.sourceId,

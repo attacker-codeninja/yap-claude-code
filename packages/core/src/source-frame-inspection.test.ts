@@ -1,4 +1,4 @@
-import { add, fromTime } from "@yap/composition";
+import { add, fromTime, omit } from "@yap/composition";
 import { afterEach, expect, test } from "vitest";
 import { randomUUID } from "node:crypto";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
@@ -194,7 +194,7 @@ test("retained source frames preserve a requested face-observation recipe", asyn
   const request = { recipe: "vision-face-rectangles-v1" as const };
   f.frames.request(f.request);
   await f.jobs.idle();
-  const { cacheId: _cacheId, ...frame } = f.frames.request(f.request).published!.frame;
+  const frame = omit(f.frames.request(f.request).published!.frame, "cacheId");
   expect(
     retainedSourceFrameSchema.parse({ ...frame, faceObservationRequest: request }),
   ).toMatchObject({ faceObservationRequest: request });

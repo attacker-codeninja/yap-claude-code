@@ -9,6 +9,7 @@ import {
   type TimeValue,
   type SignedTimeValue,
   type SelectionRange,
+  omit,
 } from "@yap/composition";
 import { isDeepStrictEqual } from "node:util";
 import type { CompositionAssetBinding } from "./project-window.js";
@@ -234,9 +235,12 @@ export class SelectedSourceSceneAnalysis {
           : undefined;
       if (overlap) {
         // The first observation in each native batch has no in-batch predecessor.
-        const { continuousFromPrevious: _a, ...before } = overlap.point;
-        const { continuousFromPrevious: _b, ...after } = point;
-        if (!isDeepStrictEqual(before, after))
+        if (
+          !isDeepStrictEqual(
+            omit(overlap.point, "continuousFromPrevious"),
+            omit(point, "continuousFromPrevious"),
+          )
+        )
           invalid("Overlapping presentation observations changed");
         coverage.push(overlap.coverage);
         continue;
@@ -289,8 +293,7 @@ export class SelectedSourceSceneAnalysis {
             state.minimum![i] = Math.min(state.minimum![i]!, rgb[i]!);
             state.maximum![i] = Math.max(state.maximum![i]!, rgb[i]!);
           }
-        const { rgbBase64: _rgb, ...retained } = point;
-        row = { ...retained, stillnessRunStartUs: state.runStart! };
+        row = { ...omit(point, "rgbBase64"), stillnessRunStartUs: state.runStart! };
         state.last = point;
       }
       coverage.push(row);

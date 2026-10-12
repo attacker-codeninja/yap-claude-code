@@ -52,8 +52,7 @@ type PackageAdmission = Readonly<Admission>;
 type Work<T extends ArchiveManifest> = (
   context: RetainedPackage<T>,
   signal: AbortSignal,
-  lifetime: { readonly fd: number },
-  job: ContextJob,
+  run: { lifetime: { readonly fd: number }; job: ContextJob },
 ) => Promise<string>;
 type Workspace = Awaited<ReturnType<typeof provisionPackageWorkspace>>;
 type Entry<T extends ArchiveManifest> = Admission & {
@@ -286,7 +285,7 @@ export class PackageRegistry<
       const work = entry.requests.get(job.jobId);
       if (!work || entry.state !== "ready")
         throw new CatalogError("CONTEXT_CLOSED", "Package work is no longer admitted");
-      return work(entry.retained!, signal, entry.workspace!.handle, job);
+      return work(entry.retained!, signal, { lifetime: entry.workspace!.handle, job });
     }
     try {
       if (signal.aborted || entry.state !== "queued")

@@ -1,3 +1,4 @@
+import { omit } from "./omit.js";
 import { hasStatefulProcessing, normalizeStateEdit } from "./processing-state.js";
 import { clipGraph } from "./clip-graph.js";
 import { placementForRange, resolveComposition, resolvePlacement } from "./model.js";
@@ -1428,9 +1429,8 @@ export function applyBatch(
             ...before,
             [key]: before[key].map((node) => {
               if (node.id !== id) return node;
-              const { parentId: _previousParent, ...fields } = node;
               return {
-                ...fields,
+                ...omit(node, "parentId"),
                 order: operation.order,
                 ...(parentId === undefined ? {} : { parentId }),
               };

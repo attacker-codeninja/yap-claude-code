@@ -1,3 +1,4 @@
+import { omit } from "@yap/composition";
 import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
 import { mkdir, open, rm } from "node:fs/promises";
@@ -87,15 +88,12 @@ export async function verifySourceEvidence(input: {
       canonical,
       input.lifetime ? [input.lifetime.fd] : undefined,
     );
-    const { file: _file, ...receipt } = derived;
+    const receipt = omit(derived, "file");
     // Historical receipts predate message disclosure. Reproduce that declared format
     // without weakening publication proofs, normalized bytes, or current-format equality.
     if (expected.normalizationVersion === undefined && receipt.normalizationVersion === 2) {
       delete receipt.normalizationVersion;
-      if (receipt.completion) {
-        const { failureMessage: _message, ...completion } = receipt.completion;
-        receipt.completion = completion;
-      }
+      if (receipt.completion) receipt.completion = omit(receipt.completion, "failureMessage");
     }
     const handle = await open(output, constants.O_RDONLY | constants.O_NOFOLLOW);
     try {

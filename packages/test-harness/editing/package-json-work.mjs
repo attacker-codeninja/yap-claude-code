@@ -178,7 +178,6 @@ if (!values.read) {
     });
   const manifest = parseProjectPackageManifest(
     await readFile(join(out, "manifest.json"), "utf8"),
-    new Map(),
     archiveLimits,
   );
   const admitted = JSON.parse(await readFile(join(out, "admitted.json")));

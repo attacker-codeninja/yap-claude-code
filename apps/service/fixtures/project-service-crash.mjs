@@ -2,8 +2,8 @@ import { startProjectService } from "../dist/project-service.js";
 
 const service = await startProjectService({
   home: process.argv[2],
-  worker: async (_operation, _params, options) => {
-    if (["media.audioCapabilities", "media.pictureCapabilities"].includes(_operation))
+  worker: async (operation, _params, options) => {
+    if (["media.audioCapabilities", "media.pictureCapabilities"].includes(operation))
       return { ok: true, data: {} };
     process.send({ phase: "owned-copy-probing" });
     await new Promise((resolve) =>

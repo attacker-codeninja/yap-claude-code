@@ -144,7 +144,8 @@ async function fixture() {
 test("raw transcript ownership is mandatory even when its receipt declares it", async () => {
   const f = await fixture();
   const input = await f.input(asset, source);
-  const { owned: _owned, ...line } = JSON.parse(raw);
+  const line = JSON.parse(raw);
+  delete line.owned;
   const missingOwnership = JSON.stringify(line) + "\n";
   await writeFile(input.request.output, missingOwnership);
   input.receipt.output.bytes = Buffer.byteLength(missingOwnership);

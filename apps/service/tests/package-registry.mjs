@@ -485,7 +485,7 @@ test("close fences delivery and drains an actual native media worker before remo
   f.registry.submit(
     handle,
     { artifact: "held-native", lane: "heavy", input: "{}" },
-    async (context, signal, lifetime) => {
+    async (context, signal, { lifetime }) => {
       const source = context.files.open(f.mediaPath);
       try {
         return JSON.stringify(
@@ -579,7 +579,7 @@ test("correctly hashed malformed project resource metadata fails before readines
   f.files["manifest.json"] = JSON.stringify(manifest);
   // Structural admission and exact hashes succeed; the canonical typed resource owner refuses.
   assert.equal(
-    parseProjectPackageManifest(f.files["manifest.json"], new Map(), archiveLimits).format,
+    parseProjectPackageManifest(f.files["manifest.json"], archiveLimits).format,
     "yap-project",
   );
   await f.writeArchive();

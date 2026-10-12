@@ -1,3 +1,4 @@
+import { omit } from "@yap/composition";
 import { afterEach, expect, test } from "vitest";
 import { createHash } from "node:crypto";
 import { writeSync } from "node:fs";
@@ -143,7 +144,7 @@ test("canonical video metadata requires current alpha facts without inventing so
         ? actual
         : {
             ...actual,
-            streams: actual.streams.map(({ hasAlpha: _alpha, ...stream }) => stream),
+            streams: actual.streams.map((stream) => omit(stream, "hasAlpha")),
           };
       const bytes = Buffer.from(JSON.stringify(report));
       writeSync(options!.descriptors![1]!, bytes, 0, bytes.length, 0);
@@ -166,7 +167,7 @@ test("canonical video metadata requires current alpha facts without inventing so
     exportSource(root, join(root, "out.jsonl"), new AbortController().signal, {
       video: { path, bytes: Number(stat.size), identity: fileIdentity(stat), metadata },
     });
-  const { hasAlpha: _alpha, ...oldStream } = actual.streams[0]!;
+  const oldStream = omit(actual.streams[0]!, "hasAlpha");
   await expect(run({ originUs: 0, streams: [oldStream] })).rejects.toMatchObject({
     code: "NOT_READY",
     retryable: false,

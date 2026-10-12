@@ -3,7 +3,7 @@ import {
   readHdrAudioConversionFacts,
   readHdrConversionFacts,
 } from "@yap/core/hdr-conversion-facts";
-import { add, fromTime, multiply, rational, toTime } from "@yap/composition";
+import { add, fromTime, multiply, rational, toTime, omit } from "@yap/composition";
 import {
   prepareHdrClock,
   qualifyHdrInterpretation,
@@ -98,7 +98,7 @@ test("only a clear native family with agreeing held FFprobe declarations qualifi
 
 test("absent compressed inspection and native interpretation refusals cannot qualify", () => {
   const facts = readHdrConversionFacts(source(), "track:1");
-  const { compressedVideoInspection: _inspection, ...uninspected } = facts.video;
+  const uninspected = omit(facts.video, "compressedVideoInspection");
   expect(() => qualifyHdrInterpretation({ ...facts, video: uninspected }, color)).toThrowError(
     expect.objectContaining({ code: "UNSUPPORTED_MEDIA" }),
   );

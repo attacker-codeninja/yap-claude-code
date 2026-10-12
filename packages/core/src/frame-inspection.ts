@@ -30,6 +30,7 @@ import {
   processingTapSchema,
   type ProcessingTap,
   type CompiledFrame,
+  omit,
 } from "@yap/composition";
 import type { ProjectStore } from "./projects.js";
 import type { AcquisitionStore } from "./acquisitions.js";
@@ -1009,8 +1010,10 @@ export class MediaFrameInspection {
 type PicturePlan = Pick<ReturnType<typeof projectWindow>, "window" | "assets" | "frameBoundary">;
 type PictureReceipt = z.infer<typeof projectReceiptSchema>;
 function inspectedFrame(frame: CompiledFrame, plan: PicturePlan): PictureReceipt["frame"] {
-  const { visual: _visual, ...evidence } = frame;
-  return { ...evidence, visibleRange: plan.frameBoundary(frame.sampleAtUs).after!.visibleRange };
+  return {
+    ...omit(frame, "visual"),
+    visibleRange: plan.frameBoundary(frame.sampleAtUs).after!.visibleRange,
+  };
 }
 
 /** Native instructions stay private, but must match before any public evidence is projected. */

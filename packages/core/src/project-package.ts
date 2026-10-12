@@ -404,7 +404,6 @@ export function projectPackageManifest(
 /** Compact shape/inventory admission precedes any external metadata reads. */
 export function parseProjectPackageManifest(
   body: string,
-  _revisions: ReadonlyMap<string, string>,
   limits: ArchiveLimits,
 ): ProjectPackageManifest {
   if (Buffer.byteLength(body) > limits.manifestBytes) invalid("Project manifest exceeds its limit");
@@ -654,7 +653,7 @@ export function validateProjectPackage(
   metadata: ReadonlyMap<string, string> = new Map(),
 ): ValidatedProjectPackage {
   return resolveProjectPackage(
-    parseProjectPackageManifest(body, revisions, limits),
+    parseProjectPackageManifest(body, limits),
     revisions,
     limits,
     metadata,

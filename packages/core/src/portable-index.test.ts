@@ -1,3 +1,4 @@
+import { omit } from "@yap/composition";
 import { beforeEach, test, expect } from "vitest";
 import { createHash } from "node:crypto";
 import { readFileSync, rmSync } from "node:fs";
@@ -49,8 +50,8 @@ test("portable source images and filtered coverage survive library removal and r
         source: donor.index.portableImage(metadata, entry.candidate.ordinal),
         sha256: createHash("sha256").update(png).digest("hex"),
       };
-    for (const { sequence: _sequence, ...coverage } of expectedCoverage)
-      yield { kind: "coverage", coverage };
+    for (const coverage of expectedCoverage)
+      yield { kind: "coverage", coverage: omit(coverage, "sequence") };
   }
   const staged = await receiver.index.stagePortable(
     metadata,

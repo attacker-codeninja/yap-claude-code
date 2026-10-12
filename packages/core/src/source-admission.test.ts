@@ -1,3 +1,4 @@
+import { omit } from "@yap/composition";
 import { createHash } from "node:crypto";
 import { mkdtemp, rm, writeFile, lstat } from "node:fs/promises";
 import { join } from "node:path";
@@ -35,7 +36,7 @@ test("canonical admission preserves historical receipt format but verifies curre
         failureMessage: "The microphone disconnected.",
       },
     };
-    const { file: _file, ...receipt } = current;
+    const receipt = omit(current, "file");
     const verify = (expected: typeof receipt) =>
       verifySourceEvidence({
         directory,
@@ -61,8 +62,8 @@ test("canonical admission preserves historical receipt format but verifies curre
       });
     const stat = await lstat(journal, { bigint: true });
     await verify(receipt);
-    const { normalizationVersion: _version, ...historical } = receipt;
-    const { failureMessage: _message, ...completion } = current.completion!;
+    const historical = omit(receipt, "normalizationVersion");
+    const completion = omit(current.completion!, "failureMessage");
     await verify({ ...historical, completion });
     await expect(
       verify({ ...receipt, completion: { ...current.completion!, failureMessage: "Altered" } }),

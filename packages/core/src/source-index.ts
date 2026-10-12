@@ -245,7 +245,7 @@ export function sourceIndexDomain(
         toSignedTime(subtract(fromTime(0), fromTime(source.track.sourceOffsetUs))),
       );
     },
-    coverage(identity, candidate, coverage, admission) {
+    coverage({ identity, candidate, coverage, admission }) {
       if (coverage.state === "available") {
         if (
           !candidate ||

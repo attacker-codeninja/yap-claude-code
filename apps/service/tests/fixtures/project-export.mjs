@@ -17,6 +17,9 @@ import { selectSource } from "@yap/core/source-selection";
 import { SceneEvidenceStore, assetSceneOwner } from "@yap/core/scene-evidence";
 import { SpeakerEvidenceStore, assetSpeakerOwner } from "@yap/core/speaker-evidence";
 import { SpeakerProcessing } from "@yap/core/speaker-processing";
+import { SpeakerLabelStore } from "@yap/core/speaker-labels";
+import { AlignmentEvidenceStore, assetAlignmentOwner } from "@yap/core/alignment-evidence";
+import { AlignmentProcessing } from "@yap/core/alignment-processing";
 import { PreparedAudioStore } from "@yap/core/prepared-audio";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -237,7 +240,27 @@ export async function fixture(
     },
   });
   const models = new Models(home);
-  const speakerRecords = new SpeakerEvidenceStore(catalog, assetSpeakerOwner(assets, acquisitions));
+  const speakerLabels = new SpeakerLabelStore(catalog);
+  const speakerRecords = new SpeakerEvidenceStore(
+    catalog,
+    assetSpeakerOwner(assets, acquisitions),
+    (identity) => speakerLabels.remove(identity),
+  );
+  const alignmentRecords = new AlignmentEvidenceStore(
+    catalog,
+    assetAlignmentOwner(assets, acquisitions),
+  );
+  const alignments = new AlignmentProcessing({
+    assets,
+    acquisitions,
+    models,
+    jobs,
+    evidence: alignmentRecords,
+    decoder: null,
+    observe: async () => {
+      throw new Error("Alignment observation was not requested");
+    },
+  });
   speakers = new SpeakerProcessing({
     assets,
     acquisitions,
@@ -315,7 +338,10 @@ export async function fixture(
     transcriptRecords,
     transcripts,
     speakerRecords,
+    speakerLabels,
     speakers,
+    alignmentRecords,
+    alignments,
     indexRecords: sourceIndex,
     indexes,
     projectIndexRecords: index,

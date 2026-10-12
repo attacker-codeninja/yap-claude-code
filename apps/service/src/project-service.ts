@@ -19,6 +19,7 @@ import {
   createSourceRangeProjection,
   compare,
   fromTime,
+  omit,
 } from "@yap/composition";
 import { ProjectPackages } from "./project-packages.js";
 import { writeFile } from "node:fs/promises";
@@ -1785,10 +1786,7 @@ export async function startProjectService(options: {
             const metadata = current.published.transcript;
             const read = new SourceTranscriptRead(transcriptStore, metadata);
             const sourceCursor = sourceParams.cursor
-              ? (() => {
-                  const { speaker: _speaker, ...cursor } = sourceParams.cursor!;
-                  return cursor;
-                })()
+              ? omit(sourceParams.cursor, "speaker")
               : undefined;
             const page =
               "text" in params

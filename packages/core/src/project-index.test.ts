@@ -1,7 +1,7 @@
 import { projectStoreFixture } from "./project-store.fixture.js";
 import { createHash } from "node:crypto";
 import { afterEach, expect, test } from "vitest";
-import { floor, fromTime, type CompiledFrame } from "@yap/composition";
+import { floor, fromTime, type CompiledFrame, omit } from "@yap/composition";
 import { validateProjectFrameReceipt } from "./frame-inspection.js";
 import { mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -679,10 +679,8 @@ test("staged project indexes validate adopted revisions before atomic publicatio
         sha256: createHash("sha256").update(png).digest("hex"),
       };
     }
-    for (const { sequence: _sequence, ...coverage } of donor.index.coveragePage({
-      identity: original,
-    }).coverage)
-      yield { kind: "coverage" as const, coverage };
+    for (const coverage of donor.index.coveragePage({ identity: original }).coverage)
+      yield { kind: "coverage" as const, coverage: omit(coverage, "sequence") };
   }
   const stage = await receiver.index.stagePortable(
     adopted,

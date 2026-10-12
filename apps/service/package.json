@@ -8,7 +8,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check-types": "tsc -p tsconfig.check.json",
-    "test": "vitest run"
+    "test": "vitest run && cd ../.. && node --test apps/service/tests/project-package-export.mjs apps/service/tests/project-package-boundaries.mjs apps/service/tests/archive-write.mjs"
   },
   "dependencies": {
     "@yap/composition": "workspace:*",

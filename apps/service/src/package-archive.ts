@@ -1,4 +1,5 @@
 import type { FileHandle } from "node:fs/promises";
+import { omit } from "@yap/composition";
 import { CatalogError } from "@yap/core/catalog";
 import {
   archiveLimits,
@@ -140,8 +141,7 @@ export async function verifyPackageArchive<T extends ArchiveManifest>(
 ) {
   const extraction = await extractArchive(archive, workspace, worker, options);
   await extraction.close();
-  const { files: _files, revisionContents: _revisions, ...receipt } = extraction.verified;
-  return receipt;
+  return omit(extraction.verified, "files", "revisionContents");
 }
 
 export async function openPackageArchive<

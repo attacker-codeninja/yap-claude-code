@@ -5,6 +5,7 @@ import {
   fromTime,
   compare,
   type SelectionRange,
+  omit,
 } from "@yap/composition";
 import {
   assetOriginSchema,
@@ -384,8 +385,8 @@ export class AssetStore {
     );
     return {
       ...asset,
-      streams: asset.streams.map(({ segments: _segments, ...stream }) => ({
-        ...stream,
+      streams: asset.streams.map((stream) => ({
+        ...omit(stream, "segments"),
         segmentCount: count.get(id, stream.id)!.count as number,
       })),
     };
@@ -473,10 +474,10 @@ export class AssetStore {
       .all(after, limit + 1);
     return {
       assets: rows.slice(0, limit).map(
-        ({ sequence: _sequence, mediaKinds, ...row }) =>
+        (row) =>
           ({
-            ...row,
-            mediaKinds: JSON.parse(mediaKinds as string),
+            ...omit(row, "sequence", "mediaKinds"),
+            mediaKinds: JSON.parse(row.mediaKinds as string),
           }) as AssetSummary,
       ),
       nextCursor:

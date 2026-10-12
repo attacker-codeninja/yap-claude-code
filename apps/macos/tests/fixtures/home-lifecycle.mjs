@@ -71,7 +71,8 @@ export function compileHomeDriver(scratch) {
 
 /** Runs the driver and parses one JSON answer per operation. */
 export function runHome(executable, { home, resources, env = {} }, ...operations) {
-  const { YAP_NODE: _ignored, ...inherited } = process.env;
+  const inherited = { ...process.env };
+  delete inherited.YAP_NODE;
   const output = execFileSync(executable, [home, resources, ...operations], {
     encoding: "utf8",
     env: { ...inherited, PATH: "/usr/bin:/bin", SHELL: "/bin/zsh", ...env, HOME: home },

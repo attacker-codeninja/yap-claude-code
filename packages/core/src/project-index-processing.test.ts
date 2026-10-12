@@ -1,3 +1,4 @@
+import { omit } from "@yap/composition";
 import { unlink } from "node:fs/promises";
 import { portableProjectIndexMetadataSchema } from "./project-index.js";
 import { expect, test } from "vitest";
@@ -74,7 +75,7 @@ test("empty and audio-only projects execute through the shared queue without sou
   expect(
     f.projectRetained
       .coveragePage({ identity: metadata })
-      .coverage.map(({ sequence: _sequence, ...row }) => row),
+      .coverage.map((row) => omit(row, "sequence")),
   ).toEqual([
     { ordinal: 0, equality: "sampled", project: { startUs: 0, endUs: 200000 } },
     { ordinal: null, equality: "unproven", project: { startUs: 200000, endUs: 1000000 } },

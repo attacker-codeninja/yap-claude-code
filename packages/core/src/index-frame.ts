@@ -1,3 +1,4 @@
+import { omit, type Omitted } from "@yap/composition";
 import { setTimeout } from "node:timers/promises";
 import { CatalogError } from "./catalog.js";
 import type { DerivedCache } from "./cache.js";
@@ -28,7 +29,7 @@ export async function retainIndexFrame<T extends { cacheId: string; file: string
   frame: T,
   file: string,
   signal: AbortSignal,
-  publish: (retained: Omit<T, "cacheId">) => void,
+  publish: (retained: Omitted<T, "cacheId">) => void,
 ): Promise<void> {
   const lease = cache.acquire(frame.cacheId);
   if (!lease)
@@ -36,8 +37,7 @@ export async function retainIndexFrame<T extends { cacheId: string; file: string
   try {
     await copyRetainedFile(lease, file, signal);
     signal.throwIfAborted();
-    const { cacheId: _cache, ...retained } = frame;
-    publish({ ...retained, file });
+    publish({ ...omit(frame, "cacheId"), file });
   } finally {
     lease.release();
   }

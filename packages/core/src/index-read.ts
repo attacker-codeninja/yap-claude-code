@@ -1,3 +1,4 @@
+import { omit } from "@yap/composition";
 import { isDeepStrictEqual } from "node:util";
 import { CatalogError } from "./catalog.js";
 import type { ScreenshotIndexReader } from "./screenshot-index-read.js";
@@ -30,10 +31,9 @@ export function validateIndexCoverageCursor<R extends IndexReadReference>(
   input: CoverageInput<R>,
 ): void {
   if (!input.cursor) return;
-  const { afterSequence: _after, candidateOrdinal, ...cursorReference } = input.cursor;
   if (
-    !isDeepStrictEqual(reference, cursorReference) ||
-    candidateOrdinal !== (input.candidateOrdinal ?? null)
+    !isDeepStrictEqual(reference, omit(input.cursor, "afterSequence", "candidateOrdinal")) ||
+    input.cursor.candidateOrdinal !== (input.candidateOrdinal ?? null)
   )
     throw new CatalogError(
       "ARTIFACT_CHANGED",
@@ -68,8 +68,7 @@ export class RetainedIndexRead<
   }
   get(input: { cursor?: IndexReadCursor<R> | undefined; limit?: number | undefined } = {}) {
     if (input.cursor) {
-      const { afterOrdinal: _after, ...reference } = input.cursor;
-      if (!isDeepStrictEqual(reference, this.reference))
+      if (!isDeepStrictEqual(omit(input.cursor, "afterOrdinal"), this.reference))
         throw new CatalogError(
           "ARTIFACT_CHANGED",
           "Index continuation belongs to another target or revision",

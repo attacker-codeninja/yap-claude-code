@@ -1,3 +1,4 @@
+import { omit } from "@yap/composition";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
@@ -109,10 +110,10 @@ try {
         label: id,
         track: { ...track, ...(parentId ? { parentId: ref(parentId) } : {}) },
       })),
-      ...document.clips.map(({ id, trackId, assetId, streamId: _streamId, ...clip }) => ({
+      ...document.clips.map(({ id, trackId, assetId, ...clip }) => ({
         operation: "place",
         label: `clip-${id}`,
-        clip: { ...clip, ...imported[assetId], trackId: ref(trackId) },
+        clip: { ...omit(clip, "streamId"), ...imported[assetId], trackId: ref(trackId) },
       })),
       ...document.processing.map(({ target, steps }) => ({
         operation: "processing.set",

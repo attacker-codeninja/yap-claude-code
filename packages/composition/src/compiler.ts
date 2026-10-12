@@ -1,3 +1,4 @@
+import { omit } from "./omit.js";
 import { deriveStatePlan, selectStatePlan } from "./processing-state.js";
 import { temporalProcessing } from "./temporal-processing.js";
 import { compileScalarCurve } from "./curve.js";
@@ -368,7 +369,7 @@ export function createCompiler(model: ValidatedComposition, revisionId: string) 
                 };
               }),
               processing: temporal.audio(
-                state.nodes.map(({ range: _range, ...node }) => node),
+                state.nodes.map((node) => omit(node, "range")),
                 request.rendition.sampleRate,
                 state,
               ),

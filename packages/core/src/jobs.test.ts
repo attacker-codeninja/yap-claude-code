@@ -1,3 +1,4 @@
+import { omit } from "@yap/composition";
 import { DatabaseSync } from "node:sqlite";
 import { createHash } from "node:crypto";
 import { test, expect, afterEach } from "vitest";
@@ -2529,7 +2530,7 @@ test("compact job inspection preserves publication and recipe identity through r
     inputSha256: createHash("sha256").update(input).digest("hex"),
     published: null,
   };
-  const { input: _input, ...summary } = expected;
+  const summary = omit(expected, "input");
   expect(first.queue.inspect(job.jobId)).toEqual(summary);
   (await first.started(job.attemptId)).finish('{"ready":true}');
   await first.queue.idle();

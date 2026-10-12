@@ -17,6 +17,7 @@ import {
   rational,
   multiply,
   selectionRangeSchema,
+  omit,
 } from "@yap/composition";
 import { readAudioWaveFile } from "@yap/core/audio-wave";
 
@@ -122,7 +123,7 @@ export async function deriveCorpus(directory, sources, selected, native, tool, m
       const prior = manifest.cases.find((entry) => entry.id === c.id);
       if (prior) {
         if (c.derivative?.kind === "video") {
-          const { sha256: _hash, bytes: _bytes, ...derivative } = prior.derivative;
+          const derivative = omit(prior.derivative, "sha256", "bytes");
           if (
             !isDeepStrictEqual(prior.recipe, c.recipe) ||
             !isDeepStrictEqual(prior.clock, c.clock) ||
@@ -357,7 +358,7 @@ export async function verifyCorpus(directory, selected, probeVideo) {
   return {
     ok: true,
     bytes: inspection.bytes,
-    cases: inspection.cases.map(({ preservation: _preservation, ...report }) => report),
+    cases: inspection.cases.map((report) => omit(report, "preservation")),
   };
 }
 
