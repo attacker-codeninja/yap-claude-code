@@ -367,7 +367,8 @@ it("preserves a terminal report's message through public reads and restart", asy
   });
 });
 
-it("recovery keeps diagnostic code and message paired even without usable video", async () => {
+// Each completion restarts a service and may poll recovery for 5 s, so the case owns a wider budget.
+it("recovery keeps diagnostic code and message paired even without usable video", { timeout: 25_000 }, async () => {
   for (const completion of [
     undefined,
     { failureCode: "DEVICE_LOST" },

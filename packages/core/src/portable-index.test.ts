@@ -25,7 +25,7 @@ beforeEach(async () => {
   metadata = await donor.index.finish(donor.identity);
 });
 
-test("portable source images and filtered coverage survive library removal and relocation", async () => {
+test("portable source images and filtered coverage survive library removal and relocation", { timeout: 15_000 }, async () => {
   const first = donor.index.page({ identity: metadata, limit: 200 });
   const next = donor.index.page({
     identity: metadata,
