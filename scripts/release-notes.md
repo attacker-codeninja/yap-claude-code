@@ -6,6 +6,14 @@ The capture menu keeps its dark appearance after selecting a recording area and
 shows the latest recording below the action buttons with Play and Copy agent prompt
 actions. Screen recordings now include the pointer in the captured video.
 
+## 0.1.30
+
+Opening a second copy of Yap now brings up the running one's Settings instead of
+quitting silently, and a release never hands off to a development build. The Set up
+my agents status line updates when the skill install finishes. The PATH check now
+counts only the startup files a non-interactive login shell reads (`.zshenv` and
+`.zprofile`; bash's login files), so agents running `zsh -lc` find `yap` by name.
+
 ## 0.1.29
 
 The app now sets up your agents itself. On every launch, including the relaunch
@@ -15,6 +23,10 @@ PATH line when one is missing. Settings → Set up my agents turns this off. The
 release ZIP has a fixed name, `Yap-macos-arm64.zip`, and contains only the app and
 its receipt. Yap runs only from /Applications or ~/Applications, offers to move
 itself when opened anywhere else, and allows one running copy at a time.
+
+`yap <operation> --wait` without `--timeout-ms` is rejected immediately for every
+operation except skill lifecycle commands, as documented. The speaker model now
+prepares on a fresh install.
 
 ## 0.1.28
 
