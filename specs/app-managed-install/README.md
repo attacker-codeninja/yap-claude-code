@@ -10,19 +10,11 @@ app installed only the skill, so a fresh app gave agents a skill without a comma
 *Last updated 2026-10-12.* You are resuming this feature. Read this README, then
 the slice you pick up. Pre-launch: no users, no migrations, no compatibility shims.
 
-**Status.** Slices 00–08 are implemented and committed, with their narrow tests green
-and an unprimed critique of every new visual (fixes applied; one item moved to the
-release-day checklist).
+**Status.** Shipped in **v0.1.29** (2026-10-12, `16e737ff`), built, signed and
+smoke-checked locally and published; justyap.io serves the agent-only site. The full
+suite passed (exit 0) before release, including fixes to pre-existing failures.
 
-**Full check (2026-10-12).** Types and lint pass. Every package's tests pass except
-failures that also fail on the unchanged base on this Mac: one CLI wait test (hangs),
-six macOS capture tests (this Mac's capture environment), and test-harness tests that
-need unfetched LFS fixtures. Codex was at capacity; an independent Claude review ran
-instead and its findings are fixed.
-
-**Pick up at** the release, then the release-day checklist below. Each slice names
-its tests; run only those. Run the full check once, after slice 08, then release
-with the `release` skill (the user delegated tagging).
+**Pick up at** the two open release-day checks below, then [close-spec](../../.agents/skills/close-spec/SKILL.md).
 
 **Warnings.**
 - `skills` installer: set `DISABLE_TELEMETRY=1` when the app runs it (probe P7).
@@ -112,8 +104,25 @@ Shipping each slice as its own release (docs in transition across releases).
 
 ## Release-day checklist (provable only with a signed release)
 
-- A Safari-downloaded kit: approve with Open Anyway, then `~/.local/bin/yap capture.status --help` runs.
-- An agent `curl` install: no Gatekeeper prompt at all.
-- A Sparkle update from the previous release relaunches once, keeps one copy, and refreshes the command.
-- `codesign --verify --deep --strict` on the published app.
-- The move prompt in the real app (open the release from `~/Downloads`): no stray square behind the icon in light mode (seen only in the offscreen render), Move it home lands in `~/Applications` and never prompts again (probe P5).
+Done on 2026-10-12 against the published v0.1.29:
+- [x] `codesign --verify --deep --strict` on the published app, and `--strict` on its
+  bundled launcher (probe P9 holds).
+- [x] A `curl` download carries no quarantine attribute, so an agent install meets no
+  Gatekeeper prompt.
+- [x] A Sparkle update from 0.1.28 installed and relaunched once (one copy, started with
+  `--yap-update-relaunch`); `~/.local/bin/yap` became byte-identical to the bundled
+  launcher with no quarantine; no shell startup file changed (`~/.zshenv` already
+  covers `~/.local/bin`, and `cli.status` reports `onPath`); skill installed and
+  managed; service ready at 0.1.29.
+
+Open (need a person at the Mac):
+- [ ] A Safari-downloaded kit: approve with Open Anyway, then `~/.local/bin/yap capture.status --help` runs.
+- [ ] The move prompt in the real app (quit the installed Yap, open the release from
+  `~/Downloads`): no stray square behind the icon in light mode (seen only in the
+  offscreen render), Move it home lands in `~/Applications` and never prompts again (probe P5).
+
+## Follow-ups (not in this release)
+
+- A missing LFS fixture reports a misleading "bytes differ"; a clear "fixture not
+  fetched" error needs the six test-harness fixture loaders moved onto one owner.
+- Connect the Vercel project to the repo (Root Directory `apps/site`) so pushes deploy.
