@@ -186,10 +186,13 @@ Start a fresh agent session so the skill is discovered (`$yap` for Codex, `/yap`
 
 ```sh
 ~/.local/bin/yap cli.status
-yap skill.status
-yap capture.status --help
-yap service.health
+~/.local/bin/yap skill.status
+~/.local/bin/yap capture.status --help
+~/.local/bin/yap service.health
 ```
+
+Use the full path in the session that installed Yap; the PATH line reaches only new
+login shells.
 
 Operation help returns its schema without launching the app. `service.health`
 checks the installed runtime and may launch the app's local service; it does not

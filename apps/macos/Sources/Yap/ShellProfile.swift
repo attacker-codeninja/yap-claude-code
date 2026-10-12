@@ -7,8 +7,18 @@ import Foundation
 enum ShellProfile {
     static let block = "# >>> yap >>>\nexport PATH=\"$HOME/.local/bin:$PATH\"\n# <<< yap <<<\n"
 
-    /// Every startup file whose PATH line counts, zsh and bash alike, relative to the home.
-    static let startupFiles = [".zshenv", ".zprofile", ".zshrc", ".bash_profile", ".bashrc", ".profile"]
+    /// Every startup file Yap may have edited, zsh and bash alike, relative to the home.
+    static let startupFiles = [".zshenv", ".zprofile", ".zshrc", ".bash_profile", ".bash_login", ".profile", ".bashrc"]
+
+    /// The startup files the login shell actually reads; only their PATH lines count.
+    /// A shell Yap doesn't know reads none of them.
+    static func files(shell: String) -> [String] {
+        switch (shell as NSString).lastPathComponent {
+        case "bash": return [".bash_profile", ".bash_login", ".profile", ".bashrc"]
+        case "zsh", "": return [".zshenv", ".zprofile", ".zshrc"]
+        default: return []
+        }
+    }
 
     /// True when any file has an uncommented line naming both `PATH` and `.local/bin`.
     /// Deliberately runs nothing: a heuristic over text, never the person's shell.
@@ -35,9 +45,15 @@ enum ShellProfile {
         contents.replacingOccurrences(of: block, with: "")
     }
 
-    /// The startup file a login shell reads: bash reads `.bash_profile`, everything else is
-    /// treated as zsh, the macOS default.
-    static func target(shell: String) -> String {
-        (shell as NSString).lastPathComponent == "bash" ? ".bash_profile" : ".zprofile"
+    /// The file the block goes in, or nil for a shell Yap doesn't configure. Bash reads only the
+    /// first of `.bash_profile`, `.bash_login`, `.profile` that exists, so the block joins that one;
+    /// creating `.bash_profile` beside an existing `.profile` would stop `.profile` loading.
+    static func target(shell: String, existing: Set<String>) -> String? {
+        switch (shell as NSString).lastPathComponent {
+        case "bash":
+            return [".bash_profile", ".bash_login", ".profile"].first(where: existing.contains) ?? ".bash_profile"
+        case "zsh", "": return ".zprofile"
+        default: return nil
+        }
     }
 }

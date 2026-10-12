@@ -115,7 +115,7 @@ You install the app; the app installs the rest. Follow [Agent setup](${links.age
 2. Download \`SHA256SUMS\`, \`release.json\` and the kit it names from the latest release (\`${links.kit}\`), and run \`shasum -a 256 -c SHA256SUMS\`.
 3. Extract with \`ditto -x -k\`. If Yap.app is already in /Applications or ~/Applications, quit it and replace that copy; otherwise install to ~/Applications/Yap.app.
 4. Open it (\`open ~/Applications/Yap.app\`). Within a few seconds the app installs \`~/.local/bin/yap\`, the yap skill for every agent it finds, and a PATH line when one is missing.
-5. Verify with \`~/.local/bin/yap cli.status\`, \`yap skill.status\` and \`yap service.health\`, then report a short checklist to the user.
+5. Verify with \`~/.local/bin/yap cli.status\`, \`~/.local/bin/yap skill.status\` and \`~/.local/bin/yap service.health\` (use the full path: the new PATH line reaches only new shells), then report a short checklist to the user.
 
 Facts that change what you do:
 

@@ -52,7 +52,7 @@ struct CommandArtifact {
         else if let current = try? Data(contentsOf: command) {
             state = current == bundledBytes() ? .installed : .different
         } else { state = .missing }
-        return Status(state: state, path: command.path, onPath: ShellProfile.covered(files: files),
+        return Status(state: state, path: command.path, onPath: onPath(files),
                       profile: profile.map { home.appendingPathComponent($0).path }, error: error)
     }
 
@@ -61,9 +61,15 @@ struct CommandArtifact {
         do {
             let bytes = try Data(contentsOf: launcher)
             if (try? Data(contentsOf: command)) != bytes { try write(bytes) }
-            if !ShellProfile.covered(files: startupFiles()) {
-                let profile = home.appendingPathComponent(ShellProfile.target(shell: shell))
-                let contents = (try? String(contentsOf: profile, encoding: .utf8)) ?? ""
+            let files = startupFiles()
+            if !onPath(files), let name = ShellProfile.target(shell: shell, existing: existing()) {
+                let profile = home.appendingPathComponent(name)
+                // A file that exists but can't be read as text is left exactly as it is.
+                let contents: String
+                if FileManager.default.fileExists(atPath: profile.path) {
+                    guard let text = files[name] else { throw UnreadableProfile(path: profile.path) }
+                    contents = text
+                } else { contents = "" }
                 try ShellProfile.adding(to: contents).write(to: profile, atomically: false, encoding: .utf8)
             }
             return status()
@@ -87,6 +93,22 @@ struct CommandArtifact {
     }
 
     private var available: Bool { launcher != nil && inApplications }
+
+    private struct UnreadableProfile: LocalizedError {
+        let path: String
+        var errorDescription: String? { "\(path) is not readable as UTF-8 text; add ~/.local/bin to PATH by hand" }
+    }
+
+    /// Only the login shell's own startup files decide whether `~/.local/bin` is on PATH.
+    private func onPath(_ files: [String: String]) -> Bool {
+        ShellProfile.covered(files: files.filter { ShellProfile.files(shell: shell).contains($0.key) })
+    }
+
+    private func existing() -> Set<String> {
+        Set(ShellProfile.startupFiles.filter {
+            FileManager.default.fileExists(atPath: home.appendingPathComponent($0).path)
+        })
+    }
 
     private func bundledBytes() -> Data? { launcher.flatMap { try? Data(contentsOf: $0) } }
 

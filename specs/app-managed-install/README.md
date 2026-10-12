@@ -68,7 +68,7 @@ Each concept has one owner; no slice adds a second.
 | Bundled resource locations | `AppResources` (new, slice 04) |
 | Things the app installs into home (command, skill, PATH block) and their reconcile | `HomeLifecycle` (new, slice 04); `SkillArtifact` and `CommandArtifact` are its parts |
 | Whether this launch proceeds | `LaunchDecision` (new, slice 06): update relaunch, location, one copy — one ordered function |
-| Personal-build `~/.local/bin/yap` | `scripts/install-personal.mjs` (dev builds carry no launcher, so the app reports `unavailable` and never touches it) |
+| Personal-build `~/.local/bin/yap` | `scripts/install-personal.mjs` (dev builds carry no launcher and never touch it; a release app on the same Mac does replace it, per C1) |
 | Human and agent install text | README agent setup + `skills/yap/references/installation.md`; the site's `llms.txt` links to them |
 
 ## Decisions
@@ -86,9 +86,9 @@ and disclosed at the time; everything else the user chose.
 | Q2b | The skill warns about a project-level `yap` copy in the current folder; never deletes | The app cannot scan every project |
 | Q3 | Site: sticky note with Open in Claude Code (`claude-cli://open?q=`), Open in Codex (`codex://new?prompt=`), Copy prompt | Both links pre-fill without sending (Codex verified on a real Mac); copy always works |
 | Q4 | Bundled pinned installer, run with the app's Node; host `npx` search deleted | No Node or npm needed; proven to make no shell-outs |
-| Q5 | PATH block only when no startup file has an uncommented line naming `PATH` and `.local/bin`; the skill falls back to `~/.local/bin/yap` | Predictable, runs nothing; Dock-launched agents read no profile |
+| Q5 | PATH block only when none of the login shell's own startup files has an uncommented line naming `PATH` and `.local/bin`; bash gets it in the first of `.bash_profile`/`.bash_login`/`.profile` that exists; other shells get no edit; an unreadable profile is never rewritten; docs and the skill use `~/.local/bin/yap` | Predictable, runs nothing; never shadows `.profile` or corrupts a dotfile; Dock-launched agents read no profile |
 | Q6 | A release build (has `SUFeedURL`) outside `/Applications` or `~/Applications` shows a playful modal ("Almost there!" / Move it home / Quit); Move copies to `~/Applications`, relaunches, trashes the original; a same-or-newer installed copy is opened instead; an older one is replaced (old to Trash) | A command pointing at a translocated path breaks; dev builds in `dist/` are exempt |
-| Q7 | One copy at a time: a second copy activates the running one and quits; an update relaunch waits for the exiting copy instead | A losing copy otherwise runs serviceless forever (observed) |
+| Q7 | One release copy at a time: a second copy activates the running one and quits, before any move offer; an update relaunch proceeds; dev builds are exempt | A losing copy otherwise runs serviceless forever (observed); a move must never trash a running install; test runs use their own home |
 | Q8 | One spec, committed slices, one release | `main`'s install docs must never describe behavior the latest release lacks |
 | R3 | One Settings row and one preference for command + skill, with a status line | User pick; operations stay separate for agents |
 | A2 | The agent's install report is a short checklist | User pick |

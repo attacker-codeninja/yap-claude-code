@@ -50,8 +50,9 @@ keep the old bundle as a backup; never replace a live app or discard its library
 (
   set -eu
   yap_unpacked="/absolute/path/printed/above/unpacked"
+  # Match the launcher: ~/Applications first, else an existing /Applications copy.
   yap_app="$HOME/Applications/Yap.app"
-  test -d /Applications/Yap.app && yap_app=/Applications/Yap.app
+  if [ ! -e "$yap_app" ] && [ -d /Applications/Yap.app ]; then yap_app=/Applications/Yap.app; fi
   if [ -e "$yap_app" ] || [ -L "$yap_app" ]; then
     yap_backup=$(mktemp -d)
     mv "$yap_app" "$yap_backup/"
@@ -80,8 +81,8 @@ agents launched from the Dock, call the command by its full path,
 1. Run `~/.local/bin/yap cli.status` and `~/.local/bin/yap skill.status`. Expect
    `installed` for both. These may launch the installed app's service; the first
    launch can take a few seconds while the app sets up.
-2. Run `yap capture.status --help` (schema only, no app launch) and
-   `yap service.health`. Inspect `ok` and the returned service status.
+2. Run `~/.local/bin/yap capture.status --help` (schema only, no app launch) and
+   `~/.local/bin/yap service.health`. Inspect `ok` and the returned service status.
 3. If macOS blocks launch, have the user try opening the installed app, then approve
    System Settings → Privacy & Security → **Open Anyway**. Releases are not
    notarized; a `curl` download is never blocked, a browser download is. Managed

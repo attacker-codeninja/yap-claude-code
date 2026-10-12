@@ -23,11 +23,14 @@ before(() => {
         let input = arguments.count > 2 ? arguments[2] : ""
         switch arguments[1] {
         case "covered":
+            let shell = arguments[3]
             let files = try JSONDecoder().decode([String: String].self, from: Data(input.utf8))
-            print(ShellProfile.covered(files: files))
+            print(ShellProfile.covered(files: files.filter { ShellProfile.files(shell: shell).contains($0.key) }))
         case "add": print(ShellProfile.adding(to: input), terminator: "")
         case "remove": print(ShellProfile.removing(from: input), terminator: "")
-        case "target": print(ShellProfile.target(shell: input))
+        case "target":
+            let existing = Set(arguments[3].split(separator: ",").map(String.init))
+            print(ShellProfile.target(shell: input, existing: existing) ?? "none")
         default: fatalError("unknown call")
         }
     }
@@ -42,17 +45,36 @@ before(() => {
 });
 after(() => rmSync(scratch, { recursive: true, force: true }));
 
-const call = (name, input = "") => execFileSync(driver, [name, input], { encoding: "utf8" });
-const covered = (files) => call("covered", JSON.stringify(files)).trim() === "true";
+const call = (name, input = "", extra = "") =>
+  execFileSync(driver, [name, input, extra], { encoding: "utf8" });
+const covered = (files, shell = "/bin/zsh") =>
+  call("covered", JSON.stringify(files), shell).trim() === "true";
+const target = (shell, existing = []) => call("target", shell, existing.join(",")).trim();
 
-test("an uncommented PATH .local/bin line in any startup file suppresses the block", () => {
-  for (const file of [".zshenv", ".zprofile", ".zshrc", ".bash_profile", ".bashrc", ".profile"]) {
-    assert.equal(
-      covered({ [file]: '  path=($HOME/bin $path)\n  export PATH="$HOME/.local/bin:$PATH"\n' }),
-      true,
-      file,
-    );
-  }
+test("an uncommented PATH .local/bin line in the login shell's own startup files suppresses the block", () => {
+  const line = '  path=($HOME/bin $path)\n  export PATH="$HOME/.local/bin:$PATH"\n';
+  for (const file of [".zshenv", ".zprofile", ".zshrc"])
+    assert.equal(covered({ [file]: line }), true, file);
+  for (const file of [".bash_profile", ".bash_login", ".profile", ".bashrc"])
+    assert.equal(covered({ [file]: line }, "/bin/bash"), true, file);
+});
+
+test("startup files another shell reads do not count", () => {
+  const line = 'export PATH="$HOME/.local/bin:$PATH"\n';
+  assert.equal(
+    covered({ ".bash_profile": line, ".profile": line }),
+    false,
+    "zsh ignores bash files",
+  );
+  assert.equal(covered({ ".zshrc": line }, "/bin/bash"), false, "bash ignores zsh files");
+  assert.equal(
+    covered({ ".zshrc": line, ".profile": line }, "/opt/homebrew/bin/fish"),
+    false,
+    "fish",
+  );
+});
+
+test("covered heuristics", () => {
   assert.equal(covered({ ".zshrc": "export PATH=~/.local/bin:$PATH" }), true);
   assert.equal(covered({ ".zshrc": "alias ll='ls -l'\n", ".profile": "" }), false);
   assert.equal(
@@ -86,10 +108,15 @@ test("remove deletes exactly the block", () => {
   assert.equal(call("remove", own), own);
 });
 
-test("bash targets .bash_profile", () => {
-  assert.equal(call("target", "/bin/bash").trim(), ".bash_profile");
-  assert.equal(call("target", "/opt/homebrew/bin/bash").trim(), ".bash_profile");
-  assert.equal(call("target", "/bin/zsh").trim(), ".zprofile");
-  assert.equal(call("target", "/opt/homebrew/bin/fish").trim(), ".zprofile");
-  assert.equal(call("target", "").trim(), ".zprofile");
+test("bash edits the login file it already reads, never shadowing ~/.profile", () => {
+  assert.equal(target("/bin/bash"), ".bash_profile");
+  assert.equal(target("/opt/homebrew/bin/bash", [".profile"]), ".profile");
+  assert.equal(target("/bin/bash", [".bash_login", ".profile"]), ".bash_login");
+  assert.equal(target("/bin/bash", [".bash_profile", ".profile"]), ".bash_profile");
+});
+
+test("zsh targets .zprofile; other shells get no edit", () => {
+  assert.equal(target("/bin/zsh"), ".zprofile");
+  assert.equal(target(""), ".zprofile");
+  assert.equal(target("/opt/homebrew/bin/fish"), "none");
 });

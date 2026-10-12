@@ -137,10 +137,10 @@ command while it is unchanged and only Yap's PATH block. The row's status line r
 the disk; `cli.*` and `skill.*` operations carry the details for agents.
 
 A [launch decision](Sources/Yap/LaunchDecision.swift) runs before anything starts:
-an update relaunch always proceeds; a release build outside `/Applications` or
-`~/Applications` offers to [move itself](Sources/Yap/AppRelocator.swift) there; a
-second copy hands off to the running one and quits. Builds without an update feed
-are exempt from the location rule, so `dist/` builds run in place.
+an update relaunch always proceeds; a second release copy hands off to the running
+one and quits; a release build outside `/Applications` or `~/Applications` offers to
+[move itself](Sources/Yap/AppRelocator.swift) there. Builds without an update feed
+are exempt from both rules, so `dist/` builds run in place beside an installed Yap.
 
 The [offscreen settings renderer](tests/settings-view-shots.mjs) draws the production
 view with synthetic owner facts and checks that the form still scrolls to General.

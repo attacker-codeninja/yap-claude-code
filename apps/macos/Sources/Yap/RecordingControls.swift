@@ -101,7 +101,9 @@ final class RecordingControls: NSObject {
         self.quit = quit
         self.preferences = preferences
         self.homeLifecycle = HomeLifecycle(
-            inApplications: LaunchDecision.isInApplicationsFolder(Bundle.main.bundleURL, home: accountHome()))
+            inApplications: LaunchDecision.originalLocation(
+                of: Bundle.main.bundleURL, translocation: Translocation.of(Bundle.main.bundleURL)
+            ).map { LaunchDecision.isInApplicationsFolder($0, home: accountHome()) } ?? false)
         state = ControlsState(recording: preferences.recording)
         let overridePath = GlobalShortcuts.overridePath(home: home)
         super.init()

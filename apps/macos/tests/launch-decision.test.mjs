@@ -106,14 +106,17 @@ test("translocated offers a move of the original", () => {
 
 test("second copy hands off", () => {
   assert.equal(decide({ bundle: "/Applications/Yap.app", running: [4242] }), "handOff 4242");
-  assert.equal(
-    decide({ bundle: "/private/tmp/build/Yap.app", isRelease: false, running: [77] }),
-    "handOff 77",
-  );
-  // Location comes first: a misplaced copy offers the move rather than handing off.
+  // A running copy wins over the move offer: moving would trash the live install it runs from.
   assert.equal(
     decide({ bundle: "/Users/someone/Downloads/Yap.app", running: [4242] }),
-    "offerMove /Users/someone/Downloads/Yap.app",
+    "handOff 4242",
+  );
+});
+
+test("dev builds never hand off, so test runs work beside an installed Yap", () => {
+  assert.equal(
+    decide({ bundle: "/private/tmp/build/Yap.app", isRelease: false, running: [77] }),
+    "proceed",
   );
 });
 

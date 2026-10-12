@@ -68,19 +68,25 @@ enum LaunchDecision {
         // The exiting copy is still visible during an update relaunch; Sparkle already chose
         // this copy, so it neither moves nor hands off.
         if arguments.contains(updateRelaunchArgument) { return .proceed }
-        if isRelease {
-            let original: URL?
-            switch translocation {
-            case .notTranslocated: original = bundle
-            case .resolved(let url): original = url
-            case .unresolved: original = nil
-            }
-            guard let original, isInApplicationsFolder(original, home: home) else {
-                return .offerMove(original: original)
-            }
-        }
+        // Dev builds run beside an installed Yap with their own home, so only releases are single.
+        // A running copy comes before location: moving would trash the bundle it runs from.
+        guard isRelease else { return .proceed }
         if let other = running.first { return .handOff(pid: other.pid) }
+        let original = originalLocation(of: bundle, translocation: translocation)
+        guard let original, isInApplicationsFolder(original, home: home) else {
+            return .offerMove(original: original)
+        }
         return .proceed
+    }
+
+    /// Where the app really lives: its own path, or the original behind a translocated launch
+    /// (nil when that original can't be found).
+    static func originalLocation(of bundle: URL, translocation: Translocation) -> URL? {
+        switch translocation {
+        case .notTranslocated: return bundle
+        case .resolved(let url): return url
+        case .unresolved: return nil
+        }
     }
 
     /// The bundle's own folder is `/Applications` or `$HOME/Applications`, after symlinks.
