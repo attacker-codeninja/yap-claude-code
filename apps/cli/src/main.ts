@@ -257,12 +257,13 @@ async function main() {
     throw new Error("Expected one operation name or mcp");
   const explicitTimeoutMs =
     values["timeout-ms"] === undefined ? undefined : Number(values["timeout-ms"]);
-  const waitRequested =
-    Boolean(values.wait) || (skillLifecycleOperations.has(operation) && !values["no-wait"]);
-  const timeoutMs = explicitTimeoutMs ?? (waitRequested ? 120_000 : undefined);
+  const skillLifecycle = skillLifecycleOperations.has(operation);
+  const waitRequested = Boolean(values.wait) || (skillLifecycle && !values["no-wait"]);
+  // Only skill lifecycle has a default budget; every other --wait names its own.
+  const timeoutMs = explicitTimeoutMs ?? (waitRequested && skillLifecycle ? 120_000 : undefined);
   if (
     (Boolean(values.wait) && Boolean(values["no-wait"])) ||
-    (!skillLifecycleOperations.has(operation) &&
+    (!skillLifecycle &&
       Boolean(values.wait) !== (timeoutMs !== undefined)) ||
     (timeoutMs !== undefined &&
       (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 2_147_483_647))
