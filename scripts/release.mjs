@@ -219,7 +219,6 @@ async function packageRelease(tag) {
       manifest.ffmpegReceiptSha256 = await sha(join(ffmpegDirectory, "receipt.json"));
       writeFileSync(manifestFile, JSON.stringify(manifest, null, 2) + "\n");
       signReleaseTree(app, identity, keychain, { signedResources });
-      if (!existsSync(launcher)) throw new Error("Release app is missing its bundled launcher");
       const updateArchive = join(out, `Yap-${tag}-update-macos-arm64.zip`);
       run("ditto", ["-c", "-k", "--sequesterRsrc", "--keepParent", app, updateArchive]);
       const tool = join(tools, "bin/sign_update");

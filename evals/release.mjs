@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { runContainer } from "./container.mjs";
+import { kitName } from "../scripts/release-kit.mjs";
 
 export function verifyRelease({ archive, receipt, checksums, archiveName, tag }) {
   for (const [name, bytes] of [
@@ -50,12 +51,7 @@ export async function releaseCli({ tag = "latest", cache, image }) {
     bytes[name] = await download(asset.browser_download_url);
   };
   await fetchAsset("SHA256SUMS");
-  // The install kit is the archive SHA256SUMS names (versioned before the fixed kit name).
-  const archiveName = bytes.SHA256SUMS.toString("utf8")
-    .split("\n")
-    .map((line) => line.split("  ")[1])
-    .find((name) => name?.endsWith(".zip"));
-  if (!archiveName) throw new Error("SHA256SUMS names no install kit");
+  const archiveName = kitName(bytes.SHA256SUMS.toString("utf8"));
   for (const name of [archiveName, "release.json"]) await fetchAsset(name);
   const receipt = verifyRelease({
     archive: bytes[archiveName],

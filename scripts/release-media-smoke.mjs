@@ -4,15 +4,12 @@ import { mkdtempSync, readFileSync, rmSync, realpathSync, writeFileSync } from "
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { kitName } from "./release-kit.mjs";
 import { setTimeout as delay } from "node:timers/promises";
 import { verifyVideoDelivery } from "../packages/test-harness/editing/hevc-delivery.mjs";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const receipt = JSON.parse(readFileSync(join(root, "dist/release/release.json")));
-// The install kit is the archive SHA256SUMS names; release.mjs owns that name.
-const kit = readFileSync(join(root, "dist/release/SHA256SUMS"), "utf8")
-  .split("\n")
-  .map((line) => line.split("  ")[1])
-  .find((name) => name?.endsWith(".zip"));
+const kit = kitName(readFileSync(join(root, "dist/release/SHA256SUMS"), "utf8"));
 const scratch = mkdtempSync("/tmp/yap-release-");
 let child, exited, cleanupError, spawnError;
 try {

@@ -27,10 +27,8 @@ test("relocated media verification reports service startup refusal without runni
       "kit/Yap.app/Contents/Resources/bin",
     ])
       mkdirSync(join(scratch, directory), { recursive: true });
-    copyFileSync(
-      new URL("release-media-smoke.mjs", import.meta.url),
-      join(scratch, "scripts/release-media-smoke.mjs"),
-    );
+    for (const script of ["release-media-smoke.mjs", "release-kit.mjs"])
+      copyFileSync(new URL(script, import.meta.url), join(scratch, "scripts", script));
     writeFileSync(
       join(scratch, "packages/test-harness/editing/hevc-delivery.mjs"),
       "export function verifyVideoDelivery(){throw Error('unexpected media execution')}\n",

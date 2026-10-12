@@ -31,10 +31,8 @@ const withRelease = (body) => {
       "kit/Yap.app/Contents/Resources/bin",
     ])
       mkdirSync(join(scratch, path), { recursive: true });
-    copyFileSync(
-      new URL("release-smoke.mjs", import.meta.url),
-      join(scratch, "scripts/release-smoke.mjs"),
-    );
+    for (const script of ["release-smoke.mjs", "release-kit.mjs"])
+      copyFileSync(new URL(script, import.meta.url), join(scratch, "scripts", script));
     const forbidden = join(scratch, "forbidden-execution");
     const trap = `#!${process.execPath}\nrequire('node:fs').writeFileSync(${JSON.stringify(forbidden)},'forbidden');process.exit(79);\n`;
     const kit = join(scratch, "kit");

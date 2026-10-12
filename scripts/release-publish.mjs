@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { kitName } from "./release-kit.mjs";
 
 const [directory, tag, revision, ...extra] = process.argv.slice(2);
 try {
@@ -15,14 +16,13 @@ try {
     createHash("sha256")
       .update(readFileSync(join(root, name)))
       .digest("hex");
-  const kit = [];
-  for (const entry of readFileSync(join(root, "SHA256SUMS"), "utf8").trim().split("\n")) {
+  const checksums = readFileSync(join(root, "SHA256SUMS"), "utf8");
+  for (const entry of checksums.trim().split("\n")) {
     const match = /^([0-9a-f]{64})  ([^/]+)$/.exec(entry);
     if (!match || digest(match[2]) !== match[1])
       throw new Error("Install-kit checksum verification failed");
-    if (match[2].endsWith(".zip")) kit.push(match[2]);
   }
-  if (kit.length !== 1) throw new Error("SHA256SUMS must name exactly one install kit");
+  const kit = kitName(checksums);
   for (const artifact of [receipt.updateArchive, receipt.appcast]) {
     if (!artifact || artifact.name.includes("/") || digest(artifact.name) !== artifact.sha256)
       throw new Error("Authenticated update artifact differs from package receipt");
@@ -56,7 +56,7 @@ try {
       ]);
       if (created.status !== 0) throw new Error(created.stderr || "Draft release creation failed");
     }
-    const assets = [kit[0], receipt.updateArchive.name];
+    const assets = [kit, receipt.updateArchive.name];
     for (const name of ["appcast.xml", "SHA256SUMS", "release.json"]) assets.push(name);
     const upload = gh(["release", "upload", tag, ...assets, "--clobber"]);
     if (upload.status !== 0) throw new Error(upload.stderr || "Draft upload failed");

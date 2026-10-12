@@ -1377,13 +1377,13 @@ export const operationSchema = z.discriminatedUnion("operation", [
     .object({ operation: z.literal("skill.status"), params: z.object({}).strict() })
     .strict()
     .describe(
-      "Read the account-level Yap consumer skill installation, including whether it is managed, current, missing or needs attention and the harness destinations discovered by npx skills.",
+      "Read the account-level Yap consumer skill installation, including whether it is managed, current, missing or needs attention and the harness destinations the bundled skills installer discovers.",
     ),
   z
     .object({ operation: z.literal("skill.install"), params: z.object({}).strict() })
     .strict()
     .describe(
-      "Start a durable install/replace of the account-level Yap consumer skill through the pinned npx skills installer, allowing it to discover every supported agent harness. The response is an updating status with an operationId; poll skill.status for completion.",
+      "Start a durable install/replace of the account-level Yap consumer skill through the app's bundled, pinned skills installer, allowing it to discover every supported agent harness. The response is an updating status with an operationId; poll skill.status for completion.",
     ),
   z
     .object({ operation: z.literal("skill.uninstall"), params: z.object({}).strict() })
@@ -1395,7 +1395,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
     .object({ operation: z.literal("skill.update"), params: z.object({}).strict() })
     .strict()
     .describe(
-      "Start a durable refresh of the account-level Yap consumer skill through the pinned npx skills installer, replacing an existing global Yap skill and verifying all discovered harness destinations. The response is an updating status with an operationId; poll skill.status for completion.",
+      "Start a durable refresh of the account-level Yap consumer skill through the app's bundled, pinned skills installer, replacing an existing global Yap skill and verifying all discovered harness destinations. The response is an updating status with an operationId; poll skill.status for completion.",
     ),
   z
     .object({ operation: z.literal("cli.status"), params: z.object({}).strict() })
