@@ -6,6 +6,14 @@ The capture menu keeps its dark appearance after selecting a recording area and
 shows the latest recording below the action buttons with Play and Copy agent prompt
 actions. Screen recordings now include the pointer in the captured video.
 
+## 0.1.32
+
+Exports into the same folder now queue instead of failing each other with
+`PUBLICATION_BUSY`; that error is left for a publisher in another process. An
+existing file Yap cannot read no longer refuses `export.create`; it is treated as a
+file Yap did not write, so the export fails without touching it unless `overwrite`
+is set.
+
 ## 0.1.31
 
 `yap` commands answer immediately after Yap starts. Service health no longer
