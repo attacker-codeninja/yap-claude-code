@@ -6,6 +6,13 @@ The capture menu keeps its dark appearance after selecting a recording area and
 shows the latest recording below the action buttons with Play and Copy agent prompt
 actions. Screen recordings now include the pointer in the captured video.
 
+## 0.1.31
+
+`yap` commands answer immediately after Yap starts. Service health no longer
+re-hashes every prepared model runtime on each call, which made commands wait up to
+a minute once the speaker model was installed; full verification still runs at
+preparation, on an explicit `model.status` and before every execution.
+
 ## 0.1.30
 
 Opening a second copy of Yap now brings up the running one's Settings instead of
