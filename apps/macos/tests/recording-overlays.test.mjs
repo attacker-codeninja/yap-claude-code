@@ -33,8 +33,15 @@ async function launchWith(preferences = [], environment = {}) {
     rows: async () => (await send({ do: "snapshot" })).rows,
     /** What this app says it is doing, or nothing at all while it sits idle. */
     working: async () => {
-      const first = (await send({ do: "snapshot" })).rows[0].title;
-      return first.startsWith("Source:") ? "" : first;
+      const { status } = await send({ do: "snapshot" });
+      return status === "Idle" ? "" : status;
+    },
+    /** Opens capture until a source is chosen and Start would record it. */
+    ready: async () => {
+      await waitFor(async () => {
+        await send({ do: "open" });
+        return find((await send({ do: "snapshot" })).rows, "capture.startOrStop")?.enabled;
+      }, 20_000);
     },
     window: async (title) => (await send({ do: "windows" })).windows.find((w) => w.title === title),
     active: async () => (await send({ do: "windows" })).active,
@@ -67,10 +74,7 @@ test(
   async () => {
     const app = await launchWith();
     // A display is selected but never recorded: the count is abandoned before capture is asked for.
-    await waitFor(async () => {
-      await app.send({ do: "open" });
-      return !(await app.rows()).some((row) => row.title === "Source: none chosen");
-    }, 20_000);
+    await app.ready();
     await app.choose("capture.startOrStop");
 
     const [, seconds] = await app.instance.waitFor(/countdown (\d+) seconds on display/);
@@ -108,10 +112,7 @@ test(
   { timeout: 90_000 },
   async () => {
     const app = await launchWith();
-    await waitFor(async () => {
-      await app.send({ do: "open" });
-      return !(await app.rows()).some((row) => row.title === "Source: none chosen");
-    }, 20_000);
+    await app.ready();
     await app.choose("capture.startOrStop");
     await app.instance.waitFor(/countdown \d+ seconds on display/);
 
@@ -143,14 +144,16 @@ test(
     });
     // Every take here records this app's own fixture window with no audio device of any kind.
     const [, windowId] = await app.instance.waitFor(/capture fixture window=(\d+)/);
-    // Opening the menu is what re-reads the sources, so this is how a window that appeared after
-    // launch comes to be listed.
+    // Opening capture refreshes sources; the Window tile exposes its native source chooser.
     await waitFor(async () => {
       await app.send({ do: "open" });
+      await app.send({ do: "choose", item: "source.window" });
       return Boolean(find(await app.rows(), `source.window.${windowId}`));
     }, 20_000);
-    await app.choose("microphone.off");
     await app.choose(`source.window.${windowId}`);
+    // The microphone switch starts on; turning it off records no audio device of any kind.
+    await app.choose("microphone.toggle");
+    assert.equal(find(await app.rows(), "microphone.toggle").checked, false);
     assert.notEqual(
       (await app.window(controlsWindow))?.visible,
       true,

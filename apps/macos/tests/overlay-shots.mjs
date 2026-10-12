@@ -46,15 +46,17 @@ await instance.waitFor(/controls probe listening/);
 const [, windowId] = await instance.waitFor(/capture fixture window=(\d+)/);
 const send = controlsProbe(commands);
 await send({ do: "appearance", value: appearance });
-// Opening the menu is what re-reads the sources, so this is how the fixture window is listed.
+// Opening capture refreshes sources; the Window tile exposes its native source chooser.
 await waitFor(async () => {
   await send({ do: "open" });
+  await send({ do: "choose", item: "source.window" });
   return Boolean(find((await send({ do: "snapshot" })).rows, `source.window.${windowId}`));
 }, 20_000);
-await send({ do: "choose", item: "microphone.off" });
 await send({ do: "choose", item: `source.window.${windowId}` });
+// The microphone switch starts on; turning it off records no audio device of any kind.
+await send({ do: "choose", item: "microphone.toggle" });
 
-const rows = async () => (await send({ do: "snapshot" })).rows;
+const status = async () => (await send({ do: "snapshot" })).status;
 const shoot = async (title, name) => {
   await waitFor(
     async () => (await send({ do: "windows" })).windows.some((w) => w.title === title && w.visible),
@@ -76,10 +78,10 @@ if (mode === "countdown") {
   await instance.waitFor(/countdown abandoned/);
 } else {
   // Both states are caught at the same point on the clock, so the pair compares.
-  await waitFor(async () => (await rows())[0].title === "Recording — 0:02", 20_000);
+  await waitFor(async () => (await status()) === "Recording — 0:02", 20_000);
   await shoot(controlsWindow, `${appearance}-recording`);
   await send({ do: "choose", item: "capture.pauseOrResume" });
-  await waitFor(async () => (await rows())[0].title.startsWith("Paused —"), 20_000);
+  await waitFor(async () => (await status()).startsWith("Paused —"), 20_000);
   await shoot(controlsWindow, `${appearance}-paused`);
   await send({ do: "choose", item: "capture.cancel" });
   await delay(1000);
