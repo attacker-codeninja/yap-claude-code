@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { fork, execFileSync } from "node:child_process";
 import { once } from "node:events";
-import { mkdtemp, mkdir, readFile, copyFile, rm, writeFile, readdir } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile, readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Catalog } from "@yap/core/catalog";
@@ -12,6 +12,7 @@ import { SourceEvidenceStore } from "@yap/core/evidence";
 import { mediaWorker, nativeResult } from "../dist/worker.js";
 import { sourceExporter } from "../dist/source-export.js";
 import { waitFor } from "../../macos/tests/harness.mjs";
+import { writeCanonicalCapture } from "./fixtures/canonical-capture.mjs";
 const binary = process.env.YAP_NATIVE ?? resolve("helpers/mac/.build/debug/yap-native");
 function owners(root) {
   const catalog = new Catalog(join(root, "catalog.sqlite"));
@@ -82,18 +83,7 @@ if (process.argv[2] === "--child") {
       });
       const donor = join(root, "donor");
       await mkdir(donor);
-      execFileSync("tar", [
-        "-xzf",
-        resolve("specs/done/agent-editing/assets/20d-canonical-admission/evidence.tar.gz"),
-        "-C",
-        donor,
-        "--strip-components=1",
-        "canonical-input",
-      ]);
-      await copyFile(
-        resolve("specs/done/agent-editing/assets/00-corpus/video-only.mov"),
-        join(donor, "video.mov"),
-      );
+      await writeCanonicalCapture(donor);
       const marker = join(root, "held"),
         library = join(root, "barrier.dylib");
       execFileSync("/usr/bin/clang", [

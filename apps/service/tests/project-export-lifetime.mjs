@@ -699,3 +699,44 @@ test("package abandonment forgets failed identity and permits clean export-id re
   assert.equal(await readFile(join(f.output, request.leaf), "utf8"), "foreign output");
   assert.equal(await readFile(f.assets.path(f.asset.id), "utf8"), "source identity");
 });
+
+test("exports admitted while another export publishes into the same directory both commit", async (t) => {
+  const held = gate(),
+    release = gate();
+  t.after(() => release.resolve());
+  let holding = true;
+  const f = await fixture(t, {
+    wrap:
+      (run) =>
+      async (operation, ...args) => {
+        const result = await run(operation, ...args);
+        // The first publisher keeps its destination lock while this prepare is held.
+        if (operation === "publication.prepare" && holding) {
+          holding = false;
+          held.resolve();
+          await release.promise;
+        }
+        return result;
+      },
+  });
+  const first = f.request(),
+    second = f.request();
+  await f.exports.create(first);
+  await held.promise;
+  let failure;
+  const admitting = f.exports.create(second).catch((error) => {
+    failure = error;
+  });
+  // Long enough for an unserialized admission to reach the held destination and be refused.
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  release.resolve();
+  await admitting;
+  assert.equal(failure, undefined, failure && `${failure.code}: ${failure.message}`);
+  await f.jobs.idle();
+  for (const request of [first, second]) {
+    const status = f.exports.status(request.exportId);
+    assert.equal(status.state, "committed", JSON.stringify(status));
+    assert.equal(sha(await readFile(join(f.output, request.leaf))), status.receipt.sha256);
+  }
+  assert.deepEqual((await readdir(f.output)).sort(), [first.leaf, second.leaf].sort());
+});

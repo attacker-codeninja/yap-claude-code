@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { fork, execFileSync } from "node:child_process";
 import { once } from "node:events";
-import { mkdtemp, mkdir, readFile, copyFile, rm, writeFile, access } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile, access } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,6 +16,7 @@ import { ManagedFiles } from "../dist/managed-files.js";
 import { startProjectService } from "../dist/project-service.js";
 import { mediaWorker } from "../dist/worker.js";
 import { waitFor } from "../../macos/tests/harness.mjs";
+import { writeCanonicalCapture } from "./fixtures/canonical-capture.mjs";
 import { withArchiveCopyBarrier } from "../../macos/tests/fixtures/archive-copy-barrier.mjs";
 import {
   seedCapture,
@@ -134,18 +135,7 @@ if (process.argv[2] === "--child") {
       const library = join(home, "library"),
         root = join(library, "recordings", take.recordingId),
         source = join(root, "source");
-      execFileSync("tar", [
-        "-xzf",
-        resolve("specs/done/agent-editing/assets/20d-canonical-admission/evidence.tar.gz"),
-        "-C",
-        source,
-        "--strip-components=1",
-        "canonical-input",
-      ]);
-      await copyFile(
-        resolve("specs/done/agent-editing/assets/00-corpus/video-only.mov"),
-        join(source, "video.mov"),
-      );
+      await writeCanonicalCapture(source);
       const journal = await readFile(join(source, "capture.journal.jsonl"));
       child = fork(fileURLToPath(import.meta.url), ["--child", home, take.recordingId, mode], {
         detached: true,

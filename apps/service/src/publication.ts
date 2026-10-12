@@ -43,6 +43,7 @@ export class Publication {
     private readonly identities: Record<string, unknown>,
     private readonly worker: MediaWorker,
     private readonly timeoutMs: number | undefined,
+    private readonly onClosed: (() => void) | undefined,
   ) {}
 
   /** Live private file lengths, including partial preparation; never opens the destination.
@@ -126,6 +127,8 @@ export class Publication {
     options: {
       timeoutMs?: number;
       expected?: { stage: DirectoryIdentity; destination: DirectoryIdentity };
+      /** Runs once after an opened publication releases its descriptors and their locks. */
+      onClosed?: () => void;
     } = {},
   ) {
     const stageBefore = await lstat(stagePath, { bigint: true });
@@ -193,6 +196,7 @@ export class Publication {
         { stage: identity(actualStage), destination: identity(actual) },
         worker,
         options.timeoutMs,
+        options.onClosed,
       );
     } catch (error) {
       await destination?.close();
@@ -417,7 +421,7 @@ export class Publication {
   close(): Promise<void> {
     return (this.closing ??= (async () => {
       await this.pending?.catch(() => {});
-      await Promise.all([this.stage.close(), this.destination.close()]);
+      await Promise.all([this.stage.close(), this.destination.close()]).finally(this.onClosed);
     })());
   }
 }

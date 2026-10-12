@@ -123,6 +123,27 @@ const artifact = "export-media",
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const stageName = (id: string) => `.yap-export-${id}`;
 
+/** The publication lock refuses a second holder of a destination directory. This service's
+ * publishers instead take turns per directory, so they serialize rather than fail each other;
+ * PUBLICATION_BUSY is left for another process. Holders are bounded by their worker deadlines. */
+const destinationTurns = new Map<string, Promise<void>>();
+async function destinationTurn(identity: DirectoryIdentity): Promise<() => void> {
+  const key = `${identity.dev}:${identity.ino}`;
+  const prior = destinationTurns.get(key);
+  let finish!: () => void;
+  const turn = new Promise<void>((resolve) => (finish = resolve));
+  const queued = (prior ?? Promise.resolve()).then(() => turn);
+  destinationTurns.set(key, queued);
+  await prior;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    finish();
+    if (destinationTurns.get(key) === queued) destinationTurns.delete(key);
+  };
+}
+
 /** Lifecycle columns as stored: JSON or null for staging, assembly and receipt, 0/1 flags. */
 type Lifecycle = {
   staging: unknown;
@@ -617,13 +638,26 @@ export class MediaExports {
     this.assertOwner({ targetId });
     // Another request may have won while metadata/directory checks awaited. Replay its pin.
     if (this.find(request.exportId)) return this.prepareIntent(request);
+    const release = await destinationTurn(selected.identity);
     const live = await Publication.inspect(
       selected.directory,
       selected.identity,
       request.leaf,
       this.owners.worker,
       this.lifetime.signal,
-    );
+    )
+      .catch((error: unknown) => {
+        // Trust and replacement both need the complete bytes. A leaf this owner cannot read is
+        // simply untrusted unless overwrite asks to pin it; commit still refuses to displace it.
+        if (
+          request.overwrite !== true &&
+          error instanceof CatalogError &&
+          error.code === "PUBLICATION_IO"
+        )
+          return null;
+        throw error;
+      })
+      .finally(release);
     this.protectSource(live);
     const trusted =
       live &&
@@ -966,21 +1000,28 @@ export class MediaExports {
       );
       intent.staging = identity;
     }
-    return Publication.open(
-      join(intent.destination.directory, stageName(intent.exportId)),
-      intent.destination.directory,
-      this.owners.worker,
-      {
-        expected: {
-          stage: intent.staging,
-          destination: intent.destination.identity,
+    const release = await destinationTurn(intent.destination.identity);
+    try {
+      return await Publication.open(
+        join(intent.destination.directory, stageName(intent.exportId)),
+        intent.destination.directory,
+        this.owners.worker,
+        {
+          expected: {
+            stage: intent.staging,
+            destination: intent.destination.identity,
+          },
+          timeoutMs: publicationDeadlineMs(
+            intent.receipt?.bytes ?? intent.assembly?.bytes ?? intent.preview?.bytes ?? 0,
+            intent.destination.replacement?.bytes ?? 0,
+          ),
+          onClosed: release,
         },
-        timeoutMs: publicationDeadlineMs(
-          intent.receipt?.bytes ?? intent.assembly?.bytes ?? intent.preview?.bytes ?? 0,
-          intent.destination.replacement?.bytes ?? 0,
-        ),
-      },
-    );
+      );
+    } catch (error) {
+      release();
+      throw error;
+    }
   }
   private stagingPresence(intent: Intent, signal?: AbortSignal) {
     return Publication.staging(

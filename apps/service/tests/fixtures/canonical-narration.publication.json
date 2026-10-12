@@ -1,0 +1,25 @@
+{
+  "acceptedFrames": "96000",
+  "canonical": {
+    "bytes": "384721",
+    "sha256": "c884ebe5686c9e82e165f1a2ec8b5895d7f50accbb970ee1af885475590f8f9c"
+  },
+  "cleanPhysicalEOF": true,
+  "committedFrames": "96000",
+  "intent": {
+    "journal": {
+      "bytes": "914",
+      "sha256": "d6f52d3999042c7c7f7f53a04d41ba0e9537f1f249129ac9474d5e642593ceab"
+    },
+    "payload": {
+      "bytes": "384740",
+      "sha256": "a1d96efa7a2366e2657a307e7bdedc3d910220e6f790a3559576684245fadfa2"
+    },
+    "role": "narration",
+    "sourceID": "complete",
+    "version": 1
+  },
+  "pcmSHA256": "c8e9106096010f5d51edf9ec43b77127282db70c6fd7bea31585f275e0a376a8",
+  "representedFrames": "96000",
+  "supportSHA256": "7c825dca027ec3bac5cdec9e81c8fd4b13235c304b23dc3a9706c7e9c4b48d7e"
+}

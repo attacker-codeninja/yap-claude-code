@@ -843,7 +843,9 @@ test("a lost preparation acknowledgement expires while committed ownership keeps
   const input = new PassThrough(),
     output = new PassThrough();
   const f = await projectServiceFixture(cleanups, async () => ({ ok: true, data: {} }), undefined, {
-    control: { input, output, timeoutMs: 30 },
+    // Chaos-marginal: the fenced call must land inside this deadline even on a loaded machine;
+    // 30 ms let the permit expire first during a full parallel run. The waits are twice it.
+    control: { input, output, timeoutMs: 300 },
   });
   const responses: { id: string; ok: boolean; data: { kind?: string; permitId?: string } }[] = [];
   output.on("data", (bytes) => {
@@ -862,14 +864,14 @@ test("a lost preparation acknowledgement expires while committed ownership keeps
     ok: false,
     error: { code: "UPDATING" },
   });
-  await delay(60);
+  await delay(600);
   expect(await ask("reopened", "project.list")).toMatchObject({ ok: true });
   await new Promise((resolve) => setImmediate(resolve));
   const next = await ask("next", "update.prepare");
   expect(await ask("commit", "update.commit", { permitId: next.data.permitId })).toMatchObject({
     ok: true,
   });
-  await delay(60);
+  await delay(600);
   expect(
     await ask("old-release", "update.release", { permitId: lost.data.permitId }),
   ).toMatchObject({ ok: true, data: { released: true } });

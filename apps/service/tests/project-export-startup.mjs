@@ -6,7 +6,7 @@ import { once } from "node:events";
 import { mkdtemp, readFile, rename, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { callLocal } from "@yap/client";
-import { projectMovieRenderer } from "../dist/project-render.js";
+import { nativePictureCapabilities, projectMovieRenderer } from "../dist/project-render.js";
 import { fixture, until, native, nativeBinary } from "./fixtures/project-export.mjs";
 
 test(
@@ -14,7 +14,16 @@ test(
   { timeout: 20000 },
   async (t) => {
     const f = await fixture(t, { admission: false });
-    const implementation = projectMovieRenderer(native, join(f.home, "render")).implementationId;
+    // Pin the identity the bundled service composes: native picture capabilities are part of it,
+    // and the child runs without an FFmpeg installation, so no audio processing runtime is added.
+    const implementation = projectMovieRenderer(
+      native,
+      join(f.home, "render"),
+      undefined,
+      {},
+      undefined,
+      await nativePictureCapabilities(native),
+    ).implementationId;
     f.replaceRenderer(implementation);
     const request = { ...f.request(), leaf: "restarted.mp4" };
     const pending = await f.exports.create(request);
@@ -54,7 +63,12 @@ test(
       cwd: "/",
       detached: true,
       stdio: ["pipe", "pipe", "pipe"],
-      env: { ...process.env, YAP_HOME: home, YAP_NATIVE: nativeBinary },
+      env: {
+        ...process.env,
+        YAP_HOME: home,
+        YAP_NATIVE: nativeBinary,
+        YAP_FFMPEG_DIRECTORY: "",
+      },
     });
     const closed = once(child, "close");
     let stdout = "",

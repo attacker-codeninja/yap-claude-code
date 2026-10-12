@@ -100,7 +100,8 @@ belongs to the composition settings owner, not another service allowlist.
 Replacement trusts the recorded file identity and complete bytes, never just a
 pathname or a formerly owned name. Imported-original identity belongs to the
 asset owner and remains protected through aliases. The [publication owner](src/publication.ts)
-retains its destination lock across native workers; the [native publication boundary](../../helpers/mac/README.md#external-publication)
+retains its destination lock across native workers. Export work in one service takes
+turns per destination directory, so only a publisher in another process sees it busy. The [native publication boundary](../../helpers/mac/README.md#external-publication)
 explains what cooperative ownership can guarantee and why unknown displaced
 entries survive a conflict.
 
@@ -239,3 +240,10 @@ The compressor recipe carries explicit post-compression `makeupGainDb`; omission
 is unity. Preview, prepared audio and export consume the same native-admitted
 recipe. Bypass leaves dry PCM unchanged; makeup never becomes an implicit
 loudness-matching or mastering request.
+
+## Checks
+
+The package test script runs every node test in [`tests/`](tests) against the repo's
+debug native worker unless `YAP_NATIVE` names another. [`capture-source-lifetime`](tests/capture-source-lifetime.mjs)
+is a lab, not a test: it certifies a pinned native build from `YAP_NATIVE_PINS` and
+writes evidence to `YAP_LIFETIME_OUTPUT`, so it runs only when an evidence run supplies them.

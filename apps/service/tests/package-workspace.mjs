@@ -99,7 +99,11 @@ test("surviving inherited child blocks removal, then explicit retry succeeds", a
   await once(child.stdout, "data");
   const first = owner.remove();
   assert.equal(owner.remove(), first);
-  await assert.rejects(first, /owned exclusively/);
+  // 265601cd split the private-directory refusal from a held lock; the held lock is this refusal.
+  await assert.rejects(first, {
+    code: "INVALID_STORAGE",
+    message: "Required workspace lock could not be acquired.",
+  });
   assert.equal(owner.handle.fd, -1);
   assert.equal(await readFile(join(owner.directory, "data"), "utf8"), "held");
   child.kill("SIGKILL");
