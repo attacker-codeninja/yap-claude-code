@@ -34,11 +34,18 @@ export async function replayFaceTrackingRefusal(reportPath) {
   assert.equal(report.recipe.minimumBoxIoU, 0.5);
   assert.equal(report.sourceFrames, EXPECTED.framesPerHost);
   const implementation = await readFile(join(dirname(resolved), "tracking-probe", "probe.swift"));
-  assert.equal(digest(implementation), EXPECTED.implementationSha256, "tracker implementation changed");
+  assert.equal(
+    digest(implementation),
+    EXPECTED.implementationSha256,
+    "tracker implementation changed",
+  );
   assert.match(report.reason, /temporal prediction/);
   assert.match(report.reason, /occlusion/);
   assert.match(report.reason, /explicit contract/);
-  assert.deepEqual(report.cases.map((item) => item.id), EXPECTED.hosts);
+  assert.deepEqual(
+    report.cases.map((item) => item.id),
+    EXPECTED.hosts,
+  );
 
   const all = [];
   for (const host of report.cases) {
@@ -54,7 +61,10 @@ export async function replayFaceTrackingRefusal(reportPath) {
       assert.equal(frame.box.length, 4);
       const measured = iou(frame.box, zone);
       assert.ok(close(measured, frame.iou), `${host.id}/${ordinal} IoU changed`);
-      assert.ok(frame.iou >= report.recipe.minimumBoxIoU, `${host.id}/${ordinal} tracker no longer passes`);
+      assert.ok(
+        frame.iou >= report.recipe.minimumBoxIoU,
+        `${host.id}/${ordinal} tracker no longer passes`,
+      );
       all.push(frame.iou);
     }
   }

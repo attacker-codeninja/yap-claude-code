@@ -5,11 +5,7 @@ import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 import { verifyMulticamCorpus } from "../multicam-corpus.mjs";
 
-const SOURCE_PAIRS = [
-  "grahamRaw:madisonRaw",
-  "grahamRaw:lilyRawP1",
-  "madisonRaw:lilyRawP1",
-];
+const SOURCE_PAIRS = ["grahamRaw:madisonRaw", "grahamRaw:lilyRawP1", "madisonRaw:lilyRawP1"];
 const WINDOW_STARTS_US = [0, 240_000_000, 1_200_000_000];
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const refuse = (code, message) => {
@@ -28,12 +24,24 @@ export async function verifyRealSynchronizationReplay(assetsDirectory, fixturesD
   const originalBytes = await readFile(originalPath);
   const original = JSON.parse(originalBytes);
   const exact = await readJson(resolve(assetsDirectory, "exact-replay.json"));
-  if (exact.referenceSha256 !== hash(originalBytes) || exact.exactComparisonParity !== true || exact.clockDeclared !== false)
-    refuse("REFERENCE_CHANGED", "Frozen synchronization reference identity or refusal scope changed");
+  if (
+    exact.referenceSha256 !== hash(originalBytes) ||
+    exact.exactComparisonParity !== true ||
+    exact.clockDeclared !== false
+  )
+    refuse(
+      "REFERENCE_CHANGED",
+      "Frozen synchronization reference identity or refusal scope changed",
+    );
   const retainedPath = resolve(assetsDirectory, "retained-comparisons.json");
   const retainedBytes = await readFile(retainedPath);
   const retained = JSON.parse(retainedBytes);
-  if (!Array.isArray(original) || !Array.isArray(retained) || original.length !== 9 || retained.length !== 9)
+  if (
+    !Array.isArray(original) ||
+    !Array.isArray(retained) ||
+    original.length !== 9 ||
+    retained.length !== 9
+  )
     refuse("COMPARISON_COVERAGE", "Frozen synchronization replay requires nine comparisons");
   await verifyMulticamCorpus(fixturesDirectory);
   const seen = new Set();
@@ -49,7 +57,8 @@ export async function verifyRealSynchronizationReplay(assetsDirectory, fixturesD
     if (JSON.stringify(stripRuntime(actual)) !== JSON.stringify(stripRuntime(expected)))
       refuse("RESULT_CHANGED", `Comparison ${index} differs from the frozen estimator result`);
     const pair = `${actual.left}:${actual.right}`;
-    if (!SOURCE_PAIRS.includes(pair)) refuse("SOURCE_PAIR", `Comparison ${index} has an unknown source pair`);
+    if (!SOURCE_PAIRS.includes(pair))
+      refuse("SOURCE_PAIR", `Comparison ${index} has an unknown source pair`);
     const startUs = Number(actual.rangeSeconds?.[0]) * 1_000_000;
     const endUs = Number(actual.rangeSeconds?.[1]) * 1_000_000;
     if (!WINDOW_STARTS_US.includes(startUs) || endUs - startUs !== 20_000_000)
@@ -66,7 +75,10 @@ export async function verifyRealSynchronizationReplay(assetsDirectory, fixturesD
       refuse("PROMOTION", `Comparison ${index} contains an admitted anchor in a refused result`);
   }
   if (seen.size !== 9 || accepted !== 0)
-    refuse("COMPARISON_COVERAGE", "Frozen real synchronization comparisons are incomplete or promoted");
+    refuse(
+      "COMPARISON_COVERAGE",
+      "Frozen real synchronization comparisons are incomplete or promoted",
+    );
   return {
     ok: true,
     retainedSha256: hash(retainedBytes),
@@ -84,17 +96,35 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   try {
     const { values, positionals } = parseArgs({
       allowPositionals: true,
-      options: { assets: { type: "string" }, fixtures: { type: "string" }, help: { type: "boolean" } },
+      options: {
+        assets: { type: "string" },
+        fixtures: { type: "string" },
+        help: { type: "boolean" },
+      },
     });
     if (values.help) {
-      console.log("node packages/test-harness/editing/synchronization/real-replay.mjs verify --assets DIRECTORY --fixtures DIRECTORY");
-    } else if (positionals.length !== 1 || positionals[0] !== "verify" || !values.assets || !values.fixtures) {
+      console.log(
+        "node packages/test-harness/editing/synchronization/real-replay.mjs verify --assets DIRECTORY --fixtures DIRECTORY",
+      );
+    } else if (
+      positionals.length !== 1 ||
+      positionals[0] !== "verify" ||
+      !values.assets ||
+      !values.fixtures
+    ) {
       refuse("USAGE", "Read --help");
     } else {
-      console.log(JSON.stringify(await verifyRealSynchronizationReplay(values.assets, values.fixtures)));
+      console.log(
+        JSON.stringify(await verifyRealSynchronizationReplay(values.assets, values.fixtures)),
+      );
     }
   } catch (error) {
-    console.log(JSON.stringify({ ok: false, error: { code: error.code ?? "INVALID_REPLAY", message: error.message } }));
+    console.log(
+      JSON.stringify({
+        ok: false,
+        error: { code: error.code ?? "INVALID_REPLAY", message: error.message },
+      }),
+    );
     process.exitCode = 1;
   }
 }

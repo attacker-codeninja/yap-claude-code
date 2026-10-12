@@ -26,8 +26,7 @@ import {
   changeLaterSampleDescription,
 } from "./fixtures/hevc-interpretation.mjs";
 const executable =
-  process.env.YAP_NATIVE ??
-  new URL("../.build/debug/yap-native", import.meta.url).pathname;
+  process.env.YAP_NATIVE ?? new URL("../.build/debug/yap-native", import.meta.url).pathname;
 const corpus = new URL("../../../specs/done/agent-editing/assets/00-corpus/", import.meta.url);
 function probe(name, extra = {}, fileDescriptor, diagnosticPath) {
   const result = spawnSync(executable, [], {

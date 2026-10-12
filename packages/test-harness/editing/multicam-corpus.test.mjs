@@ -43,13 +43,29 @@ test("multicam certification refuses a changed retained window before reporting 
   t.after(() => rm(directory, { recursive: true, force: true }));
   const sourceManifest = await readFile(join(fixtures, "manifest.json"), "utf8");
   await writeFile(join(directory, "manifest.json"), sourceManifest);
-  await writeFile(join(directory, "manifest.identity.json"), await readFile(join(fixtures, "manifest.identity.json")));
-  await writeFile(join(directory, "picture-manifest.json"), await readFile(join(fixtures, "picture-manifest.json")));
+  await writeFile(
+    join(directory, "manifest.identity.json"),
+    await readFile(join(fixtures, "manifest.identity.json")),
+  );
+  await writeFile(
+    join(directory, "picture-manifest.json"),
+    await readFile(join(fixtures, "picture-manifest.json")),
+  );
   await writeFile(
     join(directory, "picture-manifest.identity.json"),
     await readFile(join(fixtures, "picture-manifest.identity.json")),
   );
-  for (const name of ["grahamRaw-0.wav", "grahamRaw-240.wav", "grahamRaw-1200.wav", "madisonRaw-0.wav", "madisonRaw-240.wav", "madisonRaw-1200.wav", "lilyRawP1-0.wav", "lilyRawP1-240.wav", "lilyRawP1-1200.wav"])
+  for (const name of [
+    "grahamRaw-0.wav",
+    "grahamRaw-240.wav",
+    "grahamRaw-1200.wav",
+    "madisonRaw-0.wav",
+    "madisonRaw-240.wav",
+    "madisonRaw-1200.wav",
+    "lilyRawP1-0.wav",
+    "lilyRawP1-240.wav",
+    "lilyRawP1-1200.wav",
+  ])
     await writeFile(join(directory, name), await readFile(join(fixtures, name)));
   const changed = Buffer.from(await readFile(join(directory, "grahamRaw-0.wav")));
   changed[changed.length - 1] ^= 1;
@@ -61,7 +77,10 @@ test("multicam certification refuses a changed retained window before reporting 
 test("multicam certification refuses a changed decoded picture derivative", async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "yap-multicam-picture-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
-  await writeFile(join(directory, "manifest.json"), await readFile(join(fixtures, "manifest.json")));
+  await writeFile(
+    join(directory, "manifest.json"),
+    await readFile(join(fixtures, "manifest.json")),
+  );
   await writeFile(
     join(directory, "manifest.identity.json"),
     await readFile(join(fixtures, "manifest.identity.json")),
@@ -105,7 +124,10 @@ test("multicam certification refuses a forged decoded picture identity", async (
   const manifest = JSON.parse(await readFile(join(fixtures, "picture-manifest.json")));
   manifest.sources.grahamRaw.samples[0].sha256 = "f".repeat(64);
   const manifestBytes = Buffer.from(JSON.stringify(manifest, null, 2) + "\n");
-  await writeFile(join(directory, "manifest.json"), await readFile(join(fixtures, "manifest.json")));
+  await writeFile(
+    join(directory, "manifest.json"),
+    await readFile(join(fixtures, "manifest.json")),
+  );
   await writeFile(join(directory, "picture-manifest.json"), manifestBytes);
   await writeFile(
     join(directory, "manifest.identity.json"),
@@ -143,7 +165,10 @@ test("multicam certification refuses a changed frozen manifest identity", async 
   const manifest = JSON.parse(await readFile(join(fixtures, "manifest.json"), "utf8"));
   manifest.cases[0].range.endUs += 1;
   await writeFile(join(directory, "manifest.json"), JSON.stringify(manifest));
-  await writeFile(join(directory, "manifest.identity.json"), await readFile(join(fixtures, "manifest.identity.json")));
+  await writeFile(
+    join(directory, "manifest.identity.json"),
+    await readFile(join(fixtures, "manifest.identity.json")),
+  );
   const { verifyMulticamCorpus } = await import("./multicam-corpus.mjs");
   await assert.rejects(verifyMulticamCorpus(directory), { code: "MANIFEST_CHANGED" });
 });
@@ -151,9 +176,18 @@ test("multicam certification refuses a changed frozen manifest identity", async 
 test("multicam certification refuses missing windows and duplicate source assignments", async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "yap-multicam-shape-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
-  await writeFile(join(directory, "manifest.json"), await readFile(join(fixtures, "manifest.json")));
-  await writeFile(join(directory, "manifest.identity.json"), await readFile(join(fixtures, "manifest.identity.json")));
-  await writeFile(join(directory, "picture-manifest.json"), await readFile(join(fixtures, "picture-manifest.json")));
+  await writeFile(
+    join(directory, "manifest.json"),
+    await readFile(join(fixtures, "manifest.json")),
+  );
+  await writeFile(
+    join(directory, "manifest.identity.json"),
+    await readFile(join(fixtures, "manifest.identity.json")),
+  );
+  await writeFile(
+    join(directory, "picture-manifest.json"),
+    await readFile(join(fixtures, "picture-manifest.json")),
+  );
   await writeFile(
     join(directory, "picture-manifest.identity.json"),
     await readFile(join(fixtures, "picture-manifest.identity.json")),

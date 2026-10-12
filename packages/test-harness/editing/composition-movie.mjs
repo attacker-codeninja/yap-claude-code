@@ -189,16 +189,13 @@ try {
     ]);
   }
   const tailControls = run(
-    process.env.YAP_COMPOSITION_VIDEO_TESTS ??
-      join(dirname(native), "YapCompositionVideoTests"),
+    process.env.YAP_COMPOSITION_VIDEO_TESTS ?? join(dirname(native), "YapCompositionVideoTests"),
     ["--audio-tail", join(scratch, "tail-controls")],
   ).toString();
   writeFileSync(join(scratch, "tail-controls.log"), tailControls);
   assert(tailControls.startsWith("PASS"));
   const tailDirectory = join(scratch, "tail-controls");
-  const replacements = readdirSync(tailDirectory).filter((name) =>
-    name.startsWith(".yap-output-"),
-  );
+  const replacements = readdirSync(tailDirectory).filter((name) => name.startsWith(".yap-output-"));
   assert.equal(replacements.length, 1, "Only the unrelated replacement may survive cleanup");
   assert.equal(
     readlinkSync(join(tailDirectory, replacements[0])),
@@ -671,8 +668,7 @@ try {
       }),
     );
     const cancellation = run(
-      process.env.YAP_COMPOSITION_VIDEO_TESTS ??
-        join(dirname(native), "YapCompositionVideoTests"),
+      process.env.YAP_COMPOSITION_VIDEO_TESTS ?? join(dirname(native), "YapCompositionVideoTests"),
       [cancelRequest, "media.renderCompositionMovie"],
     )
       .toString()

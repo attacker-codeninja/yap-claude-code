@@ -48,9 +48,9 @@ it("advertises the account skill lifecycle as callable public operations", () =>
       data: { operation, params: {} },
     });
   }
-  expect(operationSchema.safeParse({ operation: "skill.status", params: { extra: true } }).success).toBe(
-    false,
-  );
+  expect(
+    operationSchema.safeParse({ operation: "skill.status", params: { extra: true } }).success,
+  ).toBe(false);
 });
 
 it("advertises the app-managed command-line tool as callable public operations", () => {

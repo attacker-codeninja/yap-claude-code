@@ -12,7 +12,10 @@ test("face trajectory read pins the retained generation and source selection", (
       limit: 10,
     },
   });
-  expect(parsed).toMatchObject({ operation: "face.trajectory.get", params: { generation: "generation-a" } });
+  expect(parsed).toMatchObject({
+    operation: "face.trajectory.get",
+    params: { generation: "generation-a" },
+  });
 });
 
 test("face trajectory continuation cannot omit its generation", () => {

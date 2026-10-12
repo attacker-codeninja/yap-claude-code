@@ -20,14 +20,7 @@ function compile(args, sources) {
       sha256: createHash("sha256").update(readFileSync(path)).digest("hex"),
       bytes: readFileSync(path).length,
     };
-  const command = [
-    "-swift-version",
-    "6",
-    "-package-name",
-    "YapNative",
-    ...args,
-    ...sources,
-  ];
+  const command = ["-swift-version", "6", "-package-name", "YapNative", ...args, ...sources];
   commands.push(command);
   execFileSync("swiftc", command, { stdio: "inherit", timeout: 120000 });
 }
@@ -88,15 +81,13 @@ compile(
   ],
 );
 const binaries = Object.fromEntries(
-  ["controller-journey", "libYapMedia.dylib", "libYapCapture.dylib"].map(
-    (name) => {
-      const bytes = readFileSync(join(output, name));
-      return [
-        name,
-        { bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex") },
-      ];
-    },
-  ),
+  ["controller-journey", "libYapMedia.dylib", "libYapCapture.dylib"].map((name) => {
+    const bytes = readFileSync(join(output, name));
+    return [
+      name,
+      { bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex") },
+    ];
+  }),
 );
 writeFileSync(
   join(output, "identities.json"),

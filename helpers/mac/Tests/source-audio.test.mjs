@@ -7,8 +7,7 @@ import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 
 const native =
-  process.env.YAP_NATIVE ??
-  fileURLToPath(new URL("../.build/debug/yap-native", import.meta.url));
+  process.env.YAP_NATIVE ?? fileURLToPath(new URL("../.build/debug/yap-native", import.meta.url));
 const fixture =
   process.env.YAP_SOURCE_AUDIO_FIXTURE ??
   fileURLToPath(new URL("../.build/debug/YapSourceAudioTests", import.meta.url));

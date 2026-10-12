@@ -243,9 +243,7 @@ test(
     const notesPath = join(directory, "notes.pipe");
     const made = spawnSync("mkfifo", [notesPath], { encoding: "utf8", timeout: 1500 });
     assert.equal(made.status, 0, made.stderr);
-    const helper = fileURLToPath(
-      new URL("../skills/yap/scripts/task-notes.mjs", import.meta.url),
-    );
+    const helper = fileURLToPath(new URL("../skills/yap/scripts/task-notes.mjs", import.meta.url));
     const result = spawnSync(process.execPath, [helper], {
       input: JSON.stringify({ notesPath }),
       encoding: "utf8",

@@ -42,7 +42,12 @@ export async function replayFaceLandmarkEnvelope(reportPath) {
     assert.equal(row.candidate.length, 4);
     assert.equal(row.contour.length, 4);
     row.candidate.forEach((value) => assert.ok(Number.isFinite(value)));
-    const candidate = { x: row.candidate[0], y: row.candidate[1], width: row.candidate[2], height: row.candidate[3] };
+    const candidate = {
+      x: row.candidate[0],
+      y: row.candidate[1],
+      width: row.candidate[2],
+      height: row.candidate[3],
+    };
     const overlap = iou(candidate, zone);
     assert.ok(close(overlap, row.iou), `candidate IoU changed at ${ordinal}`);
     assert.ok(overlap < report.recipe.minimumBoxIoU, `unexpected passing candidate at ${ordinal}`);

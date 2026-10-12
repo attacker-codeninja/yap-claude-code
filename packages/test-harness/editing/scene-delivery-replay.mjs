@@ -33,7 +33,11 @@ export async function replaySceneDelivery(reportPath) {
   );
   assert.equal(report.checks?.sourceBytesUnchanged, true, "source preservation changed");
   assert.equal(report.checks?.nativeExportImport, true, "native export/import check changed");
-  assert.equal(report.checks?.editorialDecision, "none", "scene inspection made an editorial decision");
+  assert.equal(
+    report.checks?.editorialDecision,
+    "none",
+    "scene inspection made an editorial decision",
+  );
   assert.equal(report.result?.export?.state, "committed", "export is not committed");
   assert.equal(report.result?.export?.immutable, true, "export is not immutable");
   const deliveredRows = report.result?.delivered?.events?.rows;
@@ -44,7 +48,9 @@ export async function replaySceneDelivery(reportPath) {
     "delivered scene rows changed",
   );
   assert.deepEqual(
-    report.result?.authored?.cuts?.filter((row) => row?.mediaKind === "video").map((row) => row.projectAtUs),
+    report.result?.authored?.cuts
+      ?.filter((row) => row?.mediaKind === "video")
+      .map((row) => row.projectAtUs),
     [1000000, 2600000],
     "authored video cuts changed",
   );
@@ -58,7 +64,11 @@ export async function replaySceneDelivery(reportPath) {
     [1, 0, 1, 0],
     "delivered scene join association changed",
   );
-  assert.deepEqual(report.result?.association?.unmatchedAuthoredJoins, [], "authored joins changed");
+  assert.deepEqual(
+    report.result?.association?.unmatchedAuthoredJoins,
+    [],
+    "authored joins changed",
+  );
   const reportDirectory = dirname(resolve(reportPath));
   const assetRoot = dirname(reportDirectory);
   const exportPath = join(assetRoot, report.result.export.file.path);

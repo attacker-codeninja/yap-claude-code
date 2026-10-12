@@ -289,7 +289,9 @@ export function resolveComposition(
     if (group.evidence.status !== "accepted")
       invalid(`Angle group requires accepted synchronization evidence: ${group.id}`);
     const members = new Set<string>();
-    const sources = new Set(group.evidence.sources.map((source) => `${source.assetId}\0${source.streamId}`));
+    const sources = new Set(
+      group.evidence.sources.map((source) => `${source.assetId}\0${source.streamId}`),
+    );
     if (group.members.length < 2) invalid(`Angle group needs at least two members: ${group.id}`);
     if (sources.size !== group.evidence.sources.length)
       invalid(`Synchronization evidence repeats a source: ${group.id}`);
@@ -302,7 +304,9 @@ export function resolveComposition(
       angleMembers.add(member.clipId);
       if (!sources.has(`${member.assetId}\0${member.streamId}`))
         invalid(`Angle member source does not match synchronization evidence: ${member.clipId}`);
-      const segments = member.segments ?? [{ offsetUs: member.offsetUs!, validRange: member.validRange! }];
+      const segments = member.segments ?? [
+        { offsetUs: member.offsetUs!, validRange: member.validRange! },
+      ];
       let through: Rational | undefined;
       for (const segment of segments) {
         const valid = exact(segment.validRange);
@@ -316,7 +320,9 @@ export function resolveComposition(
     if (!members.has(group.originClipId))
       invalid(`Angle origin is not a member: ${group.originClipId}`);
     const origin = group.members.find((member) => member.clipId === group.originClipId)!;
-    const originSegments = origin.segments ?? [{ offsetUs: origin.offsetUs!, validRange: origin.validRange! }];
+    const originSegments = origin.segments ?? [
+      { offsetUs: origin.offsetUs!, validRange: origin.validRange! },
+    ];
     if (originSegments.some((segment) => compare(fromTime(segment.offsetUs), integer(0)) !== 0))
       invalid(`Angle origin must have zero offset: ${group.originClipId}`);
   }
@@ -429,7 +435,9 @@ export function resolveComposition(
         invalid(`Angle member requires a video stream: ${member.clipId}`);
       if (clip.clip.assetId !== member.assetId || clip.clip.streamId !== member.streamId)
         invalid(`Angle member source does not match clip: ${member.clipId}`);
-      const segments = member.segments ?? [{ offsetUs: member.offsetUs!, validRange: member.validRange! }];
+      const segments = member.segments ?? [
+        { offsetUs: member.offsetUs!, validRange: member.validRange! },
+      ];
       for (const segment of segments) {
         const valid = exact(segment.validRange);
         if (compare(valid.start, clip.range.start) < 0 || compare(valid.end, clip.range.end) > 0)

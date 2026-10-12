@@ -224,7 +224,9 @@ export async function generateNativeSourceProbe(outDirectory) {
     report.candidateComparisons = measurements.candidateComparisons;
     report.premultipliedCandidateComparisons = measurements.premultipliedCandidateComparisons;
     report.premultipliedGate = {
-      passed: report.premultipliedCandidateComparisons.every(({ comparison }) => comparison.differingRatio === 0),
+      passed: report.premultipliedCandidateComparisons.every(
+        ({ comparison }) => comparison.differingRatio === 0,
+      ),
       rule: "native-source-conditioned premultiplied linear source-over requires zero differing RGB pixels",
       sourceAlphaSemantics: "premultiplied-srgb-8bit",
     };

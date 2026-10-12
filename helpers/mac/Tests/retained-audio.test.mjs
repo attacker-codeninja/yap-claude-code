@@ -16,8 +16,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { waveHeader } from "../../../packages/test-harness/editing/audio-project-fixture.mjs";
 const native =
-  process.env.YAP_NATIVE ??
-  fileURLToPath(new URL("../.build/debug/yap-native", import.meta.url));
+  process.env.YAP_NATIVE ?? fileURLToPath(new URL("../.build/debug/yap-native", import.meta.url));
 test("retained PCM preserves exact frames across blocks and refuses malformed or changed operands", () => {
   const dir = mkdtempSync(join(tmpdir(), "retained-pcm-"));
   const file = join(dir, "retained.wav");

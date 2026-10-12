@@ -35,8 +35,7 @@ import { Publication } from "../dist/publication.js";
 import { admitArchive } from "../dist/archive-input.js";
 import { openPackageArchive } from "../dist/package-archive.js";
 const worker = mediaWorker({
-  YAP_NATIVE:
-    process.env.YAP_NATIVE ?? resolve("helpers/mac/.build/debug/yap-native"),
+  YAP_NATIVE: process.env.YAP_NATIVE ?? resolve("helpers/mac/.build/debug/yap-native"),
 });
 const sha = (bytes) => createHash("sha256").update(bytes).digest("hex");
 async function fixture(t, contents) {
@@ -197,8 +196,7 @@ test("observed ZIP output limit refuses a partial archive and drains cleanup", a
 
 test("cancellation drains a stopped partial writer before cleaning owned ZIP bytes", async (t) => {
   const f = await fixture(t, { "source.bin": Buffer.alloc(2 * 1024 * 1024, 17) });
-  const native =
-    process.env.YAP_NATIVE ?? resolve("helpers/mac/.build/debug/yap-native");
+  const native = process.env.YAP_NATIVE ?? resolve("helpers/mac/.build/debug/yap-native");
   await withArchiveCopyBarrier(
     f.root,
     native,
@@ -222,8 +220,7 @@ test("cancellation drains a stopped partial writer before cleaning owned ZIP byt
 
 test("killed service cannot retire scratch while its stopped native writer survives", async (t) => {
   const f = await fixture(t, { "source.bin": Buffer.alloc(2 * 1024 * 1024, 17) });
-  const binary =
-    process.env.YAP_NATIVE ?? resolve("helpers/mac/.build/debug/yap-native");
+  const binary = process.env.YAP_NATIVE ?? resolve("helpers/mac/.build/debug/yap-native");
   const library = join(f.root, "barrier.dylib"),
     marker = join(f.root, "stopped");
   execFileSync("/usr/bin/clang", [
@@ -273,8 +270,7 @@ test("killed service cannot retire scratch while its stopped native writer survi
 });
 test("input mutation during streaming fails after the actual copied bytes are checked", async (t) => {
   const f = await fixture(t, { "source.bin": Buffer.alloc(2 * 1024 * 1024, 17) });
-  const native =
-    process.env.YAP_NATIVE ?? resolve("helpers/mac/.build/debug/yap-native");
+  const native = process.env.YAP_NATIVE ?? resolve("helpers/mac/.build/debug/yap-native");
   await withArchiveCopyBarrier(
     f.root,
     native,

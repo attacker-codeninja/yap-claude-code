@@ -23,9 +23,19 @@ export async function certifyCorpusBehavior(manifestPath) {
   const cases = [];
   for (const entry of manifest.cases) {
     const baseline = entry.baseline;
-    assert(baseline && acceptedStates.has(baseline.state), `${entry.id}: behavior evidence is unverified`);
-    assert.equal(entry.preservation?.status, "pass", `${entry.id}: physical preservation is not certified`);
-    assert(typeof baseline.evidence === "string" && baseline.evidence.length > 0, `${entry.id}: behavior evidence is missing`);
+    assert(
+      baseline && acceptedStates.has(baseline.state),
+      `${entry.id}: behavior evidence is unverified`,
+    );
+    assert.equal(
+      entry.preservation?.status,
+      "pass",
+      `${entry.id}: physical preservation is not certified`,
+    );
+    assert(
+      typeof baseline.evidence === "string" && baseline.evidence.length > 0,
+      `${entry.id}: behavior evidence is missing`,
+    );
     const evidencePath = isAbsolute(baseline.evidence)
       ? baseline.evidence
       : resolve(manifestDirectory, baseline.evidence);
@@ -48,8 +58,16 @@ export async function certifyCorpusBehavior(manifestPath) {
     const evidence = JSON.parse(evidenceBytes);
     if (baseline.state === "picture-replication-pass") {
       assert.equal(evidence.passed, true, `${entry.id}: picture evidence did not pass`);
-      assert.equal(evidence.fullOrientedRaster, true, `${entry.id}: picture raster evidence is incomplete`);
-      assert.equal(evidence.exactPhysicalClocks, true, `${entry.id}: picture clock evidence is incomplete`);
+      assert.equal(
+        evidence.fullOrientedRaster,
+        true,
+        `${entry.id}: picture raster evidence is incomplete`,
+      );
+      assert.equal(
+        evidence.exactPhysicalClocks,
+        true,
+        `${entry.id}: picture clock evidence is incomplete`,
+      );
     }
     cases.push({
       id: entry.id,
@@ -60,7 +78,8 @@ export async function certifyCorpusBehavior(manifestPath) {
   }
   return {
     status: "passed",
-    scope: "retained real-media cases have scoped replayable behavior evidence; this does not certify global sync, speaker continuity or editorial quality",
+    scope:
+      "retained real-media cases have scoped replayable behavior evidence; this does not certify global sync, speaker continuity or editorial quality",
     cases,
   };
 }

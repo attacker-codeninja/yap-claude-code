@@ -61,14 +61,7 @@ async function inspect(mode: "mcp" | "cli") {
     "",
   ];
   if (mode === "mcp") {
-    flags.push(
-      "--mcp-config",
-      config,
-      "--tools",
-      "",
-      "--allowedTools",
-      "mcp__yap_probe__frame",
-    );
+    flags.push("--mcp-config", config, "--tools", "", "--allowedTools", "mcp__yap_probe__frame");
     prompt =
       "Call the yap_probe frame tool with id first, read the visible six digits, then call it with id second and read those digits. Do not infer unseen content.";
   } else {

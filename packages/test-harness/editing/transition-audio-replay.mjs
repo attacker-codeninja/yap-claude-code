@@ -3,8 +3,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { sample, waveHeader } from "./audio-project-fixture.mjs";
 
-const expectedAudioSha256 =
-  "6a469e107deea5b9c1571400b2d6570416389c10d33e3831627fa0381aa04fed";
+const expectedAudioSha256 = "6a469e107deea5b9c1571400b2d6570416389c10d33e3831627fa0381aa04fed";
 const sampleTimesUs = [100000, 500000, 900000];
 const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
@@ -20,7 +19,9 @@ export async function replayTransitionAudio({ reportPath, audioPath }) {
   const report = JSON.parse(await readFile(reportPath, "utf8"));
   assert.equal(report.passed, true, "transition delivery did not pass");
   assert.ok(
-    report.checks?.includes("native audio crossfade delivery matches the independent two-source PCM oracle"),
+    report.checks?.includes(
+      "native audio crossfade delivery matches the independent two-source PCM oracle",
+    ),
     "native audio transition acceptance check is missing",
   );
   assert.equal(report.recipe?.kind, "crossfade", "retained recipe changed");
@@ -82,7 +83,10 @@ export async function replayTransitionAudio({ reportPath, audioPath }) {
 }
 
 if (process.argv[1] === new URL(import.meta.url).pathname) {
-  assert(process.argv[2] && process.argv[3], "Usage: node transition-audio-replay.mjs <report.json> <audio.wav>");
+  assert(
+    process.argv[2] && process.argv[3],
+    "Usage: node transition-audio-replay.mjs <report.json> <audio.wav>",
+  );
   console.log(
     JSON.stringify(
       await replayTransitionAudio({ reportPath: process.argv[2], audioPath: process.argv[3] }),

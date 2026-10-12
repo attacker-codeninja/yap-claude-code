@@ -121,7 +121,10 @@ esac
   chmodSync(node, 0o755);
   // Like a release build, the service manifest records the bundled Node.
   mkdirSync(join(resources, "service"), { recursive: true });
-  writeFileSync(join(resources, "service/runtime.json"), JSON.stringify({ nodePath: "../node/bin/node" }));
+  writeFileSync(
+    join(resources, "service/runtime.json"),
+    JSON.stringify({ nodePath: "../node/bin/node" }),
+  );
   if (launcher) {
     mkdirSync(join(resources, "bin"), { recursive: true });
     writeFileSync(join(resources, "bin/yap"), launcher, { mode: 0o755 });

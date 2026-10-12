@@ -32,9 +32,8 @@ test("actual owner death between external commit and catalog acknowledgement rec
         .get(exportId).receipt,
       null,
     );
-    const metadataBytes = (
-      await stat(join(f.output, ".yap-export-" + exportId, "prepared.json"))
-    ).size;
+    const metadataBytes = (await stat(join(f.output, ".yap-export-" + exportId, "prepared.json")))
+      .size;
     assert.equal((await reopened.storage.usage()).otherBytes, metadataBytes);
     await reopened.exports.recover(exportId);
     await reopened.jobs.idle();

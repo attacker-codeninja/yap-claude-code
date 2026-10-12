@@ -134,7 +134,10 @@ try {
       id: lut.id,
       sha256: hash(
         await readFile(
-          join(root, "specs/done/video-editing-feedback/assets/25-tone-controls/split-tone/split.cube"),
+          join(
+            root,
+            "specs/done/video-editing-feedback/assets/25-tone-controls/split-tone/split.cube",
+          ),
         ),
       ),
     },

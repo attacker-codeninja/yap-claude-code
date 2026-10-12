@@ -54,13 +54,19 @@ function assertObservation(frame, zone, minimumIoU) {
     center.y <= zone.y + zone.height;
   assert.equal(inside, true, "detected center escaped the authored zone");
   const expectedPassed = overlap >= minimumIoU;
-  assert.equal(frame.localization?.passed, expectedPassed, "localization status disagrees with box IoU");
+  assert.equal(
+    frame.localization?.passed,
+    expectedPassed,
+    "localization status disagrees with box IoU",
+  );
   const failures = frame.localization?.failures ?? [];
   if (expectedPassed) assert.deepEqual(failures, [], "passing localization retained a failure");
   else {
     assert.equal(failures.length, 1);
     assert.match(failures[0], /^Independent zone IoU [0-9.]+ below [0-9.]+$/);
-    const [, reported, threshold] = failures[0].match(/^Independent zone IoU ([0-9.]+) below ([0-9.]+)$/);
+    const [, reported, threshold] = failures[0].match(
+      /^Independent zone IoU ([0-9.]+) below ([0-9.]+)$/,
+    );
     assert.ok(closeEnough(Number(reported), overlap), "localized failure metric changed");
     assert.equal(Number(threshold), minimumIoU);
   }
@@ -85,7 +91,11 @@ export async function replayFaceLocalization(reportPath) {
   assert.equal(report.gatesSha256, expected.gatesSha256, "report gate binding changed");
   assert.equal(report.workerSha256, expected.workerSha256, "native worker identity changed");
   assert.equal(report.scope, gates.scope, "face evidence scope changed");
-  assert.deepEqual(report.cases.map((entry) => entry.id), expected.hosts, "host set changed");
+  assert.deepEqual(
+    report.cases.map((entry) => entry.id),
+    expected.hosts,
+    "host set changed",
+  );
   assert.equal(gates.localization.minimumBoxIoU, 0.5, "full-face IoU contract changed");
   assert.equal(gates.localization.centerInsideAuthoredZone, true);
 
@@ -102,7 +112,11 @@ export async function replayFaceLocalization(reportPath) {
       assert.equal(frame.atUs, expectedAtUs(ordinal), `${host.id}/${ordinal} sample clock changed`);
       assert.equal(frame.receipt.atUs, frame.atUs, `${host.id}/${ordinal} receipt clock changed`);
       assert.equal(frame.receipt.faceObservations?.recipe, "vision-face-rectangles-v1");
-      assert.deepEqual(frame.receipt.faceObservations, frame.observations, `${host.id}/${ordinal} receipt observation changed`);
+      assert.deepEqual(
+        frame.receipt.faceObservations,
+        frame.observations,
+        `${host.id}/${ordinal} receipt observation changed`,
+      );
       const result = assertObservation(frame, zone, gates.localization.minimumBoxIoU);
       if (frame.localization.passed) passingFrames++;
       else failedRows.push({ host: host.id, ordinal, overlap: result.overlap });
@@ -133,7 +147,12 @@ export async function replayFaceLocalization(reportPath) {
   assert.deepEqual(audit.failure.failedOrdinals, expected.failedOrdinals);
   assert.ok(closeEnough(Math.min(...failedIoU), audit.failure.iou.minimum));
   assert.ok(closeEnough(Math.max(...failedIoU), audit.failure.iou.maximum));
-  assert.ok(failedRows.every(({ host, ordinal }) => host === expected.failedHost && expected.failedOrdinals.includes(ordinal)));
+  assert.ok(
+    failedRows.every(
+      ({ host, ordinal }) =>
+        host === expected.failedHost && expected.failedOrdinals.includes(ordinal),
+    ),
+  );
   assert.equal(audit.failure.centerInsideAuthoredZone, true);
   assert.match(audit.interpretation, /Do not widen boxes/);
 

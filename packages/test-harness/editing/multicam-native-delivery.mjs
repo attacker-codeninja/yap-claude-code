@@ -44,7 +44,8 @@ const readArtifact = async (rootDirectory, artifact, code, expectedHash) => {
   if (!/^[a-f0-9]{64}$/.test(expectedHash ?? ""))
     refuse(code, `Retained native evidence artifact hash is missing: ${artifact}`);
   const stat = await lstat(path).catch(() => null);
-  if (!stat?.isFile()) refuse(code, `Retained native evidence artifact is not a regular file: ${artifact}`);
+  if (!stat?.isFile())
+    refuse(code, `Retained native evidence artifact is not a regular file: ${artifact}`);
   const bytes = await readFile(path);
   if (hash(bytes) !== expectedHash)
     refuse(code, `Retained native evidence artifact bytes differ: ${artifact}`);
@@ -182,7 +183,11 @@ export async function verifyRetainedMulticamNativeDelivery(reportPath, fixturesD
     if (!Number.isInteger(selection.pictureSampleIndex) || selection.pictureSampleIndex < 0)
       refuse("PICTURE_SELECTION", `Selection ${index} has the wrong picture sample`);
     const expected = pictures.sources[selection.source]?.samples?.[selection.pictureSampleIndex];
-    if (!expected || selection.sourcePictureSha256 !== authored.pictureSha256 || authored.pictureSha256 !== expected.sha256)
+    if (
+      !expected ||
+      selection.sourcePictureSha256 !== authored.pictureSha256 ||
+      authored.pictureSha256 !== expected.sha256
+    )
       refuse("PICTURE_SELECTION", `Selection ${index} is not bound to its retained picture sample`);
     const canonical = canonicalFrames.get(`${selection.source}:${selection.pictureSampleIndex}`);
     const sourceFrameArtifact = await readArtifact(

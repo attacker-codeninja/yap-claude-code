@@ -608,9 +608,14 @@ test("angle declaration retains explicit session members, source identity, offse
         sessionId: "session-1",
         originClipId: { label: "a" },
         evidence: {
-          id: "sync-evidence", generation: "g1", status: "accepted", method: "mixed-reference",
-          fingerprint: "sha256:angle-evidence", sources: [
-            { assetId: "camera-a", streamId: "video" }, { assetId: "camera-b", streamId: "video" },
+          id: "sync-evidence",
+          generation: "g1",
+          status: "accepted",
+          method: "mixed-reference",
+          fingerprint: "sha256:angle-evidence",
+          sources: [
+            { assetId: "camera-a", streamId: "video" },
+            { assetId: "camera-b", streamId: "video" },
           ],
         },
         members: [
@@ -636,9 +641,14 @@ test("angle declaration retains explicit session members, source identity, offse
       sessionId: "session-1",
       originClipId: result.labels.a,
       evidence: {
-        id: "sync-evidence", generation: "g1", status: "accepted", method: "mixed-reference",
-        fingerprint: "sha256:angle-evidence", sources: [
-          { assetId: "camera-a", streamId: "video" }, { assetId: "camera-b", streamId: "video" },
+        id: "sync-evidence",
+        generation: "g1",
+        status: "accepted",
+        method: "mixed-reference",
+        fingerprint: "sha256:angle-evidence",
+        sources: [
+          { assetId: "camera-a", streamId: "video" },
+          { assetId: "camera-b", streamId: "video" },
         ],
       },
       members: [
@@ -685,147 +695,246 @@ test("angle declaration refuses synchronization evidence without an accepted sou
   const assets = [
     {
       id: "camera-a",
-      streams: [{ id: "video", kind: "video", width: 64, height: 48,
-        bounds: { startUs: 0, endUs: 1000000 }, available: [{ startUs: 0, endUs: 1000000 }] }],
+      streams: [
+        {
+          id: "video",
+          kind: "video",
+          width: 64,
+          height: 48,
+          bounds: { startUs: 0, endUs: 1000000 },
+          available: [{ startUs: 0, endUs: 1000000 }],
+        },
+      ],
     },
     {
       id: "camera-b",
-      streams: [{ id: "video", kind: "video", width: 64, height: 48,
-        bounds: { startUs: 0, endUs: 1000000 }, available: [{ startUs: 0, endUs: 1000000 }] }],
+      streams: [
+        {
+          id: "video",
+          kind: "video",
+          width: 64,
+          height: 48,
+          bounds: { startUs: 0, endUs: 1000000 },
+          available: [{ startUs: 0, endUs: 1000000 }],
+        },
+      ],
     },
   ];
-  const setup = applyBatch(empty, [
-    { operation: "track.add", track: { kind: "video", order: 0 }, label: "a-track" },
-    { operation: "track.add", track: { kind: "video", order: 1 }, label: "b-track" },
-    { operation: "place", label: "a", clip: {
-      assetId: "camera-a", streamId: "video", trackId: { label: "a-track" },
-      source: { kind: "range", range: { startUs: 0, endUs: 1000000 } },
-      placement: { kind: "project", range: { startUs: 0, endUs: 1000000 } },
-    } },
-    { operation: "place", label: "b", clip: {
-      assetId: "camera-b", streamId: "video", trackId: { label: "b-track" },
-      source: { kind: "range", range: { startUs: 0, endUs: 1000000 } },
-      placement: { kind: "project", range: { startUs: 0, endUs: 1000000 } },
-    } },
-  ], { assets, namespace: "angle-evidence-setup" });
-  expect(() => applyBatch(setup.document, [{
-    operation: "angle.declare", sessionId: "session-1", originClipId: setup.labels.a!,
-    evidence: {
-      id: "sync-evidence", generation: "g1", status: "refused", method: "waveform",
-      fingerprint: "sha256:refused", sources: [
-        { assetId: "camera-a", streamId: "video" }, { assetId: "camera-b", streamId: "video" },
-      ],
-    },
-    members: [
-      { clipId: setup.labels.a!, offsetUs: 0, validRange: { startUs: 0, endUs: 1000000 } },
-      { clipId: setup.labels.b!, offsetUs: 0, validRange: { startUs: 0, endUs: 1000000 } },
+  const setup = applyBatch(
+    empty,
+    [
+      { operation: "track.add", track: { kind: "video", order: 0 }, label: "a-track" },
+      { operation: "track.add", track: { kind: "video", order: 1 }, label: "b-track" },
+      {
+        operation: "place",
+        label: "a",
+        clip: {
+          assetId: "camera-a",
+          streamId: "video",
+          trackId: { label: "a-track" },
+          source: { kind: "range", range: { startUs: 0, endUs: 1000000 } },
+          placement: { kind: "project", range: { startUs: 0, endUs: 1000000 } },
+        },
+      },
+      {
+        operation: "place",
+        label: "b",
+        clip: {
+          assetId: "camera-b",
+          streamId: "video",
+          trackId: { label: "b-track" },
+          source: { kind: "range", range: { startUs: 0, endUs: 1000000 } },
+          placement: { kind: "project", range: { startUs: 0, endUs: 1000000 } },
+        },
+      },
     ],
-  }], { assets, namespace: "angle-evidence-refused" }),
+    { assets, namespace: "angle-evidence-setup" },
+  );
+  expect(() =>
+    applyBatch(
+      setup.document,
+      [
+        {
+          operation: "angle.declare",
+          sessionId: "session-1",
+          originClipId: setup.labels.a!,
+          evidence: {
+            id: "sync-evidence",
+            generation: "g1",
+            status: "refused",
+            method: "waveform",
+            fingerprint: "sha256:refused",
+            sources: [
+              { assetId: "camera-a", streamId: "video" },
+              { assetId: "camera-b", streamId: "video" },
+            ],
+          },
+          members: [
+            { clipId: setup.labels.a!, offsetUs: 0, validRange: { startUs: 0, endUs: 1000000 } },
+            { clipId: setup.labels.b!, offsetUs: 0, validRange: { startUs: 0, endUs: 1000000 } },
+          ],
+        },
+      ],
+      { assets, namespace: "angle-evidence-refused" },
+    ),
   ).toThrow(/accepted synchronization evidence/);
 
-  expect(() => applyBatch(setup.document, [{
-    operation: "angle.declare", sessionId: "session-duplicate", originClipId: setup.labels.a!,
-    evidence: {
-      id: "sync-evidence", generation: "g1", status: "accepted", method: "mixed-reference",
-      fingerprint: "sha256:duplicate-source", sources: [
-        { assetId: "camera-a", streamId: "video" }, { assetId: "camera-a", streamId: "video" },
+  expect(() =>
+    applyBatch(
+      setup.document,
+      [
+        {
+          operation: "angle.declare",
+          sessionId: "session-duplicate",
+          originClipId: setup.labels.a!,
+          evidence: {
+            id: "sync-evidence",
+            generation: "g1",
+            status: "accepted",
+            method: "mixed-reference",
+            fingerprint: "sha256:duplicate-source",
+            sources: [
+              { assetId: "camera-a", streamId: "video" },
+              { assetId: "camera-a", streamId: "video" },
+            ],
+          },
+          members: [
+            { clipId: setup.labels.a!, offsetUs: 0, validRange: { startUs: 0, endUs: 1000000 } },
+            { clipId: setup.labels.b!, offsetUs: 0, validRange: { startUs: 0, endUs: 1000000 } },
+          ],
+        },
       ],
-    },
-    members: [
-      { clipId: setup.labels.a!, offsetUs: 0, validRange: { startUs: 0, endUs: 1000000 } },
-      { clipId: setup.labels.b!, offsetUs: 0, validRange: { startUs: 0, endUs: 1000000 } },
-    ],
-  }], { assets, namespace: "angle-evidence-duplicate" }),
+      { assets, namespace: "angle-evidence-duplicate" },
+    ),
   ).toThrow(/repeats a source/);
 });
 
 test("angle declarations require video streams", () => {
   const assets = ["a", "b"].map((id) => ({
     id: `microphone-${id}`,
-    streams: [{
-      id: "audio", kind: "audio" as const, sampleRate: 48000, channels: 1,
-      bounds: { startUs: 0, endUs: 1000000 },
-      available: [{ startUs: 0, endUs: 1000000 }],
-    }],
-  }));
-  const setup = applyBatch(empty, [
-    { operation: "track.add", track: { kind: "audio", order: 0 }, label: "a-track" },
-    { operation: "track.add", track: { kind: "audio", order: 1 }, label: "b-track" },
-    ...assets.map((asset) => ({
-      operation: "place" as const,
-      label: asset.id,
-      clip: {
-        assetId: asset.id,
-        streamId: "audio",
-        trackId: { label: `${asset.id === "microphone-a" ? "a" : "b"}-track` },
-        source: { kind: "range" as const, range: { startUs: 0, endUs: 1000000 } },
-        placement: { kind: "project" as const, range: { startUs: 0, endUs: 1000000 } },
+    streams: [
+      {
+        id: "audio",
+        kind: "audio" as const,
+        sampleRate: 48000,
+        channels: 1,
+        bounds: { startUs: 0, endUs: 1000000 },
+        available: [{ startUs: 0, endUs: 1000000 }],
       },
-    })),
-  ], { assets, namespace: "audio-angle" });
-  expect(() => applyBatch(setup.document, [{
-    operation: "angle.declare",
-    sessionId: "audio-session",
-    originClipId: setup.labels["microphone-a"]!,
-    evidence: {
-      id: "audio-evidence", generation: "g1", status: "accepted", method: "waveform",
-      fingerprint: "sha256:audio-angle", sources: assets.map((asset) => ({ assetId: asset.id, streamId: "audio" })),
-    },
-    members: assets.map((asset) => ({
-      clipId: setup.labels[asset.id]!, offsetUs: 0,
-      validRange: { startUs: 0, endUs: 1000000 },
-    })),
-  }], { assets, namespace: "audio-angle-declare" })).toThrow(/video stream/);
+    ],
+  }));
+  const setup = applyBatch(
+    empty,
+    [
+      { operation: "track.add", track: { kind: "audio", order: 0 }, label: "a-track" },
+      { operation: "track.add", track: { kind: "audio", order: 1 }, label: "b-track" },
+      ...assets.map((asset) => ({
+        operation: "place" as const,
+        label: asset.id,
+        clip: {
+          assetId: asset.id,
+          streamId: "audio",
+          trackId: { label: `${asset.id === "microphone-a" ? "a" : "b"}-track` },
+          source: { kind: "range" as const, range: { startUs: 0, endUs: 1000000 } },
+          placement: { kind: "project" as const, range: { startUs: 0, endUs: 1000000 } },
+        },
+      })),
+    ],
+    { assets, namespace: "audio-angle" },
+  );
+  expect(() =>
+    applyBatch(
+      setup.document,
+      [
+        {
+          operation: "angle.declare",
+          sessionId: "audio-session",
+          originClipId: setup.labels["microphone-a"]!,
+          evidence: {
+            id: "audio-evidence",
+            generation: "g1",
+            status: "accepted",
+            method: "waveform",
+            fingerprint: "sha256:audio-angle",
+            sources: assets.map((asset) => ({ assetId: asset.id, streamId: "audio" })),
+          },
+          members: assets.map((asset) => ({
+            clipId: setup.labels[asset.id]!,
+            offsetUs: 0,
+            validRange: { startUs: 0, endUs: 1000000 },
+          })),
+        },
+      ],
+      { assets, namespace: "audio-angle-declare" },
+    ),
+  ).toThrow(/video stream/);
 });
 
 test("ordinary placements replay a three-angle switch without automatic selection", () => {
   const assets = ["a", "b", "c"].map((id) => ({
     id: `camera-${id}`,
-    streams: [{
-      id: "video", kind: "video" as const, width: 64, height: 48,
-      bounds: { startUs: 0, endUs: 1000000 },
-      available: [{ startUs: 0, endUs: 1000000 }],
-    }],
-  }));
-  const result = applyBatch(empty, [
-    { operation: "track.add", track: { kind: "video", order: 0 }, label: "angles" },
-    ...assets.map((asset, index) => ({
-      operation: "place" as const,
-      label: asset.id,
-      clip: {
-        assetId: asset.id,
-        streamId: "video",
-        trackId: { label: "angles" },
-        source: { kind: "range" as const, range: { startUs: 0, endUs: 1000000 } },
-        placement: {
-          kind: "project" as const,
-          range: { startUs: index * 1000000, endUs: (index + 1) * 1000000 },
-        },
+    streams: [
+      {
+        id: "video",
+        kind: "video" as const,
+        width: 64,
+        height: 48,
+        bounds: { startUs: 0, endUs: 1000000 },
+        available: [{ startUs: 0, endUs: 1000000 }],
       },
-    })),
-    {
-      operation: "angle.declare",
-      sessionId: "session-1",
-      originClipId: { label: "camera-a" },
-      evidence: {
-        id: "known-control", generation: "g1", status: "accepted", method: "waveform",
-        fingerprint: "sha256:known-control", sources: [...assets].reverse().map((asset) => ({
-          assetId: asset.id, streamId: "video",
+    ],
+  }));
+  const result = applyBatch(
+    empty,
+    [
+      { operation: "track.add", track: { kind: "video", order: 0 }, label: "angles" },
+      ...assets.map((asset, index) => ({
+        operation: "place" as const,
+        label: asset.id,
+        clip: {
+          assetId: asset.id,
+          streamId: "video",
+          trackId: { label: "angles" },
+          source: { kind: "range" as const, range: { startUs: 0, endUs: 1000000 } },
+          placement: {
+            kind: "project" as const,
+            range: { startUs: index * 1000000, endUs: (index + 1) * 1000000 },
+          },
+        },
+      })),
+      {
+        operation: "angle.declare",
+        sessionId: "session-1",
+        originClipId: { label: "camera-a" },
+        evidence: {
+          id: "known-control",
+          generation: "g1",
+          status: "accepted",
+          method: "waveform",
+          fingerprint: "sha256:known-control",
+          sources: [...assets].reverse().map((asset) => ({
+            assetId: asset.id,
+            streamId: "video",
+          })),
+        },
+        members: assets.map((asset, index) => ({
+          clipId: { label: asset.id },
+          offsetUs: 0,
+          validRange: { startUs: index * 1000000, endUs: (index + 1) * 1000000 },
         })),
       },
-      members: assets.map((asset, index) => ({
-        clipId: { label: asset.id }, offsetUs: 0,
-        validRange: { startUs: index * 1000000, endUs: (index + 1) * 1000000 },
-      })),
-    },
-  ], { assets, namespace: "angle-switch" });
+    ],
+    { assets, namespace: "angle-switch" },
+  );
   const compiler = createCompiler(validateComposition(result.document, assets), "angle-switch");
   const frames = [...compiler.frames({ startUs: 0, endUs: 3000000 })];
   expect(frames).toHaveLength(24);
-  const selectedAssets = frames.map((frame) => frame.layers.map((layer) => {
-    if (layer.kind !== "video") throw new Error("Expected a video layer");
-    return layer.assetId;
-  }));
+  const selectedAssets = frames.map((frame) =>
+    frame.layers.map((layer) => {
+      if (layer.kind !== "video") throw new Error("Expected a video layer");
+      return layer.assetId;
+    }),
+  );
   expect(selectedAssets).toEqual([
     ...Array.from({ length: 8 }, () => ["camera-a"]),
     ...Array.from({ length: 8 }, () => ["camera-b"]),
@@ -836,52 +945,67 @@ test("ordinary placements replay a three-angle switch without automatic selectio
 test("piecewise angle declarations retain bounded local offsets without retiming", () => {
   const assets = ["a", "b"].map((id) => ({
     id: `camera-${id}`,
-    streams: [{
-      id: "video", kind: "video" as const, width: 64, height: 48,
-      bounds: { startUs: 0, endUs: 4000000 },
-      available: [{ startUs: 0, endUs: 4000000 }],
-    }],
+    streams: [
+      {
+        id: "video",
+        kind: "video" as const,
+        width: 64,
+        height: 48,
+        bounds: { startUs: 0, endUs: 4000000 },
+        available: [{ startUs: 0, endUs: 4000000 }],
+      },
+    ],
   }));
-  const result = applyBatch(empty, [
-    { operation: "track.add", track: { kind: "video", order: 0 }, label: "a-track" },
-    { operation: "track.add", track: { kind: "video", order: 1 }, label: "b-track" },
-    ...assets.map((asset) => ({
-      operation: "place" as const,
-      label: asset.id,
-      clip: {
-        assetId: asset.id, streamId: "video", trackId: { label: `${asset.id === "camera-a" ? "a" : "b"}-track` },
-        source: { kind: "range" as const, range: { startUs: 0, endUs: 4000000 } },
-        placement: { kind: "project" as const, range: { startUs: 0, endUs: 4000000 } },
-      },
-    })),
-    {
-      operation: "angle.declare",
-      label: "angles",
-      sessionId: "session-piecewise",
-      mapping: "piecewise-local",
-      originClipId: { label: "camera-a" },
-      evidence: {
-        id: "local-evidence", generation: "g1", status: "accepted", method: "mixed-reference",
-        fingerprint: "sha256:local-evidence", sources: assets.map((asset) => ({ assetId: asset.id, streamId: "video" })),
-      },
-      members: [
-        {
-          clipId: { label: "camera-a" },
-          segments: [
-            { offsetUs: 0, validRange: { startUs: 0, endUs: 2000000 } },
-            { offsetUs: 0, validRange: { startUs: 2000000, endUs: 4000000 } },
-          ],
+  const result = applyBatch(
+    empty,
+    [
+      { operation: "track.add", track: { kind: "video", order: 0 }, label: "a-track" },
+      { operation: "track.add", track: { kind: "video", order: 1 }, label: "b-track" },
+      ...assets.map((asset) => ({
+        operation: "place" as const,
+        label: asset.id,
+        clip: {
+          assetId: asset.id,
+          streamId: "video",
+          trackId: { label: `${asset.id === "camera-a" ? "a" : "b"}-track` },
+          source: { kind: "range" as const, range: { startUs: 0, endUs: 4000000 } },
+          placement: { kind: "project" as const, range: { startUs: 0, endUs: 4000000 } },
         },
-        {
-          clipId: { label: "camera-b" },
-          segments: [
-            { offsetUs: 125000, validRange: { startUs: 0, endUs: 2000000 } },
-            { offsetUs: 127000, validRange: { startUs: 2000000, endUs: 4000000 } },
-          ],
+      })),
+      {
+        operation: "angle.declare",
+        label: "angles",
+        sessionId: "session-piecewise",
+        mapping: "piecewise-local",
+        originClipId: { label: "camera-a" },
+        evidence: {
+          id: "local-evidence",
+          generation: "g1",
+          status: "accepted",
+          method: "mixed-reference",
+          fingerprint: "sha256:local-evidence",
+          sources: assets.map((asset) => ({ assetId: asset.id, streamId: "video" })),
         },
-      ],
-    },
-  ], { assets, namespace: "piecewise-angle" });
+        members: [
+          {
+            clipId: { label: "camera-a" },
+            segments: [
+              { offsetUs: 0, validRange: { startUs: 0, endUs: 2000000 } },
+              { offsetUs: 0, validRange: { startUs: 2000000, endUs: 4000000 } },
+            ],
+          },
+          {
+            clipId: { label: "camera-b" },
+            segments: [
+              { offsetUs: 125000, validRange: { startUs: 0, endUs: 2000000 } },
+              { offsetUs: 127000, validRange: { startUs: 2000000, endUs: 4000000 } },
+            ],
+          },
+        ],
+      },
+    ],
+    { assets, namespace: "piecewise-angle" },
+  );
   expect(result.document.angleGroups?.[0]).toMatchObject({
     mapping: "piecewise-local",
     members: [
@@ -898,56 +1022,166 @@ test("piecewise angle declarations retain bounded local offsets without retiming
 test("piecewise angle declarations refuse overlapping segments and a shifted origin", () => {
   const assets = ["a", "b"].map((id) => ({
     id: `camera-${id}`,
-    streams: [{ id: "video", kind: "video" as const, width: 64, height: 48,
-      bounds: { startUs: 0, endUs: 3000000 }, available: [{ startUs: 0, endUs: 3000000 }] }],
+    streams: [
+      {
+        id: "video",
+        kind: "video" as const,
+        width: 64,
+        height: 48,
+        bounds: { startUs: 0, endUs: 3000000 },
+        available: [{ startUs: 0, endUs: 3000000 }],
+      },
+    ],
   }));
-  const setup = applyBatch(empty, [
-    { operation: "track.add", track: { kind: "video", order: 0 }, label: "a-track" },
-    { operation: "track.add", track: { kind: "video", order: 1 }, label: "b-track" },
-    ...assets.map((asset) => ({ operation: "place" as const, label: asset.id, clip: {
-      assetId: asset.id, streamId: "video", trackId: { label: `${asset.id === "camera-a" ? "a" : "b"}-track` },
-      source: { kind: "range" as const, range: { startUs: 0, endUs: 3000000 } },
-      placement: { kind: "project" as const, range: { startUs: 0, endUs: 3000000 } },
-    } })),
-  ], { assets, namespace: "piecewise-invalid" });
-  const declare = (offsetUs: number, segments: [{ offsetUs: number; validRange: { startUs: number; endUs: number } }, { offsetUs: number; validRange: { startUs: number; endUs: number } }]) => ({
-    operation: "angle.declare" as const, mapping: "piecewise-local" as const, sessionId: "piecewise-invalid",
-    originClipId: setup.labels["camera-a"]!, evidence: {
-      id: "local", generation: "g1", status: "accepted" as const, method: "mixed-reference" as const,
-      fingerprint: "sha256:local", sources: assets.map((asset) => ({ assetId: asset.id, streamId: "video" })),
-    }, members: [
-      { clipId: setup.labels["camera-a"]!, segments: [{ offsetUs, validRange: { startUs: 0, endUs: 2000000 } }, ...segments.slice(1)] },
-      { clipId: setup.labels["camera-b"]!, segments: offsetUs === 0
-        ? [{ offsetUs: 0, validRange: { startUs: 0, endUs: 1500000 } }, { offsetUs: 0, validRange: { startUs: 1400000, endUs: 3000000 } }]
-        : [{ offsetUs: 0, validRange: { startUs: 0, endUs: 1500000 } }, { offsetUs: 0, validRange: { startUs: 1500000, endUs: 3000000 } }] },
+  const setup = applyBatch(
+    empty,
+    [
+      { operation: "track.add", track: { kind: "video", order: 0 }, label: "a-track" },
+      { operation: "track.add", track: { kind: "video", order: 1 }, label: "b-track" },
+      ...assets.map((asset) => ({
+        operation: "place" as const,
+        label: asset.id,
+        clip: {
+          assetId: asset.id,
+          streamId: "video",
+          trackId: { label: `${asset.id === "camera-a" ? "a" : "b"}-track` },
+          source: { kind: "range" as const, range: { startUs: 0, endUs: 3000000 } },
+          placement: { kind: "project" as const, range: { startUs: 0, endUs: 3000000 } },
+        },
+      })),
+    ],
+    { assets, namespace: "piecewise-invalid" },
+  );
+  const declare = (
+    offsetUs: number,
+    segments: [
+      { offsetUs: number; validRange: { startUs: number; endUs: number } },
+      { offsetUs: number; validRange: { startUs: number; endUs: number } },
+    ],
+  ) => ({
+    operation: "angle.declare" as const,
+    mapping: "piecewise-local" as const,
+    sessionId: "piecewise-invalid",
+    originClipId: setup.labels["camera-a"]!,
+    evidence: {
+      id: "local",
+      generation: "g1",
+      status: "accepted" as const,
+      method: "mixed-reference" as const,
+      fingerprint: "sha256:local",
+      sources: assets.map((asset) => ({ assetId: asset.id, streamId: "video" })),
+    },
+    members: [
+      {
+        clipId: setup.labels["camera-a"]!,
+        segments: [{ offsetUs, validRange: { startUs: 0, endUs: 2000000 } }, ...segments.slice(1)],
+      },
+      {
+        clipId: setup.labels["camera-b"]!,
+        segments:
+          offsetUs === 0
+            ? [
+                { offsetUs: 0, validRange: { startUs: 0, endUs: 1500000 } },
+                { offsetUs: 0, validRange: { startUs: 1400000, endUs: 3000000 } },
+              ]
+            : [
+                { offsetUs: 0, validRange: { startUs: 0, endUs: 1500000 } },
+                { offsetUs: 0, validRange: { startUs: 1500000, endUs: 3000000 } },
+              ],
+      },
     ],
   });
-  expect(() => applyBatch(setup.document, [declare(0, [{ offsetUs: 0, validRange: { startUs: 2000000, endUs: 3000000 } }, { offsetUs: 0, validRange: { startUs: 2000000, endUs: 3000000 } }])], { assets, namespace: "overlap" })).toThrow(/overlap|out of order/i);
-  expect(() => applyBatch(setup.document, [declare(1, [{ offsetUs: 0, validRange: { startUs: 2000000, endUs: 3000000 } }, { offsetUs: 0, validRange: { startUs: 2000000, endUs: 3000000 } }])], { assets, namespace: "origin" })).toThrow(/origin.*zero/i);
+  expect(() =>
+    applyBatch(
+      setup.document,
+      [
+        declare(0, [
+          { offsetUs: 0, validRange: { startUs: 2000000, endUs: 3000000 } },
+          { offsetUs: 0, validRange: { startUs: 2000000, endUs: 3000000 } },
+        ]),
+      ],
+      { assets, namespace: "overlap" },
+    ),
+  ).toThrow(/overlap|out of order/i);
+  expect(() =>
+    applyBatch(
+      setup.document,
+      [
+        declare(1, [
+          { offsetUs: 0, validRange: { startUs: 2000000, endUs: 3000000 } },
+          { offsetUs: 0, validRange: { startUs: 2000000, endUs: 3000000 } },
+        ]),
+      ],
+      { assets, namespace: "origin" },
+    ),
+  ).toThrow(/origin.*zero/i);
 });
 
 test("piecewise angle declarations require segments for every member", () => {
   const assets = ["a", "b"].map((id) => ({
     id: `camera-${id}`,
-    streams: [{ id: "video" as const, kind: "video" as const, width: 64, height: 48,
-      bounds: { startUs: 0, endUs: 1000000 }, available: [{ startUs: 0, endUs: 1000000 }] }],
-  }));
-  const setup = applyBatch(empty, [
-    { operation: "track.add", track: { kind: "video", order: 0 }, label: "a-track" },
-    { operation: "track.add", track: { kind: "video", order: 1 }, label: "b-track" },
-    ...assets.map((asset) => ({ operation: "place" as const, label: asset.id, clip: {
-      assetId: asset.id, streamId: "video", trackId: { label: `${asset.id === "camera-a" ? "a" : "b"}-track` },
-      source: { kind: "range" as const, range: { startUs: 0, endUs: 1000000 } },
-      placement: { kind: "project" as const, range: { startUs: 0, endUs: 1000000 } },
-    } })),
-  ] as const, { assets, namespace: "piecewise-mixed" });
-  expect(() => applyBatch(setup.document, [{
-    operation: "angle.declare", label: "angles", sessionId: "mixed", mapping: "piecewise-local",
-    originClipId: { label: "camera-a" },
-    evidence: { id: "evidence", generation: "g1", status: "accepted", method: "mixed-reference", fingerprint: "sha256:evidence", sources: assets.map((asset) => ({ assetId: asset.id, streamId: "video" })) },
-    members: [
-      { clipId: { label: "camera-a" }, segments: [{ offsetUs: 0, validRange: { startUs: 0, endUs: 1000000 } }] },
-      { clipId: { label: "camera-b" }, offsetUs: 0, validRange: { startUs: 0, endUs: 1000000 } },
+    streams: [
+      {
+        id: "video" as const,
+        kind: "video" as const,
+        width: 64,
+        height: 48,
+        bounds: { startUs: 0, endUs: 1000000 },
+        available: [{ startUs: 0, endUs: 1000000 }],
+      },
     ],
-  }], { assets, namespace: "piecewise-mixed-declare" })).toThrow(/segments for every member/);
+  }));
+  const setup = applyBatch(
+    empty,
+    [
+      { operation: "track.add", track: { kind: "video", order: 0 }, label: "a-track" },
+      { operation: "track.add", track: { kind: "video", order: 1 }, label: "b-track" },
+      ...assets.map((asset) => ({
+        operation: "place" as const,
+        label: asset.id,
+        clip: {
+          assetId: asset.id,
+          streamId: "video",
+          trackId: { label: `${asset.id === "camera-a" ? "a" : "b"}-track` },
+          source: { kind: "range" as const, range: { startUs: 0, endUs: 1000000 } },
+          placement: { kind: "project" as const, range: { startUs: 0, endUs: 1000000 } },
+        },
+      })),
+    ] as const,
+    { assets, namespace: "piecewise-mixed" },
+  );
+  expect(() =>
+    applyBatch(
+      setup.document,
+      [
+        {
+          operation: "angle.declare",
+          label: "angles",
+          sessionId: "mixed",
+          mapping: "piecewise-local",
+          originClipId: { label: "camera-a" },
+          evidence: {
+            id: "evidence",
+            generation: "g1",
+            status: "accepted",
+            method: "mixed-reference",
+            fingerprint: "sha256:evidence",
+            sources: assets.map((asset) => ({ assetId: asset.id, streamId: "video" })),
+          },
+          members: [
+            {
+              clipId: { label: "camera-a" },
+              segments: [{ offsetUs: 0, validRange: { startUs: 0, endUs: 1000000 } }],
+            },
+            {
+              clipId: { label: "camera-b" },
+              offsetUs: 0,
+              validRange: { startUs: 0, endUs: 1000000 },
+            },
+          ],
+        },
+      ],
+      { assets, namespace: "piecewise-mixed-declare" },
+    ),
+  ).toThrow(/segments for every member/);
 });

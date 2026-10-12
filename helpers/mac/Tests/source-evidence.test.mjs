@@ -19,8 +19,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 const executable =
-  process.env.YAP_NATIVE ??
-  new URL("../.build/debug/yap-native", import.meta.url).pathname;
+  process.env.YAP_NATIVE ?? new URL("../.build/debug/yap-native", import.meta.url).pathname;
 function request(directory, output, extra = {}) {
   const result = spawnSync(executable, [], {
     input:

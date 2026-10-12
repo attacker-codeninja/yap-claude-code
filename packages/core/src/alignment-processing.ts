@@ -175,7 +175,8 @@ export class AlignmentProcessing {
     if (status.state === "not_requested" && reason === null) {
       this.options.jobs.submit(
         () => ({ ...identity, lane: "heavy" }),
-        (job) => this.options.assets.retain({ kind: "job", id: job.jobId }, [resolved.source.assetId]),
+        (job) =>
+          this.options.assets.retain({ kind: "job", id: job.jobId }, [resolved.source.assetId]),
       );
       const next = this.options.jobs.status(identity),
         nextPublished = next.published
@@ -218,10 +219,16 @@ export class AlignmentProcessing {
     if (project) {
       if (!this.options.project)
         throw new CatalogError("UNSUPPORTED_JOB", "Project alignment is unavailable");
-      const value = JSON.parse(job.input) as { request: ProjectAlignmentRequest; resolved: ResolvedProjectAlignment },
+      const value = JSON.parse(job.input) as {
+          request: ProjectAlignmentRequest;
+          resolved: ResolvedProjectAlignment;
+        },
         resolved = this.options.project.resolve(value.request);
       if (!isDeepStrictEqual(resolved, value.resolved))
-        throw new CatalogError("ARTIFACT_CHANGED", "Prepared project tap or alignment input changed");
+        throw new CatalogError(
+          "ARTIFACT_CHANGED",
+          "Prepared project tap or alignment input changed",
+        );
       if (
         job.target.kind !== "project" ||
         job.target.projectId !== resolved.projectId ||
@@ -320,11 +327,7 @@ export class AlignmentProcessing {
     keep: (generation: string) => boolean = (generation) =>
       this.options.jobs.retainsAttempt({ kind: "asset", assetId }, artifact, generation),
   ) {
-    return this.options.evidence.reclaim(
-      assetId,
-      keep,
-      signal,
-    );
+    return this.options.evidence.reclaim(assetId, keep, signal);
   }
   portablePublication(metadata: AlignmentEvidenceMetadata) {
     const receipt = this.options.jobs.retainedArtifact(

@@ -158,6 +158,7 @@ using the same capture session as the recording. The preview is enabled by defau
 and can be hidden from Settings; screen-only recordings keep the compact controls.
 Camera-only capture chooses the default available camera and no longer repeats a
 redundant “Required” label after a camera is selected.
+
 ## 0.1.23
 
 This release adds agent-first media evidence primitives: generation-pinned face

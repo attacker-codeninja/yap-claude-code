@@ -8,8 +8,7 @@ import { test } from "node:test";
 import { createCompiler, validateComposition } from "../../../packages/composition/dist/index.js";
 
 const native =
-  process.env.YAP_NATIVE ??
-  new URL("../.build/debug/yap-native", import.meta.url).pathname;
+  process.env.YAP_NATIVE ?? new URL("../.build/debug/yap-native", import.meta.url).pathname;
 const ffmpeg =
   process.env.YAP_FFMPEG ??
   new URL("../../ffmpeg/.build/distribution/bin/ffmpeg", import.meta.url).pathname;

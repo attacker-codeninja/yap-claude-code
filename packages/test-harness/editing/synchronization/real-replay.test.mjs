@@ -31,7 +31,9 @@ test("real synchronization replay refuses a changed retained result", async (t) 
   comparisons[0].result.reason = "constant-offset";
   await writeFile(path, JSON.stringify(comparisons));
   const { verifyRealSynchronizationReplay } = await import("./real-replay.mjs");
-  await assert.rejects(verifyRealSynchronizationReplay(scratch, fixtures), { code: "RESULT_CHANGED" });
+  await assert.rejects(verifyRealSynchronizationReplay(scratch, fixtures), {
+    code: "RESULT_CHANGED",
+  });
 });
 
 test("real synchronization replay refuses an admitted real offset even when both frozen sides agree", async (t) => {

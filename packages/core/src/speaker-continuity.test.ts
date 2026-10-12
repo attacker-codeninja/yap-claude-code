@@ -1,8 +1,5 @@
 import { expect, test } from "vitest";
-import {
-  evaluateSpeakerContinuity,
-  speakerContinuityMetricsSchema,
-} from "./speaker-continuity.js";
+import { evaluateSpeakerContinuity, speakerContinuityMetricsSchema } from "./speaker-continuity.js";
 
 const passing = {
   inputFrames: 9_600_000,

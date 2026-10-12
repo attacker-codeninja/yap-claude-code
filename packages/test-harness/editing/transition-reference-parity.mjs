@@ -7,7 +7,8 @@ import { promisify } from "node:util";
 
 const exec = promisify(execFile);
 const root = new URL("../../../", import.meta.url).pathname;
-const ffmpeg = process.env.YAP_FFMPEG ?? join(root, "helpers/ffmpeg/.build/distribution/bin/ffmpeg");
+const ffmpeg =
+  process.env.YAP_FFMPEG ?? join(root, "helpers/ffmpeg/.build/distribution/bin/ffmpeg");
 const width = 64;
 const height = 48;
 const frameDurationUs = 250000;
@@ -51,10 +52,7 @@ export function srgbToLinear(channel) {
 
 export function linearToSrgb(value) {
   const clamped = Math.min(1, Math.max(0, value));
-  const encoded =
-    clamped <= 0.0031308
-      ? clamped * 12.92
-      : 1.055 * clamped ** (1 / 2.4) - 0.055;
+  const encoded = clamped <= 0.0031308 ? clamped * 12.92 : 1.055 * clamped ** (1 / 2.4) - 0.055;
   return Math.round(encoded * 255);
 }
 
@@ -77,7 +75,7 @@ export function composeFrameWithAlpha(alpha, mirror, atUs, alphaValue = (value) 
       green = 0,
       blue = 0;
     for (const [source, opacity] of sourcesAtFrame) {
-      const sourceOffset = (frame * width * height * 4) + offset;
+      const sourceOffset = frame * width * height * 4 + offset;
       const sourceAlpha = alphaValue(source[sourceOffset + 3]) * opacity;
       const remaining = 1 - sourceAlpha;
       red = srgbToLinear(source[sourceOffset]) * sourceAlpha + red * remaining;
@@ -106,8 +104,13 @@ export function composeFramePremultiplied(alpha, mirror, atUs) {
   const [alphaOpacity, mirrorOpacity] = opacityAt(atUs);
   const output = Buffer.alloc(width * height * 4);
   for (let offset = 0; offset < output.length; offset += 4) {
-    let red = 0, green = 0, blue = 0;
-    for (const [source, opacity] of [[alpha, alphaOpacity], [mirror, mirrorOpacity]]) {
+    let red = 0,
+      green = 0,
+      blue = 0;
+    for (const [source, opacity] of [
+      [alpha, alphaOpacity],
+      [mirror, mirrorOpacity],
+    ]) {
       const sourceOffset = frame * width * height * 4 + offset;
       const sourceAlpha = source[sourceOffset + 3] / 255;
       const scaledAlpha = sourceAlpha * opacity;
@@ -116,7 +119,7 @@ export function composeFramePremultiplied(alpha, mirror, atUs) {
         // Core Video's BGRA conversion preserves channels already in the
         // premultiplied range and restores only out-of-range straight values.
         return sourceAlpha > 0 && encoded > source[sourceOffset + 3]
-          ? Math.min(1, (encoded / 255) / sourceAlpha)
+          ? Math.min(1, encoded / 255 / sourceAlpha)
           : encoded / 255;
       };
       const remaining = 1 - scaledAlpha;
@@ -224,8 +227,14 @@ export async function generateReferenceParity(outDirectory) {
     const candidate = await decodeRgba(candidatePath);
     report.samples.push({
       ...sample,
-      reference: { path: relative(out, referencePath), sha256: hash(await readFile(referencePath)) },
-      candidate: { path: relative(root, candidatePath), sha256: hash(await readFile(candidatePath)) },
+      reference: {
+        path: relative(out, referencePath),
+        sha256: hash(await readFile(referencePath)),
+      },
+      candidate: {
+        path: relative(root, candidatePath),
+        sha256: hash(await readFile(candidatePath)),
+      },
       comparison: compareRgb(reference, candidate),
     });
   }
@@ -236,9 +245,7 @@ export async function generateReferenceParity(outDirectory) {
     maxDifferingRatio: Math.max(
       ...report.samples.map((sample) => sample.comparison.differingRatio),
     ),
-    maxChannelDelta: Math.max(
-      ...report.samples.map((sample) => sample.comparison.maxChannelDelta),
-    ),
+    maxChannelDelta: Math.max(...report.samples.map((sample) => sample.comparison.maxChannelDelta)),
   };
   await writeFile(join(out, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
   return report;
@@ -279,11 +286,7 @@ export async function runReferenceParityReplay(reportPath) {
     assert.equal(referenceRgba.length, width * height * 4, `${sample.id}: reference dimensions`);
     assert.equal(candidateRgba.length, width * height * 4, `${sample.id}: candidate dimensions`);
     const comparison = compareRgb(referenceRgba, candidateRgba);
-    assert.deepEqual(
-      comparison,
-      sample.comparison,
-      `${sample.id}: comparison metrics changed`,
-    );
+    assert.deepEqual(comparison, sample.comparison, `${sample.id}: comparison metrics changed`);
     comparisons.push(comparison);
   }
   assert.equal(report.gate.maxMae, Math.max(...comparisons.map(({ mae }) => mae)));

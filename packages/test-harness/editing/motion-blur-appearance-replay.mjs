@@ -79,11 +79,16 @@ export async function replayMotionBlurAppearance(reportPath) {
     transparentPixels: check.transparentPixels,
     maxEdgeExpansion,
     blurChangedPixels: check.blurChangedPixels,
-    artifacts: Object.fromEntries(Object.entries(expected.files).map(([name, [file]]) => [name, file])),
+    artifacts: Object.fromEntries(
+      Object.entries(expected.files).map(([name, [file]]) => [name, file]),
+    ),
   };
 }
 
 if (process.argv[1] === new URL(import.meta.url).pathname) {
-  assert(process.argv[2], "Usage: node motion-blur-appearance-replay.mjs <appearance-repair-report.json>");
+  assert(
+    process.argv[2],
+    "Usage: node motion-blur-appearance-replay.mjs <appearance-repair-report.json>",
+  );
   console.log(JSON.stringify(await replayMotionBlurAppearance(process.argv[2])));
 }

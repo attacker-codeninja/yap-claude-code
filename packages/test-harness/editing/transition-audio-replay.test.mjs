@@ -18,7 +18,10 @@ test("replays retained native delivered audio crossfade evidence", async () => {
   assert.equal(result.kind, "delivered-audio-transition");
   assert.equal(result.implementationId, "native-composition-audio-v10");
   assert.deepEqual(result.sampleFrames, [4800, 24000, 43200]);
-  assert.equal(result.audioSha256, "6a469e107deea5b9c1571400b2d6570416389c10d33e3831627fa0381aa04fed");
+  assert.equal(
+    result.audioSha256,
+    "6a469e107deea5b9c1571400b2d6570416389c10d33e3831627fa0381aa04fed",
+  );
 });
 
 test("refuses changed retained audio transition evidence", async () => {

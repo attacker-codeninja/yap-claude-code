@@ -30,9 +30,7 @@ import { verifyPackageArchive } from "../dist/package-archive.js";
 import { archiveLimits } from "../../../packages/core/dist/package-archive.js";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
-const native = resolve(
-  process.env.YAP_NATIVE ?? join(root, "helpers/mac/.build/debug/yap-native"),
-);
+const native = resolve(process.env.YAP_NATIVE ?? join(root, "helpers/mac/.build/debug/yap-native"));
 const run = mediaWorker({ YAP_NATIVE: native });
 const fixtureWriter = fileURLToPath(
   new URL("../../macos/tests/fixtures/package-archive.py", import.meta.url),

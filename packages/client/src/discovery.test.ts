@@ -178,9 +178,9 @@ it("uses a service that already answers without launching an app", async () => {
   const socketPath = socketIn(home);
   const service = await serve(socketPath);
   const app = await appBundle(SERVES_ITS_HOME);
-  expect(
-    await resolveServiceSocket({ env: { YAP_HOME: home, YAP_APP: app.path } }),
-  ).toBe(socketPath);
+  expect(await resolveServiceSocket({ env: { YAP_HOME: home, YAP_APP: app.path } })).toBe(
+    socketPath,
+  );
   expect(await app.launches()).toEqual([]);
   expect(launcherRuns).toEqual([]);
   expect(service.connections()).toBe(1);

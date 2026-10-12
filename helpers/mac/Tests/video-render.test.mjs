@@ -15,8 +15,7 @@ import { test, after } from "node:test";
 import { renderPlan } from "../../../packages/core/dist/presentation-time.js";
 import { renderFrames } from "./fixtures/render-frames.mjs";
 const native =
-  process.env.YAP_NATIVE ??
-  new URL("../.build/debug/yap-native", import.meta.url).pathname;
+  process.env.YAP_NATIVE ?? new URL("../.build/debug/yap-native", import.meta.url).pathname;
 const evidence = process.env.YAP_VIDEO_RENDER_EVIDENCE;
 const directory = evidence ?? mkdtempSync(join(tmpdir(), "yap-video-render-"));
 assert.ok(isAbsolute(directory));

@@ -13,8 +13,10 @@ test("replays the refusal of one global clock over edited bridge references", as
   assert.equal(result.status, "refused");
   assert.equal(result.gate.passed, false);
   assert.ok(result.sourceGroups.some((group) => group.source === "grahamRaw"));
-  assert.ok(result.sourceGroups
-    .filter((group) => group.windows.length > 1)
-    .every((group) => group.minimumDifferenceFrames > 32));
+  assert.ok(
+    result.sourceGroups
+      .filter((group) => group.windows.length > 1)
+      .every((group) => group.minimumDifferenceFrames > 32),
+  );
   assert.equal(result.nextAction, "piecewise-local-only");
 });

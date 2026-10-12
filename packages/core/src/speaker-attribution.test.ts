@@ -58,7 +58,12 @@ test("a partial competing turn prevents confident attribution for the whole word
         { slot: 0, sourceRange: { startUs: 0, endUs: 400 } },
         { slot: 1, sourceRange: { startUs: 200, endUs: 300 } },
       ],
-      { labels: new Map([[0, "Ada"], [1, "Grace"]]) },
+      {
+        labels: new Map([
+          [0, "Ada"],
+          [1, "Grace"],
+        ]),
+      },
     ),
   ).toEqual([
     { ...words[0], speaker: { state: "overlap", slots: [0, 1] } },

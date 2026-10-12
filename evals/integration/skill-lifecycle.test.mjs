@@ -60,8 +60,7 @@ test("documented real installer steps preserve inspection and restore failed rep
       execFileSync("tar", ["-xf", "-", "-C", extraction], { input: archive });
       await cp(join(extraction, "skills/yap"), source, { recursive: true });
       receipt.matchedBaseline = process.env.YAP_SKILL_BASELINE;
-    } else
-      await cp(new URL("../../skills/yap/", import.meta.url), source, { recursive: true });
+    } else await cp(new URL("../../skills/yap/", import.meta.url), source, { recursive: true });
     await mkdir(project);
     await mkdir(home);
     await mkdir(join(project, "backups"));
@@ -70,10 +69,7 @@ test("documented real installer steps preserve inspection and restore failed rep
     receipt.source = await projectSnapshot(source, 500);
     assert.equal(await call(1), 0);
     receipt.installed = await projectSnapshot(project, 500);
-    assert.equal(
-      receipt.installed[".claude/skills/yap"].target,
-      "../../.agents/skills/yap",
-    );
+    assert.equal(receipt.installed[".claude/skills/yap"].target, "../../.agents/skills/yap");
     await writeFile(join(project, ".agents/skills/yap/SKILL.md"), "LOCAL CUSTOMIZATION\n");
     await writeFile(join(project, ".agents/skills/yap/local-notes.md"), "Local extra\n");
     await writeFile(
@@ -125,10 +121,7 @@ test("documented real installer steps preserve inspection and restore failed rep
     receipt.verdict =
       "Documented installer/diff/replacement/failed-add restore executed against complete controlled local folders.";
     if (process.env.YAP_SKILL_PROOF_OUTPUT)
-      await writeFile(
-        process.env.YAP_SKILL_PROOF_OUTPUT,
-        JSON.stringify(receipt, null, 2) + "\n",
-      );
+      await writeFile(process.env.YAP_SKILL_PROOF_OUTPUT, JSON.stringify(receipt, null, 2) + "\n");
   } finally {
     execFileSync("chmod", ["-R", "u+w", scratch]);
     await rm(scratch, { recursive: true, force: true });

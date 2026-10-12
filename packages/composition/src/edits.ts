@@ -123,12 +123,29 @@ const transitionRecipe = z
     if (value.kind !== "crossfade" && value.targets.length !== 1)
       context.addIssue({ code: z.ZodIssueCode.custom, message: "Transition requires one target" });
     if (value.kind === "zoom") {
-      if (value.mediaKind !== "video" || value.from === undefined || value.to === undefined || value.from < 1 || value.to < 1)
-        context.addIssue({ code: z.ZodIssueCode.custom, message: "Zoom requires video from/to scales at least 1" });
+      if (
+        value.mediaKind !== "video" ||
+        value.from === undefined ||
+        value.to === undefined ||
+        value.from < 1 ||
+        value.to < 1
+      )
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Zoom requires video from/to scales at least 1",
+        });
     }
     if (value.kind === "whip") {
-      if (value.mediaKind !== "video" || value.direction === undefined || value.distance === undefined || value.overscan === undefined)
-        context.addIssue({ code: z.ZodIssueCode.custom, message: "Whip requires video direction, distance and overscan" });
+      if (
+        value.mediaKind !== "video" ||
+        value.direction === undefined ||
+        value.distance === undefined ||
+        value.overscan === undefined
+      )
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Whip requires video direction, distance and overscan",
+        });
     }
   });
 const angleMember = z
@@ -136,15 +153,26 @@ const angleMember = z
     clipId: reference,
     offsetUs: signedTimeValueSchema.optional(),
     validRange: selectionRangeSchema.optional(),
-    segments: z.array(z.object({ offsetUs: signedTimeValueSchema, validRange: selectionRangeSchema }).strict()).min(1).optional(),
+    segments: z
+      .array(
+        z.object({ offsetUs: signedTimeValueSchema, validRange: selectionRangeSchema }).strict(),
+      )
+      .min(1)
+      .optional(),
   })
   .strict()
   .superRefine((member, context) => {
     const piecewise = member.segments !== undefined;
     if (piecewise && (member.offsetUs !== undefined || member.validRange !== undefined))
-      context.addIssue({ code: z.ZodIssueCode.custom, message: "Piecewise angle member cannot also set offsetUs/validRange" });
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Piecewise angle member cannot also set offsetUs/validRange",
+      });
     if (!piecewise && (member.offsetUs === undefined || member.validRange === undefined))
-      context.addIssue({ code: z.ZodIssueCode.custom, message: "Angle member requires offsetUs and validRange" });
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Angle member requires offsetUs and validRange",
+      });
   });
 export const editOperationSchema = z.discriminatedUnion("operation", [
   z
@@ -175,11 +203,23 @@ export const editOperationSchema = z.discriminatedUnion("operation", [
     .superRefine((operation, context) => {
       const hasSegments = operation.members.some((member) => member.segments !== undefined);
       if (hasSegments && operation.mapping !== "piecewise-local")
-        context.addIssue({ code: z.ZodIssueCode.custom, message: "Piecewise angle declaration must declare mapping" });
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Piecewise angle declaration must declare mapping",
+        });
       if (operation.mapping === "piecewise-local" && !hasSegments)
-        context.addIssue({ code: z.ZodIssueCode.custom, message: "Piecewise angle declaration requires segments" });
-      if (operation.mapping === "piecewise-local" && operation.members.some((member) => member.segments === undefined))
-        context.addIssue({ code: z.ZodIssueCode.custom, message: "Piecewise angle declaration requires segments for every member" });
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Piecewise angle declaration requires segments",
+        });
+      if (
+        operation.mapping === "piecewise-local" &&
+        operation.members.some((member) => member.segments === undefined)
+      )
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Piecewise angle declaration requires segments for every member",
+        });
     }),
   z.object({ operation: z.literal("angle.remove"), angleGroupId: reference }).strict(),
   z
@@ -913,7 +953,11 @@ export function applyBatch(
             invalid("Transition window exceeds a target's available handle", { target });
         }
         if (operation.kind === "zoom" || operation.kind === "whip") {
-          if (operation.mediaKind !== "video" || targets.length !== 1 || targets[0]!.kind === "output")
+          if (
+            operation.mediaKind !== "video" ||
+            targets.length !== 1 ||
+            targets[0]!.kind === "output"
+          )
             invalid("Trajectory requires one video target");
           const target = targets[0]!;
           const [start, end] =
@@ -923,11 +967,21 @@ export function applyBatch(
                 ? [window.sourceRange.startUs, window.sourceRange.endUs]
                 : [window.range.startUs, window.range.endUs];
           if (window.kind !== "clip" && (typeof start !== "number" || typeof end !== "number"))
-            invalid("Trajectory endpoints must be whole microseconds; use a clip anchor for fractional boundaries");
+            invalid(
+              "Trajectory endpoints must be whole microseconds; use a clip anchor for fractional boundaries",
+            );
           const curve = {
             keys: [
-              { at: start, value: operation.kind === "zoom" ? operation.from! : 0, interpolation: operation.interpolation },
-              { at: end, value: operation.kind === "zoom" ? operation.to! : 0, interpolation: "hold" as const },
+              {
+                at: start,
+                value: operation.kind === "zoom" ? operation.from! : 0,
+                interpolation: operation.interpolation,
+              },
+              {
+                at: end,
+                value: operation.kind === "zoom" ? operation.to! : 0,
+                interpolation: "hold" as const,
+              },
             ],
           };
           const processor =
@@ -944,30 +998,41 @@ export function applyBatch(
                     width <= 0 ||
                     height <= 0
                   )
-                    invalid(
-                      "Whip coverage requires fixed positive geometry rectangle dimensions",
-                    );
+                    invalid("Whip coverage requires fixed positive geometry rectangle dimensions");
                   const dimension =
                     operation.direction === "left" || operation.direction === "right"
                       ? width
                       : height;
                   const maximum = ((operation.overscan! - 1) * dimension) / 2;
                   if (operation.distance! > maximum)
-                    invalid("Whip distance exceeds overscan coverage; increase overscan or reduce distance", {
-                      distance: operation.distance,
-                      maximum,
-                    });
+                    invalid(
+                      "Whip distance exceeds overscan coverage; increase overscan or reduce distance",
+                      {
+                        distance: operation.distance,
+                        maximum,
+                      },
+                    );
                   const signed =
                     operation.direction === "left" || operation.direction === "up"
                       ? operation.distance!
                       : -operation.distance!;
                   const x =
                     operation.direction === "left" || operation.direction === "right"
-                      ? { keys: [{ at: start, value: signed, interpolation: operation.interpolation }, { at: end, value: 0, interpolation: "hold" as const }] }
+                      ? {
+                          keys: [
+                            { at: start, value: signed, interpolation: operation.interpolation },
+                            { at: end, value: 0, interpolation: "hold" as const },
+                          ],
+                        }
                       : 0;
                   const y =
                     operation.direction === "up" || operation.direction === "down"
-                      ? { keys: [{ at: start, value: signed, interpolation: operation.interpolation }, { at: end, value: 0, interpolation: "hold" as const }] }
+                      ? {
+                          keys: [
+                            { at: start, value: signed, interpolation: operation.interpolation },
+                            { at: end, value: 0, interpolation: "hold" as const },
+                          ],
+                        }
                       : 0;
                   return {
                     type: "geometry" as const,
@@ -981,310 +1046,202 @@ export function applyBatch(
                     scale: { x: operation.overscan!, y: operation.overscan! },
                   };
                 })();
-          next = replaceProcessing(before, [processingStack({
-            operation: "processing.set",
-            target,
-            steps: [...getProcessing(model, target), { enabled: true, window, processor }],
-          })]);
+          next = replaceProcessing(before, [
+            processingStack({
+              operation: "processing.set",
+              target,
+              steps: [...getProcessing(model, target), { enabled: true, window, processor }],
+            }),
+          ]);
         } else {
-        const endpoints =
-          window.kind === "clip"
-            ? [window.start, window.end]
-            : window.kind === "content"
-              ? [window.sourceRange.startUs, window.sourceRange.endUs]
-              : [window.range.startUs, window.range.endUs];
-        if (
-          window.kind !== "clip" &&
-          (typeof endpoints[0] !== "number" || typeof endpoints[1] !== "number")
-        )
-          invalid(
-            "Transition source/project endpoints must be whole microseconds; use a clip anchor for fractional boundaries",
-          );
-        const midpoint = operation.kind === "crossfade" ? undefined : (() => {
-          if (window.kind === "clip") {
-            const denominator =
-              2n * BigInt(window.start.denominator) * BigInt(window.end.denominator);
-            const numerator =
-              BigInt(window.start.numerator) * BigInt(window.end.denominator) +
-              BigInt(window.end.numerator) * BigInt(window.start.denominator);
-            const divisor = greatestCommonDivisor(
-              numerator < 0n ? -numerator : numerator,
-              denominator,
+          const endpoints =
+            window.kind === "clip"
+              ? [window.start, window.end]
+              : window.kind === "content"
+                ? [window.sourceRange.startUs, window.sourceRange.endUs]
+                : [window.range.startUs, window.range.endUs];
+          if (
+            window.kind !== "clip" &&
+            (typeof endpoints[0] !== "number" || typeof endpoints[1] !== "number")
+          )
+            invalid(
+              "Transition source/project endpoints must be whole microseconds; use a clip anchor for fractional boundaries",
             );
-            return {
-              numerator: Number(numerator / divisor),
-              denominator: Number(denominator / divisor),
+          const midpoint =
+            operation.kind === "crossfade"
+              ? undefined
+              : (() => {
+                  if (window.kind === "clip") {
+                    const denominator =
+                      2n * BigInt(window.start.denominator) * BigInt(window.end.denominator);
+                    const numerator =
+                      BigInt(window.start.numerator) * BigInt(window.end.denominator) +
+                      BigInt(window.end.numerator) * BigInt(window.start.denominator);
+                    const divisor = greatestCommonDivisor(
+                      numerator < 0n ? -numerator : numerator,
+                      denominator,
+                    );
+                    return {
+                      numerator: Number(numerator / divisor),
+                      denominator: Number(denominator / divisor),
+                    };
+                  }
+                  const start = endpoints[0] as number,
+                    end = endpoints[1] as number;
+                  if ((start + end) % 2 !== 0)
+                    invalid("Dip and flash require an even whole-microsecond midpoint");
+                  return (start + end) / 2;
+                })();
+          const values =
+            operation.kind === "crossfade"
+              ? targets.map((_, index) => (index === 0 ? [1, 0] : [0, 1]))
+              : targets.map(() => [1, 0, 1]);
+          const updates = targets.map((target, index) => {
+            const valuesForTarget = values[index]!;
+            const at =
+              valuesForTarget.length === 2 ? endpoints : [endpoints[0], midpoint!, endpoints[1]];
+            const curve = {
+              keys: valuesForTarget.map((value, keyIndex) => ({
+                at: at[keyIndex]!,
+                value,
+                interpolation:
+                  keyIndex === valuesForTarget.length - 1
+                    ? ("hold" as const)
+                    : operation.interpolation,
+              })),
             };
-          }
-          const start = endpoints[0] as number,
-            end = endpoints[1] as number;
-          if ((start + end) % 2 !== 0)
-            invalid("Dip and flash require an even whole-microsecond midpoint");
-          return (start + end) / 2;
-        })();
-        const values =
-          operation.kind === "crossfade"
-            ? targets.map((_, index) => (index === 0 ? [1, 0] : [0, 1]))
-            : targets.map(() => [1, 0, 1]);
-        const updates = targets.map((target, index) => {
-          const valuesForTarget = values[index]!;
-          const at =
-            valuesForTarget.length === 2
-              ? endpoints
-              : [endpoints[0], midpoint!, endpoints[1]];
+            const processor =
+              operation.mediaKind === "audio"
+                ? { type: "gain" as const, gain: curve }
+                : { type: "opacity" as const, opacity: curve };
+            return processingStack({
+              operation: "processing.set",
+              target,
+              steps: [
+                ...getProcessing(model, target),
+                {
+                  enabled: true,
+                  ...(index === 0 && operation.label ? { label: operation.label } : {}),
+                  window,
+                  processor,
+                },
+              ],
+            });
+          });
+          next = replaceProcessing(before, updates);
+        }
+      } else {
+        let operation = authored;
+        if (operation.operation === "fade" || operation.operation === "zoom") {
+          const target =
+            operation.target.kind === "output"
+              ? operation.target
+              : {
+                  kind: operation.target.kind,
+                  id: resolve(operation.target.id, operation.target.kind),
+                };
+          const window = operation.window;
+          const [start, end] =
+            window.kind === "clip"
+              ? [window.start, window.end]
+              : window.kind === "content"
+                ? [window.sourceRange.startUs, window.sourceRange.endUs]
+                : [window.range.startUs, window.range.endUs];
+          if (window.kind !== "clip" && (typeof start !== "number" || typeof end !== "number"))
+            invalid(
+              "Transition source/project endpoints must be whole microseconds; use ordinary keys with fractional activation bounds",
+            );
           const curve = {
-            keys: valuesForTarget.map((value, keyIndex) => ({
-              at: at[keyIndex]!,
-              value,
-              interpolation:
-                keyIndex === valuesForTarget.length - 1 ? ("hold" as const) : operation.interpolation,
-            })),
+            keys: [
+              { at: start, value: operation.from, interpolation: operation.interpolation },
+              { at: end, value: operation.to, interpolation: "hold" as const },
+            ],
           };
           const processor =
-            operation.mediaKind === "audio"
-              ? { type: "gain" as const, gain: curve }
-              : { type: "opacity" as const, opacity: curve };
-          return processingStack({
+            operation.operation === "zoom"
+              ? { type: "geometry" as const, ...operation.geometry, scale: { x: curve, y: curve } }
+              : operation.mediaKind === "audio"
+                ? { type: "gain" as const, gain: curve }
+                : { type: "opacity" as const, opacity: curve };
+          operation = {
             operation: "processing.set",
             target,
             steps: [
               ...getProcessing(model, target),
-              {
-                enabled: true,
-                ...(index === 0 && operation.label ? { label: operation.label } : {}),
-                window,
-                processor,
-              },
+              { enabled: true, label: operation.label, window, processor },
             ],
-          });
-        });
-        next = replaceProcessing(before, updates);
-        }
-      } else {
-      let operation = authored;
-      if (operation.operation === "fade" || operation.operation === "zoom") {
-        const target =
-          operation.target.kind === "output"
-            ? operation.target
-            : {
-                kind: operation.target.kind,
-                id: resolve(operation.target.id, operation.target.kind),
-              };
-        const window = operation.window;
-        const [start, end] =
-          window.kind === "clip"
-            ? [window.start, window.end]
-            : window.kind === "content"
-              ? [window.sourceRange.startUs, window.sourceRange.endUs]
-              : [window.range.startUs, window.range.endUs];
-        if (window.kind !== "clip" && (typeof start !== "number" || typeof end !== "number"))
-          invalid(
-            "Transition source/project endpoints must be whole microseconds; use ordinary keys with fractional activation bounds",
-          );
-        const curve = {
-          keys: [
-            { at: start, value: operation.from, interpolation: operation.interpolation },
-            { at: end, value: operation.to, interpolation: "hold" as const },
-          ],
-        };
-        const processor =
-          operation.operation === "zoom"
-            ? { type: "geometry" as const, ...operation.geometry, scale: { x: curve, y: curve } }
-            : operation.mediaKind === "audio"
-              ? { type: "gain" as const, gain: curve }
-              : { type: "opacity" as const, opacity: curve };
-        operation = {
-          operation: "processing.set",
-          target,
-          steps: [
-            ...getProcessing(model, target),
-            { enabled: true, label: operation.label, window, processor },
-          ],
-        };
-      }
-      switch (operation.operation) {
-        case "text.set": {
-          const id = resolve(operation.clipId, "clip");
-          const clip = before.clips.find((clip) => clip.id === id);
-          if (clip?.source.kind !== "text")
-            invalid("Text edits require a text clip", { clipId: id });
-          next = {
-            ...before,
-            clips: before.clips.map((clip) =>
-              clip.id === id ? { ...clip, source: operation.source } : clip,
-            ),
           };
-          break;
         }
-        case "processing.set": {
-          next = replaceProcessing(before, [processingStack(operation)]);
-          break;
-        }
-        case "replace": {
-          const result = replaceClip(
-            operation.processing === "reset"
-              ? resolveComposition(
-                  {
-                    ...before,
-                    processing: before.processing.filter(
-                      (stack) =>
-                        stack.target.kind !== "clip" ||
-                        stack.target.id !== resolve(operation.clipId, "clip"),
-                    ),
-                  },
-                  model.assets,
-                  model.acquisitions,
-                )
-              : model,
-            clips([operation.clipId])[0]!,
-            operation.kind,
-            operation.media,
-            operation.fit,
-            allocate,
-            operation.pitch,
-          );
-          next = result.document;
-          removedAttachments.push(...result.removedAttachments);
-          clipLineage.push(...result.lineage);
-          if (operation.fit === "ripple") {
-            if (operation.media.source.kind !== "range")
-              invalid("Ripple replacement needs a source range with a duration");
-            const source = operation.media.source.range;
-            const resized = retimeClips(
-              resolveComposition(next, model.assets, model.acquisitions),
-              [resolve(operation.clipId, "clip")],
-              {
-                durationUs: toTime(subtract(fromTime(source.endUs), fromTime(source.startUs))),
-                pitch: operation.pitch ?? "preserve",
-              },
-              "selected",
-              operation.ripple!.trackIds.map((id) => resolve(id, "track")),
+        switch (operation.operation) {
+          case "text.set": {
+            const id = resolve(operation.clipId, "clip");
+            const clip = before.clips.find((clip) => clip.id === id);
+            if (clip?.source.kind !== "text")
+              invalid("Text edits require a text clip", { clipId: id });
+            next = {
+              ...before,
+              clips: before.clips.map((clip) =>
+                clip.id === id ? { ...clip, source: operation.source } : clip,
+              ),
+            };
+            break;
+          }
+          case "processing.set": {
+            next = replaceProcessing(before, [processingStack(operation)]);
+            break;
+          }
+          case "replace": {
+            const result = replaceClip(
+              operation.processing === "reset"
+                ? resolveComposition(
+                    {
+                      ...before,
+                      processing: before.processing.filter(
+                        (stack) =>
+                          stack.target.kind !== "clip" ||
+                          stack.target.id !== resolve(operation.clipId, "clip"),
+                      ),
+                    },
+                    model.assets,
+                    model.acquisitions,
+                  )
+                : model,
+              clips([operation.clipId])[0]!,
+              operation.kind,
+              operation.media,
+              operation.fit,
               allocate,
+              operation.pitch,
             );
-            next = resized.document;
-            for (const anchor of resized.touchedFixedAnchors)
-              touchedFixedAnchors.set(anchor.id, anchor);
-          }
-          break;
-        }
-        case "insert": {
-          const result = insertGap(
-            model,
-            operation.atUs,
-            fromTime(operation.durationUs),
-            operation.ripple.trackIds.map((id) => resolve(id, "track")),
-            allocate,
-          );
-          next = result.document;
-          clipLineage.push(...result.lineage);
-          for (const anchor of result.touchedFixedAnchors)
-            touchedFixedAnchors.set(anchor.id, anchor);
-          break;
-        }
-        case "retime": {
-          const result = retimeClips(
-            model,
-            clips(operation.clipIds),
-            { durationUs: operation.durationUs, pitch: operation.pitch },
-            operation.scope,
-            operation.ripple === "none"
-              ? "none"
-              : operation.ripple.trackIds.map((id) => resolve(id, "track")),
-            allocate,
-          );
-          next = result.document;
-          for (const anchor of result.touchedFixedAnchors)
-            touchedFixedAnchors.set(anchor.id, anchor);
-          break;
-        }
-        case "duplicate": {
-          const result = duplicateClips(
-            model,
-            clips(operation.clipIds),
-            operation.atUs,
-            operation.scope,
-            operation.tracks.map((entry) => ({
-              clipId: resolve(entry.clipId, "clip"),
-              trackId: resolve(entry.trackId, "track"),
-            })),
-            allocate,
-          );
-          const copies = new Map(
-            result.lineage.map((entry) => [entry.originalId, entry.clipIds[0]!]),
-          );
-          for (const entry of operation.copyLabels) {
-            const originalId = resolve(entry.clipId, "clip");
-            const id = copies.get(originalId);
-            if (!id) invalid("Copy label target was not duplicated", { clipId: originalId });
-            bind(entry.label, "clip", id);
-          }
-          next = result.document;
-          clipLineage.push(...result.lineage);
-          break;
-        }
-        case "reanchor": {
-          const id = clips([operation.clipId])[0]!;
-          const anchor = operation.placement;
-          const resolvedAnchor =
-            anchor.kind === "project"
-              ? anchor
-              : { ...anchor, clipId: resolve(anchor.clipId, "clip") };
-          next = {
-            ...before,
-            clips: before.clips.map((clip) =>
-              clip.id === id ? { ...clip, placement: resolvedAnchor } : clip,
-            ),
-          };
-          const candidate = validateComposition(next, model.assets, model.acquisitions);
-          const oldRange = model.clips.find((value) => value.clip.id === id)!.range;
-          const newRange = candidate.clips.find((value) => value.clip.id === id)!.range;
-          if (
-            compare(oldRange.start, newRange.start) !== 0 ||
-            compare(oldRange.end, newRange.end) !== 0
-          )
-            invalid(
-              "Reanchor must preserve the current project interval; move or retime explicitly first",
-              { clipId: id },
-            );
-          break;
-        }
-        case "detach": {
-          const ids = new Set(clips(operation.clipIds));
-          const resolved = new Map(model.clips.map((value) => [value.clip.id, value.range]));
-          next = {
-            ...before,
-            clips: before.clips.map((clip) => {
-              if (!ids.has(clip.id) || clip.placement.kind === "project") return clip;
-              const range = resolved.get(clip.id)!;
-              return {
-                ...clip,
-                placement: {
-                  kind: "project" as const,
-                  range: { startUs: toTime(range.start), endUs: toTime(range.end) },
+            next = result.document;
+            removedAttachments.push(...result.removedAttachments);
+            clipLineage.push(...result.lineage);
+            if (operation.fit === "ripple") {
+              if (operation.media.source.kind !== "range")
+                invalid("Ripple replacement needs a source range with a duration");
+              const source = operation.media.source.range;
+              const resized = retimeClips(
+                resolveComposition(next, model.assets, model.acquisitions),
+                [resolve(operation.clipId, "clip")],
+                {
+                  durationUs: toTime(subtract(fromTime(source.endUs), fromTime(source.startUs))),
+                  pitch: operation.pitch ?? "preserve",
                 },
-              };
-            }),
-          };
-          break;
-        }
-        case "move": {
-          const transformed = transformSelection(
-            model,
-            clips(operation.clipIds),
-            { atUs: operation.atUs },
-            operation.scope,
-            allocate,
-            operation.tracks.map((entry) => ({
-              clipId: resolve(entry.clipId, "clip"),
-              trackId: resolve(entry.trackId, "track"),
-            })),
-          );
-          if (operation.ripple === "none") next = transformed.document;
-          else {
-            const result = rippleMove(
+                "selected",
+                operation.ripple!.trackIds.map((id) => resolve(id, "track")),
+                allocate,
+              );
+              next = resized.document;
+              for (const anchor of resized.touchedFixedAnchors)
+                touchedFixedAnchors.set(anchor.id, anchor);
+            }
+            break;
+          }
+          case "insert": {
+            const result = insertGap(
               model,
-              transformed,
               operation.atUs,
+              fromTime(operation.durationUs),
               operation.ripple.trackIds.map((id) => resolve(id, "track")),
               allocate,
             );
@@ -1292,285 +1249,402 @@ export function applyBatch(
             clipLineage.push(...result.lineage);
             for (const anchor of result.touchedFixedAnchors)
               touchedFixedAnchors.set(anchor.id, anchor);
-          }
-          break;
-        }
-        case "remove":
-        case "trim": {
-          const ids =
-            operation.operation === "remove"
-              ? clips(operation.clipIds, true)
-              : clips([operation.clipId]);
-          let ranges: ExactRange[] | undefined;
-          if (operation.operation === "remove") {
-            ranges = operation.ranges?.map((range) => ({
-              start: fromTime(range.startUs),
-              end: fromTime(range.endUs),
-            }));
-          } else {
-            const target = model.clips.find((value) => value.clip.id === ids[0])!.range;
-            const keep = {
-              start: fromTime(operation.range.startUs),
-              end: fromTime(operation.range.endUs),
-            };
-            if (compare(keep.start, target.start) < 0 || compare(keep.end, target.end) > 0)
-              invalid("Trim range must stay within the clip's resolved interval", {
-                clipId: ids[0],
-              });
-            ranges = [];
-            if (compare(target.start, keep.start) < 0)
-              ranges.push({ start: target.start, end: keep.start });
-            if (compare(keep.end, target.end) < 0)
-              ranges.push({ start: keep.end, end: target.end });
-          }
-          const result = partitionClips(
-            model,
-            ids,
-            { kind: "remove", scope: operation.scope, ...(ranges ? { ranges } : {}) },
-            allocate,
-          );
-          if (operation.ripple === "none") next = result.document;
-          else {
-            const shifted = rippleTimeline(
-              resolveComposition(result.document, model.assets, model.acquisitions),
-              { kind: "remove", ranges: result.removalRanges },
-              operation.ripple.trackIds.map((id) => resolve(id, "track")),
-            );
-            next = shifted.document;
-            for (const anchor of shifted.touchedFixedAnchors)
-              touchedFixedAnchors.set(anchor.id, anchor);
-          }
-          clipLineage.push(...result.lineage);
-          removedAttachments.push(...result.removedAttachments);
-          break;
-        }
-        case "split": {
-          const result = partitionClips(
-            model,
-            clips(operation.clipIds),
-            { kind: "split", atUs: operation.atUs, scope: operation.scope },
-            allocate,
-          );
-          for (const entry of operation.rightLabels) {
-            const originalId = resolve(entry.clipId, "clip");
-            const right = result.lineage.find((item) => item.originalId === originalId)?.clipIds[1];
-            if (!right)
-              invalid("Label target did not split at the requested time", {
-                clipId: originalId,
-                atUs: operation.atUs,
-              });
-            bind(entry.label, "clip", right);
-          }
-          next = result.document;
-          clipLineage.push(...result.lineage);
-          break;
-        }
-        case "track.add": {
-          next = { ...before, tracks: [...before.tracks, addTrack(operation)] };
-          break;
-        }
-        case "track.remove": {
-          const id = resolve(operation.trackId, "track");
-          const occupants = before.clips
-            .filter((clip) => clip.trackId === id)
-            .map((clip) => clip.id);
-          if (occupants.length)
-            invalid("Remove or move the track's clips explicitly first", {
-              trackId: id,
-              clipIds: occupants,
-            });
-          next = {
-            ...before,
-            tracks: before.tracks.filter((track) => track.id !== id),
-            processing: before.processing.filter(
-              (stack) => stack.target.kind !== "track" || stack.target.id !== id,
-            ),
-          };
-          break;
-        }
-        case "group.add": {
-          const id = allocate("group");
-          bind(operation.label, "group", id);
-          const { parentId, ...group } = operation.group;
-          next = {
-            ...before,
-            groups: [
-              ...before.groups,
-              {
-                ...group,
-                id,
-                ...(parentId === undefined ? {} : { parentId: resolve(parentId, "group") }),
-              },
-            ],
-          };
-          break;
-        }
-        case "group.remove": {
-          const id = resolve(operation.groupId, "group");
-          if ([...before.groups, ...before.tracks].some((node) => node.parentId === id))
-            invalid("Reparent the group's children explicitly first", { groupId: id });
-          next = {
-            ...before,
-            groups: before.groups.filter((group) => group.id !== id),
-            processing: before.processing.filter(
-              (stack) => stack.target.kind !== "group" || stack.target.id !== id,
-            ),
-          };
-          break;
-        }
-        case "routing.set": {
-          const id = resolve(operation.target.id, operation.target.kind);
-          const key = operation.target.kind === "track" ? "tracks" : "groups";
-          if (!before[key].some((node) => node.id === id))
-            invalid("Unknown routing target", { target: operation.target });
-          const parentId =
-            operation.parentId === undefined ? undefined : resolve(operation.parentId, "group");
-          next = {
-            ...before,
-            [key]: before[key].map((node) => {
-              if (node.id !== id) return node;
-              return {
-                ...omit(node, "parentId"),
-                order: operation.order,
-                ...(parentId === undefined ? {} : { parentId }),
-              };
-            }),
-          };
-          break;
-        }
-        case "layers.reorder": {
-          const parentId =
-            operation.parentId === undefined ? undefined : resolve(operation.parentId, "group");
-          if (
-            parentId !== undefined &&
-            !before.groups.some((group) => group.id === parentId && group.kind === "video")
-          )
-            invalid("Layer parent must be a video group", { parentId });
-          const targets = operation.targets.map((target) => ({
-            kind: target.kind,
-            id: resolve(target.id, target.kind),
-          }));
-          const key = (kind: string, id: string) => JSON.stringify([kind, id]);
-          const order = new Map(targets.map((target, i) => [key(target.kind, target.id), i]));
-          const siblings = [
-            ...before.tracks
-              .filter((node) => node.kind === "video" && node.parentId === parentId)
-              .map((node) => key("track", node.id)),
-            ...before.groups
-              .filter((node) => node.kind === "video" && node.parentId === parentId)
-              .map((node) => key("group", node.id)),
-          ];
-          if (
-            order.size !== targets.length ||
-            siblings.length !== targets.length ||
-            siblings.some((id) => !order.has(id))
-          )
-            invalid("Reorder must name every video sibling exactly once");
-          next = {
-            ...before,
-            tracks: before.tracks.map((node) =>
-              order.has(key("track", node.id))
-                ? { ...node, order: order.get(key("track", node.id))! }
-                : node,
-            ),
-            groups: before.groups.map((node) =>
-              order.has(key("group", node.id))
-                ? { ...node, order: order.get(key("group", node.id))! }
-                : node,
-            ),
-          };
-          break;
-        }
-        case "canvas.set": {
-          const supplied = Object.fromEntries(
-            Object.entries(operation.canvas).filter(([, value]) => value !== undefined),
-          );
-          next = { ...before, canvas: { ...before.canvas, ...supplied } };
-          break;
-        }
-        case "place": {
-          next = { ...before, clips: [...before.clips, placeClip(operation)] };
-          break;
-        }
-        case "link": {
-          const ids = clips(operation.clipIds);
-          const existing = before.syncGroups.find(
-            (group) =>
-              group.clipIds.length === ids.length && group.clipIds.every((id) => ids.includes(id)),
-          );
-          if (existing) {
-            bind(operation.label, "syncGroup", existing.id);
-            next = before;
             break;
           }
-          const conflicts = before.syncGroups
-            .filter((group) => group.clipIds.some((id) => ids.includes(id)))
-            .map((group) => group.id);
-          if (conflicts.length)
-            invalid("Unlink conflicting groups explicitly before linking this selection", {
-              groupIds: conflicts,
-            });
-          const id = allocate("syncGroup");
-          bind(operation.label, "syncGroup", id);
-          next = { ...before, syncGroups: [...before.syncGroups, { id, clipIds: ids }] };
-          break;
-        }
-        case "unlink": {
-          const ids = new Set(clips(operation.clipIds));
-          next = {
-            ...before,
-            syncGroups: before.syncGroups.flatMap((group) => {
-              const clipIds = group.clipIds.filter((id) => !ids.has(id));
-              return clipIds.length >= 2 ? [{ ...group, clipIds }] : [];
-            }),
-          };
-          break;
-        }
-        case "angle.declare": {
-          const memberIds = clips(operation.members.map((member) => member.clipId));
-          const originClipId = clips([operation.originClipId])[0]!;
-          if (!memberIds.includes(originClipId)) invalid("Angle origin must be a member");
-          const members = operation.members.map((member, index) => {
-            const clip = model.clips.find((value) => value.clip.id === memberIds[index])!;
-            if (!isMediaClip(clip.clip)) invalid("Angle members require media clips");
-            const base = {
-              clipId: clip.clip.id,
-              assetId: clip.clip.assetId,
-              streamId: clip.clip.streamId,
+          case "retime": {
+            const result = retimeClips(
+              model,
+              clips(operation.clipIds),
+              { durationUs: operation.durationUs, pitch: operation.pitch },
+              operation.scope,
+              operation.ripple === "none"
+                ? "none"
+                : operation.ripple.trackIds.map((id) => resolve(id, "track")),
+              allocate,
+            );
+            next = result.document;
+            for (const anchor of result.touchedFixedAnchors)
+              touchedFixedAnchors.set(anchor.id, anchor);
+            break;
+          }
+          case "duplicate": {
+            const result = duplicateClips(
+              model,
+              clips(operation.clipIds),
+              operation.atUs,
+              operation.scope,
+              operation.tracks.map((entry) => ({
+                clipId: resolve(entry.clipId, "clip"),
+                trackId: resolve(entry.trackId, "track"),
+              })),
+              allocate,
+            );
+            const copies = new Map(
+              result.lineage.map((entry) => [entry.originalId, entry.clipIds[0]!]),
+            );
+            for (const entry of operation.copyLabels) {
+              const originalId = resolve(entry.clipId, "clip");
+              const id = copies.get(originalId);
+              if (!id) invalid("Copy label target was not duplicated", { clipId: originalId });
+              bind(entry.label, "clip", id);
+            }
+            next = result.document;
+            clipLineage.push(...result.lineage);
+            break;
+          }
+          case "reanchor": {
+            const id = clips([operation.clipId])[0]!;
+            const anchor = operation.placement;
+            const resolvedAnchor =
+              anchor.kind === "project"
+                ? anchor
+                : { ...anchor, clipId: resolve(anchor.clipId, "clip") };
+            next = {
+              ...before,
+              clips: before.clips.map((clip) =>
+                clip.id === id ? { ...clip, placement: resolvedAnchor } : clip,
+              ),
             };
-            return operation.mapping === "piecewise-local"
-              ? { ...base, segments: member.segments! }
-              : { ...base, offsetUs: member.offsetUs!, validRange: member.validRange! };
-          });
-          const id = allocate("angleGroup");
-          bind(operation.label, "angleGroup", id);
-          next = {
-            ...before,
-            angleGroups: [
-              ...(before.angleGroups ?? []),
-              {
-                id,
-                sessionId: operation.sessionId,
-                originClipId,
-                evidence: operation.evidence,
-                ...(operation.mapping === "piecewise-local" ? { mapping: operation.mapping } : {}),
-                members,
-              },
-            ],
-          };
-          break;
+            const candidate = validateComposition(next, model.assets, model.acquisitions);
+            const oldRange = model.clips.find((value) => value.clip.id === id)!.range;
+            const newRange = candidate.clips.find((value) => value.clip.id === id)!.range;
+            if (
+              compare(oldRange.start, newRange.start) !== 0 ||
+              compare(oldRange.end, newRange.end) !== 0
+            )
+              invalid(
+                "Reanchor must preserve the current project interval; move or retime explicitly first",
+                { clipId: id },
+              );
+            break;
+          }
+          case "detach": {
+            const ids = new Set(clips(operation.clipIds));
+            const resolved = new Map(model.clips.map((value) => [value.clip.id, value.range]));
+            next = {
+              ...before,
+              clips: before.clips.map((clip) => {
+                if (!ids.has(clip.id) || clip.placement.kind === "project") return clip;
+                const range = resolved.get(clip.id)!;
+                return {
+                  ...clip,
+                  placement: {
+                    kind: "project" as const,
+                    range: { startUs: toTime(range.start), endUs: toTime(range.end) },
+                  },
+                };
+              }),
+            };
+            break;
+          }
+          case "move": {
+            const transformed = transformSelection(
+              model,
+              clips(operation.clipIds),
+              { atUs: operation.atUs },
+              operation.scope,
+              allocate,
+              operation.tracks.map((entry) => ({
+                clipId: resolve(entry.clipId, "clip"),
+                trackId: resolve(entry.trackId, "track"),
+              })),
+            );
+            if (operation.ripple === "none") next = transformed.document;
+            else {
+              const result = rippleMove(
+                model,
+                transformed,
+                operation.atUs,
+                operation.ripple.trackIds.map((id) => resolve(id, "track")),
+                allocate,
+              );
+              next = result.document;
+              clipLineage.push(...result.lineage);
+              for (const anchor of result.touchedFixedAnchors)
+                touchedFixedAnchors.set(anchor.id, anchor);
+            }
+            break;
+          }
+          case "remove":
+          case "trim": {
+            const ids =
+              operation.operation === "remove"
+                ? clips(operation.clipIds, true)
+                : clips([operation.clipId]);
+            let ranges: ExactRange[] | undefined;
+            if (operation.operation === "remove") {
+              ranges = operation.ranges?.map((range) => ({
+                start: fromTime(range.startUs),
+                end: fromTime(range.endUs),
+              }));
+            } else {
+              const target = model.clips.find((value) => value.clip.id === ids[0])!.range;
+              const keep = {
+                start: fromTime(operation.range.startUs),
+                end: fromTime(operation.range.endUs),
+              };
+              if (compare(keep.start, target.start) < 0 || compare(keep.end, target.end) > 0)
+                invalid("Trim range must stay within the clip's resolved interval", {
+                  clipId: ids[0],
+                });
+              ranges = [];
+              if (compare(target.start, keep.start) < 0)
+                ranges.push({ start: target.start, end: keep.start });
+              if (compare(keep.end, target.end) < 0)
+                ranges.push({ start: keep.end, end: target.end });
+            }
+            const result = partitionClips(
+              model,
+              ids,
+              { kind: "remove", scope: operation.scope, ...(ranges ? { ranges } : {}) },
+              allocate,
+            );
+            if (operation.ripple === "none") next = result.document;
+            else {
+              const shifted = rippleTimeline(
+                resolveComposition(result.document, model.assets, model.acquisitions),
+                { kind: "remove", ranges: result.removalRanges },
+                operation.ripple.trackIds.map((id) => resolve(id, "track")),
+              );
+              next = shifted.document;
+              for (const anchor of shifted.touchedFixedAnchors)
+                touchedFixedAnchors.set(anchor.id, anchor);
+            }
+            clipLineage.push(...result.lineage);
+            removedAttachments.push(...result.removedAttachments);
+            break;
+          }
+          case "split": {
+            const result = partitionClips(
+              model,
+              clips(operation.clipIds),
+              { kind: "split", atUs: operation.atUs, scope: operation.scope },
+              allocate,
+            );
+            for (const entry of operation.rightLabels) {
+              const originalId = resolve(entry.clipId, "clip");
+              const right = result.lineage.find((item) => item.originalId === originalId)
+                ?.clipIds[1];
+              if (!right)
+                invalid("Label target did not split at the requested time", {
+                  clipId: originalId,
+                  atUs: operation.atUs,
+                });
+              bind(entry.label, "clip", right);
+            }
+            next = result.document;
+            clipLineage.push(...result.lineage);
+            break;
+          }
+          case "track.add": {
+            next = { ...before, tracks: [...before.tracks, addTrack(operation)] };
+            break;
+          }
+          case "track.remove": {
+            const id = resolve(operation.trackId, "track");
+            const occupants = before.clips
+              .filter((clip) => clip.trackId === id)
+              .map((clip) => clip.id);
+            if (occupants.length)
+              invalid("Remove or move the track's clips explicitly first", {
+                trackId: id,
+                clipIds: occupants,
+              });
+            next = {
+              ...before,
+              tracks: before.tracks.filter((track) => track.id !== id),
+              processing: before.processing.filter(
+                (stack) => stack.target.kind !== "track" || stack.target.id !== id,
+              ),
+            };
+            break;
+          }
+          case "group.add": {
+            const id = allocate("group");
+            bind(operation.label, "group", id);
+            const { parentId, ...group } = operation.group;
+            next = {
+              ...before,
+              groups: [
+                ...before.groups,
+                {
+                  ...group,
+                  id,
+                  ...(parentId === undefined ? {} : { parentId: resolve(parentId, "group") }),
+                },
+              ],
+            };
+            break;
+          }
+          case "group.remove": {
+            const id = resolve(operation.groupId, "group");
+            if ([...before.groups, ...before.tracks].some((node) => node.parentId === id))
+              invalid("Reparent the group's children explicitly first", { groupId: id });
+            next = {
+              ...before,
+              groups: before.groups.filter((group) => group.id !== id),
+              processing: before.processing.filter(
+                (stack) => stack.target.kind !== "group" || stack.target.id !== id,
+              ),
+            };
+            break;
+          }
+          case "routing.set": {
+            const id = resolve(operation.target.id, operation.target.kind);
+            const key = operation.target.kind === "track" ? "tracks" : "groups";
+            if (!before[key].some((node) => node.id === id))
+              invalid("Unknown routing target", { target: operation.target });
+            const parentId =
+              operation.parentId === undefined ? undefined : resolve(operation.parentId, "group");
+            next = {
+              ...before,
+              [key]: before[key].map((node) => {
+                if (node.id !== id) return node;
+                return {
+                  ...omit(node, "parentId"),
+                  order: operation.order,
+                  ...(parentId === undefined ? {} : { parentId }),
+                };
+              }),
+            };
+            break;
+          }
+          case "layers.reorder": {
+            const parentId =
+              operation.parentId === undefined ? undefined : resolve(operation.parentId, "group");
+            if (
+              parentId !== undefined &&
+              !before.groups.some((group) => group.id === parentId && group.kind === "video")
+            )
+              invalid("Layer parent must be a video group", { parentId });
+            const targets = operation.targets.map((target) => ({
+              kind: target.kind,
+              id: resolve(target.id, target.kind),
+            }));
+            const key = (kind: string, id: string) => JSON.stringify([kind, id]);
+            const order = new Map(targets.map((target, i) => [key(target.kind, target.id), i]));
+            const siblings = [
+              ...before.tracks
+                .filter((node) => node.kind === "video" && node.parentId === parentId)
+                .map((node) => key("track", node.id)),
+              ...before.groups
+                .filter((node) => node.kind === "video" && node.parentId === parentId)
+                .map((node) => key("group", node.id)),
+            ];
+            if (
+              order.size !== targets.length ||
+              siblings.length !== targets.length ||
+              siblings.some((id) => !order.has(id))
+            )
+              invalid("Reorder must name every video sibling exactly once");
+            next = {
+              ...before,
+              tracks: before.tracks.map((node) =>
+                order.has(key("track", node.id))
+                  ? { ...node, order: order.get(key("track", node.id))! }
+                  : node,
+              ),
+              groups: before.groups.map((node) =>
+                order.has(key("group", node.id))
+                  ? { ...node, order: order.get(key("group", node.id))! }
+                  : node,
+              ),
+            };
+            break;
+          }
+          case "canvas.set": {
+            const supplied = Object.fromEntries(
+              Object.entries(operation.canvas).filter(([, value]) => value !== undefined),
+            );
+            next = { ...before, canvas: { ...before.canvas, ...supplied } };
+            break;
+          }
+          case "place": {
+            next = { ...before, clips: [...before.clips, placeClip(operation)] };
+            break;
+          }
+          case "link": {
+            const ids = clips(operation.clipIds);
+            const existing = before.syncGroups.find(
+              (group) =>
+                group.clipIds.length === ids.length &&
+                group.clipIds.every((id) => ids.includes(id)),
+            );
+            if (existing) {
+              bind(operation.label, "syncGroup", existing.id);
+              next = before;
+              break;
+            }
+            const conflicts = before.syncGroups
+              .filter((group) => group.clipIds.some((id) => ids.includes(id)))
+              .map((group) => group.id);
+            if (conflicts.length)
+              invalid("Unlink conflicting groups explicitly before linking this selection", {
+                groupIds: conflicts,
+              });
+            const id = allocate("syncGroup");
+            bind(operation.label, "syncGroup", id);
+            next = { ...before, syncGroups: [...before.syncGroups, { id, clipIds: ids }] };
+            break;
+          }
+          case "unlink": {
+            const ids = new Set(clips(operation.clipIds));
+            next = {
+              ...before,
+              syncGroups: before.syncGroups.flatMap((group) => {
+                const clipIds = group.clipIds.filter((id) => !ids.has(id));
+                return clipIds.length >= 2 ? [{ ...group, clipIds }] : [];
+              }),
+            };
+            break;
+          }
+          case "angle.declare": {
+            const memberIds = clips(operation.members.map((member) => member.clipId));
+            const originClipId = clips([operation.originClipId])[0]!;
+            if (!memberIds.includes(originClipId)) invalid("Angle origin must be a member");
+            const members = operation.members.map((member, index) => {
+              const clip = model.clips.find((value) => value.clip.id === memberIds[index])!;
+              if (!isMediaClip(clip.clip)) invalid("Angle members require media clips");
+              const base = {
+                clipId: clip.clip.id,
+                assetId: clip.clip.assetId,
+                streamId: clip.clip.streamId,
+              };
+              return operation.mapping === "piecewise-local"
+                ? { ...base, segments: member.segments! }
+                : { ...base, offsetUs: member.offsetUs!, validRange: member.validRange! };
+            });
+            const id = allocate("angleGroup");
+            bind(operation.label, "angleGroup", id);
+            next = {
+              ...before,
+              angleGroups: [
+                ...(before.angleGroups ?? []),
+                {
+                  id,
+                  sessionId: operation.sessionId,
+                  originClipId,
+                  evidence: operation.evidence,
+                  ...(operation.mapping === "piecewise-local"
+                    ? { mapping: operation.mapping }
+                    : {}),
+                  members,
+                },
+              ],
+            };
+            break;
+          }
+          case "angle.remove": {
+            const id = resolve(operation.angleGroupId, "angleGroup");
+            if (!(before.angleGroups ?? []).some((group) => group.id === id))
+              invalid("Unknown angle group", { angleGroupId: id });
+            next = {
+              ...before,
+              angleGroups: (before.angleGroups ?? []).filter((group) => group.id !== id),
+            };
+            break;
+          }
         }
-        case "angle.remove": {
-          const id = resolve(operation.angleGroupId, "angleGroup");
-          if (!(before.angleGroups ?? []).some((group) => group.id === id))
-            invalid("Unknown angle group", { angleGroupId: id });
-          next = {
-            ...before,
-            angleGroups: (before.angleGroups ?? []).filter((group) => group.id !== id),
-          };
-          break;
-        }
-      }
       }
       const candidate = resolveComposition(next, model.assets, model.acquisitions);
       const stateDocument = normalizeStateEdit(model, candidate);

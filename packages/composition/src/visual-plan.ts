@@ -43,7 +43,9 @@ export function visualPlanner(
         const hasAnimatedGeometry = node.steps.some(
           (step) =>
             step.processor.type === "geometry" &&
-            Object.values(processingScalars(step.processor)).some((value) => typeof value !== "number"),
+            Object.values(processingScalars(step.processor)).some(
+              (value) => typeof value !== "number",
+            ),
         );
         for (const step of node.steps) {
           if (!step.enabled) continue;

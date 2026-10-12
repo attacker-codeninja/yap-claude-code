@@ -77,8 +77,7 @@ test("release packaging refuses missing durable signing inputs before touching a
   try {
     const env = { ...process.env };
     for (const name of Object.keys(env))
-      if (name.startsWith("YAP_RELEASE_") || name.startsWith("YAP_SPARKLE_"))
-        delete env[name];
+      if (name.startsWith("YAP_RELEASE_") || name.startsWith("YAP_SPARKLE_")) delete env[name];
     const answer = spawnSync(
       process.execPath,
       [join(scratch, "scripts/release.mjs"), "package", "v0.0.0"],

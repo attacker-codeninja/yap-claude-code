@@ -18,8 +18,7 @@ import { spawnSync, spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { once } from "node:events";
 import { randomUUID } from "node:crypto";
-const native =
-  process.env.YAP_NATIVE ?? resolve(import.meta.dirname, "../.build/debug/yap-native");
+const native = process.env.YAP_NATIVE ?? resolve(import.meta.dirname, "../.build/debug/yap-native");
 async function fixture(t) {
   const root = await realpath(await mkdtemp(join(tmpdir(), "managed-files-")));
   t.after(() => rm(root, { recursive: true, force: true }));

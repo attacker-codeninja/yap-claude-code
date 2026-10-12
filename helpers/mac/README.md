@@ -81,7 +81,6 @@ that override the case participates in the ordinary capture suite. The
 directory after building core, proving publication and normalized evidence survive
 catalog reopen. Neither fixture opens a media device or requests capture permission.
 
-
 The [native test runner](../../scripts/test-native.mjs) owns anonymous output outside
 the child, including on failure or signal. Explicit evidence remains caller-owned.
 Wire setup produces only required operands; numerical and public-boundary checks

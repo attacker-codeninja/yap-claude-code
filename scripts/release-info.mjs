@@ -3,8 +3,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { execFileSync } from "node:child_process";
 import { frameworkIdentity } from "./sparkle/framework.mjs";
-export const releaseFeedURL =
-  "https://github.com/dzhng/yap/releases/latest/download/appcast.xml";
+export const releaseFeedURL = "https://github.com/dzhng/yap/releases/latest/download/appcast.xml";
 export const launchLockRelativePath = "Library/Caches/com.dzhng.yap/launch.lock";
 export async function bundleFacts(root) {
   const { version } = JSON.parse(readFileSync(join(root, "apps/macos/package.json")));

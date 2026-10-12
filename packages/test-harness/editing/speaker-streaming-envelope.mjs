@@ -10,8 +10,7 @@ const defaultEvidenceRoot = fileURLToPath(
   ),
 );
 
-const readJSON = async (root, relative) =>
-  JSON.parse(await readFile(join(root, relative), "utf8"));
+const readJSON = async (root, relative) => JSON.parse(await readFile(join(root, relative), "utf8"));
 
 /**
  * Verify the measured native streaming envelope without running inference.
@@ -40,10 +39,16 @@ export async function readSpeakerStreamingEnvelope(root = defaultEvidenceRoot) {
   assert.equal(protocol.stateScope, protocolState, "cross-selection state contract");
   assert.equal(continuityProtocol.stateScope, protocolState, "cross-selection state contract");
   assert.deepEqual(transport.result?.data?.recipe, expectedRecipe);
-  assert.equal(transport.result?.data?.stateScope, transportState, "cross-selection state contract");
+  assert.equal(
+    transport.result?.data?.stateScope,
+    transportState,
+    "cross-selection state contract",
+  );
   assert.equal(transport.networkDenied, true);
 
-  const longCase = transport.result.data.cases.find((candidate) => candidate.id === "three-speaker600");
+  const longCase = transport.result.data.cases.find(
+    (candidate) => candidate.id === "three-speaker600",
+  );
   assert(longCase, "three-speaker streaming receipt is missing");
   assert.equal(longCase.audioSeconds, 600);
   assert.equal(
@@ -54,7 +59,9 @@ export async function readSpeakerStreamingEnvelope(root = defaultEvidenceRoot) {
   assert(longCase.peakProcessRSSBytes <= protocol.gates.RSSBytesMaximum);
 
   const retainedLong = longScores.cases.find((candidate) => candidate.id === "three-speaker600");
-  const retainedOverlapFailure = scores.cases.find((candidate) => candidate.id === "four-speaker600");
+  const retainedOverlapFailure = scores.cases.find(
+    (candidate) => candidate.id === "four-speaker600",
+  );
   assert(retainedLong, "three-speaker continuity result is missing");
   assert(retainedOverlapFailure, "four-speaker overlap result is missing");
   assert.equal(retainedLong.passed, true);

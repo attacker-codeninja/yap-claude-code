@@ -4,8 +4,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 const native =
-  process.env.YAP_NATIVE ??
-  fileURLToPath(new URL("../.build/debug/yap-native", import.meta.url));
+  process.env.YAP_NATIVE ?? fileURLToPath(new URL("../.build/debug/yap-native", import.meta.url));
 function request(operation, params) {
   const result = spawnSync(native, [], {
     input: JSON.stringify({ id: "source-channel", operation, params }) + "\n",

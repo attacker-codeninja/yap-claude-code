@@ -15,16 +15,19 @@ const receiptPath = join(
 test("certifies every retained real case against its scoped behavior evidence", async () => {
   const report = await certifyCorpusBehavior(manifestPath);
   assert.equal(report.status, "passed");
-  assert.deepEqual(report.cases.map((entry) => entry.id), [
-    "false-start",
-    "overlap-region",
-    "overlap-neighbor",
-    "phrase-final-trend",
-    "madison-context",
-    "graham-picture",
-    "madison-picture",
-    "lily-picture",
-  ]);
+  assert.deepEqual(
+    report.cases.map((entry) => entry.id),
+    [
+      "false-start",
+      "overlap-region",
+      "overlap-neighbor",
+      "phrase-final-trend",
+      "madison-context",
+      "graham-picture",
+      "madison-picture",
+      "lily-picture",
+    ],
+  );
   assert.ok(report.cases.every((entry) => entry.evidenceSha256.length === 64));
 });
 

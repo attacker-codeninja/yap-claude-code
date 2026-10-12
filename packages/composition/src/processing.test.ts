@@ -319,7 +319,9 @@ test("duplicate, ripple movement and deletion preserve target-owned stacks witho
     "blend",
     "gain",
   ]);
-  expect(Object.fromEntries(capabilities.map((capability) => [capability.type, capability]))).toMatchObject({
+  expect(
+    Object.fromEntries(capabilities.map((capability) => [capability.type, capability])),
+  ).toMatchObject({
     rnnoise: {
       mediaKind: "audio",
       targets: ["clip", "track", "group", "output"],

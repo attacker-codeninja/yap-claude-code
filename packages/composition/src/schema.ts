@@ -603,9 +603,7 @@ export const stateRecipeSchema = z.union([
     })
     .strict(),
 ]);
-const synchronizationSourceSchema = z
-  .object({ assetId: id, streamId: id })
-  .strict();
+const synchronizationSourceSchema = z.object({ assetId: id, streamId: id }).strict();
 /**
  * Evidence is an immutable caller-supplied receipt. Composition validates its
  * identity and verdict; it never computes or promotes synchronization itself.
@@ -637,9 +635,15 @@ const angleMemberSchema = z
   .superRefine((member, context) => {
     const piecewise = member.segments !== undefined;
     if (piecewise && (member.offsetUs !== undefined || member.validRange !== undefined))
-      context.addIssue({ code: z.ZodIssueCode.custom, message: "Piecewise angle member cannot also set offsetUs/validRange" });
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Piecewise angle member cannot also set offsetUs/validRange",
+      });
     if (!piecewise && (member.offsetUs === undefined || member.validRange === undefined))
-      context.addIssue({ code: z.ZodIssueCode.custom, message: "Angle member requires offsetUs and validRange" });
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Angle member requires offsetUs and validRange",
+      });
   });
 export const angleGroupSchema = z
   .object({
@@ -654,11 +658,23 @@ export const angleGroupSchema = z
   .superRefine((group, context) => {
     const hasSegments = group.members.some((member) => member.segments !== undefined);
     if (group.mapping === "piecewise-local" && !hasSegments)
-      context.addIssue({ code: z.ZodIssueCode.custom, message: "Piecewise angle group requires segments" });
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Piecewise angle group requires segments",
+      });
     if (group.mapping === undefined && hasSegments)
-      context.addIssue({ code: z.ZodIssueCode.custom, message: "Piecewise angle group must declare mapping" });
-    if (group.mapping === "piecewise-local" && group.members.some((member) => member.segments === undefined))
-      context.addIssue({ code: z.ZodIssueCode.custom, message: "Piecewise angle group requires segments for every member" });
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Piecewise angle group must declare mapping",
+      });
+    if (
+      group.mapping === "piecewise-local" &&
+      group.members.some((member) => member.segments === undefined)
+    )
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Piecewise angle group requires segments for every member",
+      });
   });
 export const compositionSchema = z
   .object({

@@ -190,7 +190,11 @@ export const pictureObservationsSchema = z
       const edgeWeighted = b.histogram.reduce((a, c, i) => a + c * i, 0);
       if (
         Math.abs(edgeCount - b.opaqueFraction * b.rect.width * b.rect.height) > 1e-9 ||
-        Math.abs(b.darkFraction - b.histogram.slice(0, v.request.darkAtOrBelow + 1).reduce((a, c) => a + c, 0) / edgeCount) > 1e-12 ||
+        Math.abs(
+          b.darkFraction -
+            b.histogram.slice(0, v.request.darkAtOrBelow + 1).reduce((a, c) => a + c, 0) /
+              edgeCount,
+        ) > 1e-12 ||
         Math.abs(b.meanLuma - edgeWeighted / edgeCount) > 1e-9
       )
         reject();

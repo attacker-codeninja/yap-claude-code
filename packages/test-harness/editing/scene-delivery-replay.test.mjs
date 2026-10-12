@@ -40,7 +40,10 @@ test("refuses a delivered-scene receipt with changed native scene rows", async (
     const native = join(scratch, "native");
     await mkdir(native);
     await copyFile(
-      join(root, "specs/done/video-editing-feedback/assets/30-delivered-scenes/native/planted-export.mov"),
+      join(
+        root,
+        "specs/done/video-editing-feedback/assets/30-delivered-scenes/native/planted-export.mov",
+      ),
       join(native, "planted-export.mov"),
     );
     const path = join(native, "report.json");

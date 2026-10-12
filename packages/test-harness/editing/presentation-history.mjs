@@ -4,9 +4,7 @@ import { mkdir, readFile, writeFile, readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { PresentationEvidence } from "../../core/dist/presentation-evidence.js";
 const out = resolve(process.argv[2] ?? "");
-assert.ok(
-  process.argv[2] && process.env.YAP_NATIVE && process.env.YAP_COMPOSITION_CANCEL_TEST,
-);
+assert.ok(process.argv[2] && process.env.YAP_NATIVE && process.env.YAP_COMPOSITION_CANCEL_TEST);
 await mkdir(out);
 const run = (program, args, input) => {
   const result = spawnSync(program, args, { input, maxBuffer: 16 * 1024 * 1024, timeout: 60000 });

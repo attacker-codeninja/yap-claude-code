@@ -128,8 +128,7 @@ for (const tool of ["curl", "clang"])
         assert.deepEqual(
           readdirSync(scratch).filter(
             (p) =>
-              p.startsWith("yap-sparkle") &&
-              (tool === "curl" || p.endsWith(".tar.xz") === false),
+              p.startsWith("yap-sparkle") && (tool === "curl" || p.endsWith(".tar.xz") === false),
           ),
           [],
         );

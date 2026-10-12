@@ -7,8 +7,7 @@ import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 
 const executable =
-  process.env.YAP_NATIVE ??
-  fileURLToPath(new URL("../.build/debug/yap-native", import.meta.url));
+  process.env.YAP_NATIVE ?? fileURLToPath(new URL("../.build/debug/yap-native", import.meta.url));
 const fixtures = JSON.parse(
   readFileSync(
     new URL("../../../packages/protocol/fixtures/native-requests.json", import.meta.url),

@@ -170,8 +170,7 @@ vectors.push({
 try {
   const input = join(scratch, "vectors.json");
   writeFileSync(input, JSON.stringify(vectors));
-  const binary =
-    process.env.SCALAR_NATIVE ?? join(root, "helpers/mac/.build/debug/YapScalarTests");
+  const binary = process.env.SCALAR_NATIVE ?? join(root, "helpers/mac/.build/debug/YapScalarTests");
   const result = spawnSync(binary, [input], { encoding: "utf8", maxBuffer: 10 * 1024 * 1024 });
   assert.equal(result.status, 0, result.stderr || String(result.error));
   const native = JSON.parse(result.stdout);

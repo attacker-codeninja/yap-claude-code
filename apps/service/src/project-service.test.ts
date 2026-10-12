@@ -70,16 +70,32 @@ test("correspondence receipts are admitted and paged without declaring an edit",
       {
         leftRange: { startUs: 0, endUs: 1_000_000 },
         rightRange: { startUs: 120_000, endUs: 1_120_000 },
-        candidates: [{ offsetUs: 120_000, residualUs: 1000, coverage: 1, driftPpm: 0, score: 0.9, selected: true }],
+        candidates: [
+          {
+            offsetUs: 120_000,
+            residualUs: 1000,
+            coverage: 1,
+            driftPpm: 0,
+            score: 0.9,
+            selected: true,
+          },
+        ],
         selected: 0,
       },
     ],
-    candidates: [{ offsetUs: 120_000, residualUs: 1000, coverage: 1, driftPpm: 0, score: 0.9, selected: true }],
+    candidates: [
+      { offsetUs: 120_000, residualUs: 1000, coverage: 1, driftPpm: 0, score: 0.9, selected: true },
+    ],
     offsetUs: 120_000,
     residualUs: 1000,
     coverage: 1,
     driftPpm: 0,
-    policy: { minimumCoverage: 0.8, maximumResidualUs: 10_000, maximumDriftPpm: 20, minimumAnchors: 1 },
+    policy: {
+      minimumCoverage: 0.8,
+      maximumResidualUs: 10_000,
+      maximumDriftPpm: 20,
+      minimumAnchors: 1,
+    },
   };
   const prepared = await f.call("correspondence.prepare", {
     evidenceId: "e1",
@@ -88,8 +104,13 @@ test("correspondence receipts are admitted and paged without declaring an edit",
     right: endpoint("b"),
     measurement,
   });
-  expect(prepared).toMatchObject({ ok: true, data: { state: "ready", published: { output: { evidenceId: "e1" } } } });
-  expect(await f.call("correspondence.get", { evidenceId: "e1", generation: "g1", limit: 1 })).toMatchObject({
+  expect(prepared).toMatchObject({
+    ok: true,
+    data: { state: "ready", published: { output: { evidenceId: "e1" } } },
+  });
+  expect(
+    await f.call("correspondence.get", { evidenceId: "e1", generation: "g1", limit: 1 }),
+  ).toMatchObject({
     ok: true,
     data: { verdict: "accepted", measurement: { anchors: [{ selected: 0 }] } },
   });
@@ -1452,7 +1473,9 @@ test("selected-source transcript reads report unprepared models without download
       page: null,
     },
   });
-  expect(await f.call("transcript.review", { ...selection, range: { startUs: 0, endUs: 1_000_000 } })).toMatchObject({
+  expect(
+    await f.call("transcript.review", { ...selection, range: { startUs: 0, endUs: 1_000_000 } }),
+  ).toMatchObject({
     ok: true,
     data: { state: "preparing", model: { state: "preparing" }, page: null },
   });

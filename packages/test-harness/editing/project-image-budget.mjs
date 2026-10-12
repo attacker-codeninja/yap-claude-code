@@ -6,10 +6,7 @@ import { join } from "node:path";
 import { createCompiler, validateComposition } from "../../composition/dist/index.js";
 import { run } from "./source-evidence-fixture.mjs";
 
-assert.ok(
-  process.env.YAP_NATIVE && process.argv[2],
-  "Pass a frozen worker and evidence JSON path",
-);
+assert.ok(process.env.YAP_NATIVE && process.argv[2], "Pass a frozen worker and evidence JSON path");
 const home = await mkdtemp(join(tmpdir(), "image-budget-"));
 let report;
 try {

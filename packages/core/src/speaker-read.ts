@@ -1,11 +1,6 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import {
-  selectionRangeSchema,
-  compare,
-  fromTime,
-  type SelectionRange,
-} from "@yap/composition";
+import { selectionRangeSchema, compare, fromTime, type SelectionRange } from "@yap/composition";
 import { CatalogError } from "./catalog.js";
 import type { SpeakerEvidenceMetadata, SpeakerEvidenceStore } from "./speaker-evidence.js";
 

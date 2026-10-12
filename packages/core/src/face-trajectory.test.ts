@@ -27,7 +27,11 @@ test("builds a source-bound trajectory without filling an observed gap", () => {
     samples: [
       { ordinal: 0, atUs: 0, observations: observation([{ x: 10, y: 10, width: 20, height: 20 }]) },
       { ordinal: 1, atUs: 1000, observations: observation([]) },
-      { ordinal: 2, atUs: 2000, observations: observation([{ x: 12, y: 10, width: 20, height: 20 }]) },
+      {
+        ordinal: 2,
+        atUs: 2000,
+        observations: observation([{ x: 12, y: 10, width: 20, height: 20 }]),
+      },
     ],
   });
 
@@ -47,28 +51,60 @@ test("builds a source-bound trajectory without filling an observed gap", () => {
   ]);
 });
 
-
 test("labels ambiguous matches and refuses unimplemented prediction", () => {
   const trajectory = buildFaceTrajectory({
-    source: { assetId: "asset-a", streamId: "track:1", generation: "generation-a", supportDigest: "support-a" },
+    source: {
+      assetId: "asset-a",
+      streamId: "track:1",
+      generation: "generation-a",
+      supportDigest: "support-a",
+    },
     prediction: "linear",
     samples: [
       { ordinal: 0, atUs: 0, observations: observation([{ x: 10, y: 10, width: 20, height: 20 }]) },
-      { ordinal: 1, atUs: 1000, observations: observation([
-        { x: 10, y: 10, width: 20, height: 20 },
-        { x: 10, y: 10, width: 20, height: 20 },
-      ]) },
+      {
+        ordinal: 1,
+        atUs: 1000,
+        observations: observation([
+          { x: 10, y: 10, width: 20, height: 20 },
+          { x: 10, y: 10, width: 20, height: 20 },
+        ]),
+      },
     ],
   });
-  expect(trajectory.prediction).toEqual({ method: "linear", state: "refused", reason: "prediction_not_implemented" });
-  expect(trajectory.tracks[0]!.samples[1]).toMatchObject({ status: "ambiguous", sourceObservationId: "face-0" });
+  expect(trajectory.prediction).toEqual({
+    method: "linear",
+    state: "refused",
+    reason: "prediction_not_implemented",
+  });
+  expect(trajectory.tracks[0]!.samples[1]).toMatchObject({
+    status: "ambiguous",
+    sourceObservationId: "face-0",
+  });
 });
 
 test("retains the full-face occlusion refusal operand", () => {
   const noFace = observation([]);
   const trajectory = buildFaceTrajectory({
-    source: { assetId: "asset-a", streamId: "track:1", generation: "generation-a", supportDigest: "support-a" },
-    samples: Array.from({ length: 27 }, (_, ordinal) => ({ ordinal, atUs: ordinal * 1000, observations: noFace })),
+    source: {
+      assetId: "asset-a",
+      streamId: "track:1",
+      generation: "generation-a",
+      supportDigest: "support-a",
+    },
+    samples: Array.from({ length: 27 }, (_, ordinal) => ({
+      ordinal,
+      atUs: ordinal * 1000,
+      observations: noFace,
+    })),
   });
-  expect(trajectory.refusals).toEqual([{ code: "full_face_occlusion", startOrdinal: 0, endOrdinal: 26, sampleCount: 27, reason: "detector_no_face" }]);
+  expect(trajectory.refusals).toEqual([
+    {
+      code: "full_face_occlusion",
+      startOrdinal: 0,
+      endOrdinal: 26,
+      sampleCount: 27,
+      reason: "detector_no_face",
+    },
+  ]);
 });

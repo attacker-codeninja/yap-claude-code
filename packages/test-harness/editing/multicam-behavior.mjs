@@ -63,7 +63,8 @@ export async function verifyMulticamBehavior(fixturesDirectory, recipePath, iden
     seen.add(key);
     const audio = cases.get(key);
     const picture = pictures.sources[source];
-    if (!audio || !picture) refuse("SELECTION_COVERAGE", `Selection ${index} has no retained evidence`);
+    if (!audio || !picture)
+      refuse("SELECTION_COVERAGE", `Selection ${index} has no retained evidence`);
     if (picture.samples[pictureSampleIndex].sourceAtUs !== startUs)
       refuse("PICTURE_SELECTION", `Selection ${index} crosses audio and picture source clocks`);
     const audioFile = within(fixturesDirectory, audio.path);
@@ -72,7 +73,8 @@ export async function verifyMulticamBehavior(fixturesDirectory, recipePath, iden
     const bytes = await readFile(audioFile);
     const info = readAudioWaveFile(audioFile);
     const pcm = bytes.subarray(info.dataOffset, info.dataOffset + info.dataBytes);
-    if (hash(pcm) !== audio.pcmSha256) refuse("INPUT_CHANGED", `Selection ${index} audio window changed`);
+    if (hash(pcm) !== audio.pcmSha256)
+      refuse("INPUT_CHANGED", `Selection ${index} audio window changed`);
     selections.push({
       sequenceIndex: index,
       source,
@@ -85,7 +87,10 @@ export async function verifyMulticamBehavior(fixturesDirectory, recipePath, iden
     perSource.set(source, perSource.get(source) + 1);
   }
   if (seen.size !== 9 || [...perSource.values()].some((count) => count !== 3))
-    refuse("SELECTION_COVERAGE", "Multicam behavior must select each source's three retained windows once");
+    refuse(
+      "SELECTION_COVERAGE",
+      "Multicam behavior must select each source's three retained windows once",
+    );
   return {
     ok: true,
     sourceIdentity: corpus.sourceIdentity,
@@ -121,10 +126,19 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     ) {
       refuse("USAGE", "Read --help");
     } else {
-      console.log(JSON.stringify(await verifyMulticamBehavior(values.fixtures, values.recipe, values.identity)));
+      console.log(
+        JSON.stringify(
+          await verifyMulticamBehavior(values.fixtures, values.recipe, values.identity),
+        ),
+      );
     }
   } catch (error) {
-    console.log(JSON.stringify({ ok: false, error: { code: error.code ?? "INVALID_RECIPE", message: error.message } }));
+    console.log(
+      JSON.stringify({
+        ok: false,
+        error: { code: error.code ?? "INVALID_RECIPE", message: error.message },
+      }),
+    );
     process.exitCode = 1;
   }
 }

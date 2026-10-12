@@ -13,20 +13,30 @@ const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const readJson = (bytes) => JSON.parse(bytes);
 
 function overlap(ref, pred, duration) {
-  const points = [...new Set([0, duration, ...ref.flatMap((x) => [x.start, x.end]), ...pred.flatMap((x) => [x.start, x.end])])].sort(
-    (a, b) => a - b,
-  );
+  const points = [
+    ...new Set([
+      0,
+      duration,
+      ...ref.flatMap((x) => [x.start, x.end]),
+      ...pred.flatMap((x) => [x.start, x.end]),
+    ]),
+  ].sort((a, b) => a - b);
   let total = 0;
   let retained = 0;
   for (let i = 1; i < points.length; i += 1) {
     const mid = (points[i] + points[i - 1]) / 2;
-    if (new Set(ref.filter((x) => x.start <= mid && x.end > mid).map((x) => x.speaker)).size < 2) continue;
+    if (new Set(ref.filter((x) => x.start <= mid && x.end > mid).map((x) => x.speaker)).size < 2)
+      continue;
     const duration = points[i] - points[i - 1];
     total += duration;
     if (new Set(pred.filter((x) => x.start <= mid && x.end > mid).map((x) => x.speaker)).size >= 2)
       retained += duration;
   }
-  return { referenceOverlapSeconds: total, retainedOverlapSeconds: retained, recall: total ? retained / total : null };
+  return {
+    referenceOverlapSeconds: total,
+    retainedOverlapSeconds: retained,
+    recall: total ? retained / total : null,
+  };
 }
 
 function decodeNative(native) {
@@ -40,7 +50,11 @@ function decodeNative(native) {
   assert.equal(bytes.length, tensor.shape[1] * tensor.shape[2] * 4);
   const scores = [];
   for (let row = 0; row < tensor.shape[1]; row += 1) {
-    scores.push(Array.from({ length: tensor.shape[2] }, (_, column) => bytes.readFloatLE((row * tensor.shape[2] + column) * 4)));
+    scores.push(
+      Array.from({ length: tensor.shape[2] }, (_, column) =>
+        bytes.readFloatLE((row * tensor.shape[2] + column) * 4),
+      ),
+    );
   }
   return { scores, shape: [tensor.shape[1], tensor.shape[2]] };
 }
@@ -76,12 +90,14 @@ export async function replayNemotronV2(receiptPath) {
     const overlapMetrics = overlap(entry.reference, raw.segments, raw.audioSeconds);
     const confusionRatio = metrics.confusedSpeakerSeconds / metrics.referenceSpeakerSeconds;
     const countMatches =
-      new Set(raw.segments.map((x) => x.speaker)).size === new Set(entry.reference.map((x) => x.speaker)).size;
+      new Set(raw.segments.map((x) => x.speaker)).size ===
+      new Set(entry.reference.map((x) => x.speaker)).size;
     const passed =
       countMatches &&
       metrics.der <= protocol.gates.everyCaseDERMaximum &&
       confusionRatio <= protocol.gates.globalIdentityConfusionRatioMaximum &&
-      (overlapMetrics.recall === null || overlapMetrics.recall >= protocol.gates.overlapRecallMinimum) &&
+      (overlapMetrics.recall === null ||
+        overlapMetrics.recall >= protocol.gates.overlapRecallMinimum) &&
       raw.inferenceSeconds <= raw.audioSeconds * protocol.gates.inferenceWallAudioRatioMaximum &&
       raw.peakProcessRSSBytes <= protocol.gates.RSSBytesMaximum;
     assert.deepEqual(metrics, entry.metrics);
@@ -89,13 +105,27 @@ export async function replayNemotronV2(receiptPath) {
     assert.equal(confusionRatio, entry.confusionRatio);
     assert.equal(countMatches, entry.countMatches);
     assert.equal(passed, entry.passed);
-    cases.push({ id: entry.id, role: entry.role, passed, der: metrics.der, overlapRecall: overlapMetrics.recall });
+    cases.push({
+      id: entry.id,
+      role: entry.role,
+      passed,
+      der: metrics.der,
+      overlapRecall: overlapMetrics.recall,
+    });
   }
   assert.equal(protocol.qualityGate.promotion, false);
   assert.equal(protocol.qualityGate.heldOut.passed, false);
-  assert.equal(cases.filter((entry) => entry.role === "calibration").every((entry) => entry.passed), true);
+  assert.equal(
+    cases.filter((entry) => entry.role === "calibration").every((entry) => entry.passed),
+    true,
+  );
   assert.equal(cases.find((entry) => entry.role === "held-out")?.passed, false);
-  return { status: protocol.status, promotion: protocol.qualityGate.promotion, heldOut: protocol.qualityGate.heldOut, cases };
+  return {
+    status: protocol.status,
+    promotion: protocol.qualityGate.promotion,
+    heldOut: protocol.qualityGate.heldOut,
+    cases,
+  };
 }
 
 if (process.argv[1] === new URL(import.meta.url).pathname) {

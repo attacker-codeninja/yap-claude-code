@@ -2,10 +2,7 @@ import { setImmediate } from "node:timers/promises";
 import { CatalogError } from "@yap/core/catalog";
 import { retainedFileRead, type FileAccess } from "@yap/core/files";
 import { archiveLimits } from "@yap/core/package-archive";
-import {
-  resolveProjectPackage,
-  type ProjectPackageManifest,
-} from "@yap/core/project-package";
+import { resolveProjectPackage, type ProjectPackageManifest } from "@yap/core/project-package";
 
 /** Only admitted extraction descriptors can hydrate metadata before project readiness. */
 export async function resolveProjectPackageMetadata(

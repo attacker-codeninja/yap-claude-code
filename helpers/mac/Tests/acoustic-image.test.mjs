@@ -17,8 +17,7 @@ import { waveformBuckets } from "../../../packages/core/dist/audio-wave.js";
 import { spectralWindows } from "../../../packages/core/dist/audio-spectrum.js";
 import { acousticImageRequest } from "../../../packages/core/dist/acoustic-image.js";
 const native =
-  process.env.YAP_NATIVE ??
-  new URL("../.build/debug/yap-native", import.meta.url).pathname;
+  process.env.YAP_NATIVE ?? new URL("../.build/debug/yap-native", import.meta.url).pathname;
 function run(file, args, options = {}) {
   const result = spawnSync(file, args, {
     timeout: 60000,
@@ -55,8 +54,7 @@ test("acoustic measurement files reject oversized data, links and non-files befo
   }
 });
 test("actual waveform and spectral PNGs preserve absolute sample axes, channel identity and narrow energy", async () => {
-  const dir =
-    process.env.YAP_ACOUSTIC_EVIDENCE ?? mkdtempSync(join(tmpdir(), "acoustic-image-"));
+  const dir = process.env.YAP_ACOUSTIC_EVIDENCE ?? mkdtempSync(join(tmpdir(), "acoustic-image-"));
   mkdirSync(dir, { recursive: true });
   try {
     const rate = 48000,

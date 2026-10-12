@@ -368,43 +368,47 @@ it("preserves a terminal report's message through public reads and restart", asy
 });
 
 // Each completion restarts a service and may poll recovery for 5 s, so the case owns a wider budget.
-it("recovery keeps diagnostic code and message paired even without usable video", { timeout: 25_000 }, async () => {
-  for (const completion of [
-    undefined,
-    { failureCode: "DEVICE_LOST" },
-    { failureCode: "DEVICE_LOST", failureMessage: "Original device failure" },
-  ]) {
-    const home = await temporaryHome();
-    const abandoned = await startService(home, capturingPeer());
-    const started = await abandoned.call("capture.start", {
-      requestId: "diagnostic",
-      source: fixtureSource,
-    });
-    if (!started.ok) throw new Error("start failed");
-    const recordingId = (started.data as { recordingId: string }).recordingId;
-    await abandoned.close();
-    const recovered = await startService(home, capturingPeer(), {
-      YAP_NATIVE: await recovers({
-        durationUs: 0,
-        journal: { header: {}, completion },
-        tracks: [{ failure: { code: "ROLE_FAILED", message: "Role decode failed" } }],
-      }),
-    });
-    await expect
-      .poll(() => recovered.call("recording.get", { recordingId }), { timeout: 5_000 })
-      .toMatchObject({
-        ok: true,
-        data: {
-          state: "interrupted",
-          interruptionReason: completion?.failureCode ?? "ROLE_FAILED",
-          interruptionMessage: completion
-            ? (completion.failureMessage ?? null)
-            : "Role decode failed",
-        },
+it(
+  "recovery keeps diagnostic code and message paired even without usable video",
+  { timeout: 25_000 },
+  async () => {
+    for (const completion of [
+      undefined,
+      { failureCode: "DEVICE_LOST" },
+      { failureCode: "DEVICE_LOST", failureMessage: "Original device failure" },
+    ]) {
+      const home = await temporaryHome();
+      const abandoned = await startService(home, capturingPeer());
+      const started = await abandoned.call("capture.start", {
+        requestId: "diagnostic",
+        source: fixtureSource,
       });
-    await recovered.close();
-  }
-});
+      if (!started.ok) throw new Error("start failed");
+      const recordingId = (started.data as { recordingId: string }).recordingId;
+      await abandoned.close();
+      const recovered = await startService(home, capturingPeer(), {
+        YAP_NATIVE: await recovers({
+          durationUs: 0,
+          journal: { header: {}, completion },
+          tracks: [{ failure: { code: "ROLE_FAILED", message: "Role decode failed" } }],
+        }),
+      });
+      await expect
+        .poll(() => recovered.call("recording.get", { recordingId }), { timeout: 5_000 })
+        .toMatchObject({
+          ok: true,
+          data: {
+            state: "interrupted",
+            interruptionReason: completion?.failureCode ?? "ROLE_FAILED",
+            interruptionMessage: completion
+              ? (completion.failureMessage ?? null)
+              : "Role decode failed",
+          },
+        });
+      await recovered.close();
+    }
+  },
+);
 
 it("allocates one take per start request and replays a repeated request onto it", async () => {
   const home = await temporaryHome();

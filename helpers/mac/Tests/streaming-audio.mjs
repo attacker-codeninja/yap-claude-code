@@ -6,13 +6,11 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { isAbsolute, join } from "node:path";
 const out =
-  process.env.YAP_AUDIO_STREAM_EVIDENCE ??
-  (await mkdtemp(join(tmpdir(), "yap-audio-stream-")));
+  process.env.YAP_AUDIO_STREAM_EVIDENCE ?? (await mkdtemp(join(tmpdir(), "yap-audio-stream-")));
 assert.ok(isAbsolute(out));
 await mkdir(out, { recursive: true });
 assert.deepEqual(await readdir(out), []);
-const executable = new URL("../.build/debug/YapSourceAudioTests", import.meta.url)
-  .pathname;
+const executable = new URL("../.build/debug/YapSourceAudioTests", import.meta.url).pathname;
 function run(command, args, env = process.env) {
   const result = spawnSync(command, args, {
     env,

@@ -29,18 +29,20 @@ function measurements(local) {
     });
     groups.set(source, rows);
   }
-  return [...groups.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([source, windows]) => {
-    windows.sort((left, right) => left.name.localeCompare(right.name));
-    const values = windows.map((window) => window.referenceMinusSourceSamples16k);
-    const differences = values.flatMap((value, index) =>
-      values.slice(index + 1).map((other) => Math.abs(value - other)),
-    );
-    return {
-      source,
-      windows,
-      minimumDifferenceFrames: differences.length ? Math.min(...differences) : 0,
-    };
-  });
+  return [...groups.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([source, windows]) => {
+      windows.sort((left, right) => left.name.localeCompare(right.name));
+      const values = windows.map((window) => window.referenceMinusSourceSamples16k);
+      const differences = values.flatMap((value, index) =>
+        values.slice(index + 1).map((other) => Math.abs(value - other)),
+      );
+      return {
+        source,
+        windows,
+        minimumDifferenceFrames: differences.length ? Math.min(...differences) : 0,
+      };
+    });
 }
 
 export async function runGlobalBridgeReplay(reportPath) {
@@ -51,7 +53,10 @@ export async function runGlobalBridgeReplay(reportPath) {
   assert.equal(report.status, "refused");
   assert.equal(report.gate.passed, false);
   assert.equal(report.nextAction, "piecewise-local-only");
-  assert.equal(report.gate.rule, "one global offset per raw source requires every admitted bridge delta to differ by at most 32 frames");
+  assert.equal(
+    report.gate.rule,
+    "one global offset per raw source requires every admitted bridge delta to differ by at most 32 frames",
+  );
   const localPath = resolve(root, report.localPath);
   const localBytes = await readFile(localPath);
   assert.equal(hash(localBytes), report.localSha256, "retained local bridge evidence changed");
@@ -60,7 +65,10 @@ export async function runGlobalBridgeReplay(reportPath) {
   assert.deepEqual(actual, report.sourceGroups, "global bridge measurements changed");
   const multiWindow = actual.filter((group) => group.windows.length > 1);
   assert(multiWindow.length > 0, "refusal requires a repeated raw source");
-  assert(multiWindow.every((group) => group.minimumDifferenceFrames > precisionFrames), "a global bridge offset was admitted");
+  assert(
+    multiWindow.every((group) => group.minimumDifferenceFrames > precisionFrames),
+    "a global bridge offset was admitted",
+  );
   return {
     kind: report.kind,
     status: report.status,

@@ -15,9 +15,7 @@ const fixtures = JSON.parse(
 const ping = fixtures[0];
 if (!ping) throw new Error("Missing native ping conformance fixture");
 parseRequest(JSON.parse(ping.line));
-const binary = fileURLToPath(
-  new URL("dist/Yap.app/Contents/MacOS/yap-native", root),
-);
+const binary = fileURLToPath(new URL("dist/Yap.app/Contents/MacOS/yap-native", root));
 const result = spawnSync(binary, [], {
   input: fixtures.map((fixture) => fixture.line).join("\n") + "\n",
   encoding: "utf8",

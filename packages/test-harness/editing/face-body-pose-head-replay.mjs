@@ -31,7 +31,14 @@ export async function replayFaceBodyPoseHead(reportPath) {
   assert.equal(report.status, "refused");
   assert.equal(report.promotion, false);
   assert.equal(report.recipe.minimumBoxIoU, 0.5);
-  assert.deepEqual(report.recipe.joints, ["nose", "left_eye", "right_eye", "left_ear", "right_ear", "neck"]);
+  assert.deepEqual(report.recipe.joints, [
+    "nose",
+    "left_eye",
+    "right_eye",
+    "left_ear",
+    "right_ear",
+    "neck",
+  ]);
   assert.equal(report.source.sha256, EXPECTED.sourceSha256);
   assert.equal(report.source.frames, EXPECTED.frameCount);
   assert.equal(report.implementation.sha256, EXPECTED.implementationSha256);
@@ -54,7 +61,12 @@ export async function replayFaceBodyPoseHead(reportPath) {
       assert.ok(Number.isFinite(joint.x) && Number.isFinite(joint.y));
       assert.ok(joint.confidence > 0 && joint.confidence <= 1);
     }
-    const candidate = { x: row.candidate[0], y: row.candidate[1], width: row.candidate[2], height: row.candidate[3] };
+    const candidate = {
+      x: row.candidate[0],
+      y: row.candidate[1],
+      width: row.candidate[2],
+      height: row.candidate[3],
+    };
     const overlap = iou(candidate, report.authoredZone);
     assert.ok(close(overlap, row.iou), `candidate IoU changed at ${ordinal}`);
     assert.ok(overlap < report.recipe.minimumBoxIoU, `unexpected passing candidate at ${ordinal}`);

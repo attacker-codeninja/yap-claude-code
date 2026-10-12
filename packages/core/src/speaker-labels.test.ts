@@ -38,7 +38,10 @@ test("bindings replace only the selected generation and retain explicit names", 
   expect(labels.bind(identity, [{ slot: 1, displayName: "Lin" }])).toEqual([
     { slot: 1, displayName: "Lin" },
   ]);
-  expect(() => labels.bind(identity, [{ slot: 1, displayName: "Lin" }, { slot: 1, displayName: "Ada" }])).toThrow(
-    "Speaker label slots must be unique",
-  );
+  expect(() =>
+    labels.bind(identity, [
+      { slot: 1, displayName: "Lin" },
+      { slot: 1, displayName: "Ada" },
+    ]),
+  ).toThrow("Speaker label slots must be unique");
 });

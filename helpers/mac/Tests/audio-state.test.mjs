@@ -14,8 +14,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 const native =
-  process.env.YAP_NATIVE ??
-  fileURLToPath(new URL("../.build/debug/yap-native", import.meta.url));
+  process.env.YAP_NATIVE ?? fileURLToPath(new URL("../.build/debug/yap-native", import.meta.url));
 const frames = 257;
 const range = { start: 480, end: 480 + frames };
 function wave(values) {

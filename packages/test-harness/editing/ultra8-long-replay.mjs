@@ -161,8 +161,14 @@ export async function runUltra8LongReplay({ assetsDirectory } = {}) {
       join(assetRoot, protocol.observations.directory, `${id}.request.json`),
     );
     assert.equal(request.operation, "speaker.continuityLab");
-    assert.equal(request.params.model, `/tmp/yap-speaker-hysteresis-20261006/ultra8-admission/model-library/models/ultra8-checkpoint-research/08c94f3d289e426288b15a580f7ce47b93b99bf2/checkpoint/ultra_diar_streaming_sortformer_8spk_v1.nemo`);
-    assert.deepEqual(request.params.cases.map((value) => value.id), [id]);
+    assert.equal(
+      request.params.model,
+      `/tmp/yap-speaker-hysteresis-20261006/ultra8-admission/model-library/models/ultra8-checkpoint-research/08c94f3d289e426288b15a580f7ce47b93b99bf2/checkpoint/ultra_diar_streaming_sortformer_8spk_v1.nemo`,
+    );
+    assert.deepEqual(
+      request.params.cases.map((value) => value.id),
+      [id],
+    );
     const transport = await readJson(
       join(assetRoot, protocol.observations.directory, `${id}.transport.json`),
     );

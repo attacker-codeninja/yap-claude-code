@@ -15,8 +15,7 @@ assert.deepEqual(args.slice(0, 2), ["--case", "repeat-reorder"]);
 const out = args[2] === "--out" ? resolve(args[3]) : await mkdtemp(join(tmpdir(), "sr-video-"));
 await mkdir(out, { recursive: true });
 assert.deepEqual(await readdir(out), [], "Evidence folder must be empty");
-const native =
-  process.env.YAP_NATIVE ?? join(root, "helpers/mac/.build/debug/yap-native");
+const native = process.env.YAP_NATIVE ?? join(root, "helpers/mac/.build/debug/yap-native");
 const frozen = join(root, "specs/done/agent-editing/assets/06-platform-temporal");
 const corpus = join(root, "specs/done/agent-editing/assets/00-corpus");
 const bytes = 160 * 128 * 3;

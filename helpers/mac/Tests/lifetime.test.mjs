@@ -22,8 +22,7 @@ import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 
 const executable =
-  process.env.YAP_NATIVE ??
-  fileURLToPath(new URL("../.build/debug/yap-native", import.meta.url));
+  process.env.YAP_NATIVE ?? fileURLToPath(new URL("../.build/debug/yap-native", import.meta.url));
 
 /**
  * Stands in for the service that spawns the worker: the worker inherits this owner's stdio,
@@ -226,9 +225,7 @@ test("an owner that dies mid-operation ends the worker and leaves the source unt
     while (!progress) {
       assert.equal(fixture.responses().length, 1, "the audio finished before it was interrupted");
       assert.ok(Date.now() < deadline, "source audio never wrote nonzero PCM before the deadline");
-      for (const name of readdirSync(directory).filter((name) =>
-        name.startsWith(".yap-output-"),
-      )) {
+      for (const name of readdirSync(directory).filter((name) => name.startsWith(".yap-output-"))) {
         const staged = join(directory, name, "mix.wav");
         if (!existsSync(staged)) continue;
         const handle = openSync(staged, "r");

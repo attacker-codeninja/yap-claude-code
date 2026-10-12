@@ -77,15 +77,23 @@ export async function verifyMulticamCorpus(directory) {
 
   const sourceNames = Object.keys(manifest.sources ?? {}).sort();
   if (sourceNames.join("\0") !== EXPECTED_SOURCES.join("\0"))
-    refuse("SOURCE_COVERAGE", "Retained multicam bank must contain exactly three source recordings");
+    refuse(
+      "SOURCE_COVERAGE",
+      "Retained multicam bank must contain exactly three source recordings",
+    );
   for (const name of EXPECTED_SOURCES) {
     const source = manifest.sources[name];
     if (!/^[a-f0-9]{64}$/.test(source.sha256) || !source.path)
       refuse("SOURCE_IDENTITY", `${name}: source path and hash are required`);
     const streams = source.probe?.streams ?? [];
-    const kinds = new Set(streams.filter((stream) => stream.decodable !== false).map((stream) => stream.kind));
+    const kinds = new Set(
+      streams.filter((stream) => stream.decodable !== false).map((stream) => stream.kind),
+    );
     if (!kinds.has("video") || !kinds.has("audio"))
-      refuse("SOURCE_SUPPORT", `${name}: retained source must have decodable video and audio streams`);
+      refuse(
+        "SOURCE_SUPPORT",
+        `${name}: retained source must have decodable video and audio streams`,
+      );
   }
 
   const cases = manifest.cases;
@@ -99,7 +107,11 @@ export async function verifyMulticamCorpus(directory) {
     seen.add(entry.name);
     const startUs = Number(entry.range?.startUs);
     const endUs = Number(entry.range?.endUs);
-    if (!Number.isSafeInteger(startUs) || !Number.isSafeInteger(endUs) || endUs - startUs !== WINDOW_DURATION_US)
+    if (
+      !Number.isSafeInteger(startUs) ||
+      !Number.isSafeInteger(endUs) ||
+      endUs - startUs !== WINDOW_DURATION_US
+    )
       refuse("CASE_CLOCK", `${entry.name}: retained window must be an exact 20-second range`);
     bySource.get(entry.source).push({ startUs, endUs, entry });
     const file = contained(directory, entry.path);
@@ -109,14 +121,19 @@ export async function verifyMulticamCorpus(directory) {
     if (bytes.length !== entry.bytes || hashBytes(bytes) !== entry.sha256)
       refuse("INPUT_CHANGED", `${entry.name}: retained WAV bytes differ`);
     const audio = readAudioWaveFile(file);
-    if (audio.sampleRate !== SAMPLE_RATE || audio.channels !== CHANNELS || audio.frames !== FRAMES_PER_WINDOW)
+    if (
+      audio.sampleRate !== SAMPLE_RATE ||
+      audio.channels !== CHANNELS ||
+      audio.frames !== FRAMES_PER_WINDOW
+    )
       refuse("SAMPLES_CHANGED", `${entry.name}: retained PCM dimensions differ`);
     const pcm = bytes.subarray(audio.dataOffset, audio.dataOffset + audio.dataBytes);
     if (hashBytes(pcm) !== entry.pcmSha256)
       refuse("SAMPLES_CHANGED", `${entry.name}: retained PCM bytes differ`);
   }
   for (const [source, windows] of bySource) {
-    if (windows.length !== 3) refuse("CASE_COVERAGE", `${source}: exactly three retained windows are required`);
+    if (windows.length !== 3)
+      refuse("CASE_COVERAGE", `${source}: exactly three retained windows are required`);
     windows.sort((a, b) => a.startUs - b.startUs);
     for (let index = 1; index < windows.length; index++)
       if (windows[index - 1].endUs > windows[index].startUs)
@@ -130,10 +147,7 @@ export async function verifyMulticamCorpus(directory) {
     refuse("PICTURE_MANIFEST_CHANGED", "Frozen multicam picture manifest identity changed");
   const pictureManifest = JSON.parse(pictureManifestBytes);
   const pictureSources = Object.keys(pictureManifest?.sources ?? {}).sort();
-  if (
-    pictureManifest?.version !== 1 ||
-    pictureSources.join("\0") !== EXPECTED_SOURCES.join("\0")
-  )
+  if (pictureManifest?.version !== 1 || pictureSources.join("\0") !== EXPECTED_SOURCES.join("\0"))
     refuse(
       "PICTURE_COVERAGE",
       "Retained multicam picture samples must cover exactly three sources",
@@ -204,14 +218,21 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       options: { fixtures: { type: "string" }, help: { type: "boolean" } },
     });
     if (values.help) {
-      console.log("node packages/test-harness/editing/multicam-corpus.mjs verify --fixtures DIRECTORY");
+      console.log(
+        "node packages/test-harness/editing/multicam-corpus.mjs verify --fixtures DIRECTORY",
+      );
     } else if (positionals.length !== 1 || positionals[0] !== "verify" || !values.fixtures) {
       refuse("USAGE", "Read --help");
     } else {
       console.log(JSON.stringify(await verifyMulticamCorpus(values.fixtures)));
     }
   } catch (error) {
-    console.log(JSON.stringify({ ok: false, error: { code: error.code ?? "INVALID_CORPUS", message: error.message } }));
+    console.log(
+      JSON.stringify({
+        ok: false,
+        error: { code: error.code ?? "INVALID_CORPUS", message: error.message },
+      }),
+    );
     process.exitCode = 1;
   }
 }

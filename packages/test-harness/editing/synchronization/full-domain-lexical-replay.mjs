@@ -54,30 +54,42 @@ export async function replayFullDomainLexicalScout(reportPath) {
   const resolved = resolve(reportPath);
   const report = JSON.parse(await readFile(resolved, "utf8"));
   assert.equal(report.kind, "full-domain-lexical-scout");
-  assert.equal(report.status, "refused", "a refused lexical scout cannot be promoted by editing JSON");
+  assert.equal(
+    report.status,
+    "refused",
+    "a refused lexical scout cannot be promoted by editing JSON",
+  );
   assert.equal(report.promotion, false);
 
   const directory = dirname(resolved);
   const protocolBytes = await readFile(join(directory, "protocol.json"));
   const protocol = JSON.parse(protocolBytes);
   assert.equal(protocol.kind, "full-domain-lexical-scout-v1");
-  assert.deepEqual(protocol.sourceSelection, {
-    windowUs: 20_000_000,
-    gapUs: 1_000_000,
-    context: { beforeUs: 0, afterUs: 0 },
-    recipe: "source-windows-20s-context4s-guard1s-v2",
-  }, "lexical source-selection protocol changed");
+  assert.deepEqual(
+    protocol.sourceSelection,
+    {
+      windowUs: 20_000_000,
+      gapUs: 1_000_000,
+      context: { beforeUs: 0, afterUs: 0 },
+      recipe: "source-windows-20s-context4s-guard1s-v2",
+    },
+    "lexical source-selection protocol changed",
+  );
   assert.equal(
     protocol.normalization,
     "lowercase ASCII alphanumeric apostrophe tokens; exact contiguous n-grams",
     "lexical normalization protocol changed",
   );
-  assert.deepEqual(protocol.anchorRule, {
-    minimumWords: 5,
-    requiresDistinctSourceFiles: true,
-    requiresThreeSeparatedMatches: true,
-    maximumOffsetSpreadUs: 2_000_000,
-  }, "lexical anchor rule changed");
+  assert.deepEqual(
+    protocol.anchorRule,
+    {
+      minimumWords: 5,
+      requiresDistinctSourceFiles: true,
+      requiresThreeSeparatedMatches: true,
+      maximumOffsetSpreadUs: 2_000_000,
+    },
+    "lexical anchor rule changed",
+  );
   assert.equal(typeof protocol.runtime?.nativeSha256, "string");
   assert.equal(typeof protocol.runtime?.modelReceiptSha256, "string");
   assert.equal(report.protocolSha256, digest(protocolBytes));
@@ -89,7 +101,11 @@ export async function replayFullDomainLexicalScout(reportPath) {
   let windowCount = 0;
   for (const file of protocol.files) {
     const compressed = await readFile(join(directory, file.compressedPath));
-    assert.equal(digest(compressed), file.compressedSha256, `${file.name}: compressed identity changed`);
+    assert.equal(
+      digest(compressed),
+      file.compressedSha256,
+      `${file.name}: compressed identity changed`,
+    );
     const raw = gunzipSync(compressed);
     assert.equal(digest(raw), file.rawSha256, `${file.name}: transcript identity changed`);
     const lines = raw.toString("utf8").trim().split("\n").filter(Boolean);

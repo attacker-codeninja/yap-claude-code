@@ -8,8 +8,7 @@ import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 
 const executable =
-  process.env.YAP_NATIVE ??
-  fileURLToPath(new URL("../.build/debug/yap-native", import.meta.url));
+  process.env.YAP_NATIVE ?? fileURLToPath(new URL("../.build/debug/yap-native", import.meta.url));
 function run(command, args, input) {
   const result = spawnSync(command, args, { input, encoding: "utf8", timeout: 15000 });
   assert.equal(result.error, undefined);

@@ -263,8 +263,7 @@ async function main() {
   const timeoutMs = explicitTimeoutMs ?? (waitRequested && skillLifecycle ? 120_000 : undefined);
   if (
     (Boolean(values.wait) && Boolean(values["no-wait"])) ||
-    (!skillLifecycle &&
-      Boolean(values.wait) !== (timeoutMs !== undefined)) ||
+    (!skillLifecycle && Boolean(values.wait) !== (timeoutMs !== undefined)) ||
     (timeoutMs !== undefined &&
       (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 2_147_483_647))
   )

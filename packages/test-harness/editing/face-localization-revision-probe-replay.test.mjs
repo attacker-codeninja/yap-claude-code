@@ -23,9 +23,7 @@ test("replays the refused Vision revision-2 face probe", async () => {
 });
 
 test("replays the refused Vision revision-1 face probe", async () => {
-  const result = await replayFaceLocalizationRevisionProbe(
-    join(root, "revision1.json"),
-  );
+  const result = await replayFaceLocalizationRevisionProbe(join(root, "revision1.json"));
   assert.deepEqual(result, {
     status: "refused",
     promotion: false,

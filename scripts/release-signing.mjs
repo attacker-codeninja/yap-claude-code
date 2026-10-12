@@ -37,8 +37,7 @@ function localSigningEnvironment(env) {
       YAP_RELEASE_IDENTITY_PASSWORD: "release-identity-password.txt",
       YAP_SPARKLE_PRIVATE_KEY: "sparkle-private-key.txt",
     };
-    for (const [name, file] of Object.entries(files))
-      if (!values[name]) values[name] = read(file);
+    for (const [name, file] of Object.entries(files)) if (!values[name]) values[name] = read(file);
     if (!values.YAP_RELEASE_IDENTITY_P12)
       values.YAP_RELEASE_IDENTITY_P12 = Buffer.from(
         read("release-identity.p12"),
@@ -47,7 +46,8 @@ function localSigningEnvironment(env) {
     if (!values.YAP_RELEASE_IDENTITY_SHA1) values.YAP_RELEASE_IDENTITY_SHA1 = publicFacts.sha1;
     if (!values.YAP_RELEASE_CERTIFICATE_SHA256)
       values.YAP_RELEASE_CERTIFICATE_SHA256 = publicFacts.certificateSha256;
-    if (!values.YAP_SPARKLE_PUBLIC_KEY) values.YAP_SPARKLE_PUBLIC_KEY = publicFacts.sparklePublicKey;
+    if (!values.YAP_SPARKLE_PUBLIC_KEY)
+      values.YAP_SPARKLE_PUBLIC_KEY = publicFacts.sparklePublicKey;
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }

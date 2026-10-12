@@ -7,7 +7,10 @@ import test from "node:test";
 
 const root = new URL("../../../", import.meta.url).pathname;
 const fixtures = join(root, "fixtures/video-editing-feedback/synchronization");
-const recipe = join(root, "specs/done/video-editing-feedback/assets/01-corpus-multicam/behavior-recipe.json");
+const recipe = join(
+  root,
+  "specs/done/video-editing-feedback/assets/01-corpus-multicam/behavior-recipe.json",
+);
 const identity = join(
   root,
   "specs/done/video-editing-feedback/assets/01-corpus-multicam/behavior-recipe.identity.json",
@@ -38,7 +41,11 @@ test("refuses a recipe that assigns a picture from another source", async (t) =>
   );
   const { verifyMulticamBehavior } = await import("./multicam-behavior.mjs");
   await assert.rejects(
-    verifyMulticamBehavior(fixtures, join(directory, "recipe.json"), join(directory, "identity.json")),
+    verifyMulticamBehavior(
+      fixtures,
+      join(directory, "recipe.json"),
+      join(directory, "identity.json"),
+    ),
     { code: "PICTURE_SELECTION" },
   );
 });
@@ -56,7 +63,11 @@ test("refuses a recipe with duplicate or missing source windows", async (t) => {
   );
   const { verifyMulticamBehavior } = await import("./multicam-behavior.mjs");
   await assert.rejects(
-    verifyMulticamBehavior(fixtures, join(directory, "recipe.json"), join(directory, "identity.json")),
+    verifyMulticamBehavior(
+      fixtures,
+      join(directory, "recipe.json"),
+      join(directory, "identity.json"),
+    ),
     { code: "SELECTION_COVERAGE" },
   );
 });

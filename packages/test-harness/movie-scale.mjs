@@ -18,8 +18,7 @@ import { nativeProcessing } from "../../apps/service/dist/native-processing.js";
 import { renderFrames } from "../../helpers/mac/Tests/fixtures/render-frames.mjs";
 
 const dir =
-  process.env.YAP_MOVIE_SCALE_EVIDENCE ??
-  (await mkdtemp(join(tmpdir(), "yap-movie-scale-")));
+  process.env.YAP_MOVIE_SCALE_EVIDENCE ?? (await mkdtemp(join(tmpdir(), "yap-movie-scale-")));
 assert.ok(isAbsolute(dir));
 await mkdir(dir, { recursive: true });
 assert.deepEqual(await readdir(dir), []);

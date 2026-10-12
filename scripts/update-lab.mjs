@@ -315,9 +315,7 @@ try {
   const format =
     scenario === "incompatible" ? "24" : scenario === "malformed-format" ? "23x" : "23";
   const formatElement =
-    scenario === "missing-format"
-      ? ""
-      : `<yapCatalogFormat>${format}</yapCatalogFormat>`;
+    scenario === "missing-format" ? "" : `<yapCatalogFormat>${format}</yapCatalogFormat>`;
   writeFileSync(
     join(root, "appcast.xml"),
     `<?xml version="1.0"?><rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"><channel><title>Lab</title><item><title>0.1.1</title><sparkle:version>${candidateVersion}</sparkle:version><sparkle:shortVersionString>${candidateVersion}</sparkle:shortVersionString>${formatElement}<enclosure url="${url}/update.zip" ${attrs} type="application/octet-stream"/></item></channel></rss>`,
