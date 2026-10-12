@@ -26,7 +26,7 @@ final class RecordingControls: NSObject {
     private lazy var region = RegionSelection(changed: { [weak self] in self?.render() })
     private let quit: () -> Void
     private let preferences: Preferences
-    private let skillManager: SkillManager
+    private let homeLifecycle: HomeLifecycle
     private var state: ControlsState
     private var updateOperation: ((String, Data) -> Result<Data, ServiceFailure>)?
     /// Screen access has no "not yet asked" state to read, so a request this launch that came back
@@ -84,7 +84,7 @@ final class RecordingControls: NSObject {
             self?.readPermissions()
             self?.render()
         },
-        skillManager: skillManager)
+        skillManager: homeLifecycle)
     private var ticker: Timer?
     private var reading = false
     private var pendingRefresh = false
@@ -100,7 +100,7 @@ final class RecordingControls: NSObject {
         self.home = home
         self.quit = quit
         self.preferences = preferences
-        self.skillManager = SkillManager()
+        self.homeLifecycle = HomeLifecycle()
         state = ControlsState(recording: preferences.recording)
         let overridePath = GlobalShortcuts.overridePath(home: home)
         super.init()
@@ -114,7 +114,7 @@ final class RecordingControls: NSObject {
         statusItem.button?.setAccessibilityLabel("Yap")
         readPermissions()
         render()
-        skillManager.reconcileIfEnabled(preferences.installSkill)
+        homeLifecycle.reconcile(enabled: preferences.installSkill)
     }
 
     func configureUpdates(_ updates: UpdateControls,
@@ -124,8 +124,9 @@ final class RecordingControls: NSObject {
         render()
     }
 
-    func handleSkill(_ operation: String) -> Result<Data, ServiceFailure> {
-        skillManager.handle(operation)
+    /// Every `skill.*` and `cli.*` operation, answered by the one home owner.
+    func handleHome(_ operation: String) -> Result<Data, ServiceFailure> {
+        homeLifecycle.handle(operation)
     }
 
     /// Opt-out remains usable while the child service is closing or unavailable.

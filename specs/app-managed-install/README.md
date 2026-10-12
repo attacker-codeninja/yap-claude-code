@@ -28,7 +28,7 @@ with the `release` skill (the user delegated tagging).
 - [x] 01 Packaging and launcher — [slices/01-packaging.md](slices/01-packaging.md)
 - [x] 02 Operations — [slices/02-operations.md](slices/02-operations.md)
 - [x] 03 Kit is the app only — [slices/03-kit.md](slices/03-kit.md)
-- [ ] 04 Home lifecycle: command, skill, PATH — [slices/04-home-lifecycle.md](slices/04-home-lifecycle.md)
+- [x] 04 Home lifecycle: command, skill, PATH — [slices/04-home-lifecycle.md](slices/04-home-lifecycle.md)
 - [ ] 05 Settings: one "Set up my agents" row — [slices/05-settings.md](slices/05-settings.md)
 - [x] 06 Launch decision: location and one copy — [slices/06-launch-decision.md](slices/06-launch-decision.md)
 - [ ] 07 Move to Applications — [slices/07-move.md](slices/07-move.md)

@@ -141,16 +141,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                         return
                                     }
                                     answer(self.handleUpdate(operation, params))
-                                } else if ["skill.status", "skill.install", "skill.uninstall", "skill.update"].contains(operation) {
-                                    guard let self else {
-                                        answer(.failure(ServiceFailure(code: "SKILL_UNAVAILABLE", message: "No native skill manager is connected.")))
+                                } else if operation.hasPrefix("skill.") || operation.hasPrefix("cli.") {
+                                    guard let controls = self?.controls else {
+                                        answer(.failure(operation.hasPrefix("cli.")
+                                            ? ServiceFailure(code: "CLI_UNAVAILABLE", message: "No native command manager is connected.")
+                                            : ServiceFailure(code: "SKILL_UNAVAILABLE", message: "No native skill manager is connected.")))
                                         return
                                     }
-                                    guard let controls = self.controls else {
-                                        answer(.failure(ServiceFailure(code: "SKILL_UNAVAILABLE", message: "No native skill manager is connected.")))
-                                        return
-                                    }
-                                    answer(controls.handleSkill(operation))
+                                    answer(controls.handleHome(operation))
                                 } else {
                                     answer(await capture.handle(operation, params))
                                 }

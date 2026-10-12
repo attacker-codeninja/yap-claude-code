@@ -1,9 +1,11 @@
 import Foundation
 
-/// Owns the account-level consumer skill lifecycle. App updates and skill updates are separate.
-/// Replacement is explicit when maintenance is enabled; the receipt records ownership for later removal.
+/// The account-level consumer skill, one part of `HomeLifecycle`. App updates and skill updates are
+/// separate. Installing replaces every global skill named `yap` with the bundled one through the
+/// bundled `skills` installer run by the app's own Node, so it needs no host npm or network; a
+/// failed install restores what it replaced. The receipt records ownership for later removal.
 @MainActor
-final class SkillManager: SkillLifecycle {
+final class SkillArtifact {
     private struct InstalledSkill: Codable {
         let name: String
         let path: String
@@ -32,49 +34,53 @@ final class SkillManager: SkillLifecycle {
     }
 
     private let home: URL
+    private let resources: AppResources
     private let fileManager: FileManager
     private nonisolated static let source = "https://github.com/dzhng/yap/tree/main/skills/yap"
     private nonisolated static let installer = "skills@1.7.0"
     private nonisolated static let knownPaths = [".agents/skills/yap", ".codex/skills/yap", ".claude/skills/yap"]
     private nonisolated static let operationLock = NSLock()
 
-    init(home: String = NSHomeDirectory(), fileManager: FileManager = .default) {
-        self.home = URL(fileURLWithPath: home, isDirectory: true).standardizedFileURL
+    init(home: URL, resources: AppResources, fileManager: FileManager = .default) {
+        self.home = home.standardizedFileURL
+        self.resources = resources
         self.fileManager = fileManager
     }
 
-    func setEnabled(_ enabled: Bool, operationId: String? = nil) {
+    /// Starts the install or removal in the background; `skill.status` reads `updating` until it settles.
+    @discardableResult
+    func setEnabled(_ enabled: Bool) -> String {
         let home = self.home
+        let resources = self.resources
         let fileManager = self.fileManager
-        let operationId = operationId ?? UUID().uuidString
+        let operationId = UUID().uuidString
+        writeState(LifecycleState(state: "updating", operationId: operationId, error: nil, backupPath: nil))
         DispatchQueue.global(qos: .utility).async {
-            if enabled { Self.install(home: home, fileManager: fileManager, operationId: operationId) }
-            else { Self.uninstall(home: home, fileManager: fileManager, operationId: operationId) }
+            if enabled { Self.install(home: home, resources: resources, fileManager: fileManager, operationId: operationId) }
+            else { Self.uninstall(home: home, resources: resources, fileManager: fileManager, operationId: operationId) }
         }
+        return operationId
     }
-
-    func perform(_ operation: String) { _ = handle(operation) }
 
     func handle(_ operation: String) -> Result<Data, ServiceFailure> {
         switch operation {
         case "skill.status":
             return .success(statusData())
         case "skill.install", "skill.update":
-            let operationId = UUID().uuidString
-            writeState(LifecycleState(state: "updating", operationId: operationId, error: nil, backupPath: nil))
-            setEnabled(true, operationId: operationId)
-            return .success(statusData(state: "updating", operationId: operationId, discover: false))
+            return .success(statusData(state: "updating", operationId: setEnabled(true), discover: false))
         case "skill.uninstall":
-            let operationId = UUID().uuidString
-            writeState(LifecycleState(state: "updating", operationId: operationId, error: nil, backupPath: nil))
-            setEnabled(false, operationId: operationId)
-            return .success(statusData(state: "updating", operationId: operationId, discover: false))
+            return .success(statusData(state: "updating", operationId: setEnabled(false), discover: false))
         default:
             return .failure(ServiceFailure(code: "UNKNOWN_OPERATION", message: "Unknown skill operation"))
         }
     }
 
-    func reconcileIfEnabled(_ enabled: Bool) { if enabled { setEnabled(true, operationId: UUID().uuidString) } }
+    /// The last known state without running the installer: for a status line, not for agents.
+    var summaryState: String {
+        if let state = readState()?.state { return state }
+        guard let receipt = readReceipt(), receipt.managed else { return "missing" }
+        return receipt.paths.allSatisfy { fileManager.fileExists(atPath: $0) } ? "installed" : "needs_attention"
+    }
 
     private var receiptURL: URL { home.appendingPathComponent(".config/yap/skill-install.json") }
     private var stateURL: URL { home.appendingPathComponent(".config/yap/skill-state.json") }
@@ -91,10 +97,12 @@ final class SkillManager: SkillLifecycle {
     private func writeState(_ state: LifecycleState) { Self.writeState(state, home: home, fileManager: fileManager) }
 
     private func statusData(state explicitState: String? = nil, operationId: String? = nil, discover: Bool = true) -> Data {
+        // State before receipt: an install writes its receipt before clearing its state, so this
+        // order never sees neither while one is finishing.
+        let state = readState()
         let receipt = readReceipt()
         let discovered = receipt.map { (entries: $0.entries, error: Optional<String>.none) }
-            ?? (discover ? Self.discover(home: home, fileManager: fileManager) : (entries: Self.fallbackEntries(home: home, fileManager: fileManager), error: nil))
-        let state = readState()
+            ?? (discover ? Self.discover(home: home, resources: resources, fileManager: fileManager) : (entries: Self.fallbackEntries(home: home, fileManager: fileManager), error: nil))
         let paths = (receipt?.paths ?? discovered.entries.filter { $0.name == "yap" }.map(\.path))
             .filter { Self.safePath($0, under: home) }.sorted()
         let existing = paths.filter { fileManager.fileExists(atPath: $0) }
@@ -124,7 +132,7 @@ final class SkillManager: SkillLifecycle {
         return (try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])) ?? Data("{}".utf8)
     }
 
-    private nonisolated static func install(home: URL, fileManager: FileManager, operationId: String) {
+    private nonisolated static func install(home: URL, resources: AppResources, fileManager: FileManager, operationId: String) {
         operationLock.lock()
         defer { operationLock.unlock() }
         let stage = fileManager.temporaryDirectory.appendingPathComponent("yap-skill-\(operationId)", isDirectory: true)
@@ -134,7 +142,9 @@ final class SkillManager: SkillLifecycle {
         defer { if completed { try? fileManager.removeItem(at: stage) } }
         do {
             try fileManager.createDirectory(at: backup, withIntermediateDirectories: true)
-            let before = discoveredPaths(home: home, fileManager: fileManager)
+            let installer = try bundledInstaller(resources)
+            guard let skillSource = resources.skillSource else { throw LifecycleError.missing("bundled skill") }
+            let before = discoveredPaths(home: home, resources: resources, fileManager: fileManager)
             for path in Set(before + knownPaths.map { home.appendingPathComponent($0).path }) where fileManager.fileExists(atPath: path) || isSymlink(URL(fileURLWithPath: path)) {
                 let saved = backup.appendingPathComponent(relativePath(path, home: home))
                 try fileManager.createDirectory(at: saved.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -149,18 +159,16 @@ final class SkillManager: SkillLifecycle {
                 backedUp.append(".config/yap/skill-install.json")
                 try fileManager.removeItem(at: receiptURL(home: home))
             }
-            let npx = try npxExecutable(home: home, fileManager: fileManager)
-            let skillSource = bundledSource() ?? source
-            let status = try run(npx, ["--yes", installer, "add", skillSource, "--all", "--global", "--yes"], home: home)
+            let status = try run(installer, ["add", skillSource.path, "--all", "--global", "--yes"], home: home)
             guard status.code == 0 else { throw LifecycleError.command(status.output) }
-            let after = discover(home: home, fileManager: fileManager)
+            let after = discover(home: home, resources: resources, fileManager: fileManager)
             let entries = after.entries.filter { $0.name == "yap" && $0.scope == "global" }
             let paths = entries.map(\.path).filter { safePath($0, under: home) }
             let canonical = home.appendingPathComponent(".agents/skills/yap").path
             guard paths.contains(canonical), paths.allSatisfy({ fileManager.fileExists(atPath: URL(fileURLWithPath: $0).appendingPathComponent("SKILL.md").path) }) else {
                 throw LifecycleError.verification
             }
-            let receipt = Receipt(managed: true, source: source, installer: installer, paths: paths, entries: entries,
+            let receipt = Receipt(managed: true, source: source, installer: Self.installer, paths: paths, entries: entries,
                                   operationId: operationId, installedAt: ISO8601DateFormatter().string(from: Date()))
             try fileManager.createDirectory(at: receiptURL(home: home).deletingLastPathComponent(), withIntermediateDirectories: true)
             try JSONEncoder().encode(receipt).write(to: receiptURL(home: home), options: .atomic)
@@ -172,14 +180,14 @@ final class SkillManager: SkillLifecycle {
         }
     }
 
-    private nonisolated static func uninstall(home: URL, fileManager: FileManager, operationId: String) {
+    private nonisolated static func uninstall(home: URL, resources: AppResources, fileManager: FileManager, operationId: String) {
         operationLock.lock()
         defer { operationLock.unlock() }
         guard let receipt = decodeReceipt(at: receiptURL(home: home), home: home, fileManager: fileManager), receipt.managed else {
             writeState(LifecycleState(state: "disabled", operationId: operationId, error: nil, backupPath: nil), home: home, fileManager: fileManager)
             return
         }
-        let paths = Set(receipt.paths + discoveredPaths(home: home, fileManager: fileManager))
+        let paths = Set(receipt.paths + discoveredPaths(home: home, resources: resources, fileManager: fileManager))
         do {
             for path in paths where safePath(path, under: home) { try? fileManager.removeItem(atPath: path) }
             let remaining = paths.filter { fileManager.fileExists(atPath: $0) }
@@ -192,52 +200,36 @@ final class SkillManager: SkillLifecycle {
     }
 
     private enum LifecycleError: LocalizedError {
-        case command(String), verification
+        case command(String), missing(String), verification
         var errorDescription: String? {
             switch self {
-            case .command(let output): return output.isEmpty ? "npx skills failed" : output
+            case .command(let output): return output.isEmpty ? "The skills installer failed" : output
+            case .missing(let resource): return "This build carries no \(resource)"
             case .verification: return "Installed skill verification failed"
             }
         }
     }
 
-    private nonisolated static func discover(home: URL, fileManager: FileManager) -> (entries: [InstalledSkill], error: String?) {
+    private nonisolated static func discover(home: URL, resources: AppResources, fileManager: FileManager) -> (entries: [InstalledSkill], error: String?) {
         do {
-            let npx = try npxExecutable(home: home, fileManager: fileManager)
-            let result = try run(npx, ["--yes", installer, "ls", "--global", "--json"], home: home)
+            let result = try run(bundledInstaller(resources), ["ls", "--global", "--json"], home: home)
             guard result.code == 0 else { return (fallbackEntries(home: home, fileManager: fileManager), result.output) }
             return (try JSONDecoder().decode([InstalledSkill].self, from: Data(result.output.utf8)), nil)
         } catch { return (fallbackEntries(home: home, fileManager: fileManager), error.localizedDescription) }
     }
 
-    private nonisolated static func discoveredPaths(home: URL, fileManager: FileManager) -> [String] {
-        discover(home: home, fileManager: fileManager).entries.filter { $0.name == "yap" && $0.scope == "global" }.map(\.path)
+    private nonisolated static func discoveredPaths(home: URL, resources: AppResources, fileManager: FileManager) -> [String] {
+        discover(home: home, resources: resources, fileManager: fileManager).entries.filter { $0.name == "yap" && $0.scope == "global" }.map(\.path)
     }
 
-    private nonisolated static func npxExecutable(home: URL, fileManager: FileManager) throws -> String {
-        var candidates = ProcessInfo.processInfo.environment["PATH"]?.split(separator: ":").map {
-            String($0) + "/npx"
-        } ?? []
-        let nodeVersions = (try? fileManager.contentsOfDirectory(at: home.appendingPathComponent(".nvm/versions/node"), includingPropertiesForKeys: nil)) ?? []
-        candidates += nodeVersions.sorted { $0.lastPathComponent > $1.lastPathComponent }.map {
-            $0.appendingPathComponent("bin/npx").path
-        }
-        candidates += [
-            home.appendingPathComponent(".volta/bin/npx").path,
-            home.appendingPathComponent(".asdf/shims/npx").path,
-            home.appendingPathComponent(".local/bin/npx").path,
-            "/opt/homebrew/bin/npx",
-            "/usr/local/bin/npx",
-        ]
-        if let path = candidates.first(where: { fileManager.isExecutableFile(atPath: $0) }) { return path }
-        throw LifecycleError.command("npx not found in the app runtime environment")
-    }
-
-    private nonisolated static func bundledSource() -> String? {
-        guard let resource = Bundle.main.resourceURL?.appendingPathComponent("skill", isDirectory: true),
-              FileManager.default.fileExists(atPath: resource.appendingPathComponent("SKILL.md").path)
-        else { return nil }
-        return resource.path
+    /// The pinned installer and the interpreter that runs it, both from this build.
+    private nonisolated static func bundledInstaller(_ resources: AppResources) throws -> (node: String, script: String) {
+        guard let script = resources.skillsInstaller else { throw LifecycleError.missing("skills installer") }
+        let node = try NodeRuntime.resolve(
+            recorded: resources.node, environment: ProcessInfo.processInfo.environment,
+            deadline: Date().addingTimeInterval(NodeRuntime.candidateBudget * 2)
+        ).get()
+        return (node, script.path)
     }
 
     private nonisolated static func fallbackEntries(home: URL, fileManager: FileManager) -> [InstalledSkill] {
@@ -293,8 +285,9 @@ final class SkillManager: SkillLifecycle {
         do { try fileManager.createDirectory(at: stateURL(home: home).deletingLastPathComponent(), withIntermediateDirectories: true); try JSONEncoder().encode(state).write(to: stateURL(home: home), options: .atomic) } catch { }
     }
 
-    private nonisolated static func run(_ executable: String, _ arguments: [String], home: URL) throws -> (code: Int32, output: String) {
-        let process = Process(); process.executableURL = URL(fileURLWithPath: executable); process.arguments = arguments
+    private nonisolated static func run(_ installer: (node: String, script: String), _ arguments: [String], home: URL) throws -> (code: Int32, output: String) {
+        let executable = installer.node
+        let process = Process(); process.executableURL = URL(fileURLWithPath: executable); process.arguments = [installer.script] + arguments
         let outputURL = FileManager.default.temporaryDirectory.appendingPathComponent("yap-skill-output-\(UUID().uuidString)")
         FileManager.default.createFile(atPath: outputURL.path, contents: nil)
         let output = try FileHandle(forWritingTo: outputURL)
@@ -303,6 +296,7 @@ final class SkillManager: SkillLifecycle {
         var environment = ProcessInfo.processInfo.environment
         environment["HOME"] = home.path
         environment["USERPROFILE"] = home.path
+        environment["DISABLE_TELEMETRY"] = "1"
         let executableDirectory = URL(fileURLWithPath: executable).deletingLastPathComponent().path
         environment["PATH"] = executableDirectory + ":" + (environment["PATH"] ?? "/usr/bin:/bin")
         process.environment = environment
