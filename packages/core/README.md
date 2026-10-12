@@ -122,7 +122,11 @@ model purpose does not create another preparation or lifetime owner. Profiles
 describe measured work bounds, not universal quality or capacity claims.
 Registered acquisition policy can require explicitly supplied local model bytes;
 it does not change execution identity. An already verified preparation remains
-idempotent without repeating its original acquisition inputs.
+idempotent without repeating its original acquisition inputs. Startup trusts a
+preparation whose receipt matches its model files and whose runtime matches its
+registered inventory by metadata, instead of rehashing the runtime; anything else
+falls through to full verification and repair, and execution still verifies the
+runtime bytes before every run.
 
 Curated runtime acquisition uses the same downloader and cancellation owner.
 The [runtime recipe](../../helpers/model-runtime/README.md) identifies public

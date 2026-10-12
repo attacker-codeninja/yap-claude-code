@@ -76,7 +76,9 @@ must report actual prepared/native requirements rather than inventing a fallback
 
 `service.health` remains a cheap listener-readiness check. Its model readiness comes
 from preparation receipts; hashing a prepared runtime grows with its size, so that
-stays with preparation, explicit `model.status` and execution. Explicit `service.tools`
+stays with preparation, explicit `model.status` and execution. Startup preparation
+follows the same rule: a model whose receipt and runtime inventory (paths, kinds,
+modes, sizes) still match is ready without a rehash; anything else is verified and repaired. Explicit `service.tools`
 discovery verifies the selected app's bundled tool receipt and resource hashes,
 then probes its executable version and configuration under bounded work. Missing
 or altered tools report unavailable without blocking native operation discovery.

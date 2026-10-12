@@ -119,7 +119,17 @@ function inventory(artifact: RuntimeArtifact) {
   return entries;
 }
 
-export async function verifyRuntime(root: string, artifact: RuntimeArtifact, signal?: AbortSignal) {
+/**
+ * Checks an installed runtime against its registered inventory: paths, kinds, modes, link targets
+ * and no extra entries. `contents` also hashes every file; `inventory` compares file sizes only,
+ * which cannot see bytes rewritten in place and so never stands in for verification before use.
+ */
+export async function verifyRuntime(
+  root: string,
+  artifact: RuntimeArtifact,
+  signal?: AbortSignal,
+  check: "contents" | "inventory" = "contents",
+) {
   const expected = inventory(artifact);
   if (!(await lstat(root)).isDirectory()) throw mismatch(root);
   let found = 0;
@@ -139,7 +149,9 @@ export async function verifyRuntime(root: string, artifact: RuntimeArtifact, sig
         if (!stat.isSymbolicLink() || (await readlink(path)) !== entry.target) throw mismatch(path);
       } else {
         if (!stat.isFile() || (stat.mode & 0o777) !== entry.mode) throw mismatch(path);
-        await verifiedFile(path, entry, signal);
+        if (check === "inventory") {
+          if (stat.size !== entry.bytes) throw mismatch(path);
+        } else await verifiedFile(path, entry, signal);
       }
     }
   }

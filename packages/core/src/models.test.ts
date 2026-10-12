@@ -521,6 +521,74 @@ test("service readiness answers from preparation receipts without waiting on run
   expect(models.statuses()[1]!.status).toEqual({ state: "invalid" });
 });
 
+test("startup trusts an intact preparation receipt while execution still verifies runtime bytes", async () => {
+  const f = await voiceFixture();
+  await f.owner().prepare("voice", new AbortController().signal, f.sources);
+  const runtime = join(f.models, "voice", "r1", "runtime", "worker");
+  const before = await stat(runtime);
+  // Same length, same inode: only hashing the runtime bytes can see this rewrite.
+  await writeFile(runtime, Buffer.from("A pinned executable"));
+  expect((await stat(runtime)).ino).toBe(before.ino);
+
+  const restarted = new Models(f.home, offline, [f.voice]);
+  await restarted.prepareAuto(new AbortController().signal);
+  expect(restarted.statuses()).toEqual([
+    { modelId: "voice", purpose: "voice", status: { state: "ready" } },
+  ]);
+  expect(restarted.updateBlocked).toBe(false);
+
+  expect(await restarted.status("voice")).toEqual({ state: "invalid" });
+  await expect(restarted.runtime("voice", "voice")).rejects.toMatchObject({
+    code: "MODEL_NOT_PREPARED",
+  });
+});
+
+test("startup repairs a prepared model whose runtime lost or changed a file", async () => {
+  const damages = [
+    (worker: string) => rm(worker),
+    (worker: string) => writeFile(worker, "a longer pinned executable", { mode: 0o700 }),
+  ];
+  for (const damage of damages) {
+    const f = await voiceFixture();
+    await f.owner().prepare("voice", new AbortController().signal, f.sources);
+    const worker = join(f.models, "voice", "r1", "runtime", "worker");
+    await damage(worker);
+
+    // Startup cannot repair this runtime without its explicit local source, so reaching full
+    // verification and repair surfaces as that refusal rather than a false ready.
+    const restarted = new Models(f.home, offline, [f.voice]);
+    await expect(restarted.prepareAuto(new AbortController().signal)).rejects.toMatchObject({
+      code: "MODEL_SOURCE_REQUIRED",
+    });
+    // Health reads receipts, but a failed repair outranks the receipt's readiness.
+    expect(restarted.statuses()[0]!.status).toEqual({
+      state: "failed",
+      code: "MODEL_SOURCE_REQUIRED",
+      message: "This model requires an explicit local runtime artifact source",
+      retryable: false,
+    });
+    expect(await restarted.status("voice")).toEqual({ state: "invalid" });
+
+    await restarted.prepare("voice", new AbortController().signal, f.sources);
+    expect(restarted.statuses()[0]!.status).toEqual({ state: "ready" });
+  }
+});
+
+test("startup repairs a preparation whose receipt no longer matches its files", async () => {
+  const { open, requests, revision } = await fixture();
+  await open().prepare("tiny", new AbortController().signal);
+  const vocabulary = join(revision, "tiny-model", "vocab.json");
+  // Identical bytes in a new file: the receipt no longer names it, so startup re-prepares.
+  await rm(vocabulary);
+  await writeFile(vocabulary, contents["vocab.json"]!);
+
+  const restarted = open();
+  await restarted.prepareAuto(new AbortController().signal);
+
+  expect(await restarted.status("tiny")).toEqual({ state: "ready" });
+  expect(requests).toHaveLength(4);
+});
+
 test("canceling a local runtime admission drains its private stage without affecting another model", async () => {
   const f = await voiceFixture(),
     models = f.owner(),

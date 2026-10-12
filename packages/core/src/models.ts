@@ -156,8 +156,8 @@ class Preparation {
               : null,
         };
       })();
-    const state = this.inspect();
-    if (state === "ready" || !this.failure) return { state };
+    // A failed preparation saw more than the receipt can, so it outranks receipt readiness.
+    if (!this.failure) return { state: this.inspect() };
     const { code, message, retryable } = this.failure;
     return { state: "failed", code, message, retryable };
   }
@@ -188,6 +188,23 @@ class Preparation {
     if (!this.failure) return { state };
     const { code, message, retryable } = this.failure;
     return { state: "failed", code, message, retryable };
+  }
+
+  /**
+   * Startup's readiness: the receipt matches the model files and the runtime matches its
+   * registered inventory by metadata. No bytes are hashed; execution still verifies them.
+   */
+  async intact(signal: AbortSignal): Promise<boolean> {
+    if (this.snapshot().state !== "ready") return false;
+    const runtime = this.manifest.runtimeArtifact;
+    if (!runtime) return true;
+    try {
+      await verifyRuntime(join(this.root, "runtime"), runtime, signal, "inventory");
+      return true;
+    } catch {
+      signal.throwIfAborted();
+      return false;
+    }
   }
 
   async settled(): Promise<void> {
@@ -625,12 +642,19 @@ export class Models {
   async settled(): Promise<void> {
     await Promise.all([...this.preparations.values()].map((model) => model.settled()));
   }
-  /** Start background preparation for models marked as part of the app lifecycle. */
+  /**
+   * Start background preparation for models marked as part of the app lifecycle. An intact model
+   * (receipt and runtime inventory match) is ready without rehashing its runtime: that hash grows
+   * with the runtime, and execution verifies the bytes before every run anyway. Anything else
+   * falls through to full verification and repair.
+   */
   async prepareAuto(signal: AbortSignal): Promise<void> {
     await Promise.all(
       [...this.preparations.values()]
         .filter((model) => model.manifest.autoPrepare)
-        .map((model) => model.prepare(signal, {})),
+        .map(async (model) => {
+          if (!(await model.intact(signal))) await model.prepare(signal, {});
+        }),
     );
   }
   async status(modelId: string) {
