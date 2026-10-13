@@ -83,14 +83,14 @@ remaining difference is explained.
 | Baseline issue | Pass |
 | --- | --- |
 | Seam disagreement (3 results) | Zero. Long media transcribes in one request; seam words carry `boundary-unresolved`. |
-| Timing overrun (4 results) | Zero refusals for overruns of up to one frame; `end-clamped` diagnostics appear where expected. |
+| Timing overrun (4 results) | Zero refusals for overruns of up to one frame; `timing-clamped` issues appear where expected. |
 | Manual ≤20 s chunking | No hand-chunked `executionRange` loops. |
-| Normalization infeasible (3 results) or unmet (2 results) | Zero refusals: every treatment publishes on the first try. Any miss arrives as a `targets-unmet` issue with the excess and `maximumFeasibleTargetLufs`. No measurement fails because of the output stack. |
+| Normalization infeasible (3 results) or unmet (2 results) | Zero refusals: every treatment publishes on the first try. Any miss arrives as a `normalization-target-unmet` issue with the excess and `maximumFeasibleTargetLufs`. No measurement fails because of the output stack. |
 | Curve-clock error (1) | If it occurs, the agent fixes it in one step from the error's details. |
 | Source-bounds error (1) | Zero refusals: the placement lands, with `range-clamped`. |
 | Render range admitted then failed (1) | A partly valid range publishes, clamped, with `range-clamped`; a range wholly outside refuses at admission. |
 | Hand-rolled cross-correlation (2) | Expected: there is no sync primitive by decision (slice 08). Record the effort, and whether the agent followed the slice 10 recipe. |
-| RMS arithmetic outside Yap (4) | Replaced by `audio.measure` `rmsDbfs`. |
+| RMS arithmetic outside Yap (4) | Replaced by comparing `waveform.get` on the dry and processed taps (slice 05 closed with no new field). |
 | Fixture labels painted over | Unlabelled shots used, or the agent passes `FIXTURE_LABEL=omit`. |
 | Any class-B refusal in the [audit](07-remaining-quality-gates.md) | Zero. Any quality or target miss arrives as an issue on a delivered output. |
 

@@ -11,18 +11,18 @@ each slice's recorded outcome first.
   rewrite under output by default. L118 and L156 stay, as class A.
 - **Transcription:**
   - explicit ranges are windowed too;
-  - how to read `boundary-unresolved` and `end-clamped`;
+  - how to read `boundary-unresolved`, `timing-clamped` and `word-dropped`;
   - the windowing is no reason to hand-chunk anymore.
 - **Mastering:**
   - the feasibility arithmetic (peak-to-loudness ratio and maximum feasible
     target);
   - measure with the `dry` or `after-step` taps while the output is
     infeasible;
-  - treatments always publish (slice 04); read `targets-unmet` /
-    `ceiling-unmet` issues and decide whether to accept or re-target.
+  - treatments always publish (slice 04); read `normalization-target-unmet` /
+    `limiter-ceiling-unmet` issues and decide whether to accept or re-target.
 - **After denoise:**
   - render speech on the dry and processed taps and diff the words;
-  - for any word that disappeared, compare `rmsDbfs` on both taps over its
+  - for any word that disappeared, compare `waveform.get` buckets on both taps over its
     range;
   - keyframe the `mix` down over that word if the caller wants it back.
 

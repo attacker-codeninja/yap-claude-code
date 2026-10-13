@@ -27,13 +27,12 @@ In flight, each in its own worktree `../lvf-<slice>` on branch `lvf/<slice>`:
   (`UNAVAILABLE_SUPPORT`) treat each available run as its own domain, with
   `unavailable` ranges and a `support-gap` issue. Alignment and the speaker
   model work per run. This is the user-side decision recorded in choices.md.
-- 05: `rmsDbfs` in `audio.measure`.
 - 06e: the four range sites 06 deferred (transcript execution range, project
   alignment range, content anchors, angle validity) clamp with
   `range-clamped`. Stored-document validation stays strict.
 
 Next pickup, in order:
-1. Merge 07a, 07b, 05 and 06e: rerun the touched packages' checks on the merged
+1. Merge 07a, 07b and 06e: rerun the touched packages' checks on the merged
    tree, then remove each worktree and branch.
 2. [10](slices/10-skill-guidance.md): skill guidance, written against what
    shipped (read each slice's choices).
@@ -66,7 +65,7 @@ Checklist:
 - [x] [02 Stale derived generations self-recover](slices/02-stale-derived-self-recovery.md)
 - [x] [03 Long-media transcription always publishes](slices/03-transcription-publishes.md)
 - [x] [04 Audio treatments publish their best result](slices/04-audio-treatments-publish.md) (`UNAVAILABLE_SUPPORT` moved to 07b)
-- [ ] [05 Short-window level for word-sized ranges](slices/05-short-window-level.md)
+- [x] [05 Short-window level for word-sized ranges](slices/05-short-window-level.md) (closed by probe: no new field)
 - [ ] [06 Ranges and messages](slices/06-ranges-and-messages.md) (06e open)
 - [ ] [07 The remaining gates: publish, or justify the refusal](slices/07-remaining-quality-gates.md) (a, b open)
 - [x] [08 Multicam sync: no new primitive (closed by decision)](slices/08-sync-estimate.md)
@@ -214,9 +213,11 @@ where the product owner set a principle:
   that every evidence operation uses; the CLI's `--wait` reads
   `transcript.render.get` instead (slice 06c). Returning words from prepare
   lost: it would be a special case.
-- **Denoise word loss.** A general `rmsDbfs` field in `audio.measure`
-  (slice 05), plus skill guidance. A dedicated per-word attenuation operation
-  lost: it duplicates the measurement owner.
+- **Denoise word loss.** Skill guidance comparing `waveform.get` buckets on
+  the dry and processed taps. Slice 05's probe showed a whole-word `rmsDbfs`
+  reads 3.4 dB where 20 ms buckets show the 10–16 dB loss, so the field lost:
+  it would duplicate `waveform.get` and hide the loss. A dedicated per-word
+  attenuation operation lost earlier for the same reason.
 - **Which mic recorded what.** Skill guidance using `audio.measure` across
   sources. A loudness summary inside `asset.get` lost: it would start a heavy
   job from a cheap describe call.

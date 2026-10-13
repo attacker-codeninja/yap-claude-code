@@ -61,9 +61,11 @@ bucket per half word, it gives the 3.3 and 16.4 dB halves. A whole-range
 `rmsDbfs` in `audio.measure` would duplicate that owner, and on this word it
 would point away from the loss.
 
-Next step (product owner's call; nothing built): close this slice as "no
-new field". Teach the dry-vs-processed `waveform.get` comparison in slice
-10's skill guidance, alongside the rendered-transcript diff.
+**Resolution (2026-10-13, decided as the product's user): closed with no new
+field.** `waveform.get` stays the one owner of short-window level. Slice 10
+teaches the dry-vs-processed `waveform.get` comparison next to the
+rendered-transcript diff, and slice 11 expects that comparison where the
+baseline did RMS arithmetic outside Yap. The red tests below were not written.
 
 **Red tests first.**
 - `packages/core` measurement-schema tests: `rmsDbfs` is present for a 0.3 s
