@@ -57,3 +57,10 @@ A consequence for later slices: any library closed mid-admission cannot be check
   pre-change receipt. Accepting `[]` would admit a second encoding no writer produces.
 - **Malformed gaps refuse with their own message, "Invalid verified camera gaps"** (04), beside
   the existing "Invalid verified camera support", so a refusal says which field was wrong.
+
+- **The service's native call for `capture.setCamera` gets the public 20 s budget** (06, decided at
+  integration). A shorter internal cap would report `TIMEOUT` while native is still opening the
+  camera, leaving the caller to guess the state. Implemented with the native side (05/06).
+- **Replay identity grows for every take, accepted** (06). A request first sent before the change
+  and replayed after it gets `REQUEST_CONFLICT`; replay receipts are short-lived and are not
+  recordings, so no compatibility is owed.
