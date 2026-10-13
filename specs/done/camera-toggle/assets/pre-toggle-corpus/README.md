@@ -22,18 +22,19 @@ lists every member's type, mode, size and SHA-256, and each archive's own hash.
   revision places the screen, camera and microphone, with replace/undo history and derived
   frame and audio caches.
 
-Physical camera corpus C was not made.
+No corpus was recorded with a physical camera; this Mac lists none.
 
 ## How it was produced
 
 Native, service, CLI and controller-journey sources are those of `a8adbab2`, unchanged through
-`054c6d09`. Builds started on `a8adbab2` with the slice 00 floating-controls UI uncommitted; that UI
-and this spec were committed (`967b6479`..`054c6d09`) while the corpus was produced. None of those
+`054c6d09`. Builds started on `a8adbab2` with the menu pressed state and the floating-controls UI
+uncommitted; they and the spec were committed as `967b6479`, `d35c2d1b` and `054c6d09` while the
+corpus was produced. None of those
 files is compiled into the native worker, service or controller journey. The producer
 (`camera-library-corpus.mjs`, `webcam.mjs --keep-home` and a reply hold in
-`controller-service.mjs` that can hold any operation) exists only at commit `55b98661`, the last
-whose product code is pre-toggle: run the recipe below from a checkout of that commit. Later
-code cannot make this corpus, so the producer is not kept beside the code under test.
+`controller-service.mjs` that can hold any operation) was removed in `d66fbf80`; run it from
+`55b98661`, the last commit whose product code is pre-toggle, using the recipe below from a
+checkout of that commit. Later code cannot make this corpus.
 
 Inputs and binaries (scratch paths, 2026-10-12):
 
@@ -102,4 +103,6 @@ delivered. The manifest's member lists are the `originals.json` of the archive r
 
 [baseline/](baseline/) holds the first run, against this same pre-change build: the A and B
 reports and delivered frames, and the `~/.yap` report (0 recordings, 61,225 members unchanged).
-All three passed. Later runs compare against it.
+All three passed. Compare a later run's frames against it by hand (`cmp` or
+[compare-screenshots](../../../../../.agents/skills/compare-screenshots/SKILL.md)); the gate does
+not read it.

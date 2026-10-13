@@ -16,9 +16,10 @@ record (`054c6d09`..`5af2b3d9`).
 ## Decisions made by the user
 
 - On and off mid-take, any number of times, leaving gaps in the camera source.
-- Any screen take reserves a camera when camera access is already granted: the one picked in
-  the menu, or the system default, even when the camera switch is off at start. Without access
-  nothing is reserved and there is no toggle.
+- A screen take started from the app reserves a camera when camera access is granted: the one
+  picked in the menu, or the system default, even when the camera switch is off at start.
+  Without access it reserves one only if the switch is on, and the start is refused with the
+  permission error. The CLI and MCP reserve the camera named in `cameraDeviceId`.
 - The device is not opened, and its light stays off, until the camera is turned on.
 - No backward compatibility and no migrations, with one exception: recordings that already
   exist, including those saved by release 0.1.33, keep working.
@@ -33,12 +34,12 @@ record (`054c6d09`..`5af2b3d9`).
 
 | Concept | Owner | Shape |
 |---|---|---|
-| Camera availability | The camera receipt (`camera.publication.json`); arithmetic in `CameraAvailability` ([CameraMedia.swift](../../../helpers/mac/Sources/YapCapture/CameraMedia.swift)); TypeScript reads it only through `cameraProofIntervals()` ([evidence.ts](../../../packages/core/src/evidence.ts)) | `support` stays the outer span. Optional `gaps: [{startUs, endUs}]`, omitted when empty. Intervals are support minus gaps. |
-| Run boundaries | `CameraWriter` | Mapping rows carry optional `cameraFrame.run`, omitted when 0. Callbacks while off are logged with disposition `camera-off`. |
+| Camera availability | The camera receipt (`camera.publication.json`); arithmetic in `CameraAvailability` ([CameraMedia.swift](../../../helpers/mac/Sources/YapCapture/CameraMedia.swift)); TypeScript computes intervals only through `cameraProofIntervals()`; [evidence.ts](../../../packages/core/src/evidence.ts) validates gaps on read | `support` stays the outer span. Optional `gaps: [{startUs, endUs}]`, omitted when empty. Intervals are support minus gaps. |
+| Run boundaries | `CameraWriter` (numbering), `CameraFrameMapping` (row form) | Mapping rows carry optional `cameraFrame.run`, omitted when 0. Callbacks while off are logged with disposition `camera-off`. |
 | Toggle operation | [operations.ts](../../../packages/protocol/src/operations.ts) | `capture.setCamera {recordingId, on}` answers like `capture.status`. CLI and MCP get it from the shared operation. |
 | Start state | Capture selection ([capture.ts](../../../packages/protocol/src/capture.ts)) | Optional `cameraAtStart: "on" \| "off"`; absent with a camera means on. |
 | Live camera state | `NativeCapture.companionCamera`, reported as `capture.status` `device.camera` | `{deviceId, state: "on" \| "off"} \| null`. Never stored in the catalog. |
-| Never-used camera | Native publication | Camera `unavailable` with `CAMERA_NOT_TURNED_ON`; the take is still `complete`. |
+| Camera off at stop with nothing recorded | Native publication | Camera `unavailable` with `CAMERA_NOT_TURNED_ON`; the take is still `complete`. |
 | App action | `ControlsAction.setCamera(Bool)` | One action for the menu switch and the floating camera button. |
 
 The mechanics live with their owners: the [native capture README](../../../helpers/mac/Sources/YapCapture/README.md#camera-off-time-is-a-gap)
@@ -125,8 +126,9 @@ its receipt, and deliver frames rendered by this build. Admission must state exa
 own gaps (none for a pre-change take), so the gate also holds for libraries that already contain
 toggled takes. Its inputs are the [pre-toggle corpus](assets/pre-toggle-corpus/README.md): two
 libraries recorded by the pre-change build, with the [baseline](assets/pre-toggle-corpus/baseline/)
-reports and frames of their first run. At the close it passed on both and on a clone of `~/.yap`,
-and the delivered frames were byte-identical to the baseline. Never write to `~/.yap`.
+reports and frames of their first run. At the close the gate passed on corpora A and B, with
+delivered frames matching the baseline (compared by hand), and on a clone of `~/.yap`, which held
+0 recordings. The close-time reports were not kept. Never write to `~/.yap`.
 
 ## Where it lives
 
@@ -170,8 +172,9 @@ Tests and harnesses that pin it:
   (reservation, `cameraAtStart`, live toggle), the [capture-view fixture](../../../apps/macos/tests/fixtures/capture-view.swift)
   (menu switch, pressed tint), [`recording-overlay-shots.mjs`](../../../apps/macos/tests/recording-overlay-shots.mjs)
   with its [fixture](../../../apps/macos/tests/fixtures/recording-overlay.swift) (geometry and
-  the row's exact actions in each camera state), `overlay-clock.test.mjs`,
-  `library-controls.test.mjs`.
+  the row's exact actions in each camera state), [`CapturePresentationTests`](../../../apps/macos/tests/YapControlsTests/CapturePresentationTests.swift)
+  (`runOverlayCameraTests`), `library-controls.test.mjs`, and `overlay-clock.test.mjs` as a
+  geometry regression net for the redesigned row.
 
 ## Where the build departed from the plan
 
@@ -179,8 +182,8 @@ Tests and harnesses that pin it:
   reverted: a take allows 500 turn-ons, so 499 gaps, which fit the original bounds with room to
   spare (a measured 500-run receipt is about 22 KB against 64 KiB and 32 KiB).
 - **A forced key frame starts every run.** Without it, a run starting on a P-frame made the
-  passthrough export copy hidden preroll; at 500 runs the canonical movie grew from 1.1 MB to
-  7.5 MB and publication's scan stalled.
+  passthrough export copy hidden preroll; at 500 runs the canonical movie was 7.5 MB against a
+  1.1 MB raw movie, and publication's scan stalled.
 - **The acquisition window decides what is recorded,** by capture time, not delivery time. A
   late picture acquired while on is kept; one crossing a turn-off, or captured before the current
   turn-on, is logged `camera-off`.
@@ -205,9 +208,9 @@ Tests and harnesses that pin it:
   publication counted as a pending admission.
 - **The real app cannot reserve a camera here** (it lists only native cameras), so the app-level
   proof runs through the fixture-camera controller journey, not the real-app suites.
-- **The corpus producer lives only in history** at `55b98661`, the last commit whose product code
-  is pre-toggle. Later code cannot make the corpus, so the producer was removed from the code
-  under test.
+- **The corpus producer lives only in history.** It was removed in `d66fbf80`; run it from
+  `55b98661`, the last commit whose product code is pre-toggle. Later code cannot make the
+  corpus.
 - **Clock-width regression.** The card redesign cut the clock's reserved width, so a ten-hour
   clock widened the controls. The full run's `overlay-clock.test.mjs` caught it; the clock now
   reserves the width of `00:00:00`, and the overlay shots were redrawn.
@@ -218,9 +221,11 @@ Tests and harnesses that pin it:
 ## Open follow-ups
 
 - **KU6, needs the user.** Every take that reserves a camera writes a mapping row for every screen
-  and microphone callback, about 2.75 MB a minute whether the camera is on or off. A camera turned
-  on in a take longer than about 97 minutes (about 55 with system audio) exceeds the 256 MiB
-  mapping read budget; every reserved take hits the 5 000 000-row cap after about 11 hours. The
+  and microphone callback, about 2.75 MB a minute whether the camera is on or off. In a take
+  whose camera is turned on at all, the mapping exceeds the 256 MiB read budget after at most
+  about 97 minutes (about 55 with system audio), sooner the longer the camera is on; every
+  reserved take hits the 5 000 000-row cap after about 11 hours. Both limits are derived from the
+  code (`CameraMedia.retainMapping`, `CaptureClockIngress`'s `maximumRows`), not observed. The
   recommended change is for the companion ingress (`CaptureClockIngress`) to log only camera
   rows. Built as is; see the [ledger entry](choices.md#ku6-every-take-that-reserves-a-camera-logs-every-screen-and-microphone-callback).
 - **The camera button's look and the floating controls' open polish, needs the user** ([ledger entry](choices.md#the-camera-buttons-look-and-the-floating-controls-open-polish)).
@@ -240,11 +245,13 @@ Tests and harnesses that pin it:
 inside an oval, overflowing it and off centre. The defect had never been rendered with a camera
 (the real-app overlay shots only drive a camera-less take), so it was reproduced by drawing the
 old view with a mock camera picture ([dark](assets/overlay/reported-bug-dark.png),
-[light](assets/overlay/reported-bug-light.png); the yellow border marks the picture's edges): the
-[overlay fixture](../../../apps/macos/tests/fixtures/recording-overlay.swift)'s synthetic 4:3
-frame with a circle in it, which shows squeezing and cropping at a glance. The cause was one
-capsule behind both the picture and the row, plus asymmetric padding. That reproduction set the
-standard the fixture now asserts: centred, rounded, the row's width, cropped not squeezed.
+[light](assets/overlay/reported-bug-light.png)). A one-off script, not kept, hosted the old
+`RecordingOverlayView` from `a8adbab2` with a 16:9 mock picture whose thin yellow border marks
+its edges. The renders show the oval background, the picture's square corners and its
+off-centre placement. The cause was one capsule behind both the picture and the row, plus
+asymmetric padding. That reproduction set the standard the
+[overlay fixture](../../../apps/macos/tests/fixtures/recording-overlay.swift) now asserts:
+centred, rounded, the row's width, cropped not squeezed.
 
 **The final shots** in [assets/overlay/](assets/overlay/) are drawn by
 [`recording-overlay-shots.mjs`](../../../apps/macos/tests/recording-overlay-shots.mjs) from the

@@ -25,9 +25,9 @@ Words used throughout:
   receipt's.
 
 **Review these first:** [every reserved take logs every callback (KU6)](#ku6-every-take-that-reserves-a-camera-logs-every-screen-and-microphone-callback)
-(needs-user), [a toggle's release failure is reported on that toggle](#a-device-release-failure-from-a-turn-off-or-failed-turn-on-belongs-to-that-toggle)
-(sound, corrected, low confidence) and [a crashed take whose camera never recorded recovers as `NO_CAMERA`](#a-crashed-take-whose-camera-recorded-nothing-recovers-as-no_camera)
-(sound, low confidence).
+(needs-user), [a crashed take whose camera never recorded recovers as `NO_CAMERA`](#a-crashed-take-whose-camera-recorded-nothing-recovers-as-no_camera)
+(sound, low confidence) and [a toggle's release failure is reported on that toggle](#a-device-release-failure-from-a-turn-off-or-failed-turn-on-belongs-to-that-toggle)
+(sound, corrected, medium confidence).
 
 Counts: needs-user 2, sound 39, plus 9 trivial calls (end of file).
 
@@ -37,8 +37,8 @@ Counts: needs-user 2, sound 39, plus 9 trivial calls (end of file).
 
 ### KU6: every take that reserves a camera logs every screen and microphone callback
 
-- **When:** `6a5407f5` (a reserved-off camera gets a mapping from the take's start); measured in
-  slice 08 (`0c05c279`).
+- **When:** `6a5407f5` (a reserved-off camera gets a mapping from the take's start); measured by
+  the never-on journey (`70b19317`), recorded in `8c98f911`.
 - **The choice:** Take a 2-hour screen take with the microphone on. The person has granted camera
   access, so the take reserves the default camera, but they never turn it on. The companion
   camera's mapping file is written by the same component that receives every screen and
@@ -53,6 +53,8 @@ Counts: needs-user 2, sound 39, plus 9 trivial calls (end of file).
   any reserved take        -> the ingress fails the take (EVIDENCE_LIMIT) at 5,000,000 rows,
                               about 11 hours at these rates
   ```
+  The row rate was measured; the over-budget refusal and the row cap are derived from the code
+  (`CameraMedia.retainMapping`, `CaptureClockIngress`'s `maximumRows`), not observed.
   Before this feature only takes with the camera on carried a mapping, and those already hit the
   same 256 MiB budget at the same length. Now every screen take by a person who granted camera
   access carries one. The unbuilt alternative: the companion's mapping logs only camera rows,
@@ -98,9 +100,29 @@ Counts: needs-user 2, sound 39, plus 9 trivial calls (end of file).
 
 Ranked least-confident first.
 
+### A crashed take whose camera recorded nothing recovers as `NO_CAMERA`
+
+- **When:** `6a5407f5`.
+- **The choice:** The app crashes during a take whose camera was reserved but never turned on.
+  The camera's directory holds only the mapping, because the camera journal is written with the
+  first picture. The next service runs recovery on that directory. Recovery publishes the camera
+  `unavailable` with `NO_CAMERA` ("the reserved camera recorded no picture") and keeps the
+  mapping. It qualifies only when the directory belongs to a camera and its one member is a
+  regular file named like the mapping. A stray mapping in a screen directory still refuses. The
+  alternative was `CAMERA_NOT_TURNED_ON`, the code a live stop uses. But a crashed directory looks
+  the same whether the camera was never turned on or was lost before its first picture, so
+  recovery states only what it can prove.
+- **The gap:** Slice 05 asked for "an explicit unavailable code" and left which one open.
+- **The reach:** In the CLI's `recording.get`, a person who never used the camera sees a code
+  that reads like a device failure. The app's library treats any unavailable publication as
+  settled, so it shows nothing wrong. Telling the two cases apart would need a durable record of
+  turn-ons, which the README rejected (no journal events).
+- **Verdict:** sound. It claims nothing the directory can't prove.
+- **Confidence:** low.
+
 ### A device-release failure from a turn-off or failed turn-on belongs to that toggle
 
-- **When:** `6a5407f5`; corrected in the commit that rewrote this entry.
+- **When:** `6a5407f5`; corrected in `5af2b3d9`.
 - **The choice:** A person records for 40 minutes and turns the camera off at minute 5. Releasing
   a camera session restores the device's frame-rate settings. If that restore fails, the session
   reports `DEVICE_RESTORE_FAILED`. The camera is off either way, and the failure is answered on
@@ -136,26 +158,6 @@ Ranked least-confident first.
 - **Confidence:** medium. The user chose the corrected decision; whether the release at stop
   should also stop failing the take is left open on purpose.
 
-### A crashed take whose camera recorded nothing recovers as `NO_CAMERA`
-
-- **When:** `6a5407f5`.
-- **The choice:** The app crashes during a take whose camera was reserved but never turned on.
-  The camera's directory holds only the mapping, because the camera journal is written with the
-  first picture. The next service runs recovery on that directory. Recovery publishes the camera
-  `unavailable` with `NO_CAMERA` ("the reserved camera recorded no picture") and keeps the
-  mapping. It qualifies only when the directory belongs to a camera and its one member is a
-  regular file named like the mapping. A stray mapping in a screen directory still refuses. The
-  alternative was `CAMERA_NOT_TURNED_ON`, the code a live stop uses. But a crashed directory looks
-  the same whether the camera was never turned on or was lost before its first picture, so
-  recovery states only what it can prove.
-- **The gap:** Slice 05 asked for "an explicit unavailable code" and left which one open.
-- **The reach:** In the CLI's `recording.get`, a person who never used the camera sees a code
-  that reads like a device failure. The app's library treats any unavailable publication as
-  settled, so it shows nothing wrong. Telling the two cases apart would need a durable record of
-  turn-ons, which the README rejected (no journal events).
-- **Verdict:** sound. It claims nothing the directory can't prove.
-- **Confidence:** low.
-
 ### Camera fixture library A was fenced by filling the job queue
 
 - **When:** `55b98661`; the tool that made it was removed in `d66fbf80`.
@@ -181,7 +183,7 @@ Ranked least-confident first.
   export: segments are copied without re-encoding, with an empty edit for each gap. If a run's
   first picture is a P-frame (a picture encoded as a difference from earlier ones), the export
   must also copy the earlier pictures it depends on as hidden preroll. At 500 runs the canonical
-  movie grew from 1.1 MB to 7.5 MB, and publication's scan stalled at 0% CPU in the media read
+  movie was 7.5 MB against a 1.1 MB raw movie, and publication's scan stalled at 0% CPU in the media read
   path. Now the writer marks the first picture of every run as a key frame
   (`kCMSampleBufferAttachmentKey_ForceKeyFrame`). Each run decodes on its own, and the canonical
   movie is the raw movie's size.
@@ -239,7 +241,7 @@ Ranked least-confident first.
 
 ### "Compatible format" replaces exact format equality; an incompatible turn-on ends its run
 
-- **When:** `6a5407f5`; the run-ending rule added in the commit that rewrote this entry.
+- **When:** `6a5407f5`; the run-ending rule added in `61103421`.
 - **The choice:** A camera is turned off and on again. The new session's format description may
   describe the same format without being byte-equal to the first. The writer used to require
   `CMFormatDescriptionEqual` and would interrupt the take. Now every picture is compared on what
@@ -349,7 +351,8 @@ Ranked least-confident first.
   camera was measured (user decision).
 - **The gap:** Slice 06 set the public wait and left the internal call's deadline at the default.
 - **The reach:** A turn-on slower than 20 s still answers `TIMEOUT` while native may finish
-  turning on. The next `capture.status` shows the truth. Slice 03 may tighten the number.
+  turning on. The next `capture.status` shows the truth. Unmeasured on a device; see Open
+  follow-ups in the README.
 - **Verdict:** sound. One budget, stated once.
 - **Confidence:** medium.
 
