@@ -163,6 +163,22 @@ editorial ideas. Translate them to explicit placement, overlap and advertised
 processing. Picture and sound may intentionally change at different times; track
 that choice and verify both planes. No implicit B-roll or synchronization repair.
 
+## Syncing separate recordings
+
+Yap has no sync operation; derive each offset from evidence:
+1. `transcript.review` each recording over the stretch they share.
+2. Pair distinctive words that occur once in both; the median start-time
+   difference is the offset.
+3. Check it at a second, distant window. A different value means drift: sync
+   each section separately.
+4. To refine, read a short stretch of both with `audio.get` and cross-correlate
+   their envelopes.
+5. Place clips at the explicit offset (group angles with the `angle.declare`
+   edit), converting through each acquisition binding's `sourceToAssetOffsetUs`.
+
+Before choosing which recording carries the dialogue, `audio.measure` every
+candidate over one shared range and listen to each.
+
 ## Captions that survive the composition
 
 Choose cue grouping, case, line length, contrast and safe placement from the

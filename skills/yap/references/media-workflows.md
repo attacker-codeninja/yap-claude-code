@@ -48,8 +48,15 @@ ownership. A read's `range` only filters retained observations. Pin the returned
 preparation, never the latest bounded take. For project reads, pass advertised
 `sourceGenerations` pins to use bounded source evidence. Context observations and
 boundary decisions remain in raw evidence; unowned decoded context is
-`not_observed`, not silence or missing physical media. Inspect this evidence when a
-seam is refused; never repair word timestamps or silently discard a boundary word.
+`not_observed`, not silence or missing physical media.
+
+Transcription decodes overlapping windows, explicit ranges included, and always
+publishes; never hand-chunk a long source to get a transcript. Read the
+generation's issues: `boundary-unresolved` marks a word at a window seam that the
+two windows disagreed on (`published` says whether it reached the transcript),
+`timing-clamped` an estimate past the decoded edge, and `word-dropped` a token
+the engine timed impossibly. Check those words against the audio or the raw
+evidence; never repair word timestamps.
 
 When the installed release advertises `transcript.review`, use it as the
 agent-friendly bounded review operation. It may prepare/download Yap's
@@ -168,6 +175,16 @@ ordinary audio/waveform/spectrogram operations. Unavailable processing still
 refuses; preparation does not make an unverified denoiser or retimer executable.
 Preserve the preparation receipt's unavailable-support information; rendered zero
 samples do not by themselves prove recorded silence.
+
+Normalization and limiting always publish their best result. When a gain-only
+loudness target would push the true peak past its ceiling, the ceiling wins and
+`normalization-target-unmet` reports `peakToLoudnessDb` (true peak minus
+integrated loudness) and `maximumFeasibleTargetLufs` (ceiling minus that ratio).
+Dynamic mode reports its selected attempt and why correction stopped;
+`limiter-ceiling-unmet` gives the measured peak. Accept the result, or re-target:
+ask for at most the feasible loudness, or reduce peaks earlier in the stack. Taps
+upstream of the output stack (dry, after-step) never carry these issues, so
+measure there while choosing targets.
 
 To keep an independent excerpt, discover `audio.extract`. Select an admitted
 asset/stream (and acquisition when applicable) in source time, or name an explicit

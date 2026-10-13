@@ -275,6 +275,11 @@ For optional MCP use, read [MCP delivery](references/mcp.md); CLI is the default
   submitted ID against the saved receipt before diagnosing lost service state.
 - Parse the JSON envelope even on a nonzero exit. `--output` writes delivered
   media or JSON evidence to a file or directory according to the operation.
+- Read `issues` on every result and on its published output before trusting it.
+  Yap produces whatever output it can and lists there what fell short; only an
+  empty list is clean. Deciding whether an issue matters is yours. A refusal
+  (`ok: false`) means no output could exist: a malformed request, a changed
+  input, a resource bound or a missing prerequisite.
 - Edit ranges are half-open in the expected revision and selected anchor domain.
   Media and text source/placement ranges accept exact reduced fractional
   microseconds; preserve returned endpoints instead of rounding. Point queries,
