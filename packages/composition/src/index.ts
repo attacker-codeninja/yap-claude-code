@@ -167,3 +167,12 @@ export type { CaptionSidecarRequest, CaptionCue } from "./caption-sidecars.js";
 
 export { omit } from "./omit.js";
 export type { Omitted } from "./omit.js";
+export {
+  boundedIssues,
+  issueCodes,
+  issueLimit,
+  issueSchema,
+  issuesSchema,
+  type Issue,
+  type IssueCode,
+} from "./issues.js";
