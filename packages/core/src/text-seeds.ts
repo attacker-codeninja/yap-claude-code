@@ -100,11 +100,14 @@ function origin(seed: Seed, clips: readonly AnyClip[]) {
   return invalid("Text seed origin or word support differs from its selected occurrence");
 }
 
-/** New origins need a pre-edit occurrence; inherited origins may outlive that clip. */
+/**
+ * New origins need a pre-edit occurrence; inherited origins may outlive that clip. Adopted
+ * history was seeded from a current generation when authored, so its words may be stale now.
+ */
 export function validateTextSeeds(
   document: Document,
   records: TranscriptStore,
-  evidence?: { origins: readonly AnyClip[]; inherited: readonly Seed[] },
+  evidence?: { origins: readonly AnyClip[]; inherited: readonly Seed[]; adopted?: boolean },
 ): ResourceReference[] {
   const inherited = new Set(evidence?.inherited.map(key));
   const unique = new Map(textSeeds(document).map((seed) => [key(seed), seed]));
@@ -112,7 +115,7 @@ export function validateTextSeeds(
   for (const [identity, seed] of unique) {
     const pinned = !evidence || inherited.has(identity);
     if (!pinned) origin(seed, evidence.origins);
-    const checked = words(seed, records, pinned);
+    const checked = words(seed, records, pinned || evidence.adopted === true);
     resources.set(checked.resource.id, checked.resource);
   }
   return [...resources.values()];

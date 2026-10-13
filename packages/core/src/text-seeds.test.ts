@@ -404,6 +404,30 @@ test.each(["content", "clip", "project"] as const)(
   },
 );
 
+test("adoption keeps captions seeded from a generation that has since gone stale", async () => {
+  const f = await fixture();
+  f.store.seedText(f.projectId, {
+    requestId: "seed",
+    expectedRevisionId: f.authored.revision.id,
+    cues: [f.cue(0)],
+  });
+  const row = f.catalog.catalog
+    .prepare("SELECT execution FROM transcript_generations WHERE generation='words'")
+    .get() as { execution: string };
+  f.catalog.catalog
+    .prepare("UPDATE transcript_generations SET execution=? WHERE generation='words'")
+    .run(JSON.stringify({ ...JSON.parse(row.execution), recipe: "foreign-recipe-v0" }));
+  const before = f.store.list().projects.length;
+  f.store
+    .prepareAdoption({
+      requestId: "stale-package",
+      packageIdentity: "stale",
+      snapshot: f.store.snapshot(f.projectId),
+    })
+    .publish(() => {});
+  expect(f.store.list().projects).toHaveLength(before + 1);
+});
+
 test("adoption rejects rewritten seed word pins before publishing a project", async () => {
   const f = await fixture();
   f.store.seedText(f.projectId, {

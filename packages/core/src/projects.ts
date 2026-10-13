@@ -627,7 +627,7 @@ export class ProjectStore {
           const origins: ProjectRevision["document"]["clips"][number][] = [];
           const inherited: ReturnType<typeof textSeeds> = [];
           for (const revision of revisions) {
-            this.insertRevision(revision, { origins, inherited });
+            this.insertRevision(revision, { origins, inherited, adopted: true });
             origins.push(...revision.document.clips);
             inherited.push(...textSeeds(revision.document));
           }
