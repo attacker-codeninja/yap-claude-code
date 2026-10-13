@@ -172,10 +172,10 @@ canonical controls action stays the same regardless of that placement.
 The source chooser shows a picture of each display or window, taken only while the panel is open
 and once per opening, so a closed panel captures nothing. A display's picture uses the same
 [exclusion](../../helpers/mac/Sources/YapCapture/CaptureExclusion.swift) as a take of it, so it
-shows what would be recorded rather than Yap's own panel. Pictures keep their own shape, each
-card carries its source's name, and the chooser shares the panel's dark surface. The window list
-holds only the windows a person works in: the [window rule](Sources/YapControls/WindowSource.swift)
-leaves out the menu bar, status items, the Dock, wallpaper, slivers and Yap's own panels.
+shows what would be recorded rather than Yap's own panel. The window list, in the chooser and in
+`capture.sources` alike, holds only the windows a person works in; the
+[window rule](Sources/YapControls/WindowSource.swift) owns what that means, and takes Yap's own
+windows from the same exclusion.
 When a recording is available, the popover appends the latest library item below its transport
 actions and routes Play and Copy agent prompt through the same controls actions as Library.
 

@@ -8,10 +8,11 @@ actions. Screen recordings now include the pointer in the captured video.
 
 ## 0.1.35
 
-The capture menu's window and display chooser is fixed. It now matches the menu's
-dark look, shows each source's picture at its own shape with its name beneath, and
-scrolls when there are many windows. The window list shows only the app windows you
-work in, leaving out the menu bar, status items, the Dock and other system surfaces.
+The capture menu's window and display chooser matches the menu's dark look, shows
+each source's picture at its own shape with its name beneath, and scrolls when there
+are many windows. The window list shows only the app windows you work in, leaving out
+the menu bar, status items, the Dock, other system surfaces and Yap's own windows.
+`capture.sources` in the CLI and MCP reports the same shorter list.
 
 ## 0.1.34
 
