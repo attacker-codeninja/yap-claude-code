@@ -871,9 +871,10 @@ final class RecordingControls: NSObject {
         else { selectedMic = 0 }
         let transport = CapturePresentation.transport(for: state)
         let missingCamera = !state.isLive && !state.counting && state.selection.cameraOn && state.selection.cameraDeviceId == nil
+        let liveCamera = RecordingOverlay.camera(for: state)
         var input = CaptureViewInput(selectedSource: mode, selectedSourceChoice: selectedSource,
             sourceChoices: sources, cameraChoices: cameras, selectedCamera: selectedCamera,
-            cameraOn: mode == .cameraOnly || (state.isLive ? state.device?.camera?.state == .on : state.selection.cameraOn),
+            cameraOn: mode == .cameraOnly || (state.isLive ? liveCamera.recording : state.selection.cameraOn),
             microphoneChoices: microphones, selectedMicrophone: selectedMic,
             microphoneOn: state.selection.microphone != .off, systemAudio: state.selection.systemAudio,
             countdown: preferences.countdownBeforeRecording,
@@ -907,7 +908,7 @@ final class RecordingControls: NSObject {
         }
         if state.failure != nil && !state.isLive { input.permissionActions.append(.init(.startOrStop, "Retry", enabled: input.startEnabled)) }
         input.transport = state.isLive ? Array(transport.dropFirst()) : []
-        input.liveCamera = state.isLive && state.device?.camera != nil && !updateFenced
+        if case .companion = liveCamera { input.liveCamera = !updateFenced }
         if let take = state.library.recent.first {
             let pending = state.library.deletions[.recording(take.recordingId)]?.isPending == true
             input.lastRecording = .init(
