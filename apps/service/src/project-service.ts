@@ -149,7 +149,8 @@ function sameTranscriptSpeakerRequest(
 export async function startProjectService(options: {
   home: string;
   worker?: MediaWorker;
-  nativeExecutable?: string;
+  /** The native worker binary; YAP_NATIVE when omitted. Passing undefined means there is none. */
+  nativeExecutable?: string | undefined;
   ffmpeg?: FFmpegInstallation | undefined;
   version?: string | null;
   autoPrepareModels?: boolean;
@@ -277,7 +278,8 @@ export async function startProjectService(options: {
     );
     const capture = new CaptureSourceRead(assets, acquisitions, evidence);
     const sceneRecords = new SceneEvidenceStore(catalog, assetSceneOwner(assets, acquisitions));
-    const nativeExecutable = options.nativeExecutable ?? process.env.YAP_NATIVE;
+    const nativeExecutable =
+      "nativeExecutable" in options ? options.nativeExecutable : process.env.YAP_NATIVE;
     const worker = options.worker ?? mediaWorker({ ...process.env, YAP_NATIVE: nativeExecutable });
     const models = new Models(
       library,

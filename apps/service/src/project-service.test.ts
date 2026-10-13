@@ -1156,6 +1156,7 @@ test("process death after owned copy leaves a retryable job and no visible parti
   const service = await startProjectService({
     home,
     worker: probeFileFixture(home, async () => ({ ok: true, data: metadata })),
+    nativeExecutable: undefined,
   });
   cleanups.push(() => service.close());
   expect(await readdir(join(home, "library", "staging", "assets"))).toEqual([]);
@@ -1260,6 +1261,7 @@ test("large provenance history cannot hide metadata and every origin remains pag
   expect(Buffer.byteLength(JSON.stringify(expected))).toBeGreaterThan(8 * 1024 * 1024);
   const service = await startProjectService({
     home: f.home,
+    nativeExecutable: undefined,
     worker: probeFileFixture(f.home, async () => ({ ok: true, data: metadata })),
   });
   cleanups.push(() => service.close());
@@ -1667,6 +1669,7 @@ test("project export refuses a dangling prepared audio reference before native w
   catalog.close();
   const service = await startProjectService({
     home: f.home,
+    nativeExecutable: undefined,
     worker: async () => {
       throw Error("Export must refuse before native work");
     },
@@ -2085,6 +2088,7 @@ test("a persisted queued voice request reaches its initialized owner after start
   catalog.close();
   const service = await startProjectService({
     home: f.home,
+    nativeExecutable: undefined,
     worker: probeFileFixture(f.home, async () => {
       throw Error("No model execution expected");
     }),
