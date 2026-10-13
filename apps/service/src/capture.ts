@@ -214,6 +214,30 @@ export class CaptureService {
     return this.serialize(() => this.transition(recordingId, "capture.resume"));
   }
 
+  /**
+   * Turns a live take's reserved companion camera on or off. This is not a lifecycle transition:
+   * nothing is stored, and native answers with its device state, which carries the camera's.
+   */
+  setCamera(recordingId: string, on: boolean) {
+    return this.serialize(async () => {
+      const recording = this.store.get(recordingId);
+      if (recording.state !== "recording" && recording.state !== "paused")
+        throw new CatalogError(
+          "INVALID_STATE",
+          `A ${recording.state} take cannot turn its camera ${on ? "on" : "off"}`,
+          { state: recording.state },
+        );
+      if (recording.camera === null)
+        throw new CatalogError("CAMERA_NOT_RESERVED", "This take reserved no companion camera", {
+          recordingId,
+        });
+      const device = captureDeviceSchema.parse(
+        await this.ask("capture.setCamera", { recordingId, on }),
+      );
+      return { device, recording: this.store.get(recordingId) };
+    });
+  }
+
   stop(recordingId: string): Promise<Recording> {
     return this.serialize(async () => {
       const recording = this.store.get(recordingId);
@@ -814,6 +838,8 @@ function allocationArguments(
     selection.systemAudio,
     selection.microphoneDeviceId ?? null,
     selection.cameraDeviceId ?? null,
+    // Absent means "on", so only a different start state is a different take.
+    selection.cameraDeviceId === undefined ? null : (selection.cameraAtStart ?? "on"),
   ]);
 }
 

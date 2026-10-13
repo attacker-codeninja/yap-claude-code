@@ -6,6 +6,17 @@
       "name": "capture.start",
       "params": { "requestId": "app-start", "source": { "kind": "window", "windowId": 7 } }
     },
+    {
+      "name": "capture.start",
+      "params": {
+        "requestId": "app-start-camera-off",
+        "source": { "kind": "display", "displayId": 1 },
+        "cameraDeviceId": "camera-1",
+        "cameraAtStart": "off"
+      }
+    },
+    { "name": "capture.setCamera", "params": { "recordingId": "take-1", "on": true } },
+    { "name": "capture.setCamera", "params": { "recordingId": "take-1", "on": false } },
     { "name": "capture.pause", "params": { "recordingId": "take-1" } },
     { "name": "capture.resume", "params": { "recordingId": "take-1" } },
     { "name": "capture.stop", "params": { "recordingId": "take-1" } },
@@ -56,6 +67,38 @@
         "sequence": 4,
         "state": "complete",
         "sourceDurationUs": 1000000
+      }
+    }
+  ],
+  "statuses": [
+    {
+      "id": "status-idle",
+      "status": {
+        "state": "idle",
+        "recordingId": null,
+        "sourceId": null,
+        "elapsedUs": null,
+        "selection": null,
+        "camera": null,
+        "permissions": { "screen": true, "microphone": "authorized", "camera": "authorized" }
+      }
+    },
+    {
+      "id": "status-camera-off",
+      "status": {
+        "state": "recording",
+        "recordingId": "take-1",
+        "sourceId": "source-1",
+        "elapsedUs": 1000000,
+        "selection": {
+          "source": { "kind": "display", "displayId": 1 },
+          "microphone": true,
+          "systemAudio": false,
+          "cameraDeviceId": "camera-1",
+          "cameraAtStart": "off"
+        },
+        "camera": { "deviceId": "camera-1", "state": "off" },
+        "permissions": { "screen": true, "microphone": "authorized", "camera": "authorized" }
       }
     }
   ]

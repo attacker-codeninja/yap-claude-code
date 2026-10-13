@@ -39,6 +39,11 @@ export const captureSelectionSchema = z
     systemAudio: z.boolean().default(false),
     microphoneDeviceId: id.optional(),
     cameraDeviceId: id.max(256).optional(),
+    /**
+     * Whether the companion camera records from the first frame. Absent with a companion camera
+     * means "on"; admission never fills it in, so a caller's omission stays visible.
+     */
+    cameraAtStart: z.enum(["on", "off"]).optional(),
   })
   .superRefine((selection, context) => {
     if (selection.source.kind === "camera" && selection.cameraDeviceId !== undefined) {
@@ -46,6 +51,13 @@ export const captureSelectionSchema = z
         code: "custom",
         path: ["cameraDeviceId"],
         message: "A primary camera cannot also select a companion camera.",
+      });
+    }
+    if (selection.cameraAtStart !== undefined && selection.cameraDeviceId === undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["cameraAtStart"],
+        message: "A camera start state needs a selected companion camera.",
       });
     }
   });
@@ -122,6 +134,9 @@ export const capturePermissionsSchema = z
  * The device state native owns. The catalog stores what this reports; it derives nothing.
  * `elapsedUs` is the running take's playback time, read from the capture clock that writes its
  * media, so it omits paused time and freezes while paused. Nothing else derives elapsed time.
+ * `camera` is the live state of the take's reserved companion camera, non-null exactly while
+ * native holds a take with one. It is never stored: turning the camera on or off is not a
+ * lifecycle transition, and the off time is recorded only as gaps in the camera source.
  */
 export const captureDeviceSchema = z
   .object({
@@ -130,6 +145,10 @@ export const captureDeviceSchema = z
     sourceId: id.nullable(),
     elapsedUs: z.int().nonnegative().nullable(),
     selection: captureSelectionSchema.nullable(),
+    camera: z
+      .object({ deviceId: id.max(256), state: z.enum(["on", "off"]) })
+      .strict()
+      .nullable(),
     permissions: capturePermissionsSchema,
   })
   .strict();

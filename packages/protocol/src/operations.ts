@@ -1455,6 +1455,15 @@ export const operationSchema = z.discriminatedUnion("operation", [
     .strict()
     .describe("Resume the named take; an already recording take answers with its current state."),
   z
+    .object({
+      operation: z.literal("capture.setCamera"),
+      params: z.object({ recordingId: id, on: z.boolean() }).strict(),
+    })
+    .strict()
+    .describe(
+      "Turn the named live screen take's reserved camera on or off, any number of times. Off time is a gap in the camera source, never a held picture. Setting the current state answers with it. Answers like capture.status.",
+    ),
+  z
     .object({ operation: z.literal("capture.stop"), params: recording })
     .strict()
     .describe(
@@ -1560,6 +1569,8 @@ const waits: Partial<Record<OperationName, number>> = {
   "capture.status": nativeCall,
   "capture.pause": nativeCall,
   "capture.resume": nativeCall,
+  // Turning a camera on opens the device cold, behind any control call already in the queue.
+  "capture.setCamera": 2 * nativeCall,
   // Recovery is acknowledged; only native termination and authoritative quiet inspection wait here.
   "capture.cancel": 2 * nativeCall,
   "capture.stop": 2 * nativeCall,

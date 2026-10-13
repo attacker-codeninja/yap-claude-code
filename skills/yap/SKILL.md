@@ -247,7 +247,12 @@ outcomes; choose project layout and placement through explicit editing operation
 An agent-led recording can prepare the target browser/app, give the user a ready
 cue, and invoke `capture.start` with the selected source when authorized. Use
 `capture.pause`, `capture.resume` and `capture.stop` for requested control; await
-finalization before treating the recording as ready media.
+finalization before treating the recording as ready media. A screen take's
+companion camera can start off (`cameraAtStart`) and be turned on and off with
+`capture.setCamera` only when asked; `capture.status` reports its live state. Off
+time is a gap in the camera source, never a held picture. A refused turn-on leaves
+the camera off and the take recording, and a camera never turned on is reported as
+unavailable while the screen take still completes.
 
 ## Task references
 

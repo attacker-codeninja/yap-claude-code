@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   ARTIFACT_CHUNK_BYTES,
+  captureDeviceSchema,
   captureSelectionSchema,
   captureReportSchema,
   nativeStartSchema,
@@ -14,6 +15,7 @@ import {
 type AppCaptureContract = {
   operations: { name: string; params: Record<string, unknown> }[];
   reports: { id: string; report: unknown }[];
+  statuses: { id: string; status: Record<string, unknown> }[];
 };
 
 describe("native operation envelope", () => {
@@ -38,6 +40,13 @@ it("keeps app capture controls in the public catalog and decodes lifecycle recei
     const report = captureReportSchema.parse(value);
     const response = responseSchema.parse({ id, ok: true, data: report });
     expect(response).toMatchObject({ id, ok: true, data: { state: report.state } });
+  }
+
+  // Live camera state crosses the boundary on every status; a peer that omits it is refused.
+  for (const { id, status } of fixture.statuses) {
+    expect(captureDeviceSchema.parse(status), id).toEqual(status);
+    const { camera: _omitted, ...withoutCamera } = status;
+    expect(captureDeviceSchema.safeParse(withoutCamera).success, id).toBe(false);
   }
 });
 
@@ -175,6 +184,28 @@ describe("capture selection", () => {
           outputDirectory: "/tmp/source",
           source: { kind: "camera", deviceId: "primary" },
           ...companion,
+        }).success,
+      ).toBe(false);
+    }
+  });
+  it("states a companion camera's start state only beside a companion camera", () => {
+    const companion = { source, cameraDeviceId: "camera-1" };
+    expect(captureSelectionSchema.parse({ ...companion, cameraAtStart: "off" })).toMatchObject({
+      cameraAtStart: "off",
+    });
+    // Absent keeps today's meaning and is never filled in by admission.
+    expect(captureSelectionSchema.parse(companion)).not.toHaveProperty("cameraAtStart");
+    for (const selection of [
+      { source, cameraAtStart: "off" },
+      { source, cameraAtStart: "on" },
+      { source: { kind: "camera", deviceId: "primary" }, cameraAtStart: "off" },
+      { ...companion, cameraAtStart: "paused" },
+    ]) {
+      expect(captureSelectionSchema.safeParse(selection).success).toBe(false);
+      expect(
+        operationSchema.safeParse({
+          operation: "capture.start",
+          params: { requestId: "r", ...selection },
         }).success,
       ).toBe(false);
     }

@@ -32,7 +32,8 @@ let service,
   sequence = 0,
   take = null,
   deviceState = "idle",
-  selection = null;
+  selection = null,
+  camera = null;
 const privateReplies = new Map();
 const worker = async (operation, params, options) => {
   report.workerCalls.push(operation);
@@ -46,15 +47,18 @@ const worker = async (operation, params, options) => {
     return {
       ok: true,
       data: {
+        ...(params.sourceAuthority && { verifiedSourceAuthority: params.sourceAuthority.source }),
         file: params.output,
         journal: "capture.journal.jsonl",
         header,
+        originHostUs: 0,
+        completion: { sequence: 2, state: "complete", durationUs: 100 },
         cursorSamples: 0,
         geometryRecords: 0,
         displaySpaces: 0,
         pauseEvents: 0,
         audioIntervals: 0,
-        lastSequence: 0,
+        lastSequence: 2,
         incompleteTail: false,
         finished: true,
         bytes: 0,
@@ -116,13 +120,18 @@ async function start() {
       const { operation, params } = message.request;
       report.controllerCalls.push({ operation, params });
       let data;
-      if (operation === "capture.status")
+      if (operation === "capture.setCamera") {
+        assert.equal(params.recordingId, take?.recordingId);
+        camera.state = params.on ? "on" : "off";
+      }
+      if (operation === "capture.status" || operation === "capture.setCamera")
         data = {
           state: deviceState,
           recordingId: take?.recordingId ?? null,
           sourceId: take?.sourceId ?? null,
           elapsedUs: take ? 0 : null,
           selection,
+          camera: camera && { ...camera },
           permissions: { screen: true, microphone: "authorized", camera: "not_determined" },
         };
       else {
@@ -132,7 +141,12 @@ async function start() {
             source: params.source,
             microphone: params.microphone,
             systemAudio: params.systemAudio,
+            ...(params.cameraDeviceId && { cameraDeviceId: params.cameraDeviceId }),
+            ...(params.cameraAtStart && { cameraAtStart: params.cameraAtStart }),
           };
+          camera = params.cameraDeviceId
+            ? { deviceId: params.cameraDeviceId, state: params.cameraAtStart ?? "on" }
+            : null;
           sequence = 0;
           assert.equal(
             params.outputDirectory,
@@ -226,14 +240,47 @@ try {
   await call(
     "mcp",
     "capture.start",
-    { ...params, cameraDeviceId: "not-exposed" },
-    "INVALID_PARAMS",
+    { ...params, cameraDeviceId: "other-take" },
+    "REQUEST_CONFLICT",
   );
   const identity = { recordingId: allocated.recordingId };
+  await call("cli", "capture.setCamera", { ...identity, on: true }, "CAMERA_NOT_RESERVED");
+  await call("mcp", "capture.setCamera", { ...identity, on: true }, "CAMERA_NOT_RESERVED");
   assert.equal((await call("mcp", "capture.pause", identity)).state, "paused");
   assert.equal((await call("cli", "capture.resume", identity)).state, "recording");
   assert.equal((await call("cli", "capture.stop", identity)).state, "finalizing");
-  const settled = { ...take, sequence: ++sequence, state: "complete", sourceDurationUs: 100 };
+  // Native publishes the primary's authority with its terminal report; the bytes it names arrive
+  // only later, so admission first fails on missing media and then succeeds on retry.
+  const journal = JSON.stringify({ sessionID: allocated.sourceId });
+  const video = "scripted public capture bytes";
+  const sha256 = (value) => createHash("sha256").update(value).digest("hex");
+  const published = {
+    kind: "primary",
+    sourceId: allocated.sourceId,
+    sourceDurationUs: 100,
+    originHostUs: 0,
+    journal: {
+      file: "source.journal.jsonl",
+      bytes: Buffer.byteLength(journal),
+      sha256: sha256(journal),
+      lastSequence: 2,
+      layout: 2,
+    },
+    members: { "video.mov": { bytes: String(Buffer.byteLength(video)), sha256: sha256(video) } },
+  };
+  const settled = {
+    ...take,
+    sequence: ++sequence,
+    state: "complete",
+    sourceDurationUs: 100,
+    publication: {
+      generation: "public-capture",
+      sourceId: allocated.sourceId,
+      inputsClosed: true,
+      primary: { state: "published", source: published },
+      camera: null,
+    },
+  };
   const answer = new Promise((resolve) => {
     const id = randomUUID();
     privateReplies.set(id, resolve);
@@ -247,17 +294,17 @@ try {
   assert.equal((await answer).ok, true);
   take = null;
   selection = null;
+  camera = null;
   deviceState = "idle";
   const failed = await waitState(allocated.recordingId, "failed");
   const admitted = failed.sourceAdmissions[0];
   assert.equal(admitted.job.errorCode, "NOT_FOUND");
   assert.deepEqual(await call("mcp", "capture.stop", identity), failed);
   const source = join(home, "library", "recordings", allocated.recordingId, "source");
-  await writeFile(
-    join(source, "capture.journal.jsonl"),
-    JSON.stringify({ sessionID: allocated.sourceId }),
-  );
-  await writeFile(join(source, "video.mov"), "scripted public capture bytes");
+  await writeFile(join(source, "capture.journal.jsonl"), journal);
+  await writeFile(join(source, "source.journal.jsonl"), journal);
+  await writeFile(join(source, "source.publication.json"), JSON.stringify(published));
+  await writeFile(join(source, "video.mov"), video);
   assert.deepEqual(
     (await call("cli", "recording.get", identity)).sourceAdmissions,
     failed.sourceAdmissions,
@@ -284,6 +331,32 @@ try {
     acquisition,
   );
   assert.deepEqual((await call("cli", "project.list")).projects, []);
+  // A reserved camera that starts off is turned on and off through both public adapters.
+  const companion = await call("cli", "capture.start", {
+    requestId: "public-camera-toggle",
+    source: { kind: "display", displayId: 1 },
+    cameraDeviceId: "camera-1",
+    cameraAtStart: "off",
+  });
+  const cameraTake = { recordingId: companion.recordingId };
+  assert.deepEqual((await call("mcp", "capture.status")).device.camera, {
+    deviceId: "camera-1",
+    state: "off",
+  });
+  const turnedOn = await call("mcp", "capture.setCamera", { ...cameraTake, on: true });
+  assert.deepEqual(turnedOn.device.camera, { deviceId: "camera-1", state: "on" });
+  assert.equal(turnedOn.recording.recordingId, companion.recordingId);
+  const turnedOff = await call("cli", "capture.setCamera", { ...cameraTake, on: false });
+  assert.deepEqual(turnedOff.device.camera, { deviceId: "camera-1", state: "off" });
+  assert.deepEqual(
+    report.controllerCalls
+      .filter((value) => value.operation === "capture.setCamera")
+      .map((value) => value.params),
+    [
+      { ...cameraTake, on: true },
+      { ...cameraTake, on: false },
+    ],
+  );
   report.checks = {
     allocated,
     failed,
@@ -291,6 +364,7 @@ try {
     acquisition,
     donorFreeReopen: true,
     noAutomaticProject: true,
+    cameraToggle: { turnedOn: turnedOn.device.camera, turnedOff: turnedOff.device.camera },
   };
   report.passed = true;
 } finally {

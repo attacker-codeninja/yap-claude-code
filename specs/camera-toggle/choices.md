@@ -136,3 +136,27 @@ deterministic; before it, recovery depended on where the fragment happened to en
 - **The 32 KiB normalized-receipt bound is checked only by core** (02, review finding). A 499-gap
   receipt with 10-digit microsecond endpoints is about 26-29 KB with the rest of the receipt, so it
   fits; slice 08 measures a real one.
+
+- **`cameraAtStart` is never defaulted by admission (06).** Absent stays absent through
+  `capture.start`, `nativeStart` and `device.selection`; only replay identity and native read
+  absent as `"on"`. Why: the selection echoes what the caller sent, and a default inside the schema
+  would make every companion selection carry the field. Open: whether native should echo the
+  resolved state instead.
+- **Replay identity grows by one element for every take (06).** `allocationArguments` appends
+  `null` for takes without a companion camera and the resolved start state for takes with one. A
+  request ID first sent before this change and replayed after it is refused with
+  `REQUEST_CONFLICT`. Accepted: replay receipts are short-lived request identity, not recordings,
+  and the user's decision allows no compatibility shims beyond existing recordings. Open: append
+  only for companion takes if old receipts matter.
+- **Service refusal order (06).** `setCamera` checks, in order: the take exists (`NOT_FOUND`), is
+  `recording` or `paused` (else `INVALID_STATE` with `details.state`), and reserved a camera (else
+  `CAMERA_NOT_RESERVED`). It does not check that native's answer names the same take; native
+  refuses another take itself.
+- **The native call deadline stays 10 s (06).** The public wait is `2*nativeCall`, but the service's
+  call to native is still bounded by the control channel's single per-call deadline. A cold
+  turn-on slower than 10 s answers `TIMEOUT` while native may still finish it. Open: give
+  `capture.setCamera` its own control-call deadline if slice 03 or 05 measures a slower start.
+- **The coordination harness was stale before this slice (06).** It expected a companion
+  `cameraDeviceId` to be refused (`INVALID_PARAMS`), and its terminal report carried no source
+  publication, so the take was never admitted. Fixed both: a different camera on a reused request
+  ID is `REQUEST_CONFLICT`, and the report now publishes the primary's authority.

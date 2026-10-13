@@ -1150,6 +1150,13 @@ export async function startProjectService(options: {
                 await requireCaptureControl().resume(operation.params.recordingId),
               ),
             };
+          case "capture.setCamera": {
+            const { device, recording } = await requireCaptureControl().setCamera(
+              operation.params.recordingId,
+              operation.params.on,
+            );
+            return { ok: true, data: { device, recording: describeCapture(recording) } };
+          }
           case "capture.stop":
             return {
               ok: true,
