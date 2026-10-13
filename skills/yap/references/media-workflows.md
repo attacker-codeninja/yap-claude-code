@@ -286,8 +286,11 @@ The text box is a transparent source raster. Set an explicit geometry rectangle
 when its font pixels must map one-to-one to output pixels; ordinary fitting may
 scale it. Inspect the returned layout and the actual `frame.get` PNG for clipping,
 glyph coverage and contrast. A font name or echoed string does not prove visible
-text. Unsupported fallback or missing glyphs must be corrected by explicitly
-choosing another admitted face or literal. PNG output preserves canvas alpha;
+text. When the pinned face lacks a character, the frame still renders and reports
+it: `font-substituted` when another installed face drew it, `glyph-missing` when a
+placeholder box was drawn. Each names the requested face, the face used and the
+code points. Keeping that output or choosing another admitted face or literal is
+your call. PNG output preserves canvas alpha;
 H.264 preview/export still requires opaque final pixels, including timeline gaps
 and output processing. Verify text after structural edits and package relocation.
 

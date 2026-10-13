@@ -726,3 +726,91 @@ test("failed preview output is reclaimed and requires explicit same-revision ret
     JSON.parse(await readFile(ready.published!.preview.file, "utf8")).manifest.canvas,
   ).toMatchObject({ width: 160, height: 96 });
 });
+
+test("a movie whose text fell back to another face publishes with font issues", async () => {
+  let fallbacks: (clipId: string) => unknown[] = () => [];
+  let clipId = "";
+  const f = await fixture({
+    ...renderer,
+    async render(request, signal) {
+      return { ...(await renderer.render(request, signal)), textFallbacks: fallbacks(clipId) };
+    },
+  });
+  const fontPath = join(f.home, "pinned.ttf");
+  await writeFile(fontPath, "pinned font bytes");
+  const font = await f.assets.import(fontPath, { kind: "import" }, async () => ({
+    originUs: 0,
+    streams: [],
+    fontFaces: [{ postScriptName: "Pinned", familyName: "Pinned" }],
+  }));
+  const placed = f.projects.apply(f.projectId, {
+    requestId: "caption",
+    expectedRevisionId: f.projects.revision(f.projectId).id,
+    operations: [
+      { operation: "track.add", track: { kind: "video", order: 1 }, label: "captions" },
+      {
+        operation: "place",
+        label: "caption",
+        clip: {
+          trackId: { label: "captions" },
+          source: {
+            kind: "text",
+            text: "A\u{1F600}",
+            font: { assetId: font.id, postScriptName: "Pinned" },
+            width: 160,
+            height: 40,
+            size: 20,
+            color: "#ffffffff",
+            alignment: "left",
+            wrap: true,
+          },
+          placement: { kind: "project", range: { startUs: 0, endUs: 1000000 } },
+        },
+      },
+    ],
+  });
+  clipId = placed.edit.labels["caption"]!;
+  fallbacks = (id) => [
+    { clipId: id, face: "AppleColorEmoji", substituted: [0x1f600], missing: [] },
+  ];
+  await f.preview.request({ projectId: f.projectId });
+  await f.jobs.idle();
+  const ready = await f.preview.request({ projectId: f.projectId });
+  expect(ready.reason).toBeNull();
+  expect(ready.state).toBe("ready");
+  expect(ready.published!.issues).toEqual([
+    {
+      code: "font-substituted",
+      message: expect.stringContaining("U+1F600"),
+      evidence: {
+        clipId,
+        requested: { assetId: font.id, postScriptName: "Pinned" },
+        used: "AppleColorEmoji",
+        codePoints: [0x1f600],
+      },
+    },
+  ]);
+
+  // A report for a clip the movie has no text for is a malformed receipt, not an issue.
+  fallbacks = () => [
+    {
+      clipId: f.placed.edit.labels["clip"]!,
+      face: "LastResort",
+      substituted: [],
+      missing: [0xffff],
+    },
+  ];
+  const other = f.replaceRenderer({
+    ...renderer,
+    implementationId: "fixture-movie-unknown-clip",
+    async render(request, signal) {
+      return { ...(await renderer.render(request, signal)), textFallbacks: fallbacks(clipId) };
+    },
+  });
+  await other.request({ projectId: f.projectId });
+  await f.jobs.idle();
+  expect(await other.request({ projectId: f.projectId })).toMatchObject({
+    state: "failed",
+    published: null,
+  });
+});

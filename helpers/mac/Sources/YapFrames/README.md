@@ -54,7 +54,11 @@ a complete head silhouette, and it carries no person identity or largest-face
 selection. This is evidence for the caller; it never changes composition or
 framing.
 
-Native text retains its literal UTF-16 and imported font identity. Glyph-path
+Native text retains its literal UTF-16 and imported font identity. Where the
+pinned face lacks a character, the platform's per-character fallback is drawn and
+reported, never refused: each receipt names the faces used and the code points
+they drew, or drew as a placeholder box. A missing face, a changed font file or
+unmeasurable glyphs still refuse with their own codes. Glyph-path
 bounds own vertical placement; decorations retain separate bounds and clipping.
 Rounded stroke joins keep acute glyph corners inside the reported half-width
 expansion instead of producing unreported sharp spikes.

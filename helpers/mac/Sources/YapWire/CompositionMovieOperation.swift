@@ -35,6 +35,7 @@ enum CompositionMovieOperation {
         let encodedAudio: EncodedAudio?
         let bytes: Int
         let peakResidentBytes: Int64
+        let textFallbacks: [CompositionPictureExecutor.TextFallbackReport]?
     }
     static func execute(_ input: [String: Any]) async throws -> Result {
         let params = try WireRequest.compositionParameters(input)
@@ -122,6 +123,6 @@ enum CompositionMovieOperation {
             durationUs: rendered.durationUs,
             width: rendered.width, height: rendered.height, frameCount: rendered.frames,
             audio: retained?.report ?? generated?.report, encodedAudio: encodedAudio, bytes: bytes,
-            peakResidentBytes: ProcessResources.peakResidentBytes())
+            peakResidentBytes: ProcessResources.peakResidentBytes(), textFallbacks: rendered.textFallbacks)
     }
 }

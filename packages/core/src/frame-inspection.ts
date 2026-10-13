@@ -31,12 +31,20 @@ import {
   type ProcessingTap,
   type CompiledFrame,
   omit,
+  type Issue,
 } from "@yap/composition";
 import type { ProjectStore } from "./projects.js";
 import type { AcquisitionStore } from "./acquisitions.js";
 import { selectSource, sourceSelectionSchema, type SourceSelection } from "./source-selection.js";
 import { compositionAsset, type AssetStore } from "./assets.js";
-import type { JobQueue, JobExecution, JobOwner, Job, JobAdmission } from "./jobs.js";
+import type {
+  JobQueue,
+  JobExecution,
+  JobOwner,
+  Job,
+  JobAdmission,
+  StagedJobResult,
+} from "./jobs.js";
 import type { DerivedCache } from "./cache.js";
 import { CatalogError } from "./catalog.js";
 import { submitCachedDerivative } from "./cached-derivative.js";
@@ -47,6 +55,7 @@ import {
   type ImmutableAssetBinding,
   type ProjectRenderSupport,
 } from "./project-window.js";
+import { textFallbackIssues, textFallbacksSchema } from "./text-fallback.js";
 
 const time = z.int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 const selectedPicture = {
@@ -178,6 +187,8 @@ const nativeProjectReceiptSchema = pictureDeliverySchema.extend({
       ]),
     ]),
   ),
+  /** Omitted when every text drew with its pinned face, as in every receipt before fallback published. */
+  textFallbacks: textFallbacksSchema.optional(),
 });
 const projectReceiptSchema = nativeProjectReceiptSchema.extend({
   frame: z.strictObject(compiledFrameSchema.shape).omit({ visual: true }),
@@ -966,14 +977,14 @@ export class MediaFrameInspection {
     });
     return this.project.renderer.pointers?.admit(plan.pointerSources) ?? { state: "ready" };
   }
-  async execute(execution: JobExecution): Promise<string> {
+  async execute(execution: JobExecution): Promise<string | StagedJobResult> {
     return execution.job.target.kind === "project"
       ? this.executeProject(execution)
       : JSON.parse(execution.job.input).kind === "image"
         ? this.executeImage(execution)
         : this.executeSource(execution);
   }
-  private async executeProject({ job, signal }: JobExecution): Promise<string> {
+  private async executeProject({ job, signal }: JobExecution): Promise<StagedJobResult> {
     const parsed = optionsSchema.safeParse(JSON.parse(job.input));
     if (job.target.kind !== "project" || job.artifact !== "frame" || !parsed.success)
       throw new CatalogError("UNSUPPORTED_JOB", "Picture job does not name a project frame");
@@ -987,7 +998,8 @@ export class MediaFrameInspection {
       faceObservations: parsed.data.faceObservationRequest,
     });
     const projectId = job.target.projectId;
-    return this.publish({ kind: "project", projectId }, signal, async (output) => {
+    let issues: Issue[] = [];
+    const result = await this.publish({ kind: "project", projectId }, signal, async (output) => {
       const render = () =>
         this.project.renderer.render(
           {
@@ -1014,8 +1026,10 @@ export class MediaFrameInspection {
       const value = validateProjectFrameReceipt(receipt, plan, output, plan.options.maxLongEdge);
       validatePictureObservations(value, plan.options.observationRequest);
       validateFaceObservations(value, plan.options.faceObservationRequest);
+      issues = pictureTextIssues(value);
       return { ...value, ...plan.options, projectId, revisionId: plan.window.manifest.revisionId };
     });
+    return { result, issues };
   }
 }
 
@@ -1067,6 +1081,11 @@ function checkPictureReceipt(
   maxLongEdge: number,
 ) {
   const { pictures } = value;
+  // A line may name the pinned face or a face its clip's fallback report names, and nothing else.
+  const fallbackFaces = (clipId: string) =>
+    (value.textFallbacks ?? [])
+      .filter((entry) => entry.clipId === clipId)
+      .map((entry) => entry.face);
   if (
     value.file !== output ||
     !isDeepStrictEqual(value.frame, expected) ||
@@ -1098,7 +1117,14 @@ function checkPictureReceipt(
             picture.layout.lines.some(
               (line) =>
                 line.text !== layer.text.text.slice(line.range[0], line.range[0] + line.range[1]) ||
-                line.fonts.some((font) => font !== layer.text.font.postScriptName),
+                line.fonts.some(
+                  (font) =>
+                    font !== layer.text.font.postScriptName &&
+                    !fallbackFaces(picture.clipId).includes(font),
+                ),
+            ) ||
+            fallbackFaces(picture.clipId).some(
+              (face) => !picture.layout.lines.some((line) => line.fonts.includes(face)),
             ))) ||
         picture.kind !== layer.kind ||
         (picture.kind === "video" &&
@@ -1127,6 +1153,17 @@ function checkPictureReceipt(
     )
   )
     throw new CatalogError("INVALID_RESPONSE", "Picture receipt changed its source clock");
+  pictureTextIssues(value);
+}
+
+/** The font fallback issues a picture publishes, derived from its retained receipt alone. */
+export function pictureTextIssues(value: Pick<PictureReceipt, "pictures" | "textFallbacks">) {
+  return textFallbackIssues(value.textFallbacks, (clipId) => {
+    const picture = value.pictures.find((candidate) => candidate.clipId === clipId);
+    return picture?.kind === "text" && picture.status === "available"
+      ? picture.layout.font
+      : undefined;
+  });
 }
 
 /** Measurement admission binds the receipt to the exact requested masks and delivered geometry. */

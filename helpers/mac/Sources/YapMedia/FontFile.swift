@@ -26,15 +26,17 @@ public enum FontFile {
     public static func load(_ binding: FontAssetBinding, postScriptName: String, size: Double) throws -> CTFont {
         let data = try Data(contentsOf: URL(fileURLWithPath: binding.path), options: .mappedIfSafe)
         let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
-        guard digest == binding.assetId else { throw NativeFailure("UNSUPPORTED_MEDIA", "FONT_CHANGED") }
+        guard digest == binding.assetId else {
+            throw NativeFailure("FONT_CHANGED", "The font file no longer matches its imported identity.")
+        }
         let matches = try descriptors(data).filter {
             CTFontDescriptorCopyAttribute($0, kCTFontNameAttribute) as? String == postScriptName
         }
-        guard matches.count == 1 else { throw NativeFailure("UNSUPPORTED_MEDIA", "FONT_UNAVAILABLE: \(postScriptName)") }
-        let font = CTFontCreateWithFontDescriptor(matches[0], size, nil)
-        guard CTFontCopyPostScriptName(font) as String == postScriptName else {
-            throw NativeFailure("UNSUPPORTED_MEDIA", "FONT_SUBSTITUTED: \(CTFontCopyPostScriptName(font))")
+        guard matches.count == 1 else {
+            throw NativeFailure("FONT_UNAVAILABLE", "The font file has no face named \(postScriptName).")
         }
-        return font
+        // If CoreText still resolves another face, the text raster draws with it and reports every
+        // code point as substituted; it never refuses for it.
+        return CTFontCreateWithFontDescriptor(matches[0], size, nil)
     }
 }

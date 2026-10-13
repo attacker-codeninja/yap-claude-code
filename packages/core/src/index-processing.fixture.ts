@@ -40,6 +40,8 @@ export async function fixture(
     changingScenes?: boolean;
     projectImplementationId?: string;
     barrier?: ReturnType<typeof gate>;
+    /** Text layers render as native does when one code point fell back to another face. */
+    textFallback?: { face: string; codePoint: number };
   } = {},
 ) {
   const home = await mkdtemp("/tmp/source-index-processing-");
@@ -155,7 +157,49 @@ export async function fixture(
               decodedSamples: frame.layers.length,
               readerOpens: frame.layers.length,
               frame,
+              ...(options.textFallback && frame.layers.some((layer) => layer.kind === "text")
+                ? {
+                    textFallbacks: frame.layers.flatMap((layer) =>
+                      layer.kind === "text"
+                        ? [
+                            {
+                              clipId: layer.clipId,
+                              face: options.textFallback!.face,
+                              substituted: [options.textFallback!.codePoint],
+                              missing: [],
+                            },
+                          ]
+                        : [],
+                    ),
+                  }
+                : {}),
               pictures: frame.layers.map((layer) => {
+                if (layer.kind === "text" && options.textFallback) {
+                  const { text, font } = layer.text;
+                  return {
+                    kind: "text",
+                    clipId: layer.clipId,
+                    status: "available",
+                    layout: {
+                      font,
+                      text,
+                      visibleRange: [0, text.length],
+                      lines: [
+                        {
+                          range: [0, text.length],
+                          text,
+                          origin: [0, 1],
+                          width: 1,
+                          fonts: [font.postScriptName, options.textFallback.face],
+                        },
+                      ],
+                      inkBounds: [0, 0, 1, 1],
+                      visibleBounds: [0, 0, 1, 1],
+                      decorationBounds: [0, 0, 1, 1],
+                      verticalOffset: 0,
+                    },
+                  };
+                }
                 if (layer.kind !== "video") throw new Error("Fixture requires timed video");
                 const picture = {
                   kind: "video",

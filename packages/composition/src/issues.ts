@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { selectionRangeSchema, timeValueSchema } from "./schema.js";
+import { fontReferenceSchema, selectionRangeSchema, timeValueSchema } from "./schema.js";
 
 /**
  * Output by default: an operation that can produce its output does, and reports each problem as an
@@ -77,6 +77,19 @@ const engineValueSchema = z.union([
   z.literal("Infinity"),
   z.literal("-Infinity"),
 ]);
+
+/**
+ * A text clip drawn partly in a face other than its pinned one. `used` is the PostScript name the
+ * platform drew with, `codePoints` the Unicode scalars it drew, in first-occurrence order.
+ */
+const textFallbackSchema = z
+  .object({
+    clipId: z.string().min(1),
+    requested: fontReferenceSchema,
+    used: z.string().min(1),
+    codePoints: z.array(z.int().nonnegative().max(0x10ffff)).min(1).max(8192),
+  })
+  .strict();
 
 export const issueSchema = z.discriminatedUnion("code", [
   issue(
@@ -273,6 +286,11 @@ export const issueSchema = z.discriminatedUnion("code", [
       })
       .strict(),
   ),
+  // Text rendering (helpers/mac/Sources/YapFrames/TextRaster.swift). Another installed face drew
+  // these code points; the pinned face has no glyph for them.
+  issue("font-substituted", textFallbackSchema),
+  // No installed face has a glyph for these code points; `used` drew a placeholder box.
+  issue("glyph-missing", textFallbackSchema),
 ]);
 
 export type Issue = z.infer<typeof issueSchema>;

@@ -1,0 +1,65 @@
+{
+ "request": "640x180 project, one text clip, pinned face ArialMT (Arial.ttf), size 56, centered; frame.get at 0",
+ "before": {
+  "native": "lvf/07a base (1af39b29)",
+  "substituted": {
+   "state": "failed",
+   "errorCode": "UNSUPPORTED_MEDIA",
+   "reason": "FONT_SUBSTITUTED: LucidaGrande"
+  },
+  "missing": {
+   "state": "failed",
+   "errorCode": "UNSUPPORTED_MEDIA",
+   "reason": "FONT_SUBSTITUTED: LastResort"
+  }
+ },
+ "after": {
+  "substituted": {
+   "text": "Launch day ✓ shipped",
+   "frame": "font-substituted.png",
+   "issues": [
+    {
+     "code": "font-substituted",
+     "message": "Text clip clip:e169aeb19119581889f6624dbe8eb369086f4ca5ffa9806df4823f0310dc73fd:1 pins ArialMT, which has no glyph for U+2713; LucidaGrande drew it instead.",
+     "evidence": {
+      "clipId": "clip:e169aeb19119581889f6624dbe8eb369086f4ca5ffa9806df4823f0310dc73fd:1",
+      "requested": {
+       "assetId": "525979822591a3447cfc49d943d6f7683508e25543407871c0ed8fed05fd2bd9",
+       "postScriptName": "ArialMT"
+      },
+      "used": "LucidaGrande",
+      "codePoints": [
+       10003
+      ]
+     }
+    }
+   ]
+  },
+  "missing": {
+   "text": "Launch day ￿ shipped",
+   "frame": "glyph-missing.png",
+   "issues": [
+    {
+     "code": "glyph-missing",
+     "message": "Text clip clip:a9ed3a8facd810e052a7a8115f6f876c0471c8c0df49486daccc64a49d831ebe:1 pins ArialMT; no glyph was found for U+FFFF, so LastResort drew a placeholder box.",
+     "evidence": {
+      "clipId": "clip:a9ed3a8facd810e052a7a8115f6f876c0471c8c0df49486daccc64a49d831ebe:1",
+      "requested": {
+       "assetId": "525979822591a3447cfc49d943d6f7683508e25543407871c0ed8fed05fd2bd9",
+       "postScriptName": "ArialMT"
+      },
+      "used": "LastResort",
+      "codePoints": [
+       65535
+      ]
+     }
+    }
+   ]
+  },
+  "reference": {
+   "text": "Launch day shipped",
+   "frame": "reference.png",
+   "issues": []
+  }
+ }
+}

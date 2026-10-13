@@ -1,4 +1,5 @@
 import { setImmediate } from "node:timers/promises";
+import type { Issue } from "@yap/composition";
 import { CatalogError } from "./catalog.js";
 import { JobDependencyLost, type JobQueue } from "./jobs.js";
 import type { DerivedCache } from "./cache.js";
@@ -37,7 +38,10 @@ async function* observedChunks(
   }
 }
 
-/** Identity and candidate row budgets are checked before asking the shared frame lane to produce any picture. */
+/**
+ * Identity and candidate row budgets are checked before asking the shared frame lane to produce any
+ * picture. The index publishes the issues its frames published.
+ */
 export async function materializeProjectIndex(
   identity: ProjectIndexIdentity,
   plan: ReturnType<typeof projectIndexPlan>,
@@ -99,6 +103,8 @@ export async function materializeProjectIndex(
         project: { startUs: through, endUs },
       });
   }
+  // Frames repeat their text's issues; the index reports each once, in first-seen order.
+  const issues = new Map<string, Issue>();
   try {
     index.begin(identity);
     for (const candidate of candidates) {
@@ -136,6 +142,7 @@ export async function materializeProjectIndex(
           { dependency: { artifact: "frame", jobId: status.jobId, ...input } },
           status.retryable,
         );
+      for (const issue of status.published.issues) issues.set(JSON.stringify(issue), issue);
       const frame = status.published.frame;
       if (frame.implementationId !== identity.implementationId)
         throw new CatalogError("ARTIFACT_CHANGED", "Pinned picture renderer changed");
@@ -156,7 +163,7 @@ export async function materializeProjectIndex(
     }
     gap(plan.model.durationUs);
     signal.throwIfAborted();
-    return await index.finish(identity, signal);
+    return { metadata: await index.finish(identity, signal), issues: [...issues.values()] };
   } catch (error) {
     await index.remove(identity);
     throw error;

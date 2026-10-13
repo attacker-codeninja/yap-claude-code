@@ -46,6 +46,8 @@ public enum CompositionVideoRenderer {
         let readerOpens: Int
         let bytes: Int
         let retainedSourceBuffersBound: Int
+        /// Omitted when every text drew with its pinned face.
+        public let textFallbacks: [CompositionPictureExecutor.TextFallbackReport]?
         let pixelPoolAllocationThreshold = 4
         let maximumSequentialAdvanceUs = CompositionPictureExecutor.maximumSequentialAdvanceUs
     }
@@ -173,7 +175,8 @@ public enum CompositionVideoRenderer {
             pointerRasterizations: pictures.pointerRasterizations,
             decodedImages: pictures.decodedImages, decodedSamples: pictures.decodedSamples,
             readerOpens: pictures.opens,
-            bytes: bytes, retainedSourceBuffersBound: pictures.maximumActiveSources)
+            bytes: bytes, retainedSourceBuffersBound: pictures.maximumActiveSources,
+            textFallbacks: pictures.textFallbacks.isEmpty ? nil : pictures.textFallbacks)
     }
 
     private static func invalid(_ message: String) -> NativeFailure {

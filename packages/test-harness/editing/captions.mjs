@@ -237,9 +237,10 @@ try {
     await p.edit([
       { operation: "remove", clipIds: [placed.edit.labels["b-text"]], ripple: "none" },
     ]);
-    for (const [name, text] of [
-      ["fallback", "😀"],
-      ["missing", "\uffff"],
+    // Font fallback publishes: the frame draws what the platform chose and names it as an issue.
+    for (const [name, text, code, codePoint] of [
+      ["fallback", "A😀", "font-substituted", 0x1f600],
+      ["missing", "A\uffff", "glyph-missing", 0xffff],
     ]) {
       await p.edit([
         {
@@ -253,11 +254,30 @@ try {
         (value) => ["ready", "failed"].includes(value.state),
         name,
       );
-      const job = await call("job.get", { jobId: result.jobId });
-      report.checks.push({ name, state: result.state, job });
-      assert.equal(result.state, "failed", JSON.stringify(job));
-      assert.equal(job.errorCode, "UNSUPPORTED_MEDIA");
-      assert.match(job.reason, /FONT_SUBSTITUTED|FONT_GLYPH_MISSING/);
+      report.checks.push({ name, state: result.state, issues: result.published?.issues });
+      assert.equal(result.state, "ready", JSON.stringify(result));
+      assert.deepEqual(
+        result.published.issues.map(({ code, evidence }) => ({
+          code,
+          clipId: evidence.clipId,
+          requested: evidence.requested,
+          codePoints: evidence.codePoints,
+        })),
+        [
+          {
+            code,
+            clipId: placed.edit.labels["a-text"],
+            requested: source.font,
+            codePoints: [codePoint],
+          },
+        ],
+      );
+      const drawn = await picture({ ...p.selection(), atUs: 0 }, name);
+      assert.ok(
+        drawn.receipt.pictures[0].layout.lines[0].fonts.includes(
+          result.published.issues[0].evidence.used,
+        ),
+      );
     }
     for (const [name, path, postScriptName, text] of [
       ["color-emoji", "/System/Library/Fonts/Apple Color Emoji.ttc", ".AppleColorEmojiUI", "😀"],

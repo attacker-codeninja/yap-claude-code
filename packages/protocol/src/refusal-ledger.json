@@ -1,23 +1,9 @@
 {
  "rules": "Owned by packages/protocol/src/refusal-ledger.test.ts; see specs/launch-video-feedback/slices/01-issues-contract.md. codes: every UPPER_SNAKE string literal in product source, with a category and per-file counts. Refusal categories: malformed, ambiguous, conflict, resource-bound, missing-prerequisite, destructive, execution-failure. issue-code: already an output diagnostic (migrates to issues). not-a-refusal: another constant. pending-conversion: a quality gate the spec converts; its slice removes it. pendingSites: quality gates hiding behind generic codes, keyed by message text. refusedStatus: files using a 'refused' status literal. messageCodes: UPPER_SNAKE codes embedded in messages.",
  "pendingConversion": {
-  "UNAVAILABLE_SUPPORT": "04",
-  "FONT_GLYPH_MISSING": "07a"
+  "UNAVAILABLE_SUPPORT": "04"
  },
- "pendingSites": [
-  {
-   "slice": "07a",
-   "file": "helpers/mac/Sources/YapMedia/FontFile.swift",
-   "text": "FONT_SUBSTITUTED:",
-   "why": "render with font-substituted"
-  },
-  {
-   "slice": "07a",
-   "file": "helpers/mac/Sources/YapFrames/TextRaster.swift",
-   "text": "FONT_SUBSTITUTED:",
-   "why": "render with font-substituted"
-  }
- ],
+ "pendingSites": [],
  "refusedStatus": {
   "allowed": {
    "packages/composition/src/schema.ts": "caller-authored synchronization verdict",
@@ -30,10 +16,7 @@
   "pending": {}
  },
  "messageCodes": {
-  "pending": {
-   "FONT_UNAVAILABLE": "07 (promote to a real code)",
-   "FONT_SUBSTITUTED": "07a"
-  }
+  "pending": {}
  },
  "codes": {
   "ACQUISITION_BUSY": {
@@ -463,10 +446,10 @@
     "helpers/mac/Sources/YapFrames/TextRaster.swift": 1
    }
   },
-  "FONT_GLYPH_MISSING": {
-   "category": "pending-conversion",
+  "FONT_UNAVAILABLE": {
+   "category": "missing-prerequisite",
    "files": {
-    "helpers/mac/Sources/YapFrames/TextRaster.swift": 1
+    "helpers/mac/Sources/YapMedia/FontFile.swift": 1
    }
   },
   "FORMAT_CHANGED": {
@@ -1001,8 +984,9 @@
     "packages/core/src/audio-wave.ts": 1,
     "packages/core/src/frame-inspection.ts": 15,
     "packages/core/src/pointer-preparation.ts": 3,
-    "packages/core/src/project-preview.ts": 4,
+    "packages/core/src/project-preview.ts": 5,
     "packages/core/src/rendered-movie.ts": 2,
+    "packages/core/src/text-fallback.ts": 1,
     "packages/core/src/transcript.ts": 2,
     "packages/core/src/voice-generation.ts": 5,
     "skills/yap/scripts/batch-prepare.mjs": 1,
@@ -2050,11 +2034,10 @@
     "apps/service/src/hdr-conversion.ts": 5,
     "apps/service/src/project-service.ts": 1,
     "helpers/mac/Sources/YapFrames/SourceImageRenderer.swift": 1,
-    "helpers/mac/Sources/YapFrames/TextRaster.swift": 3,
     "helpers/mac/Sources/YapMedia/CompressedVideoInspection.swift": 1,
     "helpers/mac/Sources/YapMedia/CubeLUT.swift": 2,
     "helpers/mac/Sources/YapMedia/DecodedAudioInspection.swift": 5,
-    "helpers/mac/Sources/YapMedia/FontFile.swift": 5,
+    "helpers/mac/Sources/YapMedia/FontFile.swift": 2,
     "helpers/mac/Sources/YapMedia/FontProbe.swift": 2,
     "helpers/mac/Sources/YapMedia/MediaInput.swift": 2,
     "helpers/mac/Sources/YapMedia/MediaProbe.swift": 3,

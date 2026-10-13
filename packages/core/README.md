@@ -126,6 +126,9 @@ A producer reports problems with its output as [issues](../composition/src/issue
 transaction and keyed by the publishing attempt, so it lands, rolls back and is
 retired with that publication. Retained evidence objects never carry issues, and a
 publication without rows, including one from an older catalog, reads as clean.
+Where evidence holds the facts, the issues are derived from it alone: a picture's or
+movie's font fallbacks become [text fallback issues](src/text-fallback.ts), and a
+project index publishes the issues of the frames it retained.
 
 Capture recovery receipts cross this boundary once through
 [capture-publication.ts](src/capture-publication.ts): the bounded native receipt is
