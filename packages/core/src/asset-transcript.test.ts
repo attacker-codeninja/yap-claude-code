@@ -297,6 +297,38 @@ test("bounded preparation retains whole-source identity, unobserved coverage and
   ).toThrow("another selected source");
 });
 
+test("an execution range past the source end transcribes the part inside it and reports the clamp", async () => {
+  const f = await fixture();
+  const overrun = { ...f.selection, executionRange: { startUs: 600, endUs: 1500 } };
+  const applied = { ...f.selection, executionRange: { startUs: 600, endUs: 1000 } };
+  f.processing.prepareSource(overrun);
+  await f.jobs.idle();
+  const clamped = f.processing.sourceStatus(overrun);
+  expect(clamped.state).toBe("ready");
+  expect(f.requests.map((request) => request.execution?.executionRange)).toEqual([
+    applied.executionRange,
+  ]);
+  expect(clamped.issues).toEqual([
+    expect.objectContaining({
+      code: "range-clamped",
+      evidence: {
+        requested: overrun.executionRange,
+        applied: applied.executionRange,
+        bounds: { startUs: 0, endUs: 1000 },
+      },
+    }),
+  ]);
+  // The applied range is the same request: it joins the same generation and reports nothing.
+  f.processing.prepareSource(applied);
+  const exact = f.processing.sourceStatus(applied);
+  expect(f.requests).toHaveLength(1);
+  expect(exact.published!.generation).toBe(clamped.published!.generation);
+  expect(exact.issues).toEqual([]);
+  expect(() =>
+    f.processing.prepareSource({ ...f.selection, executionRange: { startUs: 1000, endUs: 1500 } }),
+  ).toThrow(expect.objectContaining({ code: "INVALID_RANGE" }));
+});
+
 test("source phrase search crosses an accepted ownership seam without changing either estimate", async () => {
   const f = await fixture({ originUs: 0, startUs: 0, endUs: 40_000_000 }, async (request) => {
     const lines = [

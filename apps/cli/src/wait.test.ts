@@ -383,6 +383,45 @@ test("bounded transcript preparation waits for its admitted generation without r
   expect(f.calls[2]!.params).toEqual({ ...selection, generation });
 });
 
+test("a clamped transcript preparation keeps its range-clamped issue through the pinned read", async () => {
+  const generation = "c6df7efc-a023-4c40-aa08-3b8b1c0b1b90";
+  const selection = { assetId: "a", streamId: "s" };
+  const clamp = {
+    code: "range-clamped",
+    message: "clamped",
+    at: { range: { startUs: 0, endUs: 1000 } },
+    evidence: {
+      requested: { startUs: 0, endUs: 5000 },
+      applied: { startUs: 0, endUs: 1000 },
+      bounds: { startUs: 0, endUs: 1000 },
+    },
+  };
+  const f = await fixture((request) => {
+    if (request.operation === "transcript.prepare")
+      return {
+        ok: true,
+        data: { ...selection, state: "processing", jobId: "job", issues: [clamp] },
+      };
+    if (request.operation === "job.get")
+      return {
+        ok: true,
+        data: { ...job("ready"), attemptId: generation, target: { kind: "asset", assetId: "a" } },
+      };
+    return {
+      ok: true,
+      data: { ...selection, state: "ready", generation, issues: [], page: { rows: [] } },
+    };
+  });
+  const output = await f.run(
+    "transcript.prepare",
+    { ...selection, executionRange: { startUs: 0, endUs: 5000 } },
+    ["--wait", "--timeout-ms", "1000"],
+  );
+  expect(output.code, output.stdout + output.stderr).toBe(0);
+  expect(JSON.parse(output.stdout).data.issues).toEqual([clamp]);
+  expect(output.stderr).toContain("transcript.prepare: ready (1 issues)");
+});
+
 test("rendered recognition waits on the project attempt and reads its words pinned to the published generation", async () => {
   const params = {
     projectId: "p",
