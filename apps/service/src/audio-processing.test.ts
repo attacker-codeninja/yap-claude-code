@@ -1638,3 +1638,162 @@ real(
   },
   60000,
 );
+
+/**
+ * A 0.1.33 library keeps its failed, non-retryable prepared-audio job for the normalization identity
+ * it shipped. Jobs are keyed by input, so that failure answers every later request until the
+ * normalization implementation id changes. Slice 04 of specs/launch-video-feedback publishes the
+ * best result instead of refusing and bumps that id; this turns green then. Until it does, the
+ * current id still equals 0.1.33's and the request answers the old failure.
+ */
+test.skip("a failed 0.1.33 normalization job re-runs after an identity bump (green in launch-video-feedback slice 04)", async () => {
+  const { Catalog, CatalogError } = await import("@yap/core/catalog");
+  const { AssetStore } = await import("@yap/core/assets");
+  const { AcquisitionStore } = await import("@yap/core/acquisitions");
+  const { TranscriptStore } = await import("@yap/core/transcript");
+  const { assetTranscriptOwner } = await import("@yap/core/transcript-processing");
+  const { ProjectStore } = await import("@yap/core/projects");
+  const { JobQueue } = await import("@yap/core/jobs");
+  const { PreparedAudioStore } = await import("@yap/core/prepared-audio");
+  const { processorImplementations } = await import("./audio-processing.js");
+  const receipt = "c".repeat(64),
+    preparation = "native-audio-state-domains-v1";
+  const shipped = `bounded-offset-normalization:${receipt}:${preparation}`;
+  const home = await realpath(await mkdtemp(join(tmpdir(), "normalization-identity-")));
+  let refuse = true,
+    renders = 0;
+  const library = async (processors: Record<string, string>) => {
+    const catalog = new Catalog(join(home, "catalog.sqlite"));
+    const assets = new AssetStore(catalog, home);
+    await assets.recover();
+    const acquisitions = new AcquisitionStore(catalog);
+    const projects = new ProjectStore(
+      catalog,
+      assets,
+      new TranscriptStore(catalog, home, assetTranscriptOwner(assets, acquisitions)),
+      acquisitions,
+    );
+    let prepared!: InstanceType<typeof PreparedAudioStore>;
+    const jobs = new JobQueue({
+      store: catalog,
+      providers: { newId: randomUUID },
+      targets: {
+        pin: (target) => {
+          if (target.kind !== "project") throw new Error("Prepared audio pins a project revision");
+          return target;
+        },
+        isAvailable: () => true,
+        isDeleting: () => false,
+        isCapturing: () => false,
+      },
+      execute: (execution) => prepared.execute(execution),
+    });
+    const probe = async (path: string) => {
+      const frames = ((await readFile(path)).length - 44) / 8;
+      const endUs = Math.ceil((frames / 48000) * 1000000);
+      return {
+        originUs: 0,
+        streams: [
+          {
+            id: "track:1",
+            kind: "audio" as const,
+            codec: "pcm_f32le",
+            decodable: true,
+            startUs: 0,
+            endUs,
+            segments: [{ startUs: 0, endUs, empty: false }],
+            sampleRate: 48000,
+            channels: 2,
+          },
+        ],
+      };
+    };
+    prepared = new PreparedAudioStore({
+      catalog,
+      assets,
+      projects,
+      jobs,
+      probe,
+      staging: join(home, "staging", "prepared-audio"),
+      renderer: {
+        implementationId: "native-window",
+        processors,
+        validateAudio: async () => {},
+        render: async () => {
+          renders++;
+          if (refuse)
+            throw new CatalogError("NORMALIZATION_NOT_FEASIBLE", "0.1.33 refused this target");
+          throw new CatalogError("NOT_READY", "This scratch catalog only observes re-execution");
+        },
+      },
+    });
+    await prepared.recover();
+    return { catalog, assets, projects, jobs, prepared, probe };
+  };
+  const old = await library({ normalization: shipped });
+  const source = join(home, "source.wav");
+  await writeFile(source, wave(48000));
+  const asset = await old.assets.import(source, { kind: "import" }, old.probe);
+  const created = old.projects.create({
+    requestId: "create",
+    canvas: {
+      width: 16,
+      height: 16,
+      fps: { numerator: 30, denominator: 1 },
+      background: "#000000ff",
+    },
+  });
+  const projectId = created.project.projectId;
+  const revision = old.projects.apply(projectId, {
+    requestId: "edit",
+    expectedRevisionId: created.revision.id,
+    operations: [
+      { operation: "track.add", label: "track", track: { kind: "audio", order: 0 } },
+      {
+        operation: "place",
+        clip: {
+          trackId: { label: "track" },
+          assetId: asset.id,
+          streamId: "track:1",
+          source: { kind: "range", range: { startUs: 0, endUs: 1000000 } },
+          placement: { kind: "project", range: { startUs: 0, endUs: 1000000 } },
+        },
+      },
+      {
+        operation: "processing.set",
+        target: { kind: "output" },
+        steps: [
+          {
+            processor: {
+              type: "normalization",
+              mode: "gain-only",
+              targetIntegratedLufs: -20,
+              truePeakCeilingDbtp: -2,
+              maxLoudnessRangeLu: 7,
+            },
+          },
+        ],
+      },
+    ],
+  }).revision;
+  const input = { projectId, revisionId: revision.id };
+  await old.prepared.request(input);
+  await old.jobs.idle();
+  const failed = await old.prepared.request(input);
+  expect(failed).toMatchObject({ state: "failed", retryable: false });
+  await old.jobs.close();
+  old.catalog.close();
+  refuse = false;
+  const current = await library(processorImplementations(receipt, preparation));
+  try {
+    const before = renders;
+    const status = await current.prepared.request(input);
+    await current.jobs.idle();
+    expect(status.jobId).not.toBe(failed.jobId);
+    expect(renders).toBe(before + 1);
+  } finally {
+    await current.jobs.close();
+    current.catalog.close();
+    await rm(home, { recursive: true, force: true });
+  }
+});

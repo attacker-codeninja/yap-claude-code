@@ -32,6 +32,21 @@ export type AudioProcessingRuntime = {
   processors: ProcessorImplementations;
 };
 const externalTypes = ["normalization", "limiter", "compressor"] as const;
+/**
+ * Each external processor's implementation id. It reaches every prepared-audio job key, so renaming
+ * one re-keys work an earlier version failed instead of answering its old failure.
+ */
+export function processorImplementations(
+  toolsReceiptSha256: string,
+  preparationId: string,
+): Record<(typeof externalTypes)[number], string> {
+  return Object.fromEntries(
+    externalTypes.map((type) => [
+      type,
+      `${type === "limiter" ? "linked-mono-max-limiter-v1" : type === "compressor" ? "peak-maximum-downward-compressor-v1" : "bounded-offset-normalization"}:${toolsReceiptSha256}:${preparationId}`,
+    ]),
+  ) as Record<(typeof externalTypes)[number], string>;
+}
 export async function audioProcessingRuntime(
   installation: FFmpegInstallation | undefined,
   ownerExecutable: string | undefined,
@@ -42,12 +57,7 @@ export async function audioProcessingRuntime(
     return;
   const tools = await inspectFFmpegTools(installation, signal, ownerExecutable);
   if (!tools.available) return;
-  const processors = Object.fromEntries(
-    externalTypes.map((type) => [
-      type,
-      `${type === "limiter" ? "linked-mono-max-limiter-v1" : type === "compressor" ? "peak-maximum-downward-compressor-v1" : "bounded-offset-normalization"}:${tools.receiptSha256}:${preparationId}`,
-    ]),
-  );
+  const processors = processorImplementations(tools.receiptSha256, preparationId);
   return {
     installation,
     ownerExecutable,

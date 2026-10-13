@@ -49,6 +49,7 @@ async function fixture(
   gaps: { start: number; end: number }[] = [],
   implementationId = "unit-test-native-boundary",
   deferExecution = false,
+  processors?: Record<string, string>,
 ) {
   const home = await realpath(await mkdtemp("/tmp/prepared-audio-"));
   let reads = 0;
@@ -109,6 +110,7 @@ async function fixture(
       probe,
       renderer: {
         implementationId,
+        ...(processors ? { processors, validateAudio: async () => {} } : {}),
         render: async ({ window, output, assets }) => {
           reads++;
           renderedAssets.push(assets);
@@ -204,9 +206,10 @@ async function fixture(
     setHold: (value: typeof hold) => {
       hold = value;
     },
-    reopen: async (nextImplementation = implementationId) => {
+    reopen: async (nextImplementation = implementationId, nextProcessors = processors) => {
       await current.close();
       implementationId = nextImplementation;
+      processors = nextProcessors;
       current = await connect();
       return current;
     },
@@ -325,6 +328,49 @@ test("an expanded executor can prepare the same revision after a nonretryable ol
   } finally {
     retained.release();
   }
+});
+test("renaming the normalization implementation re-keys a failed preparation instead of answering failed", async () => {
+  const f = await fixture([], "native-window", false, { normalization: "normalization-v1" });
+  const normalized = f.current.projects.apply(f.input.projectId, {
+    requestId: "normalize",
+    expectedRevisionId: f.input.revisionId,
+    operations: [
+      {
+        operation: "processing.set",
+        target: { kind: "output" },
+        steps: [
+          {
+            processor: {
+              type: "normalization",
+              mode: "gain-only",
+              targetIntegratedLufs: -20,
+              truePeakCeilingDbtp: -2,
+              maxLoudnessRangeLu: 7,
+            },
+          },
+        ],
+      },
+    ],
+  });
+  const input = { projectId: f.input.projectId, revisionId: normalized.revision.id };
+  f.setHold(async () => {
+    throw new CatalogError("NORMALIZATION_NOT_FEASIBLE", "Normalization misses its targets");
+  });
+  await f.current.prepared.request(input);
+  await f.current.jobs.idle();
+  const failed = await f.current.prepared.request(input);
+  expect(failed).toMatchObject({ state: "failed", retryable: false, published: null });
+  await f.reopen("native-window", { normalization: "normalization-v1" });
+  expect(await f.current.prepared.request(input)).toMatchObject({
+    jobId: failed.jobId,
+    state: "failed",
+  });
+  const reads = f.reads;
+  await f.reopen("native-window", { normalization: "normalization-v2" });
+  const rerun = await f.current.prepared.request(input);
+  await f.current.jobs.idle();
+  expect(rerun.jobId).not.toBe(failed.jobId);
+  expect(f.reads).toBe(reads + 1);
 });
 test("canceling a fully staged result publishes neither asset nor revision binding; startup recovers orphan bytes", async () => {
   const f = await fixture();
