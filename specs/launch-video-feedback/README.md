@@ -22,13 +22,23 @@ ledger (`packages/protocol/src/refusal-ledger.json`) has an empty
 choices.md, "Slice 07b").
 
 Next pickup, in order:
-1. Build and install the product at that commit (slice 11 "Environment"),
-   then slice 10's two evals: the "this 3:52 narration won't transcribe" case
-   with `eval-skills`, and the recording-sync recipe on the fixture pair
-   (expect narration = excerpt + 149.94 s).
-2. [11](slices/11-replay-acceptance.md): replay acceptance with
-   `packages/test-harness/acceptance/launch-video-replay.mjs`. Then the
-   whole-spec review, a rewritten choices.md, and close-spec.
+1. Slice 10's two blind evals and the slice 11 replay, against the
+   environment below. Then rewrite choices.md and close the spec.
+
+**Replay environment (decided with the product owner, 2026-10-13).** No app
+install. The user's library is cloned copy-on-write to `~/.yap-replay/library`.
+This checkout's service runs on it (`~/.yap-replay/start-service.sh`), and
+`~/.yap-replay/bin/yap` is this checkout's CLI pinned to that socket, with
+`yap ffmpeg`/`ffprobe` passed to the app's bundled tools. The personal yap
+skill (`~/.agents/skills/yap`) points at the replay worktree's skill for the
+duration; the 0.1.35 copy is in `~/.yap-replay/skill-backup-0.1.35` and must
+be moved back afterwards. `~/Movies/yap-launch` is backed up in
+`~/.yap-replay/movies-backup`. The replay worktree (`../lvf-replay`) is this
+commit without the spec, fixtures or replay checker. `~/.yap-replay/replay.sh`
+sends the turns in `acceptance/prompts.md` verbatim.
+
+The whole-spec review ran (two independent reviewers) and its fixes are
+merged; see choices.md "Whole-spec review fixes".
 
 The full run (2026-10-13) is done: check-types, lint and format:check pass;
 it caught one slice 03 regression (skipped speech windows reported 0
