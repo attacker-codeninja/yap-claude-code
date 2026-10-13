@@ -6,6 +6,18 @@ The capture menu keeps its dark appearance after selecting a recording area and
 shows the latest recording below the action buttons with Play and Copy agent prompt
 actions. Screen recordings now include the pointer in the captured video.
 
+## 0.1.34
+
+Turn the camera off and back on while recording your screen, from the floating
+controls, the menu, the CLI (`capture.setCamera`) or MCP. A take can start with the
+camera off and turn it on later; the camera light stays off until then. Off time is
+a real gap in the camera recording, never a frozen picture. Recordings made by
+earlier versions keep working unchanged.
+
+The floating controls show the camera as a rounded card you can minimize without
+stopping the camera. Menu buttons show a pressed state while held. Source previews
+in the capture menu now draw correctly and leave Yap's own windows out.
+
 ## 0.1.33
 
 Yap starts faster with models installed. Startup no longer re-hashes every prepared
