@@ -1,4 +1,6 @@
-Baseline (session a4621b78, editing phase only, tool results only)
+Baseline (session a4621b78, editing phase only). Produced by
+packages/test-harness/acceptance/launch-video-replay.mjs: refusals in tool results
+only, effort signals in shell commands.
   signature                  results  occurrences
   seam_disagreement                3  5
   speech_timing_overrun            4  4
@@ -7,3 +9,9 @@ Baseline (session a4621b78, editing phase only, tool results only)
   curve_clock_error                1  1
   source_bounds_error              1  1
   render_range_job_fail            1  2
+  effort signal              commands
+  transcript_calls                 12
+  chunked_transcription             7
+  measure_calls                     9
+  cross_correlation                 2
+  rms_outside_yap                   5

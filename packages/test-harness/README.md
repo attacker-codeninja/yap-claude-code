@@ -19,6 +19,9 @@ inference, while an evidence verifier may only read existing files.
   composition, pictures, audio, processing, delivery and publication.
 - [Speech evaluation](speech/protocol.md) explains how independent labels,
   model identity and word alignment constrain accuracy claims.
+- [The launch-video replay checker](acceptance/launch-video-replay.mjs) counts
+  product refusals and hand-rolled workarounds in an agent's session transcript,
+  for comparing a replay against the recorded baseline.
 - [Native transport checks](src/) exercise the worker protocol and client
   image boundary. The [protocol fixtures](../protocol/fixtures/) own the shared
   requests and expected responses.

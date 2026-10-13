@@ -90,7 +90,7 @@ remaining difference is explained.
 | Source-bounds error (1) | Zero refusals: the placement lands, with `range-clamped`. |
 | Render range admitted then failed (1) | A partly valid range publishes, clamped, with `range-clamped`; a range wholly outside refuses at admission. |
 | Hand-rolled cross-correlation (2) | Expected: there is no sync primitive by decision (slice 08). Record the effort, and whether the agent followed the slice 10 recipe. |
-| RMS arithmetic outside Yap (4) | Replaced by comparing `waveform.get` on the dry and processed taps (slice 05 closed with no new field). |
+| RMS arithmetic outside Yap (5; a hand count first said 4) | Replaced by comparing `waveform.get` on the dry and processed taps (slice 05 closed with no new field). |
 | Fixture labels painted over | Unlabelled shots used, or the agent passes `FIXTURE_LABEL=omit`. |
 | Any class-B refusal in the [audit](07-remaining-quality-gates.md) | Zero. Any quality or target miss arrives as an issue on a delivered output. |
 
