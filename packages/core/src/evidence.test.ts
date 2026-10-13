@@ -141,7 +141,7 @@ function cameraProof(changes: Record<string, unknown> = {}) {
 
 test("camera proof intervals are support minus gaps; a proof without gaps is one interval", async () => {
   const f = fixture();
-  const legacy = cameraProof();
+  const continuous = cameraProof();
   const gapped = cameraProof({
     gaps: [
       { startUs: 150, endUs: 200 },
@@ -149,14 +149,14 @@ test("camera proof intervals are support minus gaps; a proof without gaps is one
     ],
   });
   for (const [generation, video] of [
-    ["legacy", legacy],
+    ["continuous", continuous],
     ["gapped", gapped],
   ] as const) {
     const receipt = { ...f.receipt, publications: { video } };
     const admitted = await f.evidence.ingest({ ...f.identity, generation, file: f.file, receipt });
     expect(admitted.receipt.publications?.video).toEqual(video);
   }
-  expect(cameraProofIntervals(legacy)).toEqual([{ startUs: 100, endUs: 400 }]);
+  expect(cameraProofIntervals(continuous)).toEqual([{ startUs: 100, endUs: 400 }]);
   expect(cameraProofIntervals(gapped)).toEqual([
     { startUs: 100, endUs: 150 },
     { startUs: 200, endUs: 250 },

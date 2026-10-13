@@ -869,10 +869,10 @@ test("a 0.1.33 camera proof admits unchanged", async () => {
     representedFrames: 5,
     support: { endUs: 933333, startUs: 200000 },
   };
-  const intent = await f.admit("legacy-camera");
+  const intent = await f.admit("camera-0.1.33");
   const value = await f.importer.executeImport(
     intent.acquisitionId,
-    "legacy",
+    "attempt-1",
     cameraNative(f, retained, 200000, [{ startUs: 0, endUs: 733333, empty: false }]),
     signal(),
   );

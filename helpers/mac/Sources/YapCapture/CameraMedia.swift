@@ -9,8 +9,8 @@ package struct CameraFrameMapping: Codable {
     let ordinal: Int
     let start: CaptureRationalTime
     let nominalEnd: CaptureRationalTime
-    /// Frames between one turn-on and the next turn-off. Written only when nonzero, so a camera
-    /// that was never turned off keeps the original row shape.
+    /// Frames between one turn-on and the next turn-off. Written only when nonzero, so the rows
+    /// of a camera never turned off carry no `run`.
     let run: Int
     private enum CodingKeys: String, CodingKey { case ordinal, start, run; case nominalEnd = "end" }
     init(ordinal: Int, start: CaptureRationalTime, nominalEnd: CaptureRationalTime, run: Int = 0) {

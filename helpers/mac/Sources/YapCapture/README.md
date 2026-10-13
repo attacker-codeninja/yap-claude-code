@@ -76,7 +76,7 @@ on a key frame so no run decodes from another. The raw movie stays continuous; t
 canonical movie states each gap as an explicit empty edit, and verification
 accepts a gap only where the mapping's runs place one. The receipt keeps `support`
 as the outer span and lists `gaps` only when there are any, so a camera that was
-never turned off publishes exactly the original shape.
+never turned off publishes the same receipt as a release that had no off time.
 [CameraAvailability](CameraMedia.swift) is the one owner of that interval
 arithmetic for publication, admission and recovery.
 
@@ -86,11 +86,12 @@ device and no light. Sessions that open again may describe the same picture form
 differently; the writer accepts any compatible one and refuses a different size
 before opening. A camera that is off at stop and recorded nothing, whether never
 turned on or turned off before any picture, leaves the take complete with the
-camera unavailable; only a camera on at stop that never delivered interrupts it. Ending the take while a turn-on is starting cancels that turn-on: its
-session is released and the camera closes as if it had never been asked. Losing
-the device while it is off is found at the next turn-on; losing it while on
-interrupts the take. Turn-ons per take are bounded so the
-availability stays within what publication and recovery accept.
+camera unavailable; only a camera on at stop that never delivered interrupts it.
+Ending the take while a turn-on is starting cancels that turn-on: its session is
+released and the camera closes as if it had never been asked. Losing the device
+while it is off is found at the next turn-on; losing it while on interrupts the
+take. Turn-ons per take are bounded so the availability stays within what
+publication and recovery accept.
 
 ## Journals and crash boundaries
 
@@ -103,8 +104,9 @@ an entire pointer history in memory.
 Fragmented media can preserve a decodable process-crash prefix. A crash before the
 opening fragment may leave none; these guarantees do not establish power-loss
 durability. When the encoder flushed a reordered picture before earlier pictures,
-the camera prefix ends at the first missing one. Keep raw journals and media distinct from normalized evidence and
-publication receipts so recovery cannot overwrite its own source authority.
+the camera prefix ends at the first missing one. Keep raw journals and media
+distinct from normalized evidence and publication receipts so recovery cannot
+overwrite its own source authority.
 
 ## Cursor and geometry clocks
 

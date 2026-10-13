@@ -355,7 +355,8 @@ try {
   assert.equal(admission(neverReady, "primary").job.state, "ready");
   assert.equal(admission(neverReady, "camera").acquisitionId, null);
   assert.deepEqual((await service.fixtureCall("inspect")).cameraOpens, 0);
-  // KU6: a reserved camera's mapping logs every screen and microphone callback while it is off.
+  // Measured, not asserted: a reserved camera's mapping logs every screen and microphone
+  // callback while it is off, so its size grows with the take.
   const mappingPath = join(recordingDirectory(idle.recordingId), "camera/camera.mapping.jsonl");
   const rows = {};
   for (const line of (await readFile(mappingPath, "utf8")).trim().split("\n")) {

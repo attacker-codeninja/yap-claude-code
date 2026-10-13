@@ -18,7 +18,7 @@ func runCameraAvailabilityTests(output: String? = nil) async throws {
         timesUs: [0, 50000, 100000, 150000], endUs: 200000)
     let pictures = try await availabilityPictures(source)
     try runLimit()
-    try await singleRunIsLegacyShape(root: root, pictures: pictures)
+    try await singleRunKeepsRelease0133Shape(root: root, pictures: pictures)
     try await startsOffThenOn(root: root, pictures: pictures)
     try await onOffOn(root: root, pictures: pictures)
     try await offAndPause(root: root, pictures: pictures)
@@ -43,34 +43,33 @@ private func runLimit() throws {
     } catch let failure as CaptureFailure where failure.code == "INVALID_CAMERA_MAPPING" {}
 }
 
-/// Receipt and mapping key sets of a take published by the pre-change build (commit 054c6d09,
-/// `YAP_CAMERA_CLOCK_OUTPUT` → `literal-no-primary/camera.publication.json` and
-/// `native-pause-later-primary/timestamps.jsonl`, run 2026-10-12 before any slice 02 change).
-/// The same key sets as the 0.1.33 receipt and mapping in corpus A
-/// (specs/camera-toggle/assets/pre-toggle-corpus/a.tar.gz), checked at integration.
-private let preChangeReceiptKeys: Set<String> = ["binding", "candidate", "canonical", "closed", "diagnostics",
+/// Receipt and mapping key sets of a camera take published by release 0.1.33, before cameras
+/// could be turned off: the receipt and mapping in corpus A
+/// (specs/camera-toggle/assets/pre-toggle-corpus/a.tar.gz) and those `YAP_CAMERA_CLOCK_OUTPUT`
+/// wrote at commit 054c6d09. A camera never turned off must still publish exactly these.
+private let release0133ReceiptKeys: Set<String> = ["binding", "candidate", "canonical", "closed", "diagnostics",
     "endUs", "firstUs", "journal", "observations", "originHostUs", "pictureSHA256", "pictureTimeScale",
     "presentation", "raw", "representedFrames", "support"]
-private let preChangeNestedKeys: [String: Set<String>] = ["binding": ["deviceId", "recordingId", "sourceId"],
+private let release0133NestedKeys: [String: Set<String>] = ["binding": ["deviceId", "recordingId", "sourceId"],
     "canonical": ["bytes", "sha256"], "closed": ["bytes", "sha256"], "journal": ["bytes", "sha256"],
     "observations": ["bytes", "sha256"], "raw": ["bytes", "sha256"], "support": ["endUs", "startUs"]]
-private let preChangeCameraFrameKeys: Set<String> = ["end", "ordinal", "start"]
+private let release0133CameraFrameKeys: Set<String> = ["end", "ordinal", "start"]
 
 @MainActor
-private func singleRunIsLegacyShape(root: URL, pictures: [CMSampleBuffer]) async throws {
+private func singleRunKeepsRelease0133Shape(root: URL, pictures: [CMSampleBuffer]) async throws {
     let take = try GatedCameraTake(root: root, name: "single-run", pictures: pictures)
     for index in 0..<4 { take.expect("accepted", try await take.offer(1_000_000 + Int64(index) * 50000)) }
     let published = try await take.publish()
     let receipt = try take.receiptJSON()
-    precondition(Set(receipt.keys) == preChangeReceiptKeys, "Single-run receipt keys changed: \(receipt.keys.sorted())")
-    for (key, nested) in preChangeNestedKeys {
+    precondition(Set(receipt.keys) == release0133ReceiptKeys, "Single-run receipt keys changed: \(receipt.keys.sorted())")
+    for (key, nested) in release0133NestedKeys {
         precondition(Set((receipt[key] as! [String: Any]).keys) == nested, "Single-run receipt \(key) shape changed")
     }
     for frame in try take.mappingFrames() {
-        precondition(Set(frame.keys) == preChangeCameraFrameKeys, "Single-run mapping row gained a key: \(frame.keys.sorted())")
+        precondition(Set(frame.keys) == release0133CameraFrameKeys, "Single-run mapping row gained a key: \(frame.keys.sorted())")
     }
     precondition(published.receipt.support == ExactRange(startUs: 0, endUs: 200000))
-    print("PASS single-run take keeps the pre-change receipt and mapping shape")
+    print("PASS single-run take keeps the 0.1.33 receipt and mapping shape")
 }
 
 @MainActor
