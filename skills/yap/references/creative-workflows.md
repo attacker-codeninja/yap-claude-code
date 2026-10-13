@@ -169,12 +169,14 @@ Yap has no sync operation; derive each offset from evidence:
 1. `transcript.review` each recording over the stretch they share.
 2. Pair distinctive words that occur once in both; the median start-time
    difference is the offset.
-3. Check it at a second, distant window. A different value means drift: sync
-   each section separately.
+3. Measure again at a distant window; both must agree. A different value
+   means drift: sync each section separately.
 4. To refine, read a short stretch of both with `audio.get` and cross-correlate
    their envelopes.
 5. Place each clip at its derived offset, converting through each acquisition
-   binding's `sourceToAssetOffsetUs`.
+   binding's `sourceToAssetOffsetUs` and each asset's `originUs` lead-in.
+6. To keep the measurement as evidence, `correspondence.prepare` admits the
+   offsets you measured; it never estimates or edits.
 
 Before choosing which recording carries the dialogue, `audio.measure` every
 candidate over one shared range and listen to each.

@@ -282,7 +282,8 @@ For optional MCP use, read [MCP delivery](references/mcp.md); CLI is the default
   media or JSON evidence to a file or directory according to the operation.
 - Read `issues` on every result and on its published output before trusting it.
   Yap produces whatever output it can and lists there what fell short; only an
-  empty list is clean. Deciding whether an issue matters is yours. A refusal
+  empty list is clean. Deciding whether an issue matters is yours; when you
+  report, keep what Yap flagged apart from your own observations. A refusal
   (`ok: false`) means no output could exist: a malformed request, a changed
   input, a resource bound or a missing prerequisite.
 - Edit ranges are half-open in the expected revision and selected anchor domain.
