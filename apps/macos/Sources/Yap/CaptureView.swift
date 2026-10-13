@@ -386,8 +386,8 @@ final class CaptureView: NSView {
     }
 }
 
-/// A source chooser that keeps the existing source field contract while presenting recognizable
-/// snapshots for displays and windows instead of an opaque text-only menu.
+/// The source field: the chosen display or window by picture and name, opening a chooser of a
+/// card per source so each is recognizable before it is picked.
 final class SourcePickerButton: NSButton {
     private var values: [CaptureViewInput.Choice] = []
     private(set) var selected = -1
@@ -441,8 +441,8 @@ final class SourcePickerButton: NSButton {
                                                       height: gap + CGFloat(max(1, rows)) * (height + gap)))
         content.appearance = NSAppearance(named: .darkAqua)
         for (index, value) in values.enumerated() {
-            let card = SourceCard(value: value, selected: index == selected)
-            card.tag = index; card.identifier = .init("source.card.\(index)")
+            let card = CaptureButton(title: value.title, kind: .source(picture: value.preview, selected: index == selected), symbol: nil)
+            card.tag = index; card.identifier = .init("source.card.\(index)"); card.toolTip = value.title
             card.target = self; card.action = #selector(selectCard(_:))
             card.frame = NSRect(x: gap + CGFloat(index % columns) * (width + gap),
                                 y: gap + CGFloat(index / columns) * (height + gap), width: width, height: height)
@@ -476,68 +476,17 @@ private final class SourceChooserView: NSView {
     override var isFlipped: Bool { true }
 }
 
-/// One source in the chooser: its picture drawn whole at its own shape, its name beneath.
-@MainActor
-private final class SourceCard: NSButton {
-    private let value: CaptureViewInput.Choice
-    private let selected: Bool
-    override var isFlipped: Bool { true }
-    override class var cellClass: AnyClass? {
-        get { CaptureButtonCell.self }
-        set {}
-    }
-
-    init(value: CaptureViewInput.Choice, selected: Bool) {
-        self.value = value
-        self.selected = selected
-        super.init(frame: .zero)
-        title = value.title
-        isBordered = false
-        setButtonType(.momentaryChange)
-        toolTip = value.title
-        setAccessibilityLabel(value.title)
-        setAccessibilityRole(.radioButton)
-        setAccessibilityValue(NSNumber(value: selected))
-    }
-    required init?(coder: NSCoder) { nil }
-
-    override func draw(_ dirtyRect: NSRect) {
-        let card = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.75, dy: 0.75), xRadius: 9, yRadius: 9)
-        (selected ? NSColor.systemBlue.withAlphaComponent(0.14) : captureRaisedColor()).setFill()
-        card.fill()
-        if selected {
-            NSColor.systemBlue.withAlphaComponent(0.6).setStroke()
-            card.lineWidth = 1
-            card.stroke()
-        }
-        let picture = NSRect(x: 8, y: 8, width: bounds.width - 16, height: bounds.height - 40)
-        NSColor.black.withAlphaComponent(0.28).setFill()
-        NSBezierPath(roundedRect: picture, xRadius: 5, yRadius: 5).fill()
-        if let preview = value.preview {
-            drawSourcePicture(preview, in: picture.insetBy(dx: 2, dy: 2), cornerRadius: 4)
-        } else if let symbol = captureSymbol("macwindow", color: .secondaryLabelColor) {
-            symbol.draw(in: NSRect(x: picture.midX - 18, y: picture.midY - 15, width: 36, height: 30))
-        }
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = .center
-        paragraph.lineBreakMode = .byTruncatingTail
-        (value.title as NSString).draw(
-            in: NSRect(x: 8, y: bounds.height - 27, width: bounds.width - 16, height: 16),
-            withAttributes: [.font: NSFont.systemFont(ofSize: 11, weight: selected ? .semibold : .regular),
-                             .foregroundColor: NSColor.labelColor, .paragraphStyle: paragraph])
-        if isHighlighted {
-            capturePressedColor().setFill()
-            card.fill()
-        }
-    }
+/// The largest rect of `size`'s shape centred in `box`; nil for an image with no size.
+private func aspectFit(_ size: NSSize, in box: NSRect) -> NSRect? {
+    guard size.width > 0, size.height > 0 else { return nil }
+    let scale = min(box.width / size.width, box.height / size.height)
+    return NSRect(x: box.midX - size.width * scale / 2, y: box.midY - size.height * scale / 2,
+                  width: size.width * scale, height: size.height * scale)
 }
 
 /// Draws a source's picture whole inside `box`, centred, at its own shape.
 private func drawSourcePicture(_ image: NSImage, in box: NSRect, cornerRadius: CGFloat) {
-    guard image.size.width > 0, image.size.height > 0 else { return }
-    let scale = min(box.width / image.size.width, box.height / image.size.height)
-    let size = NSSize(width: image.size.width * scale, height: image.size.height * scale)
-    let fitted = NSRect(x: box.midX - size.width / 2, y: box.midY - size.height / 2, width: size.width, height: size.height)
+    guard let fitted = aspectFit(image.size, in: box) else { return }
     NSGraphicsContext.saveGraphicsState()
     NSBezierPath(roundedRect: fitted, xRadius: cornerRadius, yRadius: cornerRadius).addClip()
     image.draw(in: fitted, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true,
@@ -553,7 +502,8 @@ private final class CaptureDocument: NSView {
 /// Native momentary buttons draw the frozen geometry; they never mutate their supplied selection.
 @MainActor
 private final class CaptureButton: NSButton {
-    enum Kind { case plain, tile(selected: Bool), primary(shortcut: String?), permission(role: String), secondary }
+    /// A `source` is a chooser card: the source's picture drawn whole at its own shape, its name beneath.
+    enum Kind { case plain, tile(selected: Bool), source(picture: NSImage?, selected: Bool), primary(shortcut: String?), permission(role: String), secondary }
     private var kind: Kind
     private var symbol: String?
     override var isFlipped: Bool { true }
@@ -578,7 +528,7 @@ private final class CaptureButton: NSButton {
         needsDisplay = true
         setAccessibilityElement(true)
         switch kind {
-        case .tile(let selected):
+        case .tile(let selected), .source(_, let selected):
             setAccessibilityRole(.radioButton)
             setAccessibilityValue(NSNumber(value: selected))
         default: setAccessibilityRole(.button)
@@ -595,15 +545,11 @@ private final class CaptureButton: NSButton {
         }
         func image(_ frame: NSRect, color: NSColor, name: String? = nil) {
             guard let symbol = name ?? symbol else { return }
-            guard let image = captureSymbol(symbol, color: color), image.size.width > 0, image.size.height > 0 else { return }
-            let scale = min(frame.width / image.size.width, frame.height / image.size.height)
-            let size = NSSize(width: image.size.width * scale, height: image.size.height * scale)
-            let fitted = NSRect(x: frame.midX - size.width / 2, y: frame.midY - size.height / 2, width: size.width, height: size.height)
+            guard let image = captureSymbol(symbol, color: color), let fitted = aspectFit(image.size, in: frame) else { return }
             image.draw(in: fitted, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: [.interpolation: NSImageInterpolation.high])
         }
-        switch kind {
-        case .tile(let selected):
-            let selectionColor = isEnabled ? blue : muted
+        let selectionColor = isEnabled ? blue : muted
+        func tile(selected: Bool) {
             let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.75, dy: 0.75), xRadius: 9, yRadius: 9)
             (selected ? selectionColor.withAlphaComponent(0.12) : captureRaisedColor()).setFill()
             path.fill()
@@ -612,8 +558,26 @@ private final class CaptureButton: NSButton {
                 path.lineWidth = 1
                 path.stroke()
             }
+        }
+        switch kind {
+        case .tile(let selected):
+            tile(selected: selected)
             image(NSRect(x: (bounds.width - 18) / 2, y: 11, width: 18, height: 18), color: selected ? selectionColor : muted)
             text(title, y: 37, size: 11, weight: .medium, color: isEnabled ? .labelColor : muted)
+        case .source(let picture, let selected):
+            tile(selected: selected)
+            let well = NSRect(x: 8, y: 8, width: bounds.width - 16, height: bounds.height - 40)
+            NSColor.black.withAlphaComponent(0.28).setFill()
+            NSBezierPath(roundedRect: well, xRadius: 5, yRadius: 5).fill()
+            if let picture { drawSourcePicture(picture, in: well.insetBy(dx: 2, dy: 2), cornerRadius: 4) }
+            else { image(NSRect(x: well.midX - 18, y: well.midY - 15, width: 36, height: 30), color: muted, name: "macwindow") }
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.alignment = .center
+            paragraph.lineBreakMode = .byTruncatingTail
+            (title as NSString).draw(
+                in: NSRect(x: 8, y: bounds.height - 27, width: bounds.width - 16, height: 16),
+                withAttributes: [.font: NSFont.systemFont(ofSize: 11, weight: selected ? .semibold : .regular),
+                                 .foregroundColor: NSColor.labelColor, .paragraphStyle: paragraph])
         case .primary(let binding):
             (isEnabled ? blue : blue.withAlphaComponent(0.16)).setFill()
             let foreground = isEnabled ? NSColor.white : captureDisabledBlue()
@@ -639,7 +603,7 @@ private final class CaptureButton: NSButton {
             else { text(title, y: (bounds.height - NSFont.systemFont(ofSize: 11).boundingRectForFont.height) / 2, size: 11, weight: .regular, color: muted) }
         }
         if isHighlighted {
-            let radius: CGFloat = switch kind { case .tile: 9; case .primary: 10; default: 7 }
+            let radius: CGFloat = switch kind { case .tile, .source: 9; case .primary: 10; default: 7 }
             capturePressedColor().setFill()
             NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).fill()
         }

@@ -194,7 +194,7 @@ import YapControls
         precondition(scroller.frame.height <= 4.5 * 140 + 8, "The chooser stays a bounded height: \(scroller.frame.height)")
         precondition(cardsView.subviews.count == 12, "Every source is in the scrolling chooser")
         let longCard = cardsView.subviews.last!
-        precondition(scroller.contentView.documentVisibleRect.intersects(longCard.frame), "The chooser opens showing the chosen source")
+        precondition(scroller.contentView.documentVisibleRect.contains(longCard.frame), "The chooser opens showing the chosen source")
         let longDrawn = render(scroller)
         try! longDrawn.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: "\(CommandLine.arguments[1])/source-chooser-many.png"))
         sourcePopup.configure(values: chooserSources, selected: 0) { recorded.append($0) }
