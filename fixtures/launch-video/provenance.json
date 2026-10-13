@@ -1,0 +1,59 @@
+{
+  "authorization": "Recorded and authorized for repository use by the user (David Zhang) on 2026-10-12; personal content.",
+  "recording": {
+    "recordingId": "d0e524d3-fa76-4556-aab3-04aeed386a48",
+    "app": "Yap 0.1.33",
+    "createdAt": "2026-10-12T23:37:33.428Z"
+  },
+  "files": [
+    {
+      "retainedFixture": "fixtures/launch-video/narration.mov",
+      "sha256": "9ddcb13cdb1828ef05ef608dfc00d986654d01f09a1c4a7b4cacd61753c6c8fc",
+      "derivation": "none: exact original bytes of the recording's narration publication (admitted asset id = sha256)",
+      "role": "narration",
+      "acquisitionBinding": {
+        "acquisitionId": "8469add0-36c0-4fd9-a717-29707b9afbd5",
+        "streamId": "track:1",
+        "sourceToAssetOffsetUs": -47487
+      },
+      "stream": { "codec": "pcm_f32le", "sampleRate": 48000, "channels": 1, "durationUs": { "numerator": 695104000, "denominator": 3 } }
+    },
+    {
+      "retainedFixture": "fixtures/launch-video/dji-0117-audio-3.36-73.36.wav",
+      "sha256": "1ddcfb9807780aee2824bfe01a79c77ed132bf93af531a74deb0eb3dcbafb5ff",
+      "rawSource": {
+        "path": "~/Downloads/DJI_20261013075219_0117_D.MP4",
+        "sha256": "bfe4f1f3c74fa63bc7a61d9bb1456da2ee77cd98219a46b525353950be2ff29e",
+        "description": "DJI Osmo far camera, same take as the recording, 3840x2160 HEVC 30000/1001 + AAC 48 kHz stereo (lav mic paired to the camera)"
+      },
+      "recipe": {
+        "sourceRangeUs": { "startUs": 3360000, "endUs": 73360000 },
+        "sampleRate": 48000,
+        "channels": 2,
+        "encoding": "pcm_f32le",
+        "command": ["yap", "ffmpeg", "-v", "error", "-y", "-ss", "3.36", "-t", "70", "-i", "<rawSource>", "-map", "0:a:0", "-vn", "-c:a", "pcm_f32le", "<out>"],
+        "ffmpeg": "9.0.2 (Yap 0.1.33 bundled)",
+        "rederivedSha256": "1ddcfb9807780aee2824bfe01a79c77ed132bf93af531a74deb0eb3dcbafb5ff",
+        "rederivationMatches": true
+      }
+    }
+  ],
+  "sessionMeasurements": {
+    "note": "Observations from the editing session, not ground truth. They fix what a regression must reproduce, not what is correct.",
+    "transcription": [
+      { "request": "transcript.review full support", "result": "TRANSCRIPT_BOUNDARY_DISAGREEMENT at seam 120000000 (left word 'I' [119120000,119200000])" },
+      { "request": "transcript.prepare executionRange 119000000..230000000", "result": "TRANSCRIPT_BOUNDARY_DISAGREEMENT at seam 219000000 ('video' [218600000,219000000])" },
+      { "request": "transcript.prepare executionRange 119000000..695104000/3", "result": "INVALID_SPEECH_TIMING: estimate ends ~231720000 past physical end 231701333" },
+      { "request": "transcript.prepare executionRange 219000000..231500000", "result": "INVALID_SPEECH_TIMING: estimate [231400000,231560000] exceeds window end 231500000" }
+    ],
+    "denoise": {
+      "word": "okay? (narration asset time [61520000,61840000])",
+      "observation": "rnnoise mix 0.85 lowered this word by 14–16 dB RMS and the rendered-speech transcript dropped it; mix 0.6 still dropped it"
+    },
+    "synchronization": {
+      "method": "1 ms abs-envelope cross-correlation, two windows (narration 150–220 s and 205–225 s)",
+      "estimate": "narration asset time = DJI 0117 file time + 146.58 s, no drift between windows",
+      "note": "Hand-rolled estimate from the session; a candidate oracle, not a certified offset"
+    }
+  }
+}

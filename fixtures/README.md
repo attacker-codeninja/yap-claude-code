@@ -5,6 +5,8 @@ Fixtures preserve real inputs that generated media cannot replace. The
 checks; [pathological speech timing](speech-timing/README.md) preserves a small
 real overlap reproduction; the [screen/camera take](screen-camera-timing/README.md) supports ordinary
 media import and cross-source timing measurements.
+The [launch-video session inputs](launch-video/README.md) reproduce long-media
+transcription failures and supply a multicam synchronization pair.
 The [real editing corpus](video-editing-feedback/README.md) retains compact
 authorized excerpts with exact original clocks. Byte/sample certification and
 recognizer defect reproduction remain separate verdicts.

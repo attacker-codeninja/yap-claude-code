@@ -52,6 +52,17 @@ the mechanics; the archived document owns the reasons and explicit evidence limi
 route: the agent places the app, and the app installs and keeps current the `yap`
 command, the skill and the PATH line. It is built and awaiting its release-day checks.
 
+[Launch-video feedback](launch-video-feedback/README.md) turns an agent's
+end-to-end session making Yap's own launch video into a slice ladder:
+- long-media transcription that self-recovers;
+- mastering refusals that explain themselves;
+- word-level level evidence after denoise;
+- error paper cuts;
+- an information-only multicam sync estimate.
+
+It is planned, not started. The real session inputs are retained under
+[fixtures](../fixtures/launch-video/README.md).
+
 ## Future proposals
 
 These directories hold planning questions, not unfinished implementation slices.
