@@ -36,7 +36,7 @@ their attempts, so cleanup never reclaims them.
   than refusing the package (decided; see README).
 - Normalization's `implementationId` (`apps/service/src/audio-processing.ts`
   ~L48) must be part of the prepared-audio job key
-  (`apps/service/src/prepared-audio.ts` ~L254). Assert it, so slice 03's
+  (`apps/service/src/prepared-audio.ts` ~L254). Assert it, so slice 04's
   rename re-keys failed jobs.
 - **Firewall:** no `catalogFormat` bump; additive tables only.
 

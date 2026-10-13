@@ -1,4 +1,4 @@
-# 07 View-shot fixtures
+# 09 View-shot fixtures
 
 **Unlocks.** The offscreen capture and library renderers can produce
 unlabelled shots for the site and videos. The overlay script fails with a

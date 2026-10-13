@@ -1,4 +1,4 @@
-# 09 Skill guidance
+# 10 Skill guidance
 
 **Unlocks.** The consumer skill (`skills/yap`) teaches the workflows this spec
 makes possible. It reflects only what earlier slices actually shipped; check
@@ -15,7 +15,8 @@ each slice's recorded outcome first.
     target);
   - measure with the `dry` or `after-step` taps while the output is
     infeasible;
-  - `onMiss: "publish"`, if slice 04 shipped.
+  - treatments always publish (slice 04); read `targets-unmet` /
+    `ceiling-unmet` issues and decide whether to accept or re-target.
 - **After denoise:**
   - render speech on the dry and processed taps and diff the words;
   - for any word that disappeared, compare `rmsDbfs` on both taps over its
@@ -25,8 +26,23 @@ each slice's recorded outcome first.
   This is guidance, never an automatic treatment.
 - **Which mic recorded what:** `audio.measure` each candidate source over one
   shared range before choosing the dialogue source.
-- **Multicam:** the estimate → `correspondence.prepare` workflow, only if
-  slice 08 shipped.
+- **Output by default:** read `issues` on every result before trusting it,
+  including `range-clamped`, `font-substituted` and `unqualified-source`
+  (slice 02 and slice 07). Remove the skill's "a refusal is a boundary"
+  wording.
+- **Multicam sync (there is no primitive, by slice 08's decision):**
+  1. `transcript.review` each co-located source.
+  2. Match distinctive words that appear once in both, and take the median
+     start-time difference.
+  3. Check it at a second window for drift.
+  4. Optionally refine with PCM from `audio.get` and a short envelope
+     cross-correlation.
+  5. Place clips with explicit offsets.
+
+  Handle acquisition binding offsets explicitly. Eval this guidance on the
+  fixture pair (`fixtures/launch-video/narration.mov` against
+  `dji-0117-audio-3.36-73.36.wav`): it should land near narration =
+  excerpt + 149.94 s.
 
 **Verify.** Follow [write-skills](../../../.agents/skills/write-skills/SKILL.md),
 and confirm every operation or field named exists in the installed CLI's

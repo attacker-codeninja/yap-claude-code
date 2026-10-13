@@ -1,52 +1,42 @@
-# 08 Multicam sync estimate, information only
+# 08 Multicam sync: no new primitive (closed by decision)
 
-**Decision C (made).** This slice stays in this spec, last, gated by its
-probe.
+**Decision C, revised by the product's user (2026-10-12).** No synchronization
+primitive. Multicam sync becomes skill guidance (slice 10), composed from
+primitives Yap already has.
 
-**Unlocks.** A caller can ask for an audio-based offset estimate between two
-sources. The result is a `CorrespondenceMeasurement` carrying:
-- the candidate peaks;
-- the peak strength;
-- per-window offsets.
+**Why.**
+- **The session solved it with existing primitives in a few calls.**
+  1. `transcript.review` on both sources.
+  2. Match shared distinctive words (each appearing once in both sources).
+     Their median start-time difference was 146.64 s, with every match within
+     ±0.08 s.
+  3. Refine with PCM from `audio.get` (or `yap ffmpeg`) and a small envelope
+     cross-correlation: 146.58 s.
+  4. Check a second window for drift; there was none.
 
-It is never admitted automatically. The caller passes it to the existing
-`correspondence.prepare` (`packages/core/src/correspondence.ts:23`,
-`admitCorrespondence`). No automatic retime.
+  The real cost was writing correlation loops in pure Python without NumPy.
+  That's the agent's environment, not a product gap.
+- **A sync primitive isn't really a primitive.** Every mainstream tool
+  (PluralEyes, Premiere's Synchronize) pairs waveform matching with a
+  confidence threshold and drift policy. Those are product decisions about
+  when to trust a match.
+- **That policy has already drawn heavy machinery here once.** The archived
+  [synchronization study](../../done/video-editing-feedback/assets/20-synchronization/README.md)
+  built frozen protocols, thresholds, receipts and lexical scouts. Its subject
+  was a different problem: a remote podcast with no shared room audio at all.
+  That complexity is exactly what this product avoids.
+- **It's use-case specific.** The product supplies evidence (word timings,
+  PCM) and exact placement. The caller decides the offset.
 
-**The constraint it must keep.** The archived
-[synchronization study](../../done/video-editing-feedback/assets/20-synchronization/README.md)
-refused unlike-mic correlation (best |r| about 0.197 against a 0.35 gate).
-Those thresholds stay frozen. The Python experiment in
-`packages/test-harness/editing/synchronization` stays a comparator, never a
-production fallback.
+**What remains.**
+- Slice 10 teaches the recipe: word-anchor offset, a drift check at a second
+  window, optional refinement from PCM, then explicit placement offsets.
+- The fixture pair (`fixtures/launch-video/narration.mov` and
+  `dji-0117-audio-3.36-73.36.wav`) stays as the skill-eval case for that
+  guidance.
+- Slice 11 treats hand-rolled sync as expected; it's an effort signal only.
 
-**Probe first, and it decides whether this slice ships.** Run the frozen
-protocol, unchanged, on these two fixtures:
-- `fixtures/launch-video/narration.mov`;
-- `fixtures/launch-video/dji-0117-audio-3.36-73.36.wav`.
-
-The session's hand estimate was narration = DJI file time + 146.58 s. The
-excerpt starts at DJI 3.36 s, so excerpt time 0 is narration 149.94 s.
-Two things must both hold:
-1. it lands near that offset;
-2. the nine retained unlike-mic pairs still refuse.
-
-If both can't hold without retuning, close this slice as a retained refusal:
-keep the receipt, keep the fixture pair, and build nothing. This pair is unlike
-mics again: the close lav recorded by the DJI against the Mac's built-in mic
-across the room. It may also fall below the gate.
-
-**Seam (only if the probe passes).**
-- A distinct estimator recipe and receipt type in
-  `packages/protocol/src/correspondence.ts` and
-  `packages/core/src/correspondence.ts`.
-- `correspondence.prepare` admission stays unchanged.
-- The acquisition binding offset (narration `sourceToAssetOffsetUs` −47487)
-  is handled explicitly, never folded silently into the estimate.
-
-**Red tests first (`packages/core/src/correspondence.test.ts`).**
-- The fixture pair.
-- A replay of the retained unlike-mic refusals.
-
-**Delegated.** The operation name (`correspondence.estimate` or similar) and
-the window count.
+**Would reopen this.** If a replay shows agents repeatedly failing to sync
+co-located sources with the documented recipe, reconsider a narrow signal
+primitive: a lag-correlation curve between two audio selections, with no
+threshold and no admission policy.

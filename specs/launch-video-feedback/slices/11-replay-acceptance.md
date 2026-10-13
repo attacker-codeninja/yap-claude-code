@@ -1,7 +1,7 @@
-# 10 Replay acceptance: a fresh agent edits the same launch video
+# 11 Replay acceptance: a fresh agent edits the same launch video
 
 **This is the spec's acceptance criterion, set by the person who owns the
-product.** After slices 01–09 ship:
+product.** After slices 01–10 ship:
 1. A fresh Claude Code agent on **Claude Opus 5.5** (`claude-opus-5-5`, the
    model of the baseline session) edits the same launch video, from the same
    inputs and prompts, on the built product.
@@ -85,12 +85,14 @@ remaining difference is explained.
 | Seam disagreement (3 results) | Zero. Long media transcribes in one request; seam words carry `boundary-unresolved`. |
 | Timing overrun (4 results) | Zero refusals for overruns of up to one frame; `end-clamped` diagnostics appear where expected. |
 | Manual ≤20 s chunking | No hand-chunked `executionRange` loops. |
-| Normalization infeasible (3 results) or unmet (2 results) | Either feasible on the first measured try, or a refusal whose `maximumFeasibleTargetLufs` the agent applies directly (at most one corrective round), or an explicit `onMiss: "publish"`. Upstream-tap reads never fail because of the output stack. |
-| Curve-clock error (1) / source-bounds error (1) | If they occur, the agent fixes them in one step from the error's details. |
-| Render range admitted then failed (1) | Refused at admission, if it occurs at all. |
-| Hand-rolled cross-correlation (2) | Replaced by the slice 08 estimate. If slice 08 closed as a retained refusal, hand-rolling is expected; record that, not a failure. |
+| Normalization infeasible (3 results) or unmet (2 results) | Zero refusals: every treatment publishes on the first try. Any miss arrives as a `targets-unmet` issue with the excess and `maximumFeasibleTargetLufs`. No measurement fails because of the output stack. |
+| Curve-clock error (1) | If it occurs, the agent fixes it in one step from the error's details. |
+| Source-bounds error (1) | Zero refusals: the placement lands, with `range-clamped`. |
+| Render range admitted then failed (1) | A partly valid range publishes, clamped, with `range-clamped`; a range wholly outside refuses at admission. |
+| Hand-rolled cross-correlation (2) | Expected: there is no sync primitive by decision (slice 08). Record the effort, and whether the agent followed the slice 10 recipe. |
 | RMS arithmetic outside Yap (4) | Replaced by `audio.measure` `rmsDbfs`. |
 | Fixture labels painted over | Unlabelled shots used, or the agent passes `FIXTURE_LABEL=omit`. |
+| Any class-B refusal in the [audit](07-remaining-quality-gates.md) | Zero. Any quality or target miss arrives as an issue on a delivered output. |
 
 **Quality isn't lowered to pass.** The replay must still deliver a finished
 launch video for each turn. Review its export the way the baseline was

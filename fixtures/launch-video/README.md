@@ -24,7 +24,7 @@ establish lexical truth or a certified sync offset.
 Both files are Git LFS objects; fetch them only for the checks that use them.
 
 **`session/`** holds the complete original inputs (about 1.6 GB) for the
-spec's [replay acceptance](../../specs/launch-video-feedback/slices/10-replay-acceptance.md):
+spec's [replay acceptance](../../specs/launch-video-feedback/slices/11-replay-acceptance.md):
 - the five DJI files the person put in `~/Downloads`;
 - the recording's published members and journals.
 
