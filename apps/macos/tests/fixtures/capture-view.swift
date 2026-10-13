@@ -106,6 +106,26 @@ import YapControls
         let selectedSource = CaptureView(appIcon: appIcon, input: fixture(secondSource: true)) { recorded.append($0) }
         let sourcePopup = selectedSource.control(identifier: "source.device") as! SourcePickerButton
         precondition(sourcePopup.title == "Studio Display", "Rebuilding preserves the owner-selected source device")
+        let restingSource = pixels(sourcePopup)
+        sourcePopup.cell!.highlight(true, withFrame: sourcePopup.bounds, in: sourcePopup)
+        precondition(pixels(sourcePopup) != restingSource, "A pressed source chooser must look pressed")
+        sourcePopup.cell!.highlight(false, withFrame: sourcePopup.bounds, in: sourcePopup)
+        precondition(pixels(sourcePopup) == restingSource, "A released source chooser returns to rest")
+        sourcePopup.choose(at: 0)
+        precondition(recorded.last == .controls(.selectDisplay(1)), "Choosing a source card sends that source's intent")
+        // Source pictures arrive after the menu is drawn. The chooser shows them when they do, and
+        // the field it replaces leaves instead of staying behind it.
+        func sourceFields(_ capture: CaptureView) -> Int {
+            capture.scrollView.documentView!.subviews.filter { $0.identifier?.rawValue == "source.device" }.count
+        }
+        let arriving = CaptureView(appIcon: appIcon, input: fixture(secondSource: true, previews: false)) { recorded.append($0) }
+        precondition(arriving.control(identifier: "source.device") is NSPopUpButton, "Sources without pictures use the menu field")
+        arriving.update(fixture(secondSource: true))
+        precondition(arriving.control(identifier: "source.device") is SourcePickerButton && sourceFields(arriving) == 1,
+                     "Pictures that arrive after the menu is drawn replace the menu field: \(sourceFields(arriving)) fields")
+        arriving.update(fixture(secondSource: true, previews: false))
+        precondition(arriving.control(identifier: "source.device") is NSPopUpButton && sourceFields(arriving) == 1,
+                     "Sources that lose their pictures return to one menu field: \(sourceFields(arriving)) fields")
         let duplicate = CaptureView(appIcon: appIcon, input: fixture(duplicateNames: true)) { recorded.append($0) }
         let duplicateCamera = duplicate.control(identifier: "camera.device") as! NSPopUpButton
         duplicateCamera.selectItem(at: duplicateCamera.numberOfItems - 1)
@@ -280,8 +300,8 @@ import YapControls
         return input
     }
 
-    @MainActor static func fixture(locked: Bool = false, cameraOnly: Bool = false, longNames: Bool = false, duplicateNames: Bool = false, microphoneOn: Bool = true, secondSource: Bool = false, startEnabled: Bool? = nil, status: String = "Ready to record", lastRecording: Bool = false) -> CaptureViewInput {
-        let preview = NSImage(size: NSSize(width: 160, height: 90), flipped: false) { rect in
+    @MainActor static func fixture(locked: Bool = false, cameraOnly: Bool = false, longNames: Bool = false, duplicateNames: Bool = false, microphoneOn: Bool = true, secondSource: Bool = false, startEnabled: Bool? = nil, status: String = "Ready to record", lastRecording: Bool = false, previews: Bool = true) -> CaptureViewInput {
+        let preview = !previews ? nil : NSImage(size: NSSize(width: 160, height: 90), flipped: false) { rect in
             NSColor(calibratedWhite: 0.12, alpha: 1).setFill(); rect.fill()
             NSColor(calibratedRed: 0.24, green: 0.48, blue: 0.78, alpha: 1).setFill()
             NSBezierPath(rect: rect.insetBy(dx: 10, dy: 9)).fill()

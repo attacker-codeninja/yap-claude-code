@@ -751,9 +751,10 @@ final class RecordingControls: NSObject {
             var row: [String: Any] = ["item": item, "identifier": nativeID, "enabled": control.isEnabled,
                 "title": (control as? NSButton)?.title ?? (control as? NSPopUpButton)?.titleOfSelectedItem ?? nativeID,
                 "checked": (control as? NSSwitch).map { $0.state == .on } ?? ((control.accessibilityValue() as? NSNumber)?.boolValue ?? false)]
-            if let popup = control as? NSPopUpButton, let choices = captureChoices(identifier: nativeID, input: view.input) {
+            if let choices = captureChoices(identifier: nativeID, input: view.input),
+                let selected = (control as? NSPopUpButton)?.indexOfSelectedItem ?? (control as? SourcePickerButton)?.selected {
                 row["submenu"] = choices.enumerated().map { index, choice in
-                    ["item": Self.intentID(choice.intent), "title": choice.title, "enabled": popup.isEnabled, "checked": index == popup.indexOfSelectedItem] as [String: Any]
+                    ["item": Self.intentID(choice.intent), "title": choice.title, "enabled": control.isEnabled, "checked": index == selected] as [String: Any]
                 }
             }
             return row
@@ -787,17 +788,18 @@ final class RecordingControls: NSObject {
         guard let view = captureView else { return false }
         let nativeID = identifier == ControlsAction.startOrStop.id ? "capture.start" : identifier == ControlsAction.openLibrary.id ? "header.library" : identifier == ControlsAction.toggleSystemAudio.id ? "systemAudio.toggle" : identifier
         if let control = view.control(identifier: nativeID), control.isEnabled {
-            if let picker = control as? SourcePickerButton {
-                picker.performClick(nil)
-                return true
-            }
             control.performClick(nil)
             return true
         }
-        for popupID in ["source.device", "camera.device", "microphone.device"] {
-            guard let popup = view.control(identifier: popupID) as? NSPopUpButton, popup.isEnabled,
-                let choices = captureChoices(identifier: popupID, input: view.input),
+        for chooserID in ["source.device", "camera.device", "microphone.device"] {
+            guard let chooser = view.control(identifier: chooserID), chooser.isEnabled,
+                let choices = captureChoices(identifier: chooserID, input: view.input),
                 let index = choices.firstIndex(where: { Self.intentID($0.intent) == identifier }) else { continue }
+            if let picker = chooser as? SourcePickerButton {
+                picker.choose(at: index)
+                return true
+            }
+            guard let popup = chooser as? NSPopUpButton else { continue }
             popup.selectItem(at: index)
             return popup.sendAction(popup.action!, to: popup.target)
         }

@@ -17,14 +17,11 @@ struct CaptureViewInput: Equatable {
     struct Choice: Equatable {
         let title: String
         let intent: CaptureViewIntent
+        /// Compared by identity, so a picture that arrives after the menu is drawn redraws it.
         let preview: NSImage?
 
         init(title: String, intent: CaptureViewIntent, preview: NSImage? = nil) {
             self.title = title; self.intent = intent; self.preview = preview
-        }
-
-        static func == (lhs: Choice, rhs: Choice) -> Bool {
-            lhs.title == rhs.title && lhs.intent == rhs.intent
         }
     }
     struct LastRecording: Equatable {
@@ -143,8 +140,7 @@ final class CaptureView: NSView {
     private func button(_ title: String, id: String, frame: NSRect, intent: CaptureViewIntent?,
                         kind: CaptureButton.Kind = .plain, symbol: String? = nil, enabled: Bool = true,
                         host: NSView? = nil) {
-        usedControls.insert(id)
-        let button = controls[id] as? CaptureButton ?? CaptureButton(title: title, kind: kind, symbol: symbol)
+        let button = reuse(id) { CaptureButton(title: title, kind: kind, symbol: symbol) }
         button.configure(title: title, kind: kind, symbol: symbol)
         button.frame = frame
         button.isEnabled = enabled && intent != nil
@@ -160,8 +156,7 @@ final class CaptureView: NSView {
     }
 
     private func toggle(_ title: String, id: String, frame: NSRect, intent: CaptureViewIntent?, on: Bool, enabled: Bool) {
-        usedControls.insert(id)
-        let toggle = controls[id] as? NSSwitch ?? NSSwitch()
+        let toggle = reuse(id) { NSSwitch() }
         toggle.controlSize = .small
         toggle.sizeToFit()
         let nativeSize = toggle.frame.size
@@ -182,8 +177,7 @@ final class CaptureView: NSView {
 
     private func popup(_ values: [CaptureViewInput.Choice], selected: Int, id: String, frame: NSRect) {
         if id == "source.device" && values.contains(where: { $0.preview != nil }) {
-            usedControls.insert(id)
-            let picker = controls[id] as? SourcePickerButton ?? SourcePickerButton()
+            let picker = reuse(id) { SourcePickerButton() }
             picker.frame = frame
             picker.configure(values: values, selected: selected) { [weak self] intent in self?.perform(intent) }
             picker.isEnabled = input.inputsEnabled && input.screenSourcesEnabled
@@ -193,8 +187,7 @@ final class CaptureView: NSView {
             controls[id] = picker
             return
         }
-        usedControls.insert(id)
-        let popup = controls[id] as? CapturePopup ?? CapturePopup(frame: frame, pullsDown: false)
+        let popup = reuse(id) { CapturePopup(frame: frame, pullsDown: false) }
         popup.frame = frame
         popup.isBordered = false
         popup.font = .systemFont(ofSize: 12, weight: .regular)
@@ -214,6 +207,22 @@ final class CaptureView: NSView {
         if popup.superview !== document { document.addSubview(popup, positioned: .above, relativeTo: nil) }
         controls[id] = popup
         choices[ObjectIdentifier(popup)] = values
+    }
+
+    /// The control already shown for `id`, kept so focus and identity survive a rebuild. A control
+    /// of another kind (the source field becomes a picture chooser once pictures arrive) leaves.
+    private func reuse<Control: NSControl>(_ id: String, make: () -> Control) -> Control {
+        usedControls.insert(id)
+        if let existing = controls[id] as? Control { return existing }
+        if let other = controls[id] { forget(other, id: id) }
+        return make()
+    }
+
+    private func forget(_ control: NSControl, id: String) {
+        control.removeFromSuperview()
+        intents.removeValue(forKey: ObjectIdentifier(control))
+        choices.removeValue(forKey: ObjectIdentifier(control))
+        controls.removeValue(forKey: id)
     }
 
     private func icon(_ name: String, frame: NSRect, color: NSColor = NSColor.labelColor.withAlphaComponent(0.65)) {
@@ -359,12 +368,7 @@ final class CaptureView: NSView {
         footer.addSubview(statusDot)
         label(input.status, NSRect(x: 28, y: 35, width: 247, height: 16), size: 11, color: .secondaryLabelColor, host: footer)
         button("Quit", id: "app.quit", frame: NSRect(x: 295, y: 32, width: 37, height: 22), intent: .controls(.quit), host: footer)
-        for (id, control) in controls where !usedControls.contains(id) {
-            control.removeFromSuperview()
-            intents.removeValue(forKey: ObjectIdentifier(control))
-            choices.removeValue(forKey: ObjectIdentifier(control))
-        }
-        controls = controls.filter { usedControls.contains($0.key) }
+        for (id, control) in controls where !usedControls.contains(id) { forget(control, id: id) }
         contentHeight = footerY + Self.footerHeight + 2
         document.frame = NSRect(x: 0, y: 0, width: Self.preferredWidth,
                                 height: max(1, footerY))
@@ -386,13 +390,17 @@ final class CaptureView: NSView {
 /// snapshots for displays and windows instead of an opaque text-only menu.
 final class SourcePickerButton: NSButton {
     private var values: [CaptureViewInput.Choice] = []
-    private var selected = -1
+    private(set) var selected = -1
     private var chooser: NSPopover?
-    private var choose: ((CaptureViewIntent) -> Void)?
+    private var perform: ((CaptureViewIntent) -> Void)?
+    override class var cellClass: AnyClass? {
+        get { CaptureButtonCell.self }
+        set {}
+    }
 
     func configure(values: [CaptureViewInput.Choice], selected: Int,
-                   choose: @escaping (CaptureViewIntent) -> Void) {
-        self.values = values; self.selected = selected; self.choose = choose
+                   choose perform: @escaping (CaptureViewIntent) -> Void) {
+        self.values = values; self.selected = selected; self.perform = perform
         title = values.indices.contains(selected) ? values[selected].title : (values.first?.title ?? "Choose source")
         alignment = .left; font = .systemFont(ofSize: 12); isBordered = false
         image = nil
@@ -410,6 +418,10 @@ final class SourcePickerButton: NSButton {
         if let preview = value?.preview { preview.draw(in: imageRect, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: [.interpolation: NSImageInterpolation.high]) }
         (text as NSString).draw(at: NSPoint(x: value?.preview == nil ? 8 : 45, y: (bounds.height - 14) / 2), withAttributes: attributes)
         if let chevron = captureSymbol("chevron.down", color: .secondaryLabelColor) { chevron.draw(in: NSRect(x: bounds.width - 16, y: bounds.midY - 3, width: 8, height: 6)) }
+        if isHighlighted {
+            capturePressedColor().setFill()
+            NSBezierPath(roundedRect: bounds, xRadius: 7, yRadius: 7).fill()
+        }
     }
 
     @objc private func openChooser() {
@@ -432,10 +444,12 @@ final class SourcePickerButton: NSButton {
         chooser = popover; popover.show(relativeTo: bounds, of: self, preferredEdge: .maxY)
     }
 
-    @objc private func selectCard(_ sender: NSButton) {
-        guard values.indices.contains(sender.tag) else { return }
-        let intent = values[sender.tag].intent
-        chooser?.close(); chooser = nil; choose?(intent)
+    @objc private func selectCard(_ sender: NSButton) { choose(at: sender.tag) }
+
+    /// Chooses the source at `index`, as clicking its card does.
+    func choose(at index: Int) {
+        guard values.indices.contains(index) else { return }
+        chooser?.close(); chooser = nil; perform?(values[index].intent)
     }
 }
 
