@@ -3,8 +3,7 @@
 **Unlocks.** `transcript.prepare` and `transcript.review` finish on long media.
 Two situations no longer refuse the whole job:
 - **Seam disagreement:** words go to the window whose core holds their start.
-  Each unpaired word gets `boundary-unresolved` (open decision A; that is the
-  default).
+  Each unpaired word gets `boundary-unresolved` (decision A).
 - **Estimate overrun:** an estimate that runs past the decoded edge by at most
   one engine frame is clamped and gets `end-clamped`. This covers both the
   physical end of media and a caller's window end.
@@ -88,6 +87,3 @@ after the interval end, a large overrun, or more than 28 s decoded.
 **Delegated.** Field, table and enum names; the exact shift set (within
 ±0.5 s); whether `TranscriptGapRecord` changes.
 
-**Would change this slice.** If the user picks the alternative for decision
-A, publish no word for an unresolved observation and record an unresolved
-span instead.

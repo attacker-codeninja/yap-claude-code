@@ -1,6 +1,6 @@
 # 04 Explicit normalization miss policy
 
-**Open decision B.** Default, applied if the user hasn't answered: the
+**Decision B (made).** The
 `normalization` processor gains an explicit
 `onMiss: "refuse" | "publish"`, defaulting to `"refuse"`.
 - With `"publish"`, the best attempt within the bounded correction policy is
@@ -34,6 +34,3 @@ measurement path. A best-effort mode keeps the honesty without the deadlock.
 
 **Delegated.** The exact names (`onMiss`, `unmet`).
 
-**Would change this slice.** If the user picks the alternative ("keep
-refusing, report more"), this slice reduces to slice 03 and is closed as not
-needed. Record that here.

@@ -24,9 +24,11 @@ You are resuming this spec.
    names its red test first.
 4. Run the narrowest check per slice. Run the full suite once, after the last
    slice.
-5. Three human decisions are open (see **Open decisions**). Each has a
-   recommended default. If the user hasn't answered when you reach the owning
-   slice, apply the default, record it in that slice file, and continue.
+5. **The acceptance criterion is [slice 10](slices/10-replay-acceptance.md).**
+   A fresh Claude Opus 5.5 agent edits the same launch video, from the same
+   inputs and prompts, on the built product, and its transcript is read
+   against the baseline issue by issue. The spec isn't done until that replay
+   passes.
 6. Before ending your pass, update this section: the status line, the
    checklist, and the next pickup point.
 
@@ -34,13 +36,14 @@ Checklist:
 - [ ] [01 Stale derived generations self-recover](slices/01-stale-derived-self-recovery.md)
 - [ ] [02 Long-media transcription publishes with diagnostics](slices/02-transcription-diagnostics.md)
 - [ ] [03 Normalization refusals answer the question](slices/03-normalization-evidence.md)
-- [ ] [04 Explicit normalization miss policy](slices/04-normalization-miss-policy.md) (open decision B)
+- [ ] [04 Explicit normalization miss policy](slices/04-normalization-miss-policy.md)
 - [ ] [05 Short-window level for word-sized ranges](slices/05-short-window-level.md)
 - [ ] [06 Error and admission paper cuts](slices/06-paper-cuts.md)
 - [ ] [07 View-shot fixtures](slices/07-view-shot-fixtures.md)
-- [ ] [08 Multicam sync estimate, information only](slices/08-sync-estimate.md) (open decision C)
+- [ ] [08 Multicam sync estimate, information only](slices/08-sync-estimate.md)
 - [ ] [09 Skill guidance](slices/09-skill-guidance.md)
-- [ ] Full suite run, then [close-spec](../../.agents/skills/close-spec/SKILL.md)
+- [ ] Full suite run
+- [ ] [10 Replay acceptance](slices/10-replay-acceptance.md), then [close-spec](../../.agents/skills/close-spec/SKILL.md)
 
 ## Slice graph
 
@@ -48,7 +51,7 @@ Checklist:
 01 self-recovery ──► 02 transcription ──┐
                └──► 03 normalization ──► 04 miss policy
 05 short-window level ─────────────────┤
-06 paper cuts (independent)            ├──► 09 skill guidance ──► full run
+06 paper cuts (independent)            ├──► 09 skill guidance ──► full run ──► 10 replay acceptance
 07 view shots (independent)            │
 08 sync estimate (independent, gated) ─┘
 ```
@@ -102,24 +105,40 @@ anything after 01.
 - Plan work from the retro's record-only sections ("Agent-side mistakes",
   "Policy observations").
 
-## Open decisions (each has a default an agent applies if unanswered)
+## Decisions made by the product's user
 
-**A. An unresolved seam word (slice 02).**
-- Default: publish the word from the window whose core holds its start, with
-  diagnostic `boundary-unresolved`.
-- Alternative: publish no word and record an unresolved span. More
-  conservative, but it loses words.
+The person who prompts this work isn't the product's user; the agent editing
+with Yap is. The agent that hit these problems in the baseline session made
+these calls:
 
-**B. Normalization that misses its target (slice 04).**
-- Default: an explicit caller opt-in, `onMiss: "refuse" | "publish"`,
-  defaulting to `refuse`. `publish` delivers the best attempt and records the
-  unmet targets in its evidence.
-- Alternative: keep refusing, and only report more detail.
+**A. An unresolved seam word: publish it with `boundary-unresolved` (slice 02).**
+- While editing, a missing word was always worse than a flagged one. It breaks
+  quote selection, cut boundaries and captions, and the only way to notice it
+  is to re-transcribe.
+- A flagged word, with both raw candidates kept, says exactly where to look.
+- Rejected: publishing no word and recording an unresolved span.
 
-**C. The sync estimate (slice 08).**
-- Default: keep it in this spec, last, gated by its probe. A pair that doesn't
-  clear the archived thresholds stays a retained refusal.
-- Alternative: split it into its own spec.
+**B. Normalization that misses its target: an explicit opt-in
+`onMiss: "refuse" | "publish"`, defaulting to `"refuse"` (slice 04).**
+- In the session, a 0.05 dB true-peak excess blocked both rendering and
+  measurement. The agent would have accepted the result immediately if it
+  could have seen it.
+- The default stays strict, so a miss is only published when the caller asks
+  for it, and it is recorded as `unmet`.
+- Rejected: refuse-and-report only. That still leaves the caller stuck.
+
+**C. The sync estimate stays in this spec (slice 08).**
+- The far camera started about 2.5 minutes after the Mac recording, so its
+  footage had to be shifted 146.58 s to line up with the take.
+- Yap has no way to work that out. The agent hand-wrote an audio
+  cross-correlation: slide one track against the other until the waveforms
+  match.
+- Slice 08 makes that a Yap operation. It returns the offset with a strength
+  score. Nothing moves unless the caller explicitly admits the result through
+  `correspondence.prepare`.
+- The archived research refused this for mismatched mics, and those thresholds
+  stay frozen. The slice may therefore close as a retained refusal, and
+  slice 10 accounts for that.
 
 The archived [synchronization study](../done/video-editing-feedback/assets/20-synchronization/README.md)
 refused unlike-mic correlation: the best |r| was about 0.197 against a 0.35

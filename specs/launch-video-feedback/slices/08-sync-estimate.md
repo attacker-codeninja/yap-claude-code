@@ -1,7 +1,7 @@
 # 08 Multicam sync estimate, information only
 
-**Open decision C.** Default, applied if the user hasn't answered: keep this
-slice in this spec, last, gated by its probe.
+**Decision C (made).** This slice stays in this spec, last, gated by its
+probe.
 
 **Unlocks.** A caller can ask for an audio-based offset estimate between two
 sources. The result is a `CorrespondenceMeasurement` carrying:

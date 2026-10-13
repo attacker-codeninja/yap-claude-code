@@ -16,7 +16,15 @@
         "streamId": "track:1",
         "sourceToAssetOffsetUs": -47487
       },
-      "stream": { "codec": "pcm_f32le", "sampleRate": 48000, "channels": 1, "durationUs": { "numerator": 695104000, "denominator": 3 } }
+      "stream": {
+        "codec": "pcm_f32le",
+        "sampleRate": 48000,
+        "channels": 1,
+        "durationUs": {
+          "numerator": 695104000,
+          "denominator": 3
+        }
+      }
     },
     {
       "retainedFixture": "fixtures/launch-video/dji-0117-audio-3.36-73.36.wav",
@@ -27,11 +35,32 @@
         "description": "DJI Osmo far camera, same take as the recording, 3840x2160 HEVC 30000/1001 + AAC 48 kHz stereo (lav mic paired to the camera)"
       },
       "recipe": {
-        "sourceRangeUs": { "startUs": 3360000, "endUs": 73360000 },
+        "sourceRangeUs": {
+          "startUs": 3360000,
+          "endUs": 73360000
+        },
         "sampleRate": 48000,
         "channels": 2,
         "encoding": "pcm_f32le",
-        "command": ["yap", "ffmpeg", "-v", "error", "-y", "-ss", "3.36", "-t", "70", "-i", "<rawSource>", "-map", "0:a:0", "-vn", "-c:a", "pcm_f32le", "<out>"],
+        "command": [
+          "yap",
+          "ffmpeg",
+          "-v",
+          "error",
+          "-y",
+          "-ss",
+          "3.36",
+          "-t",
+          "70",
+          "-i",
+          "<rawSource>",
+          "-map",
+          "0:a:0",
+          "-vn",
+          "-c:a",
+          "pcm_f32le",
+          "<out>"
+        ],
         "ffmpeg": "9.0.2 (Yap 0.1.33 bundled)",
         "rederivedSha256": "1ddcfb9807780aee2824bfe01a79c77ed132bf93af531a74deb0eb3dcbafb5ff",
         "rederivationMatches": true
@@ -41,19 +70,49 @@
   "sessionMeasurements": {
     "note": "Observations from the editing session, not ground truth. They fix what a regression must reproduce, not what is correct.",
     "transcription": [
-      { "request": "transcript.review full support", "result": "TRANSCRIPT_BOUNDARY_DISAGREEMENT at seam 120000000 (left word 'I' [119120000,119200000])" },
-      { "request": "transcript.prepare executionRange 119000000..230000000", "result": "TRANSCRIPT_BOUNDARY_DISAGREEMENT at seam 219000000 ('video' [218600000,219000000])" },
-      { "request": "transcript.prepare executionRange 119000000..695104000/3", "result": "INVALID_SPEECH_TIMING: estimate ends ~231720000 past physical end 231701333" },
-      { "request": "transcript.prepare executionRange 219000000..231500000", "result": "INVALID_SPEECH_TIMING: estimate [231400000,231560000] exceeds window end 231500000" }
+      {
+        "request": "transcript.review full support",
+        "result": "TRANSCRIPT_BOUNDARY_DISAGREEMENT at seam 120000000 (left word 'I' [119120000,119200000])"
+      },
+      {
+        "request": "transcript.prepare executionRange 119000000..230000000",
+        "result": "TRANSCRIPT_BOUNDARY_DISAGREEMENT at seam 219000000 ('video' [218600000,219000000])"
+      },
+      {
+        "request": "transcript.prepare executionRange 119000000..695104000/3",
+        "result": "INVALID_SPEECH_TIMING: estimate ends ~231720000 past physical end 231701333"
+      },
+      {
+        "request": "transcript.prepare executionRange 219000000..231500000",
+        "result": "INVALID_SPEECH_TIMING: estimate [231400000,231560000] exceeds window end 231500000"
+      }
     ],
     "denoise": {
       "word": "okay? (narration asset time [61520000,61840000])",
-      "observation": "rnnoise mix 0.85 lowered this word by 14–16 dB RMS and the rendered-speech transcript dropped it; mix 0.6 still dropped it"
+      "observation": "rnnoise mix 0.85 lowered this word by 14\u201316 dB RMS and the rendered-speech transcript dropped it; mix 0.6 still dropped it"
     },
     "synchronization": {
-      "method": "1 ms abs-envelope cross-correlation, two windows (narration 150–220 s and 205–225 s)",
+      "method": "1 ms abs-envelope cross-correlation, two windows (narration 150\u2013220 s and 205\u2013225 s)",
       "estimate": "narration asset time = DJI 0117 file time + 146.58 s, no drift between windows",
       "note": "Hand-rolled estimate from the session; a candidate oracle, not a certified offset"
     }
+  },
+  "session": {
+    "path": "fixtures/launch-video/session/",
+    "fetch": "excluded by .lfsconfig; git lfs pull --include=\"fixtures/launch-video/session/**\"",
+    "downloads": {
+      "DJI_20261013075219_0117_D.MP4": "bfe4f1f3c74fa63bc7a61d9bb1456da2ee77cd98219a46b525353950be2ff29e",
+      "DJI_20261013075429_0118_D.MP4": "30c41c0159c5b6afb9de93fe89a61460ccf658113065cdd7468211d51298c6e0",
+      "DJI_20261013075559_0119_D.MP4": "5dfa06284dc387ecba39a7bd459486216fa1b0c576834971dfec49f8ee14005f",
+      "DJI_20261013080223_0121_D.MP4": "7c729d183c2b3afd89a6ef9ccdf761cb5ebae46637124f31fcf9ea2120ccc025",
+      "DJI_20261013080249_0122_D.MP4": "cf82c2388b0e1861e5a6c47bb2f5c77cd131fd162949eb9fb89e3a91ec43ab3b"
+    },
+    "recording": {
+      "from": "~/.yap/library/recordings/d0e524d3-fa76-4556-aab3-04aeed386a48 (published members and journals only; working copies such as camera.raw.mov omitted)",
+      "source/video.mov": "700ca8936007dd9bf6723119f4c278b4e005c42b0499c7378bf42b9b81d8589e",
+      "source/narration.mov": "9ddcb13cdb1828ef05ef608dfc00d986654d01f09a1c4a7b4cacd61753c6c8fc",
+      "camera/video.mov": "72b154e882c47e388f9f488af4ffb4e03396d22bb2f585913c9e2eaf6bebd250"
+    },
+    "note": "Copies are byte-identical to the originals; each hash equals the asset id Yap admitted in the baseline session."
   }
 }

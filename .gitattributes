@@ -11,3 +11,5 @@ specs/done/video-editing-feedback/assets/15-face-observations/shots/**/*.png fil
 specs/done/video-editing-feedback/assets/16-subject-reframe/shots/**/*.png filter=lfs diff=lfs merge=lfs -text
 fixtures/launch-video/**/*.mov filter=lfs diff=lfs merge=lfs -text
 fixtures/launch-video/**/*.wav filter=lfs diff=lfs merge=lfs -text
+fixtures/launch-video/session/**/*.MP4 filter=lfs diff=lfs merge=lfs -text
+fixtures/launch-video/session/**/*.jsonl filter=lfs diff=lfs merge=lfs -text

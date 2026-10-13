@@ -1,0 +1,4 @@
+[lfs]
+	# Full launch-video session inputs (~1.6 GB) stay pointers until an acceptance run pulls them:
+	#   git lfs pull --include="fixtures/launch-video/session/**"
+	fetchexclude = fixtures/launch-video/session/**

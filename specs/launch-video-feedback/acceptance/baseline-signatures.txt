@@ -1,0 +1,9 @@
+Baseline (session a4621b78, editing phase only, tool results only)
+  signature                  results  occurrences
+  seam_disagreement                3  5
+  speech_timing_overrun            4  4
+  normalization_infeasible         3  16
+  normalization_unmet              2  10
+  curve_clock_error                1  1
+  source_bounds_error              1  1
+  render_range_job_fail            1  2
