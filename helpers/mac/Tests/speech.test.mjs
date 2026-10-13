@@ -271,6 +271,7 @@ test("only readable narration becomes segments, and a fragment too short is skip
       words: [],
       observations: [],
       selectedObservationIndexes: [],
+      issues: [],
     },
   ]);
   assert.deepEqual(readdirSync(attempt), ["raw.jsonl"]);

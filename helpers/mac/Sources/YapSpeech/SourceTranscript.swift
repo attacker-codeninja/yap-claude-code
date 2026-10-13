@@ -301,7 +301,8 @@ public enum SourceTranscript {
             try Task.checkCancellation()
             let samples = try await monoSamples(of: track, in: window.decoded)
             largestDecodedSamples = max(largestDecodedSamples, samples.count)
-            var evidence: WindowEvidence?
+            // A window too short for the engine is skipped unread, but still reports what it decoded.
+            var evidence = try WindowEvidence(words: [], dropped: [], in: window.decoded, samples: Int64(samples.count))
             if samples.count >= ParakeetEngine.minimumSamples {
                 if engine == nil { engine = try await ParakeetEngine.load(models) }
                 let result = try await engine!.transcribe(samples)
