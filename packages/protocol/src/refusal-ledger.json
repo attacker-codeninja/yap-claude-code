@@ -20,12 +20,6 @@
    "why": "partly valid render range: clamp with range-clamped"
   },
   {
-   "slice": "06",
-   "file": "packages/composition/src/model.ts",
-   "text": "Selected range exceeds source bounds",
-   "why": "authored range: clamp at authoring time; stored validation stays strict"
-  },
-  {
    "slice": "07b",
    "file": "packages/core/src/project-window.ts",
    "text": "State processing requires complete verified mono or stereo input",
@@ -897,6 +891,8 @@
     "apps/service/src/project-service.ts": 1,
     "helpers/mac/Sources/YapAudio/ExcerptLayout.swift": 6,
     "helpers/mac/Sources/YapFrames/FrameTypes.swift": 6,
+    "packages/composition/src/errors.ts": 1,
+    "packages/composition/src/range-admission.ts": 1,
     "packages/core/src/audio-inspection.ts": 3,
     "packages/core/src/audio-spectrum.ts": 1,
     "packages/core/src/audio-wave.ts": 1,

@@ -2044,22 +2044,28 @@ test("replacement only trims or stretches when explicitly requested", () => {
       source: { kind: "range", range: { startUs: 500000, endUs: 2500000 } },
     },
   };
-  expect(() =>
-    applyBatch(
-      first.document,
-      [
-        {
-          ...operation,
-          fit: "trim",
-          media: {
-            ...operation.media,
-            source: { kind: "range", range: { startUs: 0, endUs: 9000000 } },
-          },
+  // Output by default: a source past the stream's end is clamped, reported, then trimmed to fit.
+  const clamped = applyBatch(
+    first.document,
+    [
+      {
+        ...operation,
+        fit: "trim",
+        media: {
+          ...operation.media,
+          source: { kind: "range", range: { startUs: 0, endUs: 9000000 } },
         },
-      ],
-      { ...context, assets },
-    ),
-  ).toThrow(CompositionError);
+      },
+    ],
+    { ...context, assets },
+  );
+  expect(clamped.issues).toMatchObject([
+    { code: "range-clamped", evidence: { applied: { startUs: 0, endUs: 3000000 } } },
+  ]);
+  expect(clamped.document.clips[1]!.source).toEqual({
+    kind: "range",
+    range: { startUs: 0, endUs: 1600000 },
+  });
   const trimmed = applyBatch(first.document, [{ ...operation, fit: "trim" }], {
     ...context,
     assets,

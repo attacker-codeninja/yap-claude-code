@@ -24,11 +24,21 @@ import {
   interpolationSchema,
   signedTimeValueSchema,
   synchronizationEvidenceSchema,
+  type Anchor,
+  type MediaClip,
+  type TimeValue,
 } from "./schema.js";
 import { validateComposition, type ValidatedComposition, type ExactRange } from "./model.js";
 
 import { partitionClips } from "./partition.js";
-import { add, subtract, compare, fromTime, toTime } from "./rational.js";
+import { add, subtract, compare, fromTime, toFraction, toTime } from "./rational.js";
+import {
+  admitRange,
+  keepSameFraction,
+  rangeClampedIssue,
+  type Interval,
+} from "./range-admission.js";
+import { boundedIssues, type Issue } from "./issues.js";
 import { rippleTimeline, insertGap } from "./ripple.js";
 import { transformSelection } from "./transform.js";
 import { duplicateClips } from "./duplicate.js";
@@ -376,6 +386,7 @@ export type EditChange =
 export type EditBatchResult = {
   document: Document;
   changed: boolean;
+  issues: Issue[];
   createdIds: { kind: EntityKind; id: string }[];
   labels: Record<string, string>;
   normalized: { operationIndex: number; changes: EditChange[] }[];
@@ -469,6 +480,7 @@ export function applyBatch(
     angleGroup: new Set((initial.angleGroups ?? []).map((value) => value.id)),
   };
   const createdIds: EditBatchResult["createdIds"] = [];
+  const issues: Issue[] = [];
   const bindings = new Map<string, { kind: EntityKind; id: string }>();
   const normalized: EditBatchResult["normalized"] = [];
   const clipLineage: EditBatchResult["clipLineage"] = [];
@@ -511,17 +523,68 @@ export function applyBatch(
   };
   const placeClip = (
     operation: Extract<z.infer<typeof editOperationSchema>, { operation: "place" }>,
+    operationIndex: number,
   ) => {
     const id = allocate("clip");
     bind(operation.label, "clip", id);
     const anchor = operation.clip.placement;
-    return {
+    const placed = {
       ...operation.clip,
       id,
       trackId: resolve(operation.clip.trackId, "track"),
       placement:
         anchor.kind === "project" ? anchor : { ...anchor, clipId: resolve(anchor.clipId, "clip") },
     };
+    if (!("assetId" in placed)) return placed;
+    const clamp = clampSource(placed, operationIndex);
+    if (!clamp) return placed;
+    const { requested, kept } = clamp;
+    const placement = placed.placement;
+    return {
+      ...placed,
+      source: clamp.source,
+      placement:
+        placement.kind === "project"
+          ? {
+              ...placement,
+              range: wire(keepSameFraction(requested, kept, interval(placement.range))),
+            }
+          : placement.kind === "content"
+            ? {
+                ...placement,
+                sourceRange: wire(
+                  keepSameFraction(requested, kept, interval(placement.sourceRange)),
+                ),
+              }
+            : (() => {
+                const span = keepSameFraction(requested, kept, {
+                  start: fromTime(placement.start),
+                  end: fromTime(placement.end),
+                });
+                return { ...placement, start: toFraction(span.start), end: toFraction(span.end) };
+              })(),
+    };
+  };
+  const interval = (range: { startUs: TimeValue; endUs: TimeValue }): Interval => ({
+    start: fromTime(range.startUs),
+    end: fromTime(range.endUs),
+  });
+  const wire = (range: Interval) => ({ startUs: toTime(range.start), endUs: toTime(range.end) });
+  // Authored selections past a stream's support are shortened to it, never extended or held.
+  const clampSource = (
+    media: { assetId: string; streamId: string; source: MediaClip["source"] },
+    operationIndex: number,
+  ) => {
+    const stream = model.assets
+      .find((asset) => asset.id === media.assetId)
+      ?.streams.find((value) => value.id === media.streamId);
+    if (!stream || stream.kind === "image" || media.source.kind !== "range") return null;
+    const requested = interval(media.source.range);
+    const bounds = interval(stream.bounds);
+    const { range: kept, clamped } = admitRange(requested, bounds);
+    if (!clamped) return null;
+    issues.push(rangeClampedIssue(requested, kept, bounds, operationIndex));
+    return { requested, kept, source: { ...media.source, range: wire(kept) } };
   };
   const addTrack = (
     operation: Extract<z.infer<typeof editOperationSchema>, { operation: "track.add" }>,
@@ -869,7 +932,7 @@ export function applyBatch(
               appended.push({ kind: "track", value: track });
               knownTracks.add(track.id);
             } else {
-              appended.push({ kind: "clip", value: placeClip(item) });
+              appended.push({ kind: "clip", value: placeClip(item, end) });
             }
           } catch (error) {
             constructionFailure = { index: end, error };
@@ -1208,7 +1271,11 @@ export function applyBatch(
                 : model,
               clips([operation.clipId])[0]!,
               operation.kind,
-              operation.media,
+              {
+                ...operation.media,
+                source:
+                  clampSource(operation.media, operationIndex)?.source ?? operation.media.source,
+              },
               operation.fit,
               allocate,
               operation.pitch,
@@ -1560,7 +1627,7 @@ export function applyBatch(
             break;
           }
           case "place": {
-            next = { ...before, clips: [...before.clips, placeClip(operation)] };
+            next = { ...before, clips: [...before.clips, placeClip(operation, operationIndex)] };
             break;
           }
           case "link": {
@@ -1662,6 +1729,7 @@ export function applyBatch(
   return {
     document: model.document,
     changed: changes(initial, model.document).length > 0,
+    issues: boundedIssues(issues),
     createdIds,
     labels: Object.fromEntries([...bindings].map(([name, value]) => [name, value.id])),
     normalized,

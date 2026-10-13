@@ -3,6 +3,7 @@ export class CompositionError extends Error {
     readonly code:
       | "INVALID_COMPOSITION"
       | "INVALID_TIME"
+      | "INVALID_RANGE"
       | "UNKNOWN_CLIP"
       | "UNKNOWN_SOURCE"
       | "INVALID_EDIT"
