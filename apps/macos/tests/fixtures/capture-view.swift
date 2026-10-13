@@ -126,6 +126,21 @@ import YapControls
             if let toggle = control as? NSSwitch { toggle.performClick(nil) }
         }
         precondition(lockedActions.isEmpty, "Inapplicable actions cannot escape the view")
+        let idleSwitch = view.control(identifier: "camera.toggle") as! NSSwitch
+        idleSwitch.performClick(nil)
+        precondition(recorded.last == .controls(.setCamera(true)),
+                     "Before a take the camera switch sends the shared camera action: \(String(describing: recorded.last))")
+        var reserved = fixture(locked: true)
+        reserved.cameraOn = true
+        reserved.liveCamera = true
+        let live = CaptureView(appIcon: appIcon, input: reserved) { lockedActions.append($0) }
+        let liveSwitch = live.control(identifier: "camera.toggle") as! NSSwitch
+        precondition(liveSwitch.isEnabled && liveSwitch.state == .on && !live.control(identifier: "camera.device")!.isEnabled,
+                     "During a take that reserved a camera, its switch stays usable and its device stays fixed")
+        liveSwitch.performClick(nil)
+        precondition(lockedActions == [.controls(.setCamera(false))],
+                     "The live camera switch sends the same action as the floating controls: \(lockedActions)")
+        lockedActions.removeAll()
         let permissions = CaptureView(appIcon: appIcon, input: permissionFixture()) { recorded.append($0) }
         for id in ["source.display", "source.window", "source.area", "source.device"] {
             precondition(!permissions.control(identifier: id)!.isEnabled, "Screen selection must be disabled without permission: \(id)")

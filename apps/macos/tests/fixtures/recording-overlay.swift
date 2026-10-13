@@ -11,7 +11,7 @@ import YapControls
         var performed: [ControlsAction] = []
         let model = RecordingOverlayModel()
         model.presentation = .init(elapsed: "0:42", paused: false, symbol: "record.circle.fill")
-        model.cameraActive = true
+        model.camera = .companion(on: true)
         model.preview = cameraFrame()
         let host = NSHostingView(rootView: RecordingOverlayView(model: model, perform: { performed.append($0) }))
         host.sizingOptions = [.intrinsicContentSize]
@@ -84,7 +84,8 @@ import YapControls
         precondition(previewActions == [.showCameraPreview(false)],
                      "The preview offers only Minimize, which hides the picture without stopping the camera: \(previewActions)")
         let shownRow = offered(y: row())
-        precondition(shownRow == [.pauseOrResume, .startOrStop, .cancel], "Take controls with the preview shown: \(shownRow)")
+        precondition(shownRow == [.pauseOrResume, .startOrStop, .setCamera(false), .cancel],
+                     "A camera that is on offers Turn Camera Off beside the take controls: \(shownRow)")
         model.previewShown = false
         settle()
         let minimized = capture()
@@ -92,30 +93,66 @@ import YapControls
         precondition(minimized.pixelsHigh < shown.pixelsHigh, "Minimizing the preview shrinks the controls")
         save(minimized, "\(output)/camera-preview-minimized.png")
         let minimizedRow = offered(y: row())
-        precondition(minimizedRow == [.pauseOrResume, .startOrStop, .showCameraPreview(true), .cancel],
+        precondition(minimizedRow == [.pauseOrResume, .startOrStop, .setCamera(false), .showCameraPreview(true), .cancel],
                      "The minimized preview can be brought back from the controls: \(minimizedRow)")
 
-        model.cameraActive = false
-        model.preview = nil
+        // Turned off, the camera has no picture: no card, no restore, and the last picture is gone
+        // rather than held, even with the preview preference still on.
         model.previewShown = true
+        model.camera = .companion(on: false)
+        settle()
+        let offAfterOn = capture()
+        precondition(model.preview == nil, "Turning the camera off forgets its last picture")
+        precondition(bounds(of: offAfterOn, where: isFrameBorder) == nil && offAfterOn.pixelsHigh == minimized.pixelsHigh,
+                     "A camera that is off shows no picture card")
+        save(offAfterOn, "\(output)/camera-off-after-on.png")
+        let offRow = offered(y: row())
+        precondition(offRow == [.pauseOrResume, .startOrStop, .setCamera(true), .cancel],
+                     "A camera that is off offers Turn Camera On and nothing to restore: \(offRow)")
+        model.camera = .companion(on: true)
+        settle()
+        let waiting = capture()
+        precondition(bounds(of: waiting, where: isFrameBorder) == nil && waiting.pixelsHigh == shown.pixelsHigh,
+                     "Turned back on, the card waits for a new picture instead of showing the old one")
+
+        model.camera = .companion(on: false)
+        model.preview = cameraFrame()
+        settle()
+        precondition(model.preview == nil, "A late picture for a camera that is off is not kept")
+        save(capture(), "\(output)/camera-off.png")
+
+        model.camera = .primary
+        model.preview = cameraFrame()
+        settle()
+        let primaryRow = offered(y: row())
+        precondition(primaryRow == [.pauseOrResume, .startOrStop, .cancel],
+                     "A camera-only take shows its picture and offers no way to turn its source off: \(primaryRow)")
+
+        model.camera = .none
         settle()
         let noCameraRow = offered(y: row())
-        precondition(noCameraRow == [.pauseOrResume, .startOrStop, .cancel], "A take without a camera offers no preview controls: \(noCameraRow)")
+        precondition(noCameraRow == [.pauseOrResume, .startOrStop, .cancel], "A take without a camera offers no camera controls: \(noCameraRow)")
         save(capture(), "\(output)/no-camera.png")
 
-        model.cameraActive = true
-        model.preview = cameraFrame()
-        model.presentation = .init(elapsed: "0:42", paused: true, symbol: "pause.circle.fill")
-        settle()
-        save(capture(), "\(output)/camera-preview-paused.png")
-
-        window.appearance = NSAppearance(named: .darkAqua)
-        model.presentation = .init(elapsed: "0:42", paused: false, symbol: "record.circle.fill")
-        settle()
-        save(capture(), "\(output)/dark-camera-preview.png")
-        model.previewShown = false
-        settle()
-        save(capture(), "\(output)/dark-camera-preview-minimized.png")
+        // Every state in both appearances, for review.
+        for (appearance, prefix) in [(NSAppearance.Name.aqua, ""), (.darkAqua, "dark-")] {
+            window.appearance = NSAppearance(named: appearance)
+            for (name, camera, previewShown, paused) in [
+                ("camera-preview", RecordingOverlay.Camera.companion(on: true), true, false),
+                ("camera-preview-paused", .companion(on: true), true, true),
+                ("camera-preview-minimized", .companion(on: true), false, false),
+                ("camera-off", .companion(on: false), true, false),
+                ("no-camera", .none, true, false),
+            ] {
+                model.camera = camera
+                model.preview = cameraFrame()
+                model.previewShown = previewShown
+                model.presentation = paused ? .init(elapsed: "0:42", paused: true, symbol: "pause.circle.fill")
+                    : .init(elapsed: "0:42", paused: false, symbol: "record.circle.fill")
+                settle()
+                save(capture(), "\(output)/\(prefix)\(name).png")
+            }
+        }
         window.orderOut(nil)
     }
 

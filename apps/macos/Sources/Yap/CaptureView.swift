@@ -7,7 +7,6 @@ enum CaptureViewIntent: Equatable {
     case controls(ControlsAction)
     case chooseSource(CaptureViewInput.Source)
     case camera(String?)
-    case cameraEnabled(Bool)
     case countdown(Bool)
     case openLibrary
 }
@@ -39,7 +38,7 @@ struct CaptureViewInput: Equatable {
     let sourceChoices: [Choice]
     let cameraChoices: [Choice]
     let selectedCamera: Int
-    let cameraOn: Bool
+    var cameraOn: Bool
     let microphoneChoices: [Choice]
     let selectedMicrophone: Int
     let microphoneOn: Bool
@@ -55,6 +54,9 @@ struct CaptureViewInput: Equatable {
     var startTitle: String = "Start Recording"
     var startShortcut: String? = nil
     var lastRecording: LastRecording? = nil
+    /// The running take reserved a camera, so its switch turns that camera on and off while the
+    /// other inputs stay fixed.
+    var liveCamera = false
 }
 
 /// The production capture surface. Its caller supplies a fresh value after any accepted action.
@@ -257,7 +259,7 @@ final class CaptureView: NSView {
         let microphoneIntent: CaptureViewIntent? = input.microphoneOn ? .controls(.disableMicrophone)
             : input.microphoneChoices.indices.contains(input.selectedMicrophone) ? input.microphoneChoices[input.selectedMicrophone].intent : nil
         let rows: [(String, String, String?, Bool, CaptureViewIntent?)] = [
-            ("camera", "video", input.selectedSource == .cameraOnly ? "Camera is the recording source" : nil, input.cameraOn, .cameraEnabled(!input.cameraOn)),
+            ("camera", "video", input.selectedSource == .cameraOnly ? "Camera is the recording source" : nil, input.cameraOn, .controls(.setCamera(!input.cameraOn))),
             ("microphone", "mic", nil, input.microphoneOn, microphoneIntent),
             ("systemAudio", "speaker.wave.2", "Everything your Mac plays", input.systemAudio, .controls(.toggleSystemAudio)),
             ("countdown", "stopwatch", nil, input.countdown, .countdown(!input.countdown)),
@@ -278,7 +280,7 @@ final class CaptureView: NSView {
             if id == "camera", CapturePresentation.cameraIsRequired(cameraOnly: input.selectedSource == .cameraOnly, selectedCameraIndex: input.selectedCamera) {
                 label("Required", NSRect(x: 280, y: centerY - 8, width: 56, height: 16), size: 10, weight: .medium, color: .systemBlue)
             } else {
-                toggle(id == "systemAudio" ? "System audio" : id.capitalized, id: "\(id).toggle", frame: NSRect(x: 296, y: centerY - 9, width: 38, height: 18), intent: intent, on: on, enabled: input.inputsEnabled)
+                toggle(id == "systemAudio" ? "System audio" : id.capitalized, id: "\(id).toggle", frame: NSRect(x: 296, y: centerY - 9, width: 38, height: 18), intent: intent, on: on, enabled: input.inputsEnabled || (id == "camera" && input.liveCamera))
             }
             y += rowHeight
         }

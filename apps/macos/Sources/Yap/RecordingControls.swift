@@ -21,7 +21,6 @@ final class RecordingControls: NSObject {
     private lazy var capturePopover = CapturePopover(perform: { [weak self] in self?.perform($0) })
     private lazy var libraryWindow = LibraryWindow(perform: { [weak self] in self?.perform($0) })
     private var emptySourceMode = CaptureViewInput.Source.display
-    private var companionCameraRequested = false
     private let shortcuts = GlobalShortcuts()
     private lazy var region = RegionSelection(changed: { [weak self] in self?.render() })
     private let quit: () -> Void
@@ -208,7 +207,7 @@ final class RecordingControls: NSObject {
                 render()
                 return
             }
-            if sourceMode == .cameraOnly, source != .cameraOnly, !companionCameraRequested {
+            if sourceMode == .cameraOnly, source != .cameraOnly, !state.selection.cameraOn {
                 state.selection.cameraDeviceId = nil
             }
             emptySourceMode = source
@@ -227,13 +226,7 @@ final class RecordingControls: NSObject {
             guard !state.isLive, !state.counting, !updateFenced else { return }
             if let id, !state.sources.cameras.contains(where: { $0.id == id }) { return }
             state.selection.cameraDeviceId = id
-            if sourceMode != .cameraOnly { companionCameraRequested = id != nil }
-            render()
-        case .cameraEnabled(let enabled):
-            guard !state.isLive, !state.counting, !updateFenced, sourceMode != .cameraOnly else { return }
-            companionCameraRequested = enabled
-            if !enabled { state.selection.cameraDeviceId = nil }
-            else { state.selectDefaultCameraIfNeeded(enabled: true) }
+            if sourceMode != .cameraOnly { state.selection.cameraOn = id != nil }
             render()
         case .countdown(let enabled):
             guard !state.isLive, !state.counting, !updateFenced else { return }
@@ -310,6 +303,8 @@ final class RecordingControls: NSObject {
             state.selection.systemAudio.toggle()
         case .showCameraPreview(let shown):
             preferences.showCameraPreview = shown
+        case .setCamera(let on):
+            if let request = state.setCamera(on) { setCamera(request) }
         case .startOrStop:
             state.isLive ? send("capture.stop", live()) : countThenStart()
         case .pauseOrResume:
@@ -378,12 +373,12 @@ final class RecordingControls: NSObject {
         // Asking to start while the count runs is asking to stop it: the menu says so, and this is
         // the only way to abandon a count for somebody whose Escape key this app could not hold.
         if countdown.isCounting { return countdown.abandon() }
-        guard !companionCameraRequested || state.selection.cameraDeviceId != nil else {
+        guard !state.selection.cameraOn || state.selection.cameraDeviceId != nil else {
             state.failure = "Choose a camera before recording."
             showCaptureIfClosed()
             return
         }
-        guard state.selection.start() != nil, state.service == .ready,
+        guard state.start() != nil, state.service == .ready,
             let counting = preferences.countdown
         else { return start() }
         state.counting = true
@@ -422,13 +417,27 @@ final class RecordingControls: NSObject {
 
     private func restart() {
         guard let recordingId = state.device?.recordingId else { return }
-        guard let start = state.selection.start() else {
+        guard let start = state.start() else {
             state.failure = "Choose a source before recording."
             return
         }
         var params = parameters(of: start, requestId: UUID().uuidString)
         params["recordingId"] = recordingId
         send("capture.restart", params)
+    }
+
+    /// A live toggle. A refusal (the camera is gone, the turn-on limit, a changed format, missing
+    /// access) leaves the camera off and is shown like any other refused action, with the capture
+    /// panel revealed because the floating controls have no room to explain it.
+    private func setCamera(_ request: ControlsState.SetCamera) {
+        let params = (try? JSONEncoder().encode(request)).flatMap {
+            try? JSONSerialization.jsonObject(with: $0) as? [String: Any]
+        }
+        send("capture.setCamera", params) { [weak self] result in
+            guard let self, case .failure(let failure) = result else { return }
+            if PermissionKind.missing(fromStartFailure: failure.code) != nil { readPermissions() }
+            showCaptureIfClosed()
+        }
     }
 
     private func parameters(
@@ -609,10 +618,9 @@ final class RecordingControls: NSObject {
         else { return }
         state.device = ControlsState.DeviceStatus(
             state: ControlsState.DeviceState(rawValue: answer.device.state) ?? .idle,
-            recordingId: answer.device.recordingId, elapsedUs: answer.device.elapsedUs)
+            recordingId: answer.device.recordingId, elapsedUs: answer.device.elapsedUs, camera: answer.device.camera)
         if let selection = answer.device.selection {
             state.selection.apply(selection, catalog: state.sources)
-            companionCameraRequested = state.selection.source != .camera && state.selection.cameraDeviceId != nil
         }
         var observed = answer.recording
         if observed == nil, let id = state.takeNeedingResolution {
@@ -647,7 +655,7 @@ final class RecordingControls: NSObject {
                     }, cameras: answer.cameras.map {
                         ControlsState.Camera(id: $0.id, name: $0.name, isDefault: $0.isDefault ?? false)
                     }))
-            state.selectDefaultCameraIfNeeded(enabled: companionCameraRequested || sourceMode == .cameraOnly)
+            state.selectDefaultCameraIfNeeded(enabled: state.selection.cameraOn || sourceMode == .cameraOnly)
         } catch {
             state.sourcesUnavailable(description: error.localizedDescription)
         }
@@ -674,9 +682,11 @@ final class RecordingControls: NSObject {
         capturePopover.update(captureInput())
         libraryWindow.update(state: state, exports: exports.state)
         overlay.update(RecordingOverlay.presentation(for: state) ?? observedOverlay)
-        let cameraActive = state.isLive && (state.selection.source == .camera || state.selection.cameraDeviceId != nil)
-        overlay.updateCamera(active: cameraActive, previewShown: preferences.showCameraPreview)
-        overlay.updatePreview(cameraActive ? cameraPreviewImage : nil)
+        let camera = RecordingOverlay.camera(for: state)
+        // A camera that is off forgets its last picture, so turning it on again never shows it.
+        if !camera.recording { cameraPreviewImage = nil }
+        overlay.updateCamera(camera, previewShown: preferences.showCameraPreview)
+        overlay.updatePreview(cameraPreviewImage)
         settings.update(state, shortcuts: shortcuts)
         showStatusItem()
         pace()
@@ -694,7 +704,7 @@ final class RecordingControls: NSObject {
             let ci = CIImage(cvPixelBuffer: frame.buffer)
             guard let cg = self.cameraPreviewContext.createCGImage(ci, from: ci.extent) else { return }
             DispatchQueue.main.async { [weak self] in
-                guard let self, self.state.isLive else { return }
+                guard let self, RecordingOverlay.camera(for: self.state).recording else { return }
                 let image = NSImage(cgImage: cg, size: NSSize(width: ci.extent.width, height: ci.extent.height))
                 self.cameraPreviewImage = image
                 self.overlay.updatePreview(image)
@@ -811,7 +821,6 @@ final class RecordingControls: NSObject {
         case .controls(let action): action.id
         case .chooseSource(let source): "source.\(source.rawValue)"
         case .camera(let id): "camera.\(id ?? "off")"
-        case .cameraEnabled(let enabled): "camera.\(enabled ? "on" : "off")"
         case .countdown(let enabled): "countdown.\(enabled ? "on" : "off")"
         case .openLibrary: ControlsAction.openLibrary.id
         }
@@ -842,7 +851,7 @@ final class RecordingControls: NSObject {
         case .cameraOnly: selectedSource = -1
         }
         if sources.isEmpty { sources = [.init(title: mode == .window ? "No windows available" : "No displays available", intent: .chooseSource(mode))] }
-        var cameras: [CaptureViewInput.Choice] = [.init(title: mode == .cameraOnly || companionCameraRequested ? "Choose a camera…" : "Camera off", intent: .camera(nil))]
+        var cameras: [CaptureViewInput.Choice] = [.init(title: mode == .cameraOnly || state.selection.cameraOn ? "Choose a camera…" : "Camera off", intent: .camera(nil))]
         cameras += state.sources.cameras.map { .init(title: $0.name, intent: .camera($0.id)) }
         var selectedCamera = state.selection.cameraDeviceId.flatMap { id in state.sources.cameras.firstIndex { $0.id == id }.map { $0 + 1 } } ?? 0
         if let id = state.selection.cameraDeviceId, selectedCamera == 0 {
@@ -861,10 +870,10 @@ final class RecordingControls: NSObject {
         if case .device(let id, _) = state.selection.microphone { selectedMic = microphones.firstIndex { $0.intent == .controls(.selectMicrophone(id)) }! }
         else { selectedMic = 0 }
         let transport = CapturePresentation.transport(for: state)
-        let missingCamera = !state.isLive && !state.counting && companionCameraRequested && state.selection.cameraDeviceId == nil
+        let missingCamera = !state.isLive && !state.counting && state.selection.cameraOn && state.selection.cameraDeviceId == nil
         var input = CaptureViewInput(selectedSource: mode, selectedSourceChoice: selectedSource,
             sourceChoices: sources, cameraChoices: cameras, selectedCamera: selectedCamera,
-            cameraOn: mode == .cameraOnly || companionCameraRequested || state.selection.cameraDeviceId != nil,
+            cameraOn: mode == .cameraOnly || (state.isLive ? state.device?.camera?.state == .on : state.selection.cameraOn),
             microphoneChoices: microphones, selectedMicrophone: selectedMic,
             microphoneOn: state.selection.microphone != .off, systemAudio: state.selection.systemAudio,
             countdown: preferences.countdownBeforeRecording,
@@ -898,6 +907,7 @@ final class RecordingControls: NSObject {
         }
         if state.failure != nil && !state.isLive { input.permissionActions.append(.init(.startOrStop, "Retry", enabled: input.startEnabled)) }
         input.transport = state.isLive ? Array(transport.dropFirst()) : []
+        input.liveCamera = state.isLive && state.device?.camera != nil && !updateFenced
         if let take = state.library.recent.first {
             let pending = state.library.deletions[.recording(take.recordingId)]?.isPending == true
             input.lastRecording = .init(
@@ -961,6 +971,7 @@ private struct StatusAnswer: Decodable {
         let recordingId: String?
         let elapsedUs: Int64?
         let selection: ControlsState.CaptureSelection.Start?
+        let camera: ControlsState.CameraStatus?
     }
     let device: Device
     let recording: ControlsState.TakeStatus?

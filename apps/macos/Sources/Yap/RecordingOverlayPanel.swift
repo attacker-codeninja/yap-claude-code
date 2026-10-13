@@ -11,7 +11,8 @@ import SwiftUI
  action the menu sends, so there is no second device state machine here and no clock of its own —
  what to show, and whether to show anything at all, is decided from the one controls state.
  A take that records a camera also carries its live picture above the row. Minimizing the picture
- hides it without stopping the camera.
+ hides it without stopping the camera; the camera button in the row turns a reserved camera on or
+ off, and a camera that is off has no picture at all.
  */
 @MainActor
 final class RecordingOverlayPanel {
@@ -38,9 +39,9 @@ final class RecordingOverlayPanel {
         show()
     }
 
-    /// Whether the take records a camera, and whether its live picture is shown or minimized.
-    func updateCamera(active: Bool, previewShown: Bool) {
-        model.cameraActive = active
+    /// The take's camera, and whether its live picture is shown or minimized.
+    func updateCamera(_ camera: RecordingOverlay.Camera, previewShown: Bool) {
+        model.camera = camera
         model.previewShown = previewShown
     }
 
@@ -129,11 +130,17 @@ final class RecordingOverlayPanel {
 final class RecordingOverlayModel: ObservableObject {
     @Published var presentation = RecordingOverlay.Presentation(
         elapsed: "0:00", paused: false, symbol: "record.circle.fill")
-    /// Whether this take records a camera, so the controls offer its live picture.
-    @Published var cameraActive = false
+    /// The take's camera: whether it can be turned on and off, and whether it has a picture.
+    @Published var camera = RecordingOverlay.Camera.none {
+        didSet { if !camera.recording { preview = nil } }
+    }
     /// Whether that picture is shown or minimized; the camera records either way.
     @Published var previewShown = true
-    @Published var preview: NSImage?
+    /// The camera's latest picture. A camera that is off has none, so no held picture is shown
+    /// and turning it back on waits for a new one.
+    @Published var preview: NSImage? {
+        didSet { if !camera.recording, preview != nil { preview = nil } }
+    }
 }
 
 /// The controls themselves: the camera's live picture when the take records one, then a row with
@@ -147,7 +154,7 @@ struct RecordingOverlayView: View {
 
     var body: some View {
         PictureAboveRow {
-            if model.cameraActive && model.previewShown {
+            if model.camera.recording && model.previewShown {
                 preview
             }
             controls
@@ -208,9 +215,15 @@ struct RecordingOverlayView: View {
                     paused ? "Resume Recording" : "Pause Recording", .pauseOrResume)
                 button("stop.fill", "Finish Recording", .startOrStop, tint: .red)
             }
-            if model.cameraActive && !model.previewShown {
+            if case .companion(let on) = model.camera {
                 separator
-                button("pip.exit", "Show camera preview", .showCameraPreview(true))
+                HStack(spacing: 2) {
+                    cameraSwitch(on)
+                    if on && !model.previewShown { restore }
+                }
+            } else if model.camera.recording && !model.previewShown {
+                separator
+                restore
             }
             separator
             button("trash.fill", "Cancel Take", .cancel)
@@ -222,6 +235,29 @@ struct RecordingOverlayView: View {
         .padding(.vertical, 5)
         .background(.regularMaterial, in: Capsule())
         .overlay(Capsule().strokeBorder(.separator, lineWidth: 0.5))
+    }
+
+    /// The camera's state twice over, so neither colour nor a thin slash has to carry it alone: on
+    /// is an engaged toggle showing a camera, off a plain one showing the camera struck through.
+    /// Off keeps full contrast: it is a state to change, not an unavailable control.
+    private func cameraSwitch(_ on: Bool) -> some View {
+        let name = on ? "Turn Camera Off" : "Turn Camera On"
+        return Toggle(isOn: Binding(get: { on }, set: { perform(.setCamera($0)) })) {
+            Image(systemName: on ? "video.fill" : "video.slash.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.primary)
+                .frame(width: 30, height: 30)
+                .contentShape(Circle())
+        }
+        .toggleStyle(.button)
+        .buttonStyle(.accessoryBar)
+        .clipShape(Circle())
+        .help(name)
+        .accessibilityLabel(name)
+    }
+
+    private var restore: some View {
+        button("pip.exit", "Show camera preview", .showCameraPreview(true))
     }
 
     private var separator: some View {

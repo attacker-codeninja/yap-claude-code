@@ -1,4 +1,25 @@
-# 07 App controls: camera button, reservation, library wording
+# 07 App controls: camera button, reservation, library wording (done)
+
+**As built (2026-10-12).** `ControlsAction.setCamera(Bool)` replaced `CaptureViewIntent.cameraEnabled`
+and `companionCameraRequested`; `ControlsState.setCamera` is its one rule (selection before a take,
+a `capture.setCamera` request during one) and `ControlsState.start()` replaced
+`CaptureSelection.start()` because reservation needs access and the catalog. The floating controls
+read `RecordingOverlay.camera(for:)` (`none` / `primary` / `companion(on:)`), derived from
+`device.camera`. Shots: [assets/overlay](../assets/overlay/). Differences from the plan below:
+- The library had no camera row to omit: `SourceAdmission.title` had no caller since the menu rows
+  were removed (c21b3692), so it was deleted. The real defect was polling: an unavailable camera
+  publication counted as a pending admission, so every never-turned-on take re-read
+  `recording.get` on every tick. `library-controls.test.mjs` pins that it settles and reads Ready.
+- The camera button is a native toggle-style button (engaged chip when on, slashed camera when off,
+  full contrast in both), after two unprimed critiques: a plain icon left on/off to a thin slash,
+  and the native off style looked disabled.
+- `recording-controls.test.mjs` cases were not added: the real app lists only native cameras and
+  this Mac has none, so a real-app check cannot reserve one. The same rules are pinned at the shared
+  state (`SelectionTests`: reservation with and without access, `cameraAtStart`, live toggle) and
+  the menu switch at the view (`capture-view.swift`: live switch enabled, sends `setCamera`).
+- Not run here: the real-app suites (`recording-controls`, `recording-overlays`) need a `dist/` build
+  with screen permission; left for slice 08's full run, as is the live panel resize.
+- Human checkpoint (preview-shots) is the integrator's.
 
 **Contract unlocked.** The user-facing feature, through the same operation the CLI uses.
 

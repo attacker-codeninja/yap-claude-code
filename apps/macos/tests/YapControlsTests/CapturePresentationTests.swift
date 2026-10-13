@@ -105,6 +105,36 @@ func runCapturePresentationTests() {
     refused.failure = "PERMISSION_REQUIRED: Screen recording permission is not authorized."
     precondition(CapturePresentation.noticeLines(for: refused).contains(refused.failure!))
     print("PASS shared capture lifecycle and transport applicability")
+    runOverlayCameraTests()
+}
+
+/// What the floating controls offer for a take's camera follows native's live report.
+private func runOverlayCameraTests() {
+    var screen = recording(elapsedUs: 1_000_000)
+    precondition(RecordingOverlay.camera(for: screen) == .none,
+        "A take that reserved no camera offers no camera controls")
+    screen.device = .init(state: .recording, recordingId: "rec-1", elapsedUs: 1_000_000,
+        camera: .init(deviceId: "built-in", state: .off))
+    precondition(RecordingOverlay.camera(for: screen) == .companion(on: false),
+        "A reserved camera that is off offers Turn Camera On and no picture")
+    precondition(!RecordingOverlay.camera(for: screen).recording, "An off camera has no picture to show")
+    screen.device = .init(state: .paused, recordingId: "rec-1", elapsedUs: 1_000_000,
+        camera: .init(deviceId: "built-in", state: .on))
+    precondition(RecordingOverlay.camera(for: screen) == .companion(on: true) && RecordingOverlay.camera(for: screen).recording,
+        "A camera that is on, paused or not, shows its picture and offers Turn Camera Off")
+    // The start switch says nothing about a live take's camera.
+    screen.selection.cameraOn = true
+    screen.device = .init(state: .recording, recordingId: "rec-1", elapsedUs: 1_000_000,
+        camera: .init(deviceId: "built-in", state: .off))
+    precondition(RecordingOverlay.camera(for: screen) == .companion(on: false),
+        "The live camera is native's report, not the selection the take started from")
+
+    var cameraOnly = ready(source: .camera)
+    cameraOnly.device = .init(state: .recording, recordingId: "rec-2", elapsedUs: 1_000_000)
+    precondition(RecordingOverlay.camera(for: cameraOnly) == .primary && RecordingOverlay.camera(for: cameraOnly).recording,
+        "A camera-only take shows its picture and cannot switch its source off")
+    precondition(RecordingOverlay.camera(for: ready(source: .camera)) == .none, "Nothing is live, so no camera is offered")
+    print("PASS the floating controls offer the live camera native reports")
 }
 
 func runSavedRecordingTests() {

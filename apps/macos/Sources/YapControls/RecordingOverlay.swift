@@ -24,6 +24,25 @@ public enum RecordingOverlay {
         public let symbol: String
     }
 
+    /// The camera a live take's controls offer.
+    public enum Camera: Equatable, Sendable {
+        case none
+        /// The take's own source: its picture is shown, and it cannot be turned off.
+        case primary
+        /// A companion camera the take reserved, which can be turned on and off.
+        case companion(on: Bool)
+
+        /// Whether the camera is recording, so it has a live picture to show.
+        public var recording: Bool { self == .primary || self == .companion(on: true) }
+    }
+
+    /// What native reports about the live take's camera, never the selection it started from.
+    public static func camera(for state: ControlsState) -> Camera {
+        guard state.isLive else { return .none }
+        if state.selection.source == .camera { return .primary }
+        return state.device?.camera.map { .companion(on: $0.state == .on) } ?? .none
+    }
+
     public static func presentation(for state: ControlsState) -> Presentation? {
         guard let device = state.device, device.state == .recording || device.state == .paused
         else { return nil }

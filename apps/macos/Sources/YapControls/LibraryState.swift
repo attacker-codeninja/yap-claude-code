@@ -67,19 +67,6 @@ public struct LibraryState: Equatable, Sendable {
             public let state: State
             public let error: Failure?
         }
-        public var title: String {
-            if let error = admissionError { return "\(kind) admission refused — \(error.code): \(error.message)" }
-            if job?.state != "ready" {
-                guard let publication else { return "\(kind) publication pending" }
-                if publication.state != .published {
-                    return "\(kind) publication \(publication.state.rawValue)" +
-                        (publication.error.map { " — \($0.code): \($0.message)" } ?? "")
-                }
-            }
-            guard let acquisitionId else { return "\(kind) source — admission pending" }
-            guard let job else { return "\(kind) acquisition \(acquisitionId) — job pending" }
-            return "\(kind) acquisition — \(job.state)" + (job.reason.map { " — \($0)" } ?? "")
-        }
     }
     public struct DeleteRequest: Equatable, Sendable {
         public let target: MediaTarget

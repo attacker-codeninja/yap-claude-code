@@ -12,6 +12,9 @@ public enum ControlsAction: Hashable, Sendable {
     /// Show or minimize the live camera picture in a take's floating controls. The camera keeps
     /// recording either way.
     case showCameraPreview(Bool)
+    /// Turn the companion camera on or off: the start switch before a take, the reserved camera
+    /// during one. The menu's switch and the floating controls send this same action.
+    case setCamera(Bool)
     case startOrStop
     case pauseOrResume
     case cancel
@@ -52,6 +55,7 @@ public enum ControlsAction: Hashable, Sendable {
         case .disableMicrophone: "microphone.off"
         case .toggleSystemAudio: "audio.system"
         case .showCameraPreview(let shown): shown ? "camera.preview.show" : "camera.preview.hide"
+        case .setCamera(let on): on ? "capture.camera.on" : "capture.camera.off"
         case .startOrStop: "capture.startOrStop"
         case .pauseOrResume: "capture.pauseOrResume"
         case .cancel: "capture.cancel"

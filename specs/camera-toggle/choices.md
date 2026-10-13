@@ -216,3 +216,40 @@ deterministic; before it, recovery depended on where the fragment happened to en
   host channel and service from the CLI and MCP with a fixture camera. The real-app
   `capture-service.test.mjs` records only its own window and lists no camera, so it can show only
   `device.camera: null`.
+
+### Slice 07 (app controls)
+
+- **A camera switched on is asked for even without access (07).** With access granted every screen
+  take reserves the picked camera or the system default. Without access nothing is reserved, unless
+  the person turned the switch on: then the camera is still sent, so native refuses with
+  `CAMERA_PERMISSION_REQUIRED` and the menu offers the permission, as before this slice. Dropping it
+  silently would record a take without the camera somebody asked for. Open: refuse locally instead.
+- **The start builder moved to `ControlsState.start()` (07).** Reservation needs camera access and
+  the catalog's default camera, which the selection alone does not hold, so
+  `CaptureSelection.start()` was replaced rather than given parameters.
+- **`cameraAtStart` is always explicit when a camera is reserved (07).** The app sends `"on"` or
+  `"off"`, never absent. A take started elsewhere without the field restarts with `"on"`, which
+  means the same.
+- **Restart keeps the take's start state, not its live state (07).** `capture.restart` sends the
+  selection read back from `device.selection`, so a take started off and turned on restarts off.
+  Open: restart with the live state instead.
+- **The menu's camera switch stays usable during a take that reserved a camera (07, delegated; the
+  slice recommended it).** It sends the same `setCamera` action and shows native's live state; the
+  camera chooser stays fixed. Switching off before a take keeps the picked camera (the slice's
+  rule); the chooser's first item still clears the pick.
+- **A refused live turn-on reveals the capture panel (07).** The failure goes to `state.failure`
+  like any refused action; because the floating controls have nowhere to say it, the capture panel
+  opens the way a failed start already opens it. A permission refusal re-reads access.
+- **An unavailable publication is not a pending admission (07).** The slice asked to omit a
+  never-turned-on camera's library row; no such row exists (the dead `SourceAdmission.title` was
+  deleted). The live defect was that the library re-read `recording.get` every tick for any take
+  whose camera publication was unavailable, which after this slice is every take reserved and never
+  turned on.
+- **The camera button is a native toggle-style button in the row's camera group (07, delegated).**
+  It comes after pause/finish, behind a separator, and the restore button joins it in that group with
+  no separator. On draws the accessory-bar's engaged chip behind `video.fill`; off draws
+  `video.slash.fill` without the chip and at full contrast (the native off style dimmed it, which a
+  fresh critique read as disabled). Open polish from the final critique: the symbol's slash is a
+  hairline at 1x and the chip is pale in light mode; the slice 00 elements were left as they were
+  (the "−" minimize metaphor, the `pip.exit` restore glyph, and the row changing width when the
+  camera button or the restore button appears).

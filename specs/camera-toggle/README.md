@@ -7,13 +7,15 @@ never shows a held picture across it, and a held picture is never certified as r
 
 ## Next Agent Prompt
 
-Status (2026-10-12): slices 00, 01, 02, 04, 05 and 06 are committed. Slice 05 and the native part
+Status (2026-10-12): slices 00, 01, 02, 04, 05, 06 and 07 are committed. Slice 05 and the native part
 of slice 06 landed together; the preservation gate passed on corpora A and B with that build.
-Next pickup: slice 07.
+Slice 07's app controls are proven by the controls, capture-view, overlay and library fixtures; the
+real-app suites and the live panel resize were not run (no `dist/` build, no camera on this Mac).
+Next pickup: slice 08.
 
 You are resuming this feature. Do this:
 
-1. Read this README, then [slice 07](slices/07-app-controls.md). The pre-change
+1. Read this README, then [slice 08](slices/08-acceptance.md). The pre-change
    corpus and its first gate run are in [assets/pre-toggle-corpus](assets/pre-toggle-corpus/README.md);
    its README holds the build steps and the exact gate commands.
 2. Work the slices in the order of the graph below: 01, 02, then 04 and 05 (in parallel), 06,
@@ -53,7 +55,7 @@ TODO:
 - [x] 04 Admission of gapped camera proof — [slice](slices/04-admission.md)
 - [x] 05 Companion session lifecycle: reserve, turn on/off — [slice](slices/05-session-lifecycle.md)
 - [x] 06 Wire contract, service operation, CLI/MCP — [slice](slices/06-wire-and-service.md)
-- [ ] 07 App controls: camera button, reservation, library wording — [slice](slices/07-app-controls.md)
+- [x] 07 App controls: camera button, reservation, library wording — [slice](slices/07-app-controls.md)
 - [ ] 08 End-to-end harness, physical acceptance, preservation re-check, full run, close — [slice](slices/08-acceptance.md)
 
 ## Decisions (made by the user)
