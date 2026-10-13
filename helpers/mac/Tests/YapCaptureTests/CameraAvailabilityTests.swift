@@ -304,15 +304,16 @@ private func crashRecoveryWithGaps(root: URL, pictures: [CMSampleBuffer]) async 
 }
 
 /// Stop latency is the camera's share of Stop: closing the encoder and publishing a verified
-/// canonical movie with one empty edit per gap.
+/// canonical movie with one empty edit per gap. The runs begin 1,000 s into the take, so every
+/// receipt time has the ten digits of a long take and the receipt is as large as a real one.
 @MainActor
 private func manyGaps(root: URL, pictures: [CMSampleBuffer], output: URL?) async throws {
     var clock = CaptureClock()
     precondition(clock.start(at: 1_000_000))
     let take = try GatedCameraTake(root: root, name: "many-gaps", pictures: pictures, clock: clock)
-    let runs = 500
+    let runs = 500, firstUs: Int64 = 1_000_000_000
     for run in 0..<runs {
-        let at = 1_000_000 + Int64(run) * 200_000
+        let at = 1_000_000 + firstUs + Int64(run) * 200_000
         if run > 0 { take.setCamera(true, at: at) }
         take.expect("accepted", try await take.offer(at, durationUs: 33_333))
         take.expect("accepted", try await take.offer(at + 33_333, durationUs: 33_333))
@@ -322,9 +323,10 @@ private func manyGaps(root: URL, pictures: [CMSampleBuffer], output: URL?) async
     let published = try await take.publish()
     let elapsed = ContinuousClock.now - started
     precondition(published.receipt.gaps?.count == runs - 1 && published.receipt.representedFrames == runs * 2)
-    precondition(published.receipt.support == ExactRange(startUs: 0, endUs: Int64(runs - 1) * 200_000 + 66_666))
+    precondition(published.receipt.support == ExactRange(startUs: firstUs, endUs: firstUs + Int64(runs - 1) * 200_000 + 66_666))
     let segments = try await canonicalSegments(take.canonical)
-    precondition(segments.filter { if case .empty = $0 { true } else { false } }.count == runs - 1)
+    precondition(segments.first == .empty(0, firstUs), "A camera first seen late starts with an empty edit")
+    precondition(segments.dropFirst().filter { if case .empty = $0 { true } else { false } }.count == runs - 1)
     let milliseconds = elapsed.components.seconds * 1000 + elapsed.components.attoseconds / 1_000_000_000_000_000
     if let output {
         try JSONSerialization.data(withJSONObject: ["runs": runs, "frames": runs * 2, "stopLatencyMs": milliseconds],
