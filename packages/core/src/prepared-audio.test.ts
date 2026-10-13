@@ -1335,14 +1335,17 @@ test("equivalent retained references share one output; distinct recorded policie
   const publish = (input: typeof recipe) => {
     const attemptId = randomUUID(),
       resourceId = JSON.stringify([f.input.projectId, attemptId]);
-    f.current.jobs.adoptArtifact({
-      target: { kind: "project", projectId: f.input.projectId, revisionId: restored.id },
-      artifact: "prepared-audio",
-      generation: 1,
-      attemptId,
-      input: JSON.stringify(input),
-      result: JSON.stringify({ ...value, resourceId }),
-    });
+    f.current.jobs.adoptArtifact(
+      {
+        target: { kind: "project", projectId: f.input.projectId, revisionId: restored.id },
+        artifact: "prepared-audio",
+        generation: 1,
+        attemptId,
+        input: JSON.stringify(input),
+        result: JSON.stringify({ ...value, resourceId }),
+      },
+      [],
+    );
     new ResourceReferences(f.current.catalog).retain(
       "prepared-audio",
       { kind: "revision", id: restored.id },
@@ -1503,20 +1506,23 @@ test("an explicit acoustic measurement pin survives PCM admission and retry amon
   const attemptId = randomUUID(),
     resourceId = JSON.stringify([f.input.projectId, attemptId]);
   const recipe = JSON.parse(portable.publication.input);
-  f.current.jobs.adoptArtifact({
-    target: { kind: "project", ...f.input },
-    artifact: "prepared-audio",
-    generation: 1,
-    attemptId,
-    input: JSON.stringify({
-      ...recipe,
-      requirements: recipe.requirements.map((r: object) => ({
-        ...r,
-        implementationId: "different-policy",
-      })),
-    }),
-    result: JSON.stringify({ ...original, resourceId }),
-  });
+  f.current.jobs.adoptArtifact(
+    {
+      target: { kind: "project", ...f.input },
+      artifact: "prepared-audio",
+      generation: 1,
+      attemptId,
+      input: JSON.stringify({
+        ...recipe,
+        requirements: recipe.requirements.map((r: object) => ({
+          ...r,
+          implementationId: "different-policy",
+        })),
+      }),
+      result: JSON.stringify({ ...original, resourceId }),
+    },
+    [],
+  );
   new ResourceReferences(f.current.catalog).retain(
     "prepared-audio",
     { kind: "revision", id: f.input.revisionId },

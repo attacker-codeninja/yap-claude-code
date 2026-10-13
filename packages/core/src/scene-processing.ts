@@ -125,7 +125,8 @@ export class SceneProcessing {
         "INVALID_PACKAGE",
         "Scene publication differs from its source and generation",
       );
-    this.jobs.adoptArtifact({ ...identity, ...publication });
+    // Scene evidence publishes no issues.
+    this.jobs.adoptArtifact({ ...identity, ...publication }, []);
   }
   sourceStatus(selection: SourceSelection, sources?: SourceSelectionRead) {
     const selected = this.selected(selection, sources);

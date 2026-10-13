@@ -156,6 +156,16 @@ test("a project index over text that fell back to another face publishes the fra
       },
     },
   ]);
+
+  // Adopting the retained index (as a package import does) keeps its issues: they follow from
+  // the retained frames, not from a default.
+  const metadata = result.published!.evidence;
+  const publication = f.index.portableProject(metadata);
+  f.jobs.forgetJob(result.jobId!);
+  f.catalog.transaction(() => f.index.adoptProjectPublication(metadata, metadata, publication));
+  const adopted = f.index.requestProject({ projectId: f.projectId });
+  expect(adopted).toMatchObject({ state: "ready", published: { evidence: metadata } });
+  expect(adopted.published!.issues).toEqual(result.published!.issues);
 });
 
 test("project recipes pin both selected scene generations while queued and retain independent PNGs", async () => {

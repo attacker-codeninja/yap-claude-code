@@ -562,13 +562,16 @@ test("a retained rendered publication without the current transcript policy cann
   historical.selection.revisionId = restored.id;
   historical.pcm.origin.selection.revisionId = restored.id;
   historical.transcript.engine.policy = "historical-policy";
-  f.jobs.adoptArtifact({
-    ...retained,
-    target: { kind: "project", projectId: selection.projectId, revisionId: restored.id },
-    attemptId: randomUUID(),
-    input: JSON.stringify(historicalInput),
-    result: JSON.stringify(historical),
-  });
+  f.jobs.adoptArtifact(
+    {
+      ...retained,
+      target: { kind: "project", projectId: selection.projectId, revisionId: restored.id },
+      attemptId: randomUUID(),
+      input: JSON.stringify(historicalInput),
+      result: JSON.stringify(historical),
+    },
+    [],
+  );
   const pending = f.rendered.prepare(selection);
   expect(pending.published).toBeNull();
   await f.jobs.idle();
