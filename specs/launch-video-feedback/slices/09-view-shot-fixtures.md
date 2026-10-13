@@ -49,3 +49,26 @@ useful message.
 
 **Delegated.** The variable's name, and whether `settings-view-shots` also
 honours it.
+
+## Verdict (2026-10-13): accepted
+
+The preview checkpoint was skipped (this was an unattended run), so the
+decision rests on this evidence:
+
+- **Compare.** Each unlabelled shot was compared with its labelled
+  counterpart at 2x backing scale. Outside the label region they are
+  pixel-identical: 0 of 762,048 pixels differ on the capture `idle` shot and
+  0 of 1,462,272 on the library `recordings` shot. Inside the region:
+  - the caption strip (bottom 40 px) has 1,916 of 31,360 pixels changed,
+    mae 0.80;
+  - the title bar (top 64 px) has 4,228 of 98,304 pixels changed, mae 4.05.
+
+  The title now reads "Library", matching the production window.
+- **Critique.** An unprimed review of the unlabelled shots and zoomed crops
+  of both label regions found no leftover text, clipping or artifact there.
+  It also raised points that this slice doesn't change: the library renders
+  as an inactive window (grey traffic lights), the fixture's "finalizing"
+  row (out of scope), placeholder thumbnails, and alignment and contrast
+  nits. These belong to whoever picks shots for the site and video.
+- **Evidence.** [`assets/09-view-shots/`](../assets/09-view-shots/) holds
+  each shot, labelled and unlabelled.

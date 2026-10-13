@@ -46,7 +46,7 @@ Checklist:
 - [ ] [06 Ranges and messages](slices/06-ranges-and-messages.md)
 - [ ] [07 The remaining gates: publish, or justify the refusal](slices/07-remaining-quality-gates.md)
 - [x] [08 Multicam sync: no new primitive (closed by decision)](slices/08-sync-estimate.md)
-- [ ] [09 View-shot fixtures](slices/09-view-shot-fixtures.md)
+- [x] [09 View-shot fixtures](slices/09-view-shot-fixtures.md)
 - [ ] [10 Skill guidance](slices/10-skill-guidance.md)
 - [ ] Full suite run; the ledger's `pendingConversion` is empty
 - [ ] [11 Replay acceptance](slices/11-replay-acceptance.md), then [close-spec](../../.agents/skills/close-spec/SKILL.md)

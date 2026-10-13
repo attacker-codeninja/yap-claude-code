@@ -48,3 +48,14 @@ export function compileControlsCheck(scratch, appSources, check, onCompile = () 
   ]);
   return executable;
 }
+
+/**
+ * Whether offscreen view shots carry their "synthetic presentation fixture" label. Review shots
+ * keep it by default; `FIXTURE_LABEL=omit` leaves it out for site and video shots.
+ */
+export function fixtureLabel() {
+  const value = process.env.FIXTURE_LABEL ?? "";
+  if (value !== "" && value !== "omit")
+    throw new Error(`FIXTURE_LABEL must be unset or "omit", not ${JSON.stringify(value)}.`);
+  return value === "omit" ? "omit" : "label";
+}

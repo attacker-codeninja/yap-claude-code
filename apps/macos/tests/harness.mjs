@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { after } from "node:test";
@@ -112,6 +112,9 @@ export function temporary(prefix) {
  * always off.
  */
 export function launch(home, environment = {}, args = []) {
+  // Spawning a missing app fails with ENOENT, which node:test reports only as an opaque exit 7.
+  if (!existsSync(app))
+    throw new Error(`Build dist/Yap.app first (bun run build): ${app} does not exist.`);
   const defaults = join(home, "preferences");
   if (!environment.YAP_DEFAULTS) setDefault(defaults, "showSettingsAtLaunch", "-bool", "NO");
   // The app runs with this person's real HOME; agent setup would rewrite their command and skill.
