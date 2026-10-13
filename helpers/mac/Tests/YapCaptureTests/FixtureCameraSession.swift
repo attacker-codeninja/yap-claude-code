@@ -24,6 +24,10 @@ final class FixtureCameraSession: CaptureCameraSession {
     /// Rewraps each picture with an equivalent format description that is not byte-equal, as a
     /// re-created platform session may.
     var equivalentFormat = false
+    /// Rewraps pictures from this index on with different colour primaries: same size and pixel
+    /// format, incompatible format. 0 is a re-created session that describes its colour
+    /// differently; later is a running session whose format changes mid-run.
+    var recolouredFrom: Int?
     var holdStart = false
     var holdStop = false
     /// What releasing the session reports, as a device whose settings cannot be restored does.
@@ -51,9 +55,13 @@ final class FixtureCameraSession: CaptureCameraSession {
             outputSettings: [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA])
         reader.add(output); precondition(reader.startReading())
         let base = startsAtNow ? CaptureHostTime.nowUs() + 1000 : origin() + 200000
+        var index = 0
         while let sample = output.copyNextSampleBuffer() {
+            let recoloured = recolouredFrom.map { index >= $0 } ?? false
+            index += 1
             let host = CMTimeAdd(sample.presentationTimeStamp, CMTime(value: base, timescale: 1000000))
-            let picture = equivalentFormat ? try Self.equivalentlyDescribed(sample) : sample
+            let picture = equivalentFormat || recoloured
+                ? try Self.equivalentlyDescribed(sample, recoloured: recoloured) : sample
             lastSample = picture
             let timed = try CaptureClockIngress.retime(picture, to: host,
                 duration: pulseUs.map { CMTime(value: $0, timescale: 1000000) })
@@ -83,11 +91,19 @@ final class FixtureCameraSession: CaptureCameraSession {
         return releaseFailure
     }
 
-    private static func equivalentlyDescribed(_ sample: CMSampleBuffer) throws -> CMSampleBuffer {
+    private static func equivalentlyDescribed(_ sample: CMSampleBuffer, recoloured: Bool) throws -> CMSampleBuffer {
         let image = sample.imageBuffer!
         let original = sample.formatDescription!
         var extensions = (CMFormatDescriptionGetExtensions(original) as? [String: Any]) ?? [:]
         extensions["YapFixtureSession"] = "re-created"
+        if recoloured {
+            // The picture's own tags must agree with its description, so both change.
+            let key = kCMFormatDescriptionExtension_ColorPrimaries as String
+            let p3 = kCMFormatDescriptionColorPrimaries_P3_D65 as String
+            let primaries = extensions[key] as? String == p3 ? kCMFormatDescriptionColorPrimaries_ITU_R_709_2 as String : p3
+            extensions[key] = primaries
+            CVBufferSetAttachment(image, kCVImageBufferColorPrimariesKey, primaries as CFString, .shouldPropagate)
+        }
         var description: CMVideoFormatDescription?
         let size = CMVideoFormatDescriptionGetDimensions(original)
         guard CMVideoFormatDescriptionCreate(allocator: kCFAllocatorDefault,

@@ -220,6 +220,7 @@ package final class CameraCaptureInput: CaptureInputSession, CompanionCameraSwit
         let cameraWriter = try CameraWriter(directory: selection.directory,
             framesPerSecond: measurement.framesPerSecond ?? 30, binding: selection.binding)
         if !selection.startsOn { cameraWriter.stopAcquiring(atHostUs: CaptureHostTime.nowUs()) }
+        cameraWriter.runEnded = { [weak self] reason in Task { @MainActor in self?.endRun(reason) } }
         let ingress = try CaptureClockIngress(writer: writer, destination: .companion(cameraWriter),
             observations: selection.binding == nil ? selection.observations : selection.directory.appendingPathComponent(CameraMedia.mappingFile),
             failure: onFailure)
@@ -260,6 +261,22 @@ package final class CameraCaptureInput: CaptureInputSession, CompanionCameraSwit
         }
         switching = Task { _ = await change.result }
         try await change.value
+    }
+    /// The writer refused a picture that cannot join this take and closed the acquisition window.
+    /// Turns the camera off after any switch in flight; the take keeps recording. A turn-on that
+    /// reopened the window since then keeps its session.
+    private func endRun(_ reason: CaptureFailure) {
+        let previous = switching
+        let change = Task { @MainActor [self] in
+            await previous?.value
+            guard !ended, let session, let camera = ingress?.companion,
+                !ingress!.writer.queue.sync(execute: { camera.isAcquiring }) else { return }
+            Self.diagnose("camera off: cause=incompatible picture; code=\(reason.code); message=\(reason.message)")
+            let released = await turnOff(session)
+            meantOn = false
+            if let released { _ = Self.refusal(reason, released: released, by: "incompatible picture") }
+        }
+        switching = Task { await change.value }
     }
     /// Opens a new session on the reserved device. Any refusal leaves the camera off.
     private func turnOn() async throws {
@@ -311,11 +328,11 @@ package final class CameraCaptureInput: CaptureInputSession, CompanionCameraSwit
     /// refusal, if it has one, keeps its code and names the release failure too.
     private static func refusal(_ cause: CaptureFailure?, released: CaptureFailure?, by toggle: String) -> CaptureFailure {
         guard let released else { return cause! }
-        FileHandle.standardError.write(Data(
-            "camera release: toggle=\(toggle); code=\(released.code); message=\(released.message)\n".utf8))
+        diagnose("camera release: toggle=\(toggle); code=\(released.code); message=\(released.message)")
         guard let cause else { return released }
         return CaptureFailure(cause.code, "\(cause.message) Releasing the camera also failed (\(released.code)): \(released.message)")
     }
+    private static func diagnose(_ line: String) { FileHandle.standardError.write(Data("\(line)\n".utf8)) }
     package func startCursorSampling(writer: CaptureWriter) {
         if measurement.samplesCursor { primary.startCursorSampling(writer: writer) }
     }

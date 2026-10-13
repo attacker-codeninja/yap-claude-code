@@ -50,6 +50,14 @@ package final class CameraWriter {
     private var offAt: CMTime?
     private var run = 0
     private var runFrames = 0
+    /// Counts acquisition windows, so a picture can be traced to the turn-on that opened its window.
+    private var window = 0
+    /// The window whose picture established the take's format.
+    private var formatWindow = 0
+    /// Called on the writer queue when a picture incompatible with the take's format arrives in a
+    /// window opened by a later turn-on. The writer has already closed the window and refused the
+    /// picture; the camera's owner turns the camera off.
+    package var runEnded: (@Sendable (CaptureFailure) -> Void)?
 
     package init(directory: URL, framesPerSecond: Int, binding: CameraCaptureBinding? = nil) throws {
         try binding?.validate()
@@ -76,6 +84,7 @@ package final class CameraWriter {
             // The live continuation proves one contiguous run; later runs publish by full scan.
             verification?.abandon()
         }
+        window += 1
         onAt = CMTime(value: hostUs, timescale: 1_000_000); offAt = nil
     }
     /// Closes acquisition at a host instant.
@@ -84,6 +93,8 @@ package final class CameraWriter {
     }
     /// No picture has been accepted, so nothing has been written.
     package var isEmpty: Bool { writer == nil }
+    /// Whether the acquisition window is open.
+    package var isAcquiring: Bool { offAt == nil }
     /// Whether a camera producing pictures of this size can continue this take.
     package func admits(width: Int, height: Int) -> Bool {
         format.map { Int($0.width) == width && Int($0.height) == height } ?? true
@@ -112,10 +123,20 @@ package final class CameraWriter {
             throw CaptureFailure("INVALID_CAMERA_FRAME", "Camera callback lacks usable video.")
         }
         if let format, format != CameraFormat(description) {
-            throw CaptureFailure("CAMERA_FORMAT_CHANGED", "Selected camera format changed during the take.")
+            // Mixed colour tags in one track would play with the wrong colour, so the picture is
+            // never recorded. A session opened by a later turn-on ends its own run; the session
+            // that established the format changing mid-run still fails the take.
+            guard window != formatWindow else {
+                throw CaptureFailure("CAMERA_FORMAT_CHANGED", "Selected camera format changed during the take.")
+            }
+            stopAcquiring(atHostUs: host)
+            runEnded?(CaptureFailure("CAMERA_FORMAT_CHANGED",
+                "The camera turned on again delivers a picture format incompatible with earlier in this take."))
+            return (.init(disposition: "camera-off", sourceUs: nil), nil)
         }
         if writer == nil {
             format = CameraFormat(description)
+            formatWindow = window
             let size = CMVideoFormatDescriptionGetDimensions(description)
             width = Int(size.width); height = Int(size.height)
             let journal = try CaptureJournal(directory: directory.path,

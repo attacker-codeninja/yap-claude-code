@@ -545,6 +545,53 @@ private func verifyCameraSwitch(root: URL, screenSource: URL, cameraSource: URL)
     precondition(result.state == "complete" && result.camera?.tracks.first?.samples == 3)
     print("PASS format-changed: a different picture size refuses the turn-on and the take continues")
 
+    // A session turned on mid-take whose pictures carry different colour tags cannot be told apart
+    // before it delivers. Its first incompatible picture ends that run: the picture is refused, the
+    // camera turns off and the take keeps every earlier run and completes.
+    t = try take("format-recoloured", startsOn: true)
+    var reopened = 0
+    t.reopen { reopened += 1; if reopened == 1 { $0.equivalentFormat = true } else { $0.recolouredFrom = 0 } }
+    try await t.start()
+    try await t.record()
+    try await t.capture.setCamera(on: false)
+    try await t.capture.setCamera(on: true)
+    try await t.record()
+    try await t.capture.setCamera(on: false)
+    try await t.capture.setCamera(on: true)
+    for _ in 0..<200 where t.capture.companionCamera?.on != false { try await Task.sleep(for: .milliseconds(10)) }
+    precondition(t.capture.companionCamera?.on == false && t.interruption == nil && t.capture.deviceState == "recording",
+        "An incompatible picture after a turn-on turns the camera off and keeps the take: \(String(describing: t.interruption))")
+    result = try await t.stop()
+    precondition(t.device.opens == 3 && t.device.sessions.allSatisfy { $0.starts == 1 && $0.stops == 1 },
+        "The ended run's session is released once")
+    precondition(result.state == "complete" && result.failure == nil && result.camera?.state == "complete",
+        "The take completes: \(String(describing: result.failure ?? result.camera?.failure))")
+    precondition(result.camera?.tracks.first?.samples == 6 && t.gaps?.count == 1,
+        "The two earlier runs publish alone: \(String(describing: result.camera?.tracks.first?.samples)), gaps \(String(describing: t.gaps))")
+    let recolouredRows = try String(contentsOf: t.camera.appendingPathComponent(CameraMedia.mappingFile), encoding: .utf8)
+        .split(separator: "\n").map { try JSONSerialization.jsonObject(with: Data($0.utf8)) as! [String: Any] }
+        .filter { $0["role"] as? String == "camera" }
+    precondition(recolouredRows.filter { $0["disposition"] as? String == "accepted" }.count == 6
+        && !recolouredRows.contains { (($0["cameraFrame"] as? [String: Any])?["run"] as? Int) == 2 },
+        "No picture of the recoloured session is recorded")
+    let canonicalTrack = try await AVURLAsset(url: t.camera.appendingPathComponent("video.mov"))
+        .loadTracks(withMediaType: .video).first!
+    let occupied = try await canonicalTrack.load(.segments).filter { !$0.isEmpty }
+    precondition(occupied.count == 2, "The canonical movie holds only the two earlier runs: \(occupied.count) occupied segments")
+    print("PASS format-recoloured: a turn-on's incompatible picture ends its run; camera off, take complete")
+
+    // The session whose first picture established the take's format changing mid-run is not a
+    // toggle: it still interrupts the take, as a format change always did. (The fixture delivers
+    // inside its start, so the take starts off and its first turn-on opens that session.)
+    t = try take("format-changed-mid-run", startsOn: false) { $0.recolouredFrom = 1 }
+    try await t.start()
+    try? await t.capture.setCamera(on: true)
+    for _ in 0..<200 where t.interruption == nil { try await Task.sleep(for: .milliseconds(10)) }
+    precondition(t.interruption?.code == "CAMERA_FORMAT_CHANGED", "Got \(String(describing: t.interruption))")
+    result = try await t.stop()
+    precondition(result.state == "interrupted" && result.failure?.code == "CAMERA_FORMAT_CHANGED")
+    print("PASS format-changed-mid-run: the establishing session changing format interrupts the take, as before")
+
     for (mode, code) in [("turn-on-device-missing", "SOURCE_UNAVAILABLE"), ("turn-on-permission-revoked", "CAMERA_PERMISSION_REQUIRED")] {
         t = try take(mode, startsOn: false)
         try await t.start()

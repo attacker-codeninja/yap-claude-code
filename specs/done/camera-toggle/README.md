@@ -67,8 +67,12 @@ a second statement beside the receipt.
 releases it, so an off camera holds nothing and its light stays off. Keeping one session and
 calling start and stop on it was rejected: it opens the device at take start. Opening lazily also
 made the "is the format identical across sessions" and "does stopping post an interruption"
-questions moot: a turn-on compares a compatible format (size, pixel format, colour tags) rather
-than byte-equal descriptions, and each session's loss observers are removed before it stops.
+questions moot: pictures are compared on a compatible format (size, pixel format, colour tags)
+rather than byte-equal descriptions, and each session's loss observers are removed before it
+stops. A turn-on can check only size before its session runs; a session turned on mid-take whose
+picture is otherwise incompatible ends its own run: that picture is refused and the camera turns
+off. Colour tags are never loosened, because mixed tags in one track would play with the wrong
+colour.
 
 **One action for the menu and the floating controls.** Both send `ControlsAction.setCamera`.
 Before a take it sets the start switch; during one it sends the same `capture.setCamera` the CLI
@@ -78,7 +82,8 @@ the take started with.
 
 **A toggle never touches the take lifecycle.** No report, no lifecycle transition, no catalog
 column. A refused or failed toggle answers on that call and leaves the camera off and the take
-recording.
+recording. So does a session a turn-on opened that later delivers an incompatible picture: it
+has no call left to answer, so it writes a `camera off:` line on native's stderr instead.
 
 ## Invariants
 
@@ -93,8 +98,11 @@ recording.
   original 64 KiB receipt and 32 KiB normalized-receipt bounds. Swift (`maximumGaps`) and
   TypeScript (`maxCameraGaps`) must change together.
 - A toggle never touches the primary clock, the screen stream or the take lifecycle. A failure
-  from a toggle, including a failure to release the device, is reported on that toggle; only the
-  release at stop of a camera that is on can still interrupt the take.
+  from a toggle, including a failure to release the device, is reported on that toggle. A
+  picture from a turned-on session that is incompatible with the take's format ends that run
+  and turns the camera off; it is never recorded. Only the release at stop of a camera that is
+  on, or a format change by the session whose picture established the take's format, can still
+  interrupt the take.
 - A camera that is off at stop and recorded nothing publishes `CAMERA_NOT_TURNED_ON` and the take
   completes. `NO_CAMERA` means a camera that was on at stop and never delivered.
 - A stop or discard during a turn-on cancels it: the call answers `INVALID_STATE`, its session is
@@ -218,7 +226,7 @@ Tests and harnesses that pin it:
   the user's call. Likewise, a release failure at stop of a camera that is on still fails the
   take, on purpose.
 - **Unmeasured on a device:** a real camera whose pixel format or colour tags change between
-  sessions interrupts the take on the first picture rather than refusing the turn-on; the 20 s
+  sessions; the fixture proves such a turn-on ends its run and the take continues. The 20 s
   turn-on wait is a design value.
 - **Latent:** the `MediaInput` read-path stall that heavy passthrough preroll caused was avoided,
   not investigated.

@@ -321,7 +321,7 @@ public final class NativeCapture {
         if case .notTurnedOn = closedCamera {
             // Nothing was recorded and nothing failed: the take completes without a camera source.
             publication?.camera = .unavailable(CaptureFailure("CAMERA_NOT_TURNED_ON",
-                "The reserved camera was never turned on during this take."))
+                "The reserved camera was off at stop and recorded nothing during this take."))
             reportPublication(generation)
         }
         if let closedCamera = closedCamera?.source {

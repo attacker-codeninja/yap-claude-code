@@ -237,23 +237,36 @@ Ranked least-confident first.
 - **Verdict:** sound. It is a bound that holds in general, enforced before anything is written.
 - **Confidence:** medium.
 
-### "Compatible format" replaces exact format equality; a turn-on checks only size
+### "Compatible format" replaces exact format equality; an incompatible turn-on ends its run
 
-- **When:** `6a5407f5`.
+- **When:** `6a5407f5`; the run-ending rule added in the commit that rewrote this entry.
 - **The choice:** A camera is turned off and on again. The new session's format description may
   describe the same format without being byte-equal to the first. The writer used to require
   `CMFormatDescriptionEqual` and would interrupt the take. Now every picture is compared on what
   decoding and passthrough export depend on (`CameraFormat`): dimensions, pixel format and colour
   tags. A session states its dimensions but not its pictures' description, so a turn-on can only
-  check size before it starts (`CAMERA_FORMAT_CHANGED`, the camera stays off). Any other mismatch
-  is found on the first picture and interrupts the take, as a format change always did. No step
+  check size before it starts. What happens to a mismatch:
+  ```
+  turn-on, different size              -> the call refuses CAMERA_FORMAT_CHANGED; camera off
+  turned-on session, other mismatch    -> that picture is logged camera-off, never recorded;
+    (pixel format or colour tags)         the camera turns off (session released), one
+                                          "camera off:" line on native's stderr; earlier runs
+                                          publish and the take completes
+  the session whose first picture set
+    the format changes mid-run         -> unchanged: the take is interrupted
+  ```
+  Colour tags stay in the rule (user decision): one camera track with mixed tags would play
+  with the wrong colour. As first built, the second row interrupted the whole take. No step
   waits on a physical camera to confirm formats (user decision).
 - **The gap:** The plan named the predicate and its parts. It didn't say what can be checked
-  before a session runs.
-- **The reach:** A real camera whose pixel format or colour tags change between sessions
-  interrupts the whole take rather than refusing the turn-on. Optional slice 03 could confirm
-  this on a device.
-- **Verdict:** sound. It refuses early what is knowable early, with no device-dependent guess.
+  before a session runs, or what a mismatch found after a turn-on does.
+- **The reach:** A toggle never costs the take, even when the device describes its colour
+  differently the second time. The turn-on's call has already answered, so the person sees the
+  camera go off in live state rather than an error. Unmeasured on a device; see Open follow-ups
+  in the README.
+- **Verdict:** sound. It refuses early what is knowable early, and ends only the run that cannot
+  join the track. Fixture modes `format-recoloured` and `format-changed-mid-run` in
+  `SelectedCameraInputTests` pin the second and third rows.
 - **Confidence:** medium.
 
 ### A stop or discard cancels a turn-on in flight
