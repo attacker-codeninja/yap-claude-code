@@ -184,9 +184,13 @@ deterministic; before it, recovery depended on where the fragment happened to en
   pixel format, colour tags) is applied to every picture in `append`; a mismatch found there
   interrupts the take as a format change always did. The turn-on refusal covers what can be known
   before opening.
-- **Never turned on means "no turn-on was requested and nothing was recorded" (05).** A camera
-  that started on but whose start was skipped (probe `beforeStart`) is still `NO_CAMERA`, as
-  before. Failed turn-ons do not count as turned on.
+- **`NO_CAMERA` means "on at stop and never delivered" (05, revised 2026-10-12).** A camera that
+  recorded no picture closes `NO_CAMERA` (a device failure that interrupts the take) only when it
+  was meant to be on at stop: started on, or turned on and not turned off since. A camera the
+  person turned off before any picture was accepted publishes `unavailable CAMERA_NOT_TURNED_ON`
+  and the take completes (`on-off-no-frames`). A camera that started on but whose start was
+  skipped (probe `beforeStart`) is still `NO_CAMERA`. Failed and cancelled turn-ons do not count
+  as turned on.
 - **Loss while off needs no latch (05).** The off camera has no session and so no observer;
   presence is checked at each turn-on (`SOURCE_UNAVAILABLE`). No "lost" flag is stored.
 - **Startup's turn-on is not joined by stop (05).** It is fenced by NativeCapture's generation, and
@@ -199,8 +203,7 @@ deterministic; before it, recovery depended on where the fragment happened to en
   happened: with no earlier turn-on it is `unavailable CAMERA_NOT_TURNED_ON` and the take
   completes; with earlier runs they publish as before, the last ending where it ended. The writer
   is sealed before the switch is joined, so the cancelled turn-on records nothing. Replaces the
-  earlier `NO_CAMERA` outcome. Startup's turn-on is unchanged (entry above). An earlier turn-on
-  that completed but recorded nothing still counts, so that take stays `NO_CAMERA`.
+  earlier `NO_CAMERA` outcome. Startup's turn-on is unchanged (entry above).
 - **Recovery of a mapping-only camera directory answers `NO_CAMERA` (05).** A crashed take leaves
   the same directory whether the camera was never turned on or lost before its first picture, so
   recovery states what it can prove. Only a camera authority whose single member is the mapping

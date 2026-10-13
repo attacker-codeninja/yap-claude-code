@@ -595,6 +595,20 @@ private func verifyCameraSwitch(root: URL, screenSource: URL, cameraSource: URL)
         print("PASS \(mode): the turn-on is cancelled, its session released once, the take \(ended?.state ?? "discarded")")
     }
 
+    // Turned on, then off by the person, before any picture was accepted: nothing failed, so the
+    // camera reads as never turned on and the take completes. (On at stop with no picture is still
+    // NO_CAMERA: the `no-camera` lifecycle mode.)
+    t = try take("on-off-no-frames", startsOn: false) { $0.deliverFrames = false }
+    try await t.start()
+    try await t.capture.setCamera(on: true)
+    try await t.capture.setCamera(on: false)
+    result = try await t.stop()
+    precondition(t.device.opens == 1 && t.device.session.starts == 1 && t.device.session.stops == 1)
+    precondition(result.state == "complete" && result.failure == nil && result.camera == nil,
+        "A camera turned off before any picture does not fail the take: \(String(describing: result.failure))")
+    precondition(t.cameraUnavailableCode == "CAMERA_NOT_TURNED_ON", "Got \(String(describing: t.cameraUnavailableCode))")
+    print("PASS on-off-no-frames: turned off before any picture, take complete, camera CAMERA_NOT_TURNED_ON")
+
     // Loss while off reaches no observer; the next turn-on finds the device gone.
     t = try take("device-loss-while-off", startsOn: true)
     try await t.start()

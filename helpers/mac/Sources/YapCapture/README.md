@@ -84,8 +84,9 @@ A reserved companion camera is open only while it is on. Each turn-on opens a ne
 session on the device and each turn-off releases it, so an off camera holds no
 device and no light. Sessions that open again may describe the same picture format
 differently; the writer accepts any compatible one and refuses a different size
-before opening. A camera never turned on leaves the take complete with the camera
-unavailable. Ending the take while a turn-on is starting cancels that turn-on: its
+before opening. A camera that is off at stop and recorded nothing, whether never
+turned on or turned off before any picture, leaves the take complete with the
+camera unavailable; only a camera on at stop that never delivered interrupts it. Ending the take while a turn-on is starting cancels that turn-on: its
 session is released and the camera closes as if it had never been asked. Losing
 the device while it is off is found at the next turn-on; losing it while on
 interrupts the take. Turn-ons per take are bounded so the

@@ -194,8 +194,9 @@ package final class CameraCaptureInput: CaptureInputSession, CompanionCameraSwit
     /// The last switch requested; the next one, stop and discard wait for it.
     private var switching: Task<Void, Never>?
     private var ended = false
-    /// Whether the camera was meant to be on at some point: from the start, or turned on since.
-    private var everOn: Bool
+    /// Whether the camera is meant to be on: from the start or the last accepted turn-on, until
+    /// the person turns it off. A camera meant on at stop that recorded nothing is `NO_CAMERA`.
+    private var meantOn: Bool
     /// Every turn-on that opened acquisition, including the one at the take's start.
     private var turnOns = 0
     static let maximumTurnOns = CameraAvailability.maximumGaps + 1
@@ -213,7 +214,7 @@ package final class CameraCaptureInput: CaptureInputSession, CompanionCameraSwit
     init(primary: any CaptureInputSession, selection: CaptureCameraSelection, measurement: CameraCaptureMeasurement,
         devices: CaptureInputPreparation, opened: (any CaptureCameraSession)?) {
         self.primary = primary; self.selection = selection; self.measurement = measurement
-        self.devices = devices; self.opened = opened; everOn = selection.startsOn
+        self.devices = devices; self.opened = opened; meantOn = selection.startsOn
     }
     package func start(writer: CaptureWriter, output: any SCStreamOutput, framesPerSecond: Int?,
         onFailure: @escaping @Sendable (CaptureFailure) -> Void, checkInterruption: @escaping @MainActor () throws -> Void) async throws {
@@ -250,9 +251,9 @@ package final class CameraCaptureInput: CaptureInputSession, CompanionCameraSwit
                     await turnOff(session)
                     throw CaptureFailure("INVALID_STATE", "The take stopped while the camera was turning on.")
                 }
-                everOn = true
+                meantOn = true
             }
-            if !on, let session { await turnOff(session) }
+            if !on, let session { await turnOff(session); meantOn = false }
         }
         switching = Task { _ = await change.result }
         try await change.value
@@ -320,7 +321,8 @@ package final class CameraCaptureInput: CaptureInputSession, CompanionCameraSwit
         guard let ingress, let camera = ingress.companion else { return CaptureInputClosure() }
         var closeFailure: CaptureFailure?
         do { try ingress.close() } catch { closeFailure = CaptureFailure("WRITE_FAILED", error.localizedDescription) }
-        if !everOn, ingress.writer.queue.sync(execute: { camera.isEmpty }) {
+        // Off at stop with nothing recorded: nothing failed, the camera was simply not used.
+        if !meantOn, ingress.writer.queue.sync(execute: { camera.isEmpty }) {
             return CaptureInputClosure(camera: .notTurnedOn, failure: closeFailure)
         }
         return CaptureInputClosure(camera: .closed(await camera.close(clock: clock, failure: failure ?? closeFailure,

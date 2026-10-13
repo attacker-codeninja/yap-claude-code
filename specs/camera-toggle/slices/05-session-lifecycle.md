@@ -85,7 +85,9 @@ under "Slice 05 and the native part of 06".
   the take ends.
 - `CameraClosure {notTurnedOn, closed(ClosedCameraSource)}` in `CaptureInputClosure.camera`.
   `.notTurnedOn` publishes the camera `unavailable` with `CAMERA_NOT_TURNED_ON` (terminal) and
-  `CaptureResult.camera = nil`; the take completes.
+  `CaptureResult.camera = nil`; the take completes. A camera with no accepted picture closes
+  `.notTurnedOn` whenever it is off at stop (never turned on, or turned off by the person);
+  `NO_CAMERA` is kept for a camera on at stop that never delivered (revised 2026-10-12).
 - `CameraWriter`: the compatible-format predicate is `CameraFormat` (size, pixel format, colour
   tags); `admits(width:height:)` applies its size part before a session starts. The acquisition
   window's mutator is split into `startAcquiring`/`stopAcquiring`.
@@ -111,12 +113,15 @@ under "Slice 05 and the native part of 06".
 (an equivalent, not byte-equal, re-created format is accepted), `format-changed`,
 `turn-on-device-missing`, `turn-on-permission-revoked`, `stop-during-turn-on` (take complete,
 `CAMERA_NOT_TURNED_ON`, only the mapping), `stop-during-second-turn-on` (the earlier run publishes
-alone, no gap), `discard-during-turn-on`, `device-loss-while-off`, `device-loss-while-on`, `idempotent-set`, `toggle-limit` (500 turn-ons
+alone, no gap), `discard-during-turn-on`, `on-off-no-frames` (turned off before any picture:
+take complete, `CAMERA_NOT_TURNED_ON`; the lifecycle `no-camera` mode keeps on-at-stop `NO_CAMERA`),
+`device-loss-while-off`, `device-loss-while-on`, `idempotent-set`, `toggle-limit` (500 turn-ons
 publish 499 gaps; the 501st is refused). `EmptyCaptureRecoveryTests`: mapping-only camera.
 `NativeCaptureInputTests`: screen-only and camera-only takes have no switch. Falsified once each:
 strict description equality (off-on-off-on red), a limit of 501 (toggle-limit red), stop not
 joining the switch (stop-during-turn-on red), and a cancelled turn-on counted as on
-(stop-during-turn-on red with `NO_CAMERA`).
+(stop-during-turn-on red with `NO_CAMERA`). `on-off-no-frames` was red with `NO_CAMERA` before
+its fix.
 
 Must-stay-green, run on this build: the whole `YapCaptureTests` product with no suite variable
 (includes `PrimaryCameraInputTests`, `PrimaryCameraPublicationTests`, `DeferredPauseTests`,
