@@ -93,7 +93,7 @@ export { planSubjectFraming, subjectFramingRequestSchema } from "./subject-frami
 export type {
   SubjectFramingRequest,
   SubjectFramingPlan,
-  SubjectFramingViolation,
+  SubjectFramingConstraint,
 } from "./subject-framing.js";
 
 export {

@@ -1,5 +1,10 @@
 import { expect, test } from "vitest";
-import { planSubjectFraming } from "./subject-framing.js";
+import { planSubjectFraming, type SubjectFramingPlan } from "./subject-framing.js";
+
+const unmet = (plan: SubjectFramingPlan) =>
+  plan.issues.map((issue) =>
+    issue.code === "framing-constraint-unmet" ? issue.evidence.constraint : issue.code,
+  );
 
 test("plans a bounded crop that places the selected face at the requested target", () => {
   const result = planSubjectFraming({
@@ -29,7 +34,7 @@ test("plans a bounded crop that places the selected face at the requested target
       fit: "stretch",
     },
     zoom: 2,
-    violations: [],
+    issues: [],
   });
 });
 
@@ -53,8 +58,8 @@ test("surfaces partial landmark coverage before offering subject framing", () =>
     preservation: "crop",
   });
 
-  expect(result.status).toBe("refused");
-  expect(result.violations).toContain("subject_landmarks_partial");
+  expect(result.status).toBe("ready");
+  expect(unmet(result)).toContain("subject_landmarks_partial");
   expect(result.geometry?.crop).toEqual({ x: 530, y: 180, width: 540, height: 540 });
 });
 
@@ -70,13 +75,13 @@ test("reports a zoom-cap violation instead of silently exceeding the caller boun
     preservation: "crop",
   });
 
-  expect(result.status).toBe("refused");
-  expect(result.violations).toContain("zoom_cap");
+  expect(result.status).toBe("ready");
+  expect(unmet(result)).toContain("zoom_cap");
   expect(result.zoom).toBe(1.5);
   expect(result.geometry?.crop).toEqual({ x: 590, y: 140, width: 720, height: 720 });
 });
 
-test("refuses missing or ambiguous subjects without inventing a crop", () => {
+test("is unavailable for missing or ambiguous subjects without inventing a crop", () => {
   const base = {
     source: { width: 1920, height: 1080 },
     canvas: { width: 1080, height: 1080 },
@@ -87,10 +92,11 @@ test("refuses missing or ambiguous subjects without inventing a crop", () => {
     preservation: "crop" as const,
   };
   expect(planSubjectFraming({ ...base, faces: [] })).toEqual({
-    status: "refused",
+    status: "unavailable",
     geometry: null,
     zoom: null,
-    violations: ["subject_missing"],
+    reason: "subject_missing",
+    issues: [],
   });
   expect(
     planSubjectFraming({
@@ -101,10 +107,11 @@ test("refuses missing or ambiguous subjects without inventing a crop", () => {
       ],
     }),
   ).toEqual({
-    status: "refused",
+    status: "unavailable",
     geometry: null,
     zoom: null,
-    violations: ["subject_ambiguous"],
+    reason: "subject_ambiguous",
+    issues: [],
   });
 });
 
@@ -120,13 +127,13 @@ test("reports the centering conflict when full-frame preservation cannot transla
     preservation: "contain",
   });
 
-  expect(result.status).toBe("refused");
+  expect(result.status).toBe("ready");
   expect(result.geometry).toEqual({
     type: "geometry",
     rect: { x: 0, y: 236.25, width: 1080, height: 1080 },
     fit: "contain",
   });
-  expect(result.violations).toEqual(["target_unreachable"]);
+  expect(unmet(result)).toEqual(["target_unreachable"]);
 });
 
 test("translates contained content when the target is reachable without cropping", () => {
@@ -149,11 +156,11 @@ test("translates contained content when the target is reachable without cropping
       fit: "contain",
     },
     zoom: 0.5625,
-    violations: [],
+    issues: [],
   });
 });
 
-test("refuses contain mode when its fixed scale falls outside the requested zoom bounds", () => {
+test("proposes contain mode with an issue when its fixed scale falls outside the requested zoom bounds", () => {
   const result = planSubjectFraming({
     source: { width: 1920, height: 1080 },
     canvas: { width: 1080, height: 1080 },
@@ -165,10 +172,10 @@ test("refuses contain mode when its fixed scale falls outside the requested zoom
     preservation: "contain",
   });
 
-  expect(result.status).toBe("refused");
+  expect(result.status).toBe("ready");
   expect(result.zoom).toBe(0.5625);
   expect(result.geometry).toEqual({ type: "geometry", fit: "contain" });
-  expect(result.violations).toEqual(["zoom_floor"]);
+  expect(unmet(result)).toEqual(["zoom_floor"]);
 });
 
 test("keeps the subject in source corners and reports an unreachable target", () => {
@@ -183,8 +190,8 @@ test("keeps the subject in source corners and reports an unreachable target", ()
     preservation: "crop",
   });
 
-  expect(result.status).toBe("refused");
-  expect(result.violations).toEqual(["source_bounds", "target_unreachable"]);
+  expect(result.status).toBe("ready");
+  expect(unmet(result)).toEqual(["source_bounds", "target_unreachable"]);
   expect(result.geometry?.crop).toMatchObject({ x: 0, y: 0, width: 340, height: 340 });
 });
 
@@ -200,12 +207,12 @@ test("preserves requested margins before reporting an off-center target conflict
     preservation: "crop",
   });
 
-  expect(result.status).toBe("refused");
-  expect(result.violations).toEqual(["target_unreachable"]);
+  expect(result.status).toBe("ready");
+  expect(unmet(result)).toEqual(["target_unreachable"]);
   expect(result.geometry?.crop).toEqual({ x: 580, y: 180, width: 540, height: 540 });
 });
 
-test("keeps refused edge proposals inside the source when margins exceed both edges", () => {
+test("keeps flagged edge proposals inside the source when margins exceed both edges", () => {
   const result = planSubjectFraming({
     source: { width: 1920, height: 1080 },
     canvas: { width: 1080, height: 1080 },
@@ -217,8 +224,8 @@ test("keeps refused edge proposals inside the source when margins exceed both ed
     preservation: "crop",
   });
 
-  expect(result.status).toBe("refused");
-  expect(result.violations).toContain("source_bounds");
+  expect(result.status).toBe("ready");
+  expect(unmet(result)).toContain("source_bounds");
   expect(result.geometry?.crop).toEqual({ x: 1580, y: 740, width: 340, height: 340 });
 });
 
@@ -234,12 +241,12 @@ test("reports a zoom-floor violation when the minimum zoom would cut into the re
     preservation: "crop",
   });
 
-  expect(result.status).toBe("refused");
-  expect(result.violations).toContain("zoom_floor");
+  expect(result.status).toBe("ready");
+  expect(unmet(result)).toContain("zoom_floor");
   expect(result.zoom).toBe(3);
 });
 
-test("an infeasible uniform zoom refuses without offering a stretched crop", () => {
+test("an infeasible uniform zoom is unavailable without offering a stretched crop", () => {
   const result = planSubjectFraming({
     source: { width: 1920, height: 1080 },
     canvas: { width: 640, height: 640 },
@@ -250,10 +257,11 @@ test("an infeasible uniform zoom refuses without offering a stretched crop", () 
     zoom: { min: 0.1, max: 0.4 },
     preservation: "crop",
   });
-  expect(result).toEqual({
-    status: "refused",
+  expect(result).toMatchObject({
+    status: "unavailable",
     geometry: null,
     zoom: null,
-    violations: ["zoom_cap", "source_bounds"],
+    reason: "source_bounds",
   });
+  expect(unmet(result)).toEqual(["zoom_cap"]);
 });

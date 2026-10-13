@@ -51,7 +51,6 @@
    "packages/composition/src/edits.ts": "reads a caller-authored synchronization verdict to report it as an issue"
   },
   "pending": {
-   "packages/composition/src/subject-framing.ts": "07g",
    "packages/core/src/alignment-evidence.ts": "07j",
    "packages/core/src/alignment-operands.ts": "07j",
    "packages/core/src/speaker-continuity.ts": "07f",

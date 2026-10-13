@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { geometrySchema, type Geometry } from "./geometry.js";
+import { framingConstraintSchema, type Issue } from "./issues.js";
 
 const dimension = z.number().int().positive().finite();
 const coordinate = z.number().finite();
@@ -52,23 +53,39 @@ export const subjectFramingRequestSchema = z
   .strict();
 
 export type SubjectFramingRequest = z.infer<typeof subjectFramingRequestSchema>;
-export type SubjectFramingViolation =
-  | "subject_missing"
-  | "subject_ambiguous"
-  | "subject_out_of_bounds"
-  | "zoom_cap"
-  | "zoom_floor"
-  | "source_bounds"
-  | "margins_unreachable"
-  | "target_unreachable"
-  | "subject_landmarks_partial"
-  | "subject_landmarks_unavailable";
-export type SubjectFramingPlan = {
-  status: "ready" | "refused";
-  geometry: Geometry | null;
-  zoom: number | null;
-  violations: SubjectFramingViolation[];
-};
+export type SubjectFramingConstraint = z.infer<typeof framingConstraintSchema>;
+/**
+ * Output by default: geometry is proposed whenever it exists, with each unmet constraint as an
+ * issue. A plan is unavailable only when no geometry can be placed for the requested subject.
+ */
+export type SubjectFramingPlan =
+  | { status: "ready"; geometry: Geometry; zoom: number; issues: Issue[] }
+  | {
+      status: "unavailable";
+      geometry: null;
+      zoom: null;
+      reason: "subject_missing" | "subject_ambiguous" | "subject_out_of_bounds" | "source_bounds";
+      issues: Issue[];
+    };
+
+const constraintIssue = (constraint: SubjectFramingConstraint): Issue => ({
+  code: "framing-constraint-unmet",
+  message: `The framing constraint ${constraint} could not be met`,
+  evidence: { constraint },
+});
+const ready = (geometry: Geometry, zoom: number, unmet: SubjectFramingConstraint[]) =>
+  ({ status: "ready", geometry, zoom, issues: [...new Set(unmet)].map(constraintIssue) }) as const;
+const unavailable = (
+  reason: Extract<SubjectFramingPlan, { status: "unavailable" }>["reason"],
+  unmet: SubjectFramingConstraint[] = [],
+) =>
+  ({
+    status: "unavailable",
+    geometry: null,
+    zoom: null,
+    reason,
+    issues: unmet.map(constraintIssue),
+  }) as const;
 
 const close = (a: number, b: number) => Math.abs(a - b) <= 1e-9;
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -80,15 +97,13 @@ function containGeometry(): Geometry {
 /**
  * Converts one pinned face observation into ordinary geometry. It never chooses a
  * face, reruns detection, or edits a document; callers decide whether to apply the
- * returned proposal when violations are present.
+ * returned proposal when it carries issues.
  */
 export function planSubjectFraming(input: SubjectFramingRequest): SubjectFramingPlan {
   const request = subjectFramingRequestSchema.parse(input);
   const matches = request.faces.filter((face) => face.id === request.subjectId);
-  if (!matches.length)
-    return { status: "refused", geometry: null, zoom: null, violations: ["subject_missing"] };
-  if (matches.length > 1)
-    return { status: "refused", geometry: null, zoom: null, violations: ["subject_ambiguous"] };
+  if (!matches.length) return unavailable("subject_missing");
+  if (matches.length > 1) return unavailable("subject_ambiguous");
 
   const face = matches[0]!.boundingBox;
   const inBounds =
@@ -96,8 +111,7 @@ export function planSubjectFraming(input: SubjectFramingRequest): SubjectFraming
     face.y >= 0 &&
     face.x + face.width <= request.source.width &&
     face.y + face.height <= request.source.height;
-  if (!inBounds)
-    return { status: "refused", geometry: null, zoom: null, violations: ["subject_out_of_bounds"] };
+  if (!inBounds) return unavailable("subject_out_of_bounds");
 
   const qualityViolation =
     matches[0]!.landmarkCoverage === "partial"
@@ -117,9 +131,9 @@ export function planSubjectFraming(input: SubjectFramingRequest): SubjectFraming
       x: request.target.x * request.canvas.width,
       y: request.target.y * request.canvas.height,
     };
-    const violations: SubjectFramingViolation[] = qualityViolation ? [qualityViolation] : [];
-    if (scale > request.zoom.max) violations.push("zoom_cap");
-    if (scale < request.zoom.min) violations.push("zoom_floor");
+    const unmet: SubjectFramingConstraint[] = qualityViolation ? [qualityViolation] : [];
+    if (scale > request.zoom.max) unmet.push("zoom_cap");
+    if (scale < request.zoom.min) unmet.push("zoom_floor");
     const desiredOffset = {
       x: target.x - (face.x + face.width / 2) * scale,
       y: target.y - (face.y + face.height / 2) * scale,
@@ -129,7 +143,7 @@ export function planSubjectFraming(input: SubjectFramingRequest): SubjectFraming
       y: clamp(desiredOffset.y, 0, Math.max(0, request.canvas.height - contentHeight)),
     };
     if (!close(desiredOffset.x, boundedOffset.x) || !close(desiredOffset.y, boundedOffset.y))
-      violations.push("target_unreachable");
+      unmet.push("target_unreachable");
     const translation = {
       x: boundedOffset.x - (request.canvas.width - contentWidth) / 2,
       y: boundedOffset.y - (request.canvas.height - contentHeight) / 2,
@@ -148,12 +162,7 @@ export function planSubjectFraming(input: SubjectFramingRequest): SubjectFraming
             fit: "contain",
           };
     geometrySchema.parse(geometry);
-    return {
-      status: violations.length ? "refused" : "ready",
-      geometry,
-      zoom: scale,
-      violations,
-    };
+    return ready(geometry, scale, unmet);
   }
 
   const requiredWidth = face.width + request.margins.x * 2;
@@ -166,17 +175,11 @@ export function planSubjectFraming(input: SubjectFramingRequest): SubjectFraming
     request.canvas.width / request.source.width,
     request.canvas.height / request.source.height,
   );
-  const violations: SubjectFramingViolation[] = qualityViolation ? [qualityViolation] : [];
-  if (requestedZoom > request.zoom.max) violations.push("zoom_cap");
-  if (requestedZoom < request.zoom.min) violations.push("zoom_floor");
+  const unmet: SubjectFramingConstraint[] = qualityViolation ? [qualityViolation] : [];
+  if (requestedZoom > request.zoom.max) unmet.push("zoom_cap");
+  if (requestedZoom < request.zoom.min) unmet.push("zoom_floor");
   const zoom = clamp(Math.max(requestedZoom, sourceZoom), request.zoom.min, request.zoom.max);
-  if (zoom < sourceZoom - 1e-9)
-    return {
-      status: "refused",
-      geometry: null,
-      zoom: null,
-      violations: [...violations, "source_bounds"],
-    };
+  if (zoom < sourceZoom - 1e-9) return unavailable("source_bounds", unmet);
   const cropWidth = Math.min(request.canvas.width / zoom, request.source.width);
   const cropHeight = Math.min(request.canvas.height / zoom, request.source.height);
   const maxX = request.source.width - cropWidth;
@@ -195,16 +198,16 @@ export function planSubjectFraming(input: SubjectFramingRequest): SubjectFraming
     subjectRight > request.source.width ||
     subjectBottom > request.source.height
   )
-    violations.push("source_bounds");
+    unmet.push("source_bounds");
   if (subjectRight - subjectLeft > cropWidth || subjectBottom - subjectTop > cropHeight)
-    violations.push("margins_unreachable");
+    unmet.push("margins_unreachable");
   const feasibleMinX = Math.min(Math.max(0, maxX), Math.max(0, subjectRight - cropWidth));
   const feasibleMaxX = Math.max(0, Math.min(Math.max(0, maxX), subjectLeft));
   const feasibleMinY = Math.min(Math.max(0, maxY), Math.max(0, subjectBottom - cropHeight));
   const feasibleMaxY = Math.max(0, Math.min(Math.max(0, maxY), subjectTop));
   const cropX = clamp(unclampedX, feasibleMinX, Math.max(feasibleMinX, feasibleMaxX));
   const cropY = clamp(unclampedY, feasibleMinY, Math.max(feasibleMinY, feasibleMaxY));
-  if (!close(cropX, unclampedX) || !close(cropY, unclampedY)) violations.push("target_unreachable");
+  if (!close(cropX, unclampedX) || !close(cropY, unclampedY)) unmet.push("target_unreachable");
   const geometry: Geometry = {
     type: "geometry",
     crop: { x: cropX, y: cropY, width: cropWidth, height: cropHeight },
@@ -212,10 +215,5 @@ export function planSubjectFraming(input: SubjectFramingRequest): SubjectFraming
     fit: "stretch",
   };
   geometrySchema.parse(geometry);
-  return {
-    status: violations.length ? "refused" : "ready",
-    geometry,
-    zoom,
-    violations: [...new Set(violations)],
-  };
+  return ready(geometry, zoom, unmet);
 }

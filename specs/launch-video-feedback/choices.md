@@ -66,3 +66,19 @@ overridden. Each entry: the choice, why, and how confident.
   dependency. It requires a difference, and only inside the label's region.
   The region is derived from the fixture's reported backing scale and
   content height. *Confident.*
+
+## Slice 07
+
+- **07c angle groups.** Refused evidence no longer vetoes an angle group: the
+  offsets are caller-authored, and the evidence is a reference. Stored-document
+  validation dropped the check, and `angle.declare` reports
+  `synchronization-evidence-refused`. *Confident.*
+- **07g framing collapses every unmet constraint into one issue code,
+  `framing-constraint-unmet`**, with `evidence.constraint` naming it. This
+  avoids registering seven near-identical codes. The plan is `ready`
+  (geometry plus issues) or `unavailable` with a reason: subject missing,
+  ambiguous or out of bounds, or no feasible uniform crop. *Confident.*
+- **07g's harness consumer (`subject-observations.mjs`) keeps its old
+  semantics.** "Accepted geometry" now means ready *with no issues*. Only a
+  syntax check was possible: the script is a research harness over real
+  media that no suite runs. *Unverified by execution.*

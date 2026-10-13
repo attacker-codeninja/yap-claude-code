@@ -371,7 +371,7 @@ try {
       };
       const plan = planSubjectFraming(operands);
       if (!plan.geometry) {
-        assert.equal(plan.status, "refused");
+        assert.equal(plan.status, "unavailable");
         const beforeRefusal = join(directory, `${c.id}-before-refusal.png`),
           file = join(directory, `${c.id}.png`);
         await frame(project, beforeRefusal, 0, { faceObservations: undefined });
@@ -456,7 +456,7 @@ try {
         faceCenter.x - c.target.x * 640,
         faceCenter.y - c.target.y * 640,
       );
-      if (plan.status === "ready")
+      if (plan.status === "ready" && !plan.issues.length)
         assert.ok(targetError <= gates.framing.maximumFaceTargetErrorPixels);
       for (let y = 0; y < 640; y++)
         for (let x = 0; x < 640; x++) {
@@ -593,7 +593,7 @@ try {
         };
       }
       console.log(
-        `${host.id}/${c.id}: ${plan.status} ${plan.violations.join(",")} meanΔ=${(sum / count).toFixed(3)}`,
+        `${host.id}/${c.id}: ${plan.status} ${plan.issues.map((issue) => issue.evidence.constraint ?? issue.code).join(",")} meanΔ=${(sum / count).toFixed(3)}`,
       );
     }
   }
@@ -702,7 +702,7 @@ try {
         preservation: "crop",
       };
       const plan = planSubjectFraming(operands);
-      if (plan.status === "ready") held = plan.geometry;
+      if (plan.status === "ready" && !plan.issues.length) held = plan.geometry;
       assert.ok(held, "No geometry may be invented before the first accepted observation");
       plans.push({
         ordinal: f.ordinal,
@@ -710,10 +710,10 @@ try {
         observationsSha256: hash(Buffer.from(JSON.stringify(f.observations))),
         plan,
         geometry: held,
-        policy: plan.status === "ready" ? "explicit proposal" : "caller-authored hold",
+        policy: plan.status === "ready" && !plan.issues.length ? "explicit proposal" : "caller-authored hold",
       });
     }
-    assert.deepEqual(plans[24].plan.violations, ["subject_missing"]);
+    assert.equal(plans[24].plan.reason, "subject_missing");
     assert.deepEqual(plans[24].geometry, plans[23].geometry);
     const clipFraction = (ordinal) => {
       const at = rational(BigInt(ordinal), 72n);

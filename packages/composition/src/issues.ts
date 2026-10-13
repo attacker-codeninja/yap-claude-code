@@ -30,6 +30,16 @@ function issue<const Code extends string, Evidence extends z.ZodType>(
     .strict();
 }
 
+export const framingConstraintSchema = z.enum([
+  "zoom_cap",
+  "zoom_floor",
+  "source_bounds",
+  "margins_unreachable",
+  "target_unreachable",
+  "subject_landmarks_partial",
+  "subject_landmarks_unavailable",
+]);
+
 const boundsSchema = z.object({ startUs: timeValueSchema, endUs: timeValueSchema }).strict();
 
 export const issueSchema = z.discriminatedUnion("code", [
@@ -50,6 +60,7 @@ export const issueSchema = z.discriminatedUnion("code", [
       })
       .strict(),
   ),
+  issue("framing-constraint-unmet", z.object({ constraint: framingConstraintSchema }).strict()),
   issue(
     "range-clamped",
     z
