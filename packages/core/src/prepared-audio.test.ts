@@ -471,8 +471,6 @@ test("an unmet loudness target publishes ceiling-limited prepared audio with its
       },
     },
   ]);
-  const value = JSON.parse(status.published!.result) as PreparedAudio;
-  expect(f.current.prepared.portable(value.resourceId).issues).toEqual(status.published!.issues);
   f.current.catalog.catalog
     .prepare("UPDATE output_issues SET issue=json_set(issue,'$.evidence.gainDb',6.4)")
     .run();
@@ -484,7 +482,7 @@ test("an unmet loudness target publishes ceiling-limited prepared audio with its
     code: "ARTIFACT_CHANGED",
   });
 });
-test("prepared audio packages carry their issues; import re-derives them and still admits 0.1.33 packages", async () => {
+test("prepared audio packages carry no issues; import derives them from the recipe and evidence", async () => {
   const unmet = await normalizedFixture(-14, loudness(-21.7, 8, -1));
   const clean = await normalizedFixture(-21.7, loudness(-21.7, 8, -1));
   for (const [{ f, input }, issues] of [
@@ -492,45 +490,113 @@ test("prepared audio packages carry their issues; import re-derives them and sti
     [clean, []],
   ] as const) {
     const status = await f.current.prepared.request(input);
+    expect(status.published!.issues.map((issue) => issue.code)).toEqual(issues);
     const original = JSON.parse(status.published!.result) as PreparedAudio;
     const portable = f.current.prepared.portable(original.resourceId);
-    expect(portable.issues!.map((issue) => issue.code)).toEqual(issues);
+    expect(portable).not.toHaveProperty("issues");
     f.current.jobs.forgetJob(status.jobId!);
-    const stage = (value: unknown) =>
-      f.current.prepared.stagePortable(
-        value,
-        projectCompositionFromRevision(
-          f.current.projects.revision(input.projectId, input.revisionId),
-          f.current.assets,
-          [],
-        ),
-        f.current.assets.path(original.assetId),
-        (reference) => reference,
-        new AbortController().signal,
-      );
-    // A 0.1.33 package has no issues field; only a clean one matches what its evidence derives.
-    const { issues: _, ...withoutIssues } = portable;
-    if (issues.length)
-      await expect(stage(withoutIssues)).rejects.toMatchObject({ code: "INVALID_PACKAGE" });
-    else await stage(withoutIssues);
-    await expect(
-      stage({
-        ...portable,
-        issues: issues.length
-          ? []
-          : unmet.f.current.prepared.portable(
-              (
-                JSON.parse(
-                  (await unmet.f.current.prepared.request(unmet.input)).published!.result,
-                ) as PreparedAudio
-              ).resourceId,
-            ).issues,
-      }),
-    ).rejects.toMatchObject({ code: "INVALID_PACKAGE" });
-    const staged = await stage(portable);
+    const staged = await f.current.prepared.stagePortable(
+      portable,
+      projectCompositionFromRevision(
+        f.current.projects.revision(input.projectId, input.revisionId),
+        f.current.assets,
+        [],
+      ),
+      f.current.assets.path(original.assetId),
+      (reference) => reference,
+      new AbortController().signal,
+    );
     f.current.catalog.transaction(() => staged.publish());
-    expect((await f.current.prepared.request(input)).published!.issues).toEqual(portable.issues);
+    expect((await f.current.prepared.request(input)).published!.issues).toEqual(
+      status.published!.issues,
+    );
   }
+});
+test("prepared audio over a source gap publishes support-gap; its package re-derives it and a tampered issue fails the read", async () => {
+  const f = await fixture([], "native-window", false, { rnnoise: "rnnoise-fixture" });
+  const gapped = join(f.home, "gapped.wav");
+  await writeFile(gapped, wave(48001)); // distinct bytes: assets are content-addressed
+  const asset = await f.current.assets.import(gapped, { kind: "import" }, async () => ({
+    originUs: 0,
+    streams: [
+      {
+        id: "sound",
+        kind: "audio",
+        codec: "pcm_f32le",
+        decodable: true,
+        startUs: 0,
+        endUs: 1000000,
+        segments: [
+          { startUs: 0, endUs: 250000, empty: false },
+          { startUs: 250000, endUs: 500000, empty: true },
+          { startUs: 500000, endUs: 1000000, empty: false },
+        ],
+        sampleRate: 48000,
+        channels: 2,
+      },
+    ],
+  }));
+  const placed = f.current.projects.apply(f.input.projectId, {
+    requestId: "gapped",
+    expectedRevisionId: f.input.revisionId,
+    operations: [
+      {
+        operation: "place",
+        label: "gapped",
+        clip: {
+          trackId: f.placed.edit.labels.track!,
+          assetId: asset.id,
+          streamId: "sound",
+          source: { kind: "range", range: { startUs: 0, endUs: 1000000 } },
+          placement: { kind: "project", range: { startUs: 1000000, endUs: 2000000 } },
+        },
+      },
+      {
+        operation: "processing.set",
+        target: { kind: "clip", id: { label: "gapped" } },
+        steps: [{ label: "denoise", processor: { type: "rnnoise" } }],
+      },
+    ],
+  });
+  const input = { projectId: f.input.projectId, revisionId: placed.revision.id };
+  await f.current.prepared.request(input);
+  await f.current.jobs.idle();
+  const status = await f.current.prepared.request(input);
+  expect(status.state).toBe("ready");
+  const gap = { startUs: 1250000, endUs: 1500000 };
+  const supportGap = {
+    code: "support-gap",
+    message: expect.any(String),
+    at: { range: gap },
+    evidence: {
+      clipId: placed.edit.labels.gapped,
+      unavailable: gap,
+      stepIds: [placed.edit.labels.denoise],
+    },
+  };
+  expect(status.published!.issues).toEqual([supportGap]);
+
+  // The package carries the recipe; its recipient derives the same issue from it.
+  const original = JSON.parse(status.published!.result) as PreparedAudio;
+  const portable = f.current.prepared.portable(original.resourceId);
+  f.current.jobs.forgetJob(status.jobId!);
+  const staged = await f.current.prepared.stagePortable(
+    portable,
+    projectComposition(f.current.projects, f.current.assets, input),
+    f.current.assets.path(original.assetId),
+    (reference) => reference,
+    new AbortController().signal,
+  );
+  f.current.catalog.transaction(() => staged.publish());
+  const adopted = await f.current.prepared.request(input);
+  expect(adopted.published!.issues).toEqual([supportGap]);
+
+  f.current.catalog.catalog
+    .prepare("UPDATE output_issues SET issue=json_set(issue,'$.evidence.stepIds',json('[\"x\"]'))")
+    .run();
+  await expect(f.current.prepared.request(input)).rejects.toMatchObject({
+    code: "ARTIFACT_CHANGED",
+  });
 });
 test("canceling a fully staged result publishes neither asset nor revision binding; startup recovers orphan bytes", async () => {
   const f = await fixture();

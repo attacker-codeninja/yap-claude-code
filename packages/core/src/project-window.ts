@@ -10,6 +10,7 @@ import {
   processingCapabilities,
   requireWindowReady,
   validateComposition,
+  type ExecutionWindowManifest,
   type Issue,
   type ProcessingTap,
   type ProcessorImplementations,
@@ -112,8 +113,11 @@ function requireStateInputsReady(manifest: CompositionWindow["manifest"]) {
     });
 }
 
-/** One `support-gap` per unavailable span that split the selected state, naming the split steps. */
-function stateSupportIssues(manifest: CompositionWindow["manifest"]): Issue[] {
+/**
+ * One `support-gap` per unavailable span that split the selected state, naming the split steps.
+ * Derived from the window's recipe alone, so a retained or packaged recipe re-derives its issues.
+ */
+export function stateSupportIssues(manifest: Pick<ExecutionWindowManifest, "state">): Issue[] {
   const gaps = new Map<
     string,
     { clipId: string; unavailable: SelectionRange; stepIds: string[] }
