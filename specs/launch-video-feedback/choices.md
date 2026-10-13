@@ -265,6 +265,21 @@ overridden. Each entry: the choice, why, and how confident.
   shifting alignment timing by concatenating runs or aligning each run
   separately. That's a design decision for the providers, not a gate flip. The
   code stays in `pendingConversion`. *Open; needs the owner's call.*
+## Slice 05
+
+- **Stopped at the probe; no field was built.** One RMS over the whole
+  "okay?" word drops only 3.4 dB from the dry tap to the processed tap; the
+  bar was about 10 dB. Denoise removes the word's soft onset and tail (10–16
+  dB per 20 ms bucket) but keeps its loud middle, and a whole-word average
+  is dominated by that middle. `waveform.get` already reports per-bucket RMS
+  for each channel on any tap and range, and it shows the loss. A new
+  `rmsDbfs` would be a second owner of RMS that reads the wrong way here. The
+  details are under "Probe result" in the slice. *Confident in the numbers.
+  Closing the slice versus reshaping it is the owner's call.*
+- **The probe read PCM, not an unbuilt field.** `audio.get` returns the exact
+  selected PCM that the meter would read, so its RMS is the value `rmsDbfs`
+  would have reported. That kept the probe ahead of any code. *Confident.*
+
 ## Slice 06 (authored ranges, done ahead of the read ranges)
 
 - **The clamp keeps the same fraction of the placement.** A placement maps
