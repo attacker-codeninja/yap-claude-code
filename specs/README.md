@@ -52,6 +52,10 @@ the mechanics; the archived document owns the reasons and explicit evidence limi
 route: the agent places the app, and the app installs and keeps current the `yap`
 command, the skill and the PATH line. It is built and awaiting its release-day checks.
 
+[Camera on and off during a take](camera-toggle/README.md) lets a screen take turn its
+companion camera off and back on, leaving real gaps in the camera source rather than held
+pictures. It is planned; its first slice freezes a pre-change preservation corpus.
+
 ## Future proposals
 
 These directories hold planning questions, not unfinished implementation slices.
