@@ -59,9 +59,8 @@ Done:
 Left for the integrator:
 - Extend `packages/test-harness/editing/camera-source-admission.mjs` with slice 02's gapped
   native output (the real `media.probe`-against-receipt check at µs scale).
-- Replace the legacy literal in `acquisitions.test.ts` ("a retained single-span camera proof
-  admits unchanged", currently the 21d captured-source adoption proof) with the corpus-A
-  receipt literal from slice 01, and re-run the slice 01 gate.
+- Done at integration: the legacy test ("a 0.1.33 camera proof admits unchanged") now uses
+  the proof release 0.1.33 stored for corpus B's camera take.
 - Budget: the normalized receipt (which carries `publications.video`) is capped at 32 KiB by
   `validateSourceReceipt`, and `camera.publication.json` at 64 KiB. At about 40 bytes per gap
   that admits roughly 700 gaps per take, far below the 100 000 count rule. Slice 02's

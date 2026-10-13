@@ -852,31 +852,32 @@ test.each([
   expect(() => f.acquisitions.get(intent.acquisitionId)).toThrow(/not completed/);
 });
 
-test("a retained single-span camera proof admits unchanged", async () => {
+test("a 0.1.33 camera proof admits unchanged", async () => {
   const f = await fixture();
-  // Native proof retained by the captured-source adoption journey (21d public-verification.json);
-  // only the canonical identity is replaced by this fixture's movie.
+  // Proof stored by release 0.1.33 for corpus B's camera take
+  // (specs/camera-toggle/assets/pre-toggle-corpus/b.tar.gz, acquisitions table); only the canonical
+  // identity is replaced by this fixture's movie.
   const retained = {
     mapping: {
-      bytes: "549",
-      sha256: "b92bb29a9d8d501945e710de6a6da1332818715befc1e97f576fe339ffaec31b",
+      bytes: "9654",
+      sha256: "ac4c08db438064cfdd2204cb9ae9104fd7f7b24fa9e7c84ff724252b3c3efdff",
     },
     receipt: {
-      bytes: "993",
-      sha256: "c75c4fd7bcfe11d2f7474c59896e318d2853d5e429c6b3ffbac8e68ae4033931",
+      bytes: "1018",
+      sha256: "90560b7900b880187d91376efdfc94927798c72a25270329eab6459dc318c064",
     },
-    representedFrames: 3,
-    support: { endUs: 300000, startUs: 200000 },
+    representedFrames: 5,
+    support: { endUs: 933333, startUs: 200000 },
   };
   const intent = await f.admit("legacy-camera");
   const value = await f.importer.executeImport(
     intent.acquisitionId,
     "legacy",
-    cameraNative(f, retained, 200000, [{ startUs: 0, endUs: 100000, empty: false }]),
+    cameraNative(f, retained, 200000, [{ startUs: 0, endUs: 733333, empty: false }]),
     signal(),
   );
   const video = value.bindings.find((row) => row.sourceRoles.includes("video"))!;
-  expect(video.available).toEqual([{ startUs: 0, endUs: 100000 }]);
+  expect(video.available).toEqual([{ startUs: 0, endUs: 733333 }]);
   expect(value.evidence.receipt.publications?.video).toEqual({
     ...retained,
     canonical: { bytes: "5", sha256: createHash("sha256").update("video").digest("hex") },
