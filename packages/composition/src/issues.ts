@@ -60,6 +60,24 @@ export const issueSchema = z.discriminatedUnion("code", [
       })
       .strict(),
   ),
+  issue(
+    "gain-constrained",
+    z
+      .object({
+        limit: z.enum(["true-peak-ceiling", "gain-minimum", "gain-maximum"]),
+        requestedGainDb: z.number().finite(),
+        gainDb: z.number().finite(),
+      })
+      .strict(),
+  ),
+  issue(
+    "proposal-unavailable",
+    z
+      .object({
+        reason: z.enum(["missing-support", "too-short", "unmeasurable", "gain-unrepresentable"]),
+      })
+      .strict(),
+  ),
   issue("framing-constraint-unmet", z.object({ constraint: framingConstraintSchema }).strict()),
   issue(
     "range-clamped",

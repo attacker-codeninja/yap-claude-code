@@ -8,9 +8,7 @@
   "TRANSCRIPT_BOUNDARY_DISAGREEMENT": "03",
   "INVALID_SPEECH_TIMING": "03",
   "UNAVAILABLE_SUPPORT": "04",
-  "FONT_GLYPH_MISSING": "07a",
-  "PEAK_CEILING": "07h",
-  "GAIN_BOUNDS": "07h"
+  "FONT_GLYPH_MISSING": "07a"
  },
  "pendingSites": [
   {
@@ -55,8 +53,7 @@
    "packages/core/src/alignment-operands.ts": "07j",
    "packages/core/src/speaker-continuity.ts": "07f",
    "packages/core/src/face-trajectory.ts": "07i",
-   "apps/service/src/project-service.ts": "07i",
-   "skills/yap/scripts/dialogue-proposals.mjs": "07h"
+   "apps/service/src/project-service.ts": "07i"
   }
  },
  "messageCodes": {
@@ -505,18 +502,6 @@
     "apps/service/src/index.ts": 1,
     "packages/core/src/voice-generation.ts": 1,
     "packages/protocol/src/framing.ts": 5
-   }
-  },
-  "GAIN_BOUNDS": {
-   "category": "pending-conversion",
-   "files": {
-    "skills/yap/scripts/dialogue-proposals.mjs": 2
-   }
-  },
-  "GAIN_UNREPRESENTABLE": {
-   "category": "malformed",
-   "files": {
-    "skills/yap/scripts/dialogue-proposals.mjs": 1
    }
   },
   "GRAPHEME_WIDTH": {
@@ -1358,12 +1343,6 @@
     "helpers/mac/Sources/YapCapture/CaptureMediaInspection.swift": 1
    }
   },
-  "MISSING_SUPPORT": {
-   "category": "missing-prerequisite",
-   "files": {
-    "skills/yap/scripts/dialogue-proposals.mjs": 1
-   }
-  },
   "MODEL_DOWNLOAD_FAILED": {
    "category": "execution-failure",
    "files": {
@@ -1656,12 +1635,6 @@
    "category": "issue-code",
    "files": {
     "skills/yap/scripts/caption-proposals.mjs": 1
-   }
-  },
-  "PEAK_CEILING": {
-   "category": "pending-conversion",
-   "files": {
-    "skills/yap/scripts/dialogue-proposals.mjs": 1
    }
   },
   "PERMISSION_REQUIRED": {
@@ -1961,12 +1934,6 @@
    "category": "resource-bound",
    "files": {
     "skills/yap/scripts/caption-proposals.mjs": 1
-   }
-  },
-  "TOO_SHORT": {
-   "category": "malformed",
-   "files": {
-    "skills/yap/scripts/dialogue-proposals.mjs": 1
    }
   },
   "TRANSCRIPTION_FAILED": {

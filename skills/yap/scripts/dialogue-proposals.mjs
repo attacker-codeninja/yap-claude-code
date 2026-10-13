@@ -19,7 +19,6 @@ export function dialogueProposals(request) {
     !nonempty(request.revisionId) ||
     !Number.isFinite(request.targetIntegratedLufs) ||
     !Number.isFinite(request.truePeakCeilingDbtp) ||
-    !["refuse", "cap-gain"].includes(request.peakPolicy) ||
     !Number.isFinite(request.gainBounds?.minimumDb) ||
     !Number.isFinite(request.gainBounds?.maximumDb) ||
     request.gainBounds.minimumDb > request.gainBounds.maximumDb ||
@@ -29,7 +28,7 @@ export function dialogueProposals(request) {
   )
     throw failure(
       "INVALID_REQUEST",
-      "Supply explicit project/revision, finite targets/bounds, peakPolicy and 1–1000 selected clips",
+      "Supply explicit project/revision, finite targets/bounds and 1–1000 selected clips",
     );
   budget(request.minimumDurationUs, undefined, 1, 3600000000, "minimumDurationUs");
   const seen = new Set();
@@ -82,44 +81,62 @@ export function dialogueProposals(request) {
       const { measurement, ...pin } = evidence;
       const common = { clipId, pin: structuredClone(pin), before: structuredClone(measurement) };
       const reason = evidence.unavailable.some((item) => item.ranges.length)
-        ? "MISSING_SUPPORT"
+        ? "missing-support"
         : BigInt(evidence.sampleRange.end - evidence.sampleRange.start) * 1000000n <
             BigInt(request.minimumDurationUs) * BigInt(evidence.sampleRate)
-          ? "TOO_SHORT"
+          ? "too-short"
           : !Number.isFinite(measurement.integratedLufs) ||
               !Number.isFinite(measurement.truePeakDbtp)
-            ? "UNMEASURABLE"
+            ? "unmeasurable"
             : null;
-      if (reason) return { ...common, status: "refused", reason, gainDb: null, gainStep: null };
-      const refuse = (reason) => ({
+      const unavailable = (reason) => ({
         ...common,
-        status: "refused",
-        reason,
-        requestedGainDb,
+        status: "unavailable",
+        requestedGainDb: reason === "gain-unrepresentable" ? requestedGainDb : null,
         gainDb: null,
         gainStep: null,
+        issues: [
+          {
+            code: "proposal-unavailable",
+            message: `No gain draft: ${reason}`,
+            evidence: { reason },
+          },
+        ],
       });
-      if (
-        requestedGainDb < request.gainBounds.minimumDb ||
-        requestedGainDb > request.gainBounds.maximumDb
-      )
-        return refuse("GAIN_BOUNDS");
+      if (reason) return unavailable(reason);
+      // Output by default: limits constrain the gain and are reported; the peak ceiling wins.
+      const limits = [];
+      let gainDb = requestedGainDb;
+      if (gainDb > request.gainBounds.maximumDb) {
+        gainDb = request.gainBounds.maximumDb;
+        limits.push("gain-maximum");
+      }
+      if (gainDb < request.gainBounds.minimumDb) {
+        gainDb = request.gainBounds.minimumDb;
+        limits.push("gain-minimum");
+      }
       const peakGainDb = request.truePeakCeilingDbtp - measurement.truePeakDbtp;
-      if (requestedGainDb > peakGainDb && request.peakPolicy === "refuse")
-        return refuse("PEAK_CEILING");
-      const gainDb = Math.min(requestedGainDb, peakGainDb);
-      if (gainDb < request.gainBounds.minimumDb) return refuse("GAIN_BOUNDS");
+      if (gainDb > peakGainDb) {
+        gainDb = peakGainDb;
+        limits.push("true-peak-ceiling");
+        if (gainDb < request.gainBounds.minimumDb && !limits.includes("gain-minimum"))
+          limits.push("gain-minimum");
+      }
       const gain = 10 ** (gainDb / 20);
-      if (!Number.isFinite(gain) || gain === 0) return refuse("GAIN_UNREPRESENTABLE");
+      if (!Number.isFinite(gain) || gain === 0) return unavailable("gain-unrepresentable");
       return {
         ...common,
-        status: gainDb === requestedGainDb ? "proposed" : "constrained",
+        status: "proposed",
         requestedGainDb,
-        targetMet: gainDb === requestedGainDb,
         gainDb,
         gainStep: { enabled: true, processor: { type: "gain", gain } },
         predictedIntegratedLufs: measurement.integratedLufs + gainDb,
         predictedTruePeakDbtp: measurement.truePeakDbtp + gainDb,
+        issues: limits.map((limit) => ({
+          code: "gain-constrained",
+          message: `The ${limit} limit constrained the requested gain`,
+          evidence: { limit, requestedGainDb, gainDb },
+        })),
       };
     }),
   };
@@ -128,7 +145,7 @@ export function dialogueProposals(request) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   if (process.argv.includes("--help"))
     console.log(
-      "Usage: node dialogue-proposals.mjs < request.json\nSupply projectId/revisionId, targetIntegratedLufs, gainBounds {minimumDb,maximumDb}, truePeakCeilingDbtp, peakPolicy (refuse|cap-gain), minimumDurationUs and clips [{clipId,evidence}]. Evidence is delivered audio.measure JSON for a processed clip tap, with measurement at root. Returns exact evidence pins, measured-selection predictions and an ID-free new gainStep draft, or explicit short/unmeasurable/support/bounds/peak refusal. Cap-gain reports targetMet:false. Append explicitly to the existing ordered stack through processing.set; remeasure. Never calls CLI, infers or edits.",
+      "Usage: node dialogue-proposals.mjs < request.json\nSupply projectId/revisionId, targetIntegratedLufs, gainBounds {minimumDb,maximumDb}, truePeakCeilingDbtp, minimumDurationUs and clips [{clipId,evidence}]. Evidence is delivered audio.measure JSON for a processed clip tap, with measurement at root. Returns exact evidence pins, measured-selection predictions and an ID-free new gainStep draft, with gain-constrained issues when the peak ceiling or gain bounds limited it (the ceiling wins), or status unavailable with a proposal-unavailable issue (missing support, too short, unmeasurable, unrepresentable gain). Append explicitly to the existing ordered stack through processing.set; remeasure. Never calls CLI, infers or edits.",
     );
   else await runJsonHelper(dialogueProposals);
 }

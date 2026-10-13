@@ -82,3 +82,16 @@ overridden. Each entry: the choice, why, and how confident.
   semantics.** "Accepted geometry" now means ready *with no issues*. Only a
   syntax check was possible: the script is a research harness over real
   media that no suite runs. *Unverified by execution.*
+- **07h dialogue proposals drop `peakPolicy` and the "constrained" status.**
+  Statuses are `proposed` (a gain draft, possibly with `gain-constrained`
+  issues naming the limit) or `unavailable` (a `proposal-unavailable` issue
+  naming the reason). The gain bounds now *clamp* rather than refuse,
+  consistent with the governing principle; the true-peak ceiling wins when it
+  conflicts with the minimum bound. `targetMet` is removed because the issues
+  carry it. *Confident.*
+- **07h shape validation lives in `packages/protocol/src/skill-issues.test.ts`.**
+  Skill helpers can't import the vocabulary at runtime; the protocol package
+  can, and imports the helper by relative path. *Confident.*
+- **07h harness consumer `dialogue-matching.mjs` only lost `peakPolicy`.**
+  Syntax-checked; it's a real-media harness that isn't run here. *Unverified
+  by execution.*

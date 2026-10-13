@@ -8,17 +8,18 @@ clips are distinct occurrences: measure each occurrence on its own project grid.
 
 Run [`dialogue-proposals.mjs`](../scripts/dialogue-proposals.mjs) with the bundled
 Node. Supply `projectId`, `revisionId`, `targetIntegratedLufs`, explicit
-`gainBounds:{minimumDb,maximumDb}`, `truePeakCeilingDbtp`, `peakPolicy`,
+`gainBounds:{minimumDb,maximumDb}`, `truePeakCeilingDbtp`,
 `minimumDurationUs`, and `clips:[{clipId,evidence}]`. `evidence` is the delivered
 JSON, with `measurement` at its root; it is not the operation's metadata envelope.
 Use the selected occurrence IDs from the current revision. Run `--help` for usage.
 
-`peakPolicy:"refuse"` produces no gain draft when predicted true peak would
-exceed the ceiling. `"cap-gain"` explicitly permits a lower gain; its constrained
-proposal states that the requested loudness was not met. Neither policy inserts
-a limiter, compressor or normalization. Outside gain bounds, short selections,
-unmeasurable loudness and missing support remain explicit exceptions. Choose the
-minimum useful duration for the material; there is no universal dialogue target.
+The gain bounds and the true-peak ceiling constrain the draft; the ceiling wins
+when they conflict. Each limit that changed the requested gain is a
+`gain-constrained` issue on the proposal, so read `issues` before applying it.
+No limiter, compressor or normalization is inserted. A short, unmeasurable or
+gapped selection, or an unrepresentable gain, is `status:"unavailable"` with a
+`proposal-unavailable` issue and no draft. Choose the minimum useful duration
+for the material; there is no universal dialogue target.
 
 The helper returns evidence pins, the original measurement, a gain draft and
 predicted loudness/peak for that **measured selection**. It never calls the CLI or

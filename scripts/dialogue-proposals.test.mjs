@@ -40,7 +40,6 @@ const request = () => ({
   targetIntegratedLufs: -20,
   gainBounds: { minimumDb: -12, maximumDb: 12 },
   truePeakCeilingDbtp: -2,
-  peakPolicy: "refuse",
   minimumDurationUs: 400000,
   clips: [
     { clipId: "quiet", evidence: evidence("quiet", -25, -12) },
@@ -61,7 +60,9 @@ test("explicit occurrence matching proposes independent gains and preserves exac
   assert.deepEqual(result.proposals[0].pin.audio, input.clips[0].evidence.audio);
   assert.deepEqual(input, before);
 });
-test("silent, short and missing-support selections report exceptions without gain drafts", () => {
+const reasons = (proposal) =>
+  proposal.issues.map((issue) => issue.evidence.reason ?? issue.evidence.limit);
+test("silent, short and missing-support selections are unavailable, with an issue, and no gain draft", () => {
   const input = request();
   input.clips = [
     { clipId: "silent", evidence: evidence("silent", null, -Infinity) },
@@ -74,30 +75,34 @@ test("silent, short and missing-support selections report exceptions without gai
   input.clips[1].evidence.range.endUs = 100000;
   input.clips[2].evidence.unavailable = [{ clipId: "gap", ranges: [{ start: 0, end: 200 }] }];
   const result = dialogueProposals(input);
-  assert.deepEqual(
-    result.proposals.map((p) => p.reason),
-    ["UNMEASURABLE", "TOO_SHORT", "MISSING_SUPPORT"],
-  );
+  assert.deepEqual(result.proposals.map(reasons), [
+    ["unmeasurable"],
+    ["too-short"],
+    ["missing-support"],
+  ]);
   for (const p of result.proposals) {
-    assert.equal(p.status, "refused");
+    assert.equal(p.status, "unavailable");
+    assert.equal(p.issues[0].code, "proposal-unavailable");
     assert.equal(p.gainStep, null);
     assert.equal(p.gainDb, null);
   }
   assert.equal(result.proposals[0].before.integratedReason, "below-gate");
 });
-test("explicit bounds refuse and peak policy caps gain truthfully without a hidden limiter", () => {
+test("the peak ceiling and gain bounds constrain the gain, reported as issues, never refused", () => {
   const input = request();
   input.clips[0].evidence.measurement.truePeakDbtp = -3;
   let quiet = dialogueProposals(input).proposals[0];
-  assert.equal(quiet.reason, "PEAK_CEILING");
-  assert.equal(quiet.gainStep, null);
-  input.peakPolicy = "cap-gain";
-  quiet = dialogueProposals(input).proposals[0];
-  assert.equal(quiet.status, "constrained");
+  assert.equal(quiet.status, "proposed");
   assert.equal(quiet.gainDb, 1);
   assert.equal(quiet.predictedTruePeakDbtp, -2);
   assert.equal(quiet.predictedIntegratedLufs, -24);
-  assert.equal(quiet.targetMet, false);
+  assert.deepEqual(quiet.issues, [
+    {
+      code: "gain-constrained",
+      message: quiet.issues[0].message,
+      evidence: { limit: "true-peak-ceiling", requestedGainDb: 5, gainDb: 1 },
+    },
+  ]);
   assert.deepEqual(quiet.gainStep, {
     enabled: true,
     processor: { type: "gain", gain: 10 ** (1 / 20) },
@@ -105,8 +110,14 @@ test("explicit bounds refuse and peak policy caps gain truthfully without a hidd
   input.clips[0].evidence.measurement.truePeakDbtp = -12;
   input.gainBounds.maximumDb = 3;
   quiet = dialogueProposals(input).proposals[0];
-  assert.equal(quiet.reason, "GAIN_BOUNDS");
-  assert.equal(quiet.gainStep, null);
+  assert.equal(quiet.gainDb, 3);
+  assert.deepEqual(reasons(quiet), ["gain-maximum"]);
+  input.gainBounds = { minimumDb: 2, maximumDb: 12 };
+  input.clips[0].evidence.measurement.truePeakDbtp = -1;
+  quiet = dialogueProposals(input).proposals[0];
+  assert.equal(quiet.gainDb, -1, "the ceiling wins over the minimum bound");
+  assert.deepEqual(reasons(quiet), ["true-peak-ceiling", "gain-minimum"]);
+  assert.deepEqual(dialogueProposals(request()).proposals[0].issues, []);
 });
 test("foreign revisions, dry taps and duplicate occurrences cannot become edit proposals", () => {
   for (const mutate of [
@@ -124,9 +135,6 @@ test("foreign revisions, dry taps and duplicate occurrences cannot become edit p
     },
     (r) => {
       r.clips.push(structuredClone(r.clips[0]));
-    },
-    (r) => {
-      r.peakPolicy = "normalize";
     },
     (r) => {
       r.gainBounds.maximumDb = Infinity;
@@ -163,7 +171,7 @@ test("retimed and repeated source occurrences preserve their independent measure
   assert.equal(result.proposals[2].pin.sampleRate, 44100);
   assert.notEqual(result.proposals[2].pin.audio.jobId, result.proposals[0].pin.audio.jobId);
 });
-test("standalone helper exposes structured refusals and never emits unbounded gain drafts", async () => {
+test("standalone helper reports unavailable drafts and never emits unbounded gain", async () => {
   const { spawnSync } = await import("node:child_process");
   const input = request();
   input.targetIntegratedLufs = 10000;
@@ -175,9 +183,9 @@ test("standalone helper exposes structured refusals and never emits unbounded ga
   });
   assert.equal(result.status, 0, result.stderr);
   const response = JSON.parse(result.stdout);
-  assert.equal(response.proposals[0].reason, "GAIN_UNREPRESENTABLE");
+  assert.deepEqual(reasons(response.proposals[0]), ["gain-unrepresentable"]);
   assert.equal(response.proposals[0].gainStep, null);
-  input.peakPolicy = "automatic";
+  input.gainBounds.maximumDb = Infinity;
   const invalid = spawnSync(process.execPath, ["skills/yap/scripts/dialogue-proposals.mjs"], {
     input: JSON.stringify(input),
     encoding: "utf8",

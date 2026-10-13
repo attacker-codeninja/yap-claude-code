@@ -127,7 +127,6 @@ try {
     targetIntegratedLufs: -26,
     gainBounds: { minimumDb: -24, maximumDb: 24 },
     truePeakCeilingDbtp: -2,
-    peakPolicy: "refuse",
     minimumDurationUs: 400000,
     clips: clips.map((clip, i) => ({
       clipId: clip.id,
