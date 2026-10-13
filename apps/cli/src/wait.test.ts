@@ -520,6 +520,43 @@ test("rendered recognition waits on the project attempt and reads its words pinn
   expect(f.calls[2]!.params).toEqual({ projectId: "p", revisionId: "r", generation });
 });
 
+test("a clamped render preparation keeps its range-clamped issue through the pinned words read", async () => {
+  const params = {
+    projectId: "p",
+    revisionId: "r",
+    range: { startUs: 0, endUs: 5000 },
+    tap: { target: { kind: "output" }, point: { kind: "processed" } },
+    rendition: { sampleRate: 16000, channels: 1 },
+  };
+  const generation = "c6df7efc-a023-4c40-aa08-3b8b1c0b1b90";
+  const clamp = { code: "range-clamped", message: "clamped", evidence: {} };
+  const f = await fixture((request) => {
+    if (request.operation === "transcript.render.get")
+      return {
+        ok: true,
+        data: { projectId: "p", revisionId: "r", generation, state: "ready", issues: [], page: {} },
+      };
+    return {
+      ok: true,
+      data: {
+        ...params,
+        state: "ready",
+        jobId: null,
+        issues: [clamp],
+        published: { generation: 1, attemptId: generation, output: { generation }, issues: [] },
+      },
+    };
+  });
+  const output = await f.run("transcript.render.prepare", params, [
+    "--wait",
+    "--timeout-ms",
+    "1000",
+  ]);
+  expect(output.code, output.stdout + output.stderr).toBe(0);
+  expect(JSON.parse(output.stdout).data.issues).toEqual([clamp]);
+  expect(output.stderr).toContain("transcript.render.prepare: ready (1 issues)");
+});
+
 test("an already published render preparation reads its words without waiting on a job", async () => {
   const params = {
     projectId: "p",

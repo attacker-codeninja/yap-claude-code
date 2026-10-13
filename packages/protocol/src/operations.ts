@@ -839,7 +839,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
       ]),
     })
     .describe(
-      "Explicitly prepare conditional supplied-text alignment over one complete selected source channel on the 16k sample grid, at most25 seconds. Source requests select immutable media directly. Project requests select a pinned, already-prepared processing tap and run alignment on its rendered PCM. Models must already be explicitly prepared. Literal text is neither corrected nor expanded. The existing job owns join, cancel, retry and publication; original media remains intact. Provider correspondence is not lexical truth, and native likelihoods are uncalibrated. Published output supplies the retained generation for alignment.get.",
+      "Explicitly prepare conditional supplied-text alignment over one complete selected source channel on the 16k sample grid, at most25 seconds. Source requests select immutable media directly. Project requests select a pinned, already-prepared processing tap and run alignment on its rendered PCM; a range that runs past the revision aligns the text against the part inside it, shares that applied range's generation and reports range-clamped in the result's issues, and one with no part inside refuses. Models must already be explicitly prepared. Literal text is neither corrected nor expanded. The existing job owns join, cancel, retry and publication; original media remains intact. Provider correspondence is not lexical truth, and native likelihoods are uncalibrated. Published output supplies the retained generation for alignment.get.",
     ),
   z
     .strictObject({
@@ -1006,7 +1006,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
       params: renderedSpeechPreparation,
     })
     .describe(
-      "Recognize actual rendered PCM for an explicit project revision, processing tap, range and PCM rendition. One project job chains immutable audio extraction and fresh Parakeet inference; it never depends on source transcript readiness or reuses projected source text. Missing source support refuses before recognition rather than treating unavailable samples as silence. Published output retains the PCM asset, conversion/origin, exact sample bounds, transcript and fresh generation. Repeat the same request to join/reuse work; models must be prepared through model.prepare. Reads stay offline. Use transcript.render.retry for failed/canceled extraction dependencies, or job.cancel to cancel the parent; shared extraction remains independently reusable.",
+      "Recognize actual rendered PCM for an explicit project revision, processing tap, range and PCM rendition. A range that runs past the revision is clamped to it, shares the applied range's generation and reports range-clamped in the result's issues; one with no part inside refuses before any job. One project job chains immutable audio extraction and fresh Parakeet inference; it never depends on source transcript readiness or reuses projected source text. Missing source support refuses before recognition rather than treating unavailable samples as silence. Published output retains the PCM asset, conversion/origin, exact sample bounds, transcript and fresh generation. Repeat the same request to join/reuse work; models must be prepared through model.prepare. Reads stay offline. Use transcript.render.retry for failed/canceled extraction dependencies, or job.cancel to cancel the parent; shared extraction remains independently reusable.",
     ),
   z
     .strictObject({

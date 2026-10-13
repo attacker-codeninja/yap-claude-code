@@ -299,19 +299,20 @@ test("project alignment uses a project job while retaining the prepared tap sour
   expect(f.processing.prepareProject(request)).toEqual(beforeCleanup);
 });
 
-test("a project alignment range the resolver clamped publishes its issue with the evidence", async () => {
+test("a project alignment range the resolver clamped shares the applied range's evidence and reports range-clamped", async () => {
   const f = await fixture();
   const clamp = admitReadRange(
     { startUs: f.input.sourceRange.startUs, endUs: 9_000_000 },
     { startUs: 0, endUs: f.input.sourceRange.endUs },
   ).issues[0]!;
   f.options.project = {
+    // The resolver admits the range: the source keeps the applied part, the clamp is reported.
     resolve: (input) => ({
       source: f.input,
       projectId: input.projectId,
       revisionId: "revision",
       preparedResourceId: input.preparedResourceId,
-      issues: [clamp],
+      issues: input.range.endUs === 9_000_000 ? [clamp] : [],
     }),
   };
   const request = {
@@ -325,7 +326,15 @@ test("a project alignment range the resolver clamped publishes its issue with th
   } as const;
   f.processing.prepareProject(request);
   await expect.poll(() => f.processing.prepareProject(request).state).toBe("ready");
-  expect(f.processing.prepareProject(request).published?.issues).toEqual([clamp]);
+  const clamped = f.processing.prepareProject(request);
+  // The clamp belongs to the request, not to the evidence the applied range shares.
+  expect(clamped.issues).toEqual([clamp]);
+  expect(clamped.published?.issues).toEqual([]);
+  expect(f.processing.prepareProject({ ...request, range: f.input.sourceRange })).toMatchObject({
+    jobId: clamped.jobId,
+    state: "ready",
+    issues: [],
+  });
 });
 
 test("project alignment cancellation drains the pinned tap and retry publishes a fresh generation", async () => {

@@ -181,8 +181,6 @@ export async function waitForWork(options: {
     read === "transcript.get" &&
     (request.operation === "transcript.prepare" ||
       (request.operation === "transcript.retry" && "assetId" in request.params));
-  // The pinned read can't re-admit the execution range, so it carries the preparation's clamp.
-  const admission = sourcePreparation && Array.isArray(pins.issues) ? pins.issues : [];
   if (sourcePreparation) {
     delete params.executionRange;
     delete params.context;
@@ -192,6 +190,10 @@ export async function waitForWork(options: {
   // Rendered recognition reads its words pinned to the generation the preparation published.
   const renderPreparation = read === "transcript.render.get" && read !== request.operation;
   if (renderPreparation) params = { projectId: params.projectId, revisionId: params.revisionId };
+  // A preparation's work is keyed by its applied range, and the pinned read can't re-admit the
+  // requested one, so the read carries the preparation's clamp.
+  const admission =
+    (sourcePreparation || renderPreparation) && Array.isArray(pins.issues) ? pins.issues : [];
   if (request.operation === "export.create" && typeof pins.exportId === "string")
     params = { exportId: pins.exportId };
   if (request.operation === "capture.stop" && typeof pins.recordingId === "string")

@@ -562,7 +562,7 @@ export async function startProjectService(options: {
             projectId: input.projectId,
             revisionId: composition.revisionId,
             preparedResourceId: prepared.resourceId,
-            ...(admitted.issues.length ? { issues: admitted.issues } : {}),
+            issues: admitted.issues,
           };
         },
       },

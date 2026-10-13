@@ -360,9 +360,10 @@ test("rendered recognition survives failed original transcription and maps actua
   expect(f.requests).toHaveLength(2);
 });
 
-test("receipt 09: a render range past the project's end publishes clamped words with range-clamped", async () => {
+test("receipt 09: a render range past the project's end shares the applied range's words and reports range-clamped", async () => {
   const f = await fixture();
   // The project ends at 3 s; receipt 09 asked 128–143.08 s of a project ending at 139.73 s.
+  const applied = { ...f.selection, range: { startUs: 2000000, endUs: 3000000 } };
   const selection = { ...f.selection, range: { startUs: 2000000, endUs: 3500000 } };
   const pending = f.rendered.prepare(selection);
   await f.jobs.idle();
@@ -372,25 +373,27 @@ test("receipt 09: a render range past the project's end publishes clamped words 
   const clamped = {
     code: "range-clamped",
     message: expect.any(String),
-    at: { range: { startUs: 2000000, endUs: 3000000 } },
+    at: { range: applied.range },
     evidence: {
-      requested: { startUs: 2000000, endUs: 3500000 },
-      applied: { startUs: 2000000, endUs: 3000000 },
+      requested: selection.range,
+      applied: applied.range,
       bounds: { startUs: 0, endUs: 3000000 },
     },
   };
-  expect(ready.published!.issues).toEqual([clamped]);
-  // The job identity keeps the requested range; the rendered PCM covers the applied one.
-  expect(ready.published!.speech.selection.range).toEqual(selection.range);
-  expect(ready.published!.speech.pcm.origin.selection).toMatchObject({
-    range: { startUs: 2000000, endUs: 3000000 },
-  });
+  // The clamp belongs to this request, not to the output the applied range shares.
+  expect(ready.issues).toEqual([clamped]);
+  expect(ready.published!.issues).toEqual([]);
+  const exact = f.rendered.prepare(applied);
+  expect(exact).toMatchObject({ jobId: ready.jobId, state: "ready", issues: [] });
+  expect(f.state.renders).toBe(1);
+  expect(ready.published!.speech.selection.range).toEqual(applied.range);
+  expect(ready.published!.speech.pcm.origin.selection).toMatchObject({ range: applied.range });
   const words = f.rendered.get({
     projectId: selection.projectId,
     revisionId: selection.revisionId,
     generation: ready.published!.speech.generation,
   });
-  expect(words.issues).toEqual([clamped]);
+  expect(words.issues).toEqual([]);
   expect(words.page.rows[0]).toMatchObject({
     text: "rendered",
     projectRange: { startUs: 2100000, endUs: 2300000 },
