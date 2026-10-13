@@ -1,0 +1,42 @@
+[
+  {
+    "id": "seam120-r0",
+    "left": "s120-left-r0.jsonl",
+    "right": "s120-right-r0.jsonl",
+    "boundaryUs": 120000000,
+    "shared": {
+      "startUs": 116000000,
+      "endUs": 124000000
+    }
+  },
+  {
+    "id": "seam120-r1",
+    "left": "s120-left-r1.jsonl",
+    "right": "s120-right-r1.jsonl",
+    "boundaryUs": 120000000,
+    "shared": {
+      "startUs": 116000000,
+      "endUs": 124000000
+    }
+  },
+  {
+    "id": "seam219-r0",
+    "left": "s219-left-r0.jsonl",
+    "right": "s219-right-r0.jsonl",
+    "boundaryUs": 219000000,
+    "shared": {
+      "startUs": 215000000,
+      "endUs": 223000000
+    }
+  },
+  {
+    "id": "seam219-r1",
+    "left": "s219-left-r1.jsonl",
+    "right": "s219-right-r1.jsonl",
+    "boundaryUs": 219000000,
+    "shared": {
+      "startUs": 215000000,
+      "endUs": 223000000
+    }
+  }
+]
