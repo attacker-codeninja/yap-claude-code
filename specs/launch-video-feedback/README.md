@@ -22,16 +22,27 @@ ledger (`packages/protocol/src/refusal-ledger.json`) has an empty
 choices.md, "Slice 07b").
 
 Next pickup, in order:
-1. Full suite run (check-types, lint, format:check, test). Fix what it finds.
-2. Build and install the product at that commit (slice 11 "Environment"),
+1. Build and install the product at that commit (slice 11 "Environment"),
    then slice 10's two evals: the "this 3:52 narration won't transcribe" case
    with `eval-skills`, and the recording-sync recipe on the fixture pair
    (expect narration = excerpt + 149.94 s).
-3. [11](slices/11-replay-acceptance.md): replay acceptance with
+2. [11](slices/11-replay-acceptance.md): replay acceptance with
    `packages/test-harness/acceptance/launch-video-replay.mjs`. Then the
    whole-spec review, a rewritten choices.md, and close-spec.
 
-Known before this spec, not caused by it:
+The full run (2026-10-13) is done: check-types, lint and format:check pass;
+it caught one slice 03 regression (skipped speech windows reported 0
+samples), now fixed. What still fails there is environmental or predates
+this spec:
+- six service files whose fixtures compile Swift with a cold module cache
+  (35 s each with Xcode 27, against 10–30 s timeouts);
+- the B-frame probe test (`helpers/mac/Tests/media-probe.test.mjs`), in code
+  this spec didn't touch;
+- `scripts/update-guard.test.mjs` and the signing tests, which need
+  `YAP_SPARKLE_FRAMEWORK` and keychain access;
+- timing tests that fail only under load and pass alone.
+
+Also known before this spec:
 - `descriptor exhaustion` (`apps/service/src/audio-processing.test.ts`) still
   fails. A spawn under EMFILE now reports a retryable failure (fixed). The
   test also expects the exhaustion to strike a native domain call; it now
@@ -62,7 +73,7 @@ Checklist:
 - [x] [08 Multicam sync: no new primitive (closed by decision)](slices/08-sync-estimate.md)
 - [x] [09 View-shot fixtures](slices/09-view-shot-fixtures.md)
 - [ ] [10 Skill guidance](slices/10-skill-guidance.md) (written; evals wait on the installed build)
-- [ ] Full suite run (the ledger's `pendingConversion` is empty)
+- [x] Full suite run (the ledger's `pendingConversion` is empty)
 - [ ] [11 Replay acceptance](slices/11-replay-acceptance.md), then [close-spec](../../.agents/skills/close-spec/SKILL.md)
 
 ## Slice graph
