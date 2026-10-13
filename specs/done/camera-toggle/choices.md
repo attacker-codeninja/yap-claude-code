@@ -469,7 +469,9 @@ Ranked least-confident first.
   support minus gaps. Both fields are omitted when zero or empty, so a take whose camera was never
   turned off is byte-shaped exactly like a 0.1.33 recording, and old recordings are simply the
   one-interval case. There are no new journal events and no migration. `CameraAvailability` in
-  Swift and `cameraProofIntervals()` in TypeScript are the only code that computes intervals.
+  Swift and `cameraProofIntervals()` in TypeScript are the only code that computes intervals. The
+  build first left a second merge of a movie's segments inside the scans; it was folded into
+  `CameraAvailability`, with the published output unchanged.
 - **The gap:** The plan chose this shape; the build kept it and made it the only shape.
 - **The reach:** This is the recording format every reader now shares. A crash keeps the runs,
   because the mapping is written live and pinned by its hash.
