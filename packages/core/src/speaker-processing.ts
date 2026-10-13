@@ -135,6 +135,7 @@ export class SpeakerProcessing {
     const published = status.published
       ? {
           generation: status.published.generation,
+          issues: status.published.issues,
           evidence: JSON.parse(status.published.result) as SpeakerEvidenceMetadata,
         }
       : null;

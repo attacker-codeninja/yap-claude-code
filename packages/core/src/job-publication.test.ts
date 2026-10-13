@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { Catalog } from "./catalog.js";
 import { JobQueue, type JobExecutor } from "./jobs.js";
+import { issueLimit, type Issue } from "@yap/composition";
 
 const cleanup: (() => Promise<void>)[] = [];
 afterEach(async () => {
@@ -113,4 +114,82 @@ test("canceled stale completion cannot publish after a replacement and closes be
   expect(f.queue.status(f.request)).toMatchObject({ state: "ready", published: { result: "2" } });
   expect(f.store.catalog.prepare("SELECT value FROM published").all()).toEqual([{ value: "2" }]);
   expect(closed).toBe(2);
+});
+
+const omittedIssue = (omitted: number): Issue => ({
+  code: "issues-truncated",
+  message: `${omitted} omitted`,
+  evidence: { omitted },
+});
+
+test("issues publish with their output, roll back with it, and are replaced by the next generation", async () => {
+  const attempts: { issues: Issue[]; refuse?: boolean }[] = [
+    { issues: [omittedIssue(1)], refuse: true },
+    { issues: [omittedIssue(2), omittedIssue(3)] },
+    { issues: [] },
+  ];
+  const f = fixture(async () => {
+    const attempt = attempts.shift()!;
+    return {
+      result: JSON.stringify("output"),
+      issues: attempt.issues,
+      publish: () => {
+        if (attempt.refuse) throw Error("publication refused");
+        return undefined;
+      },
+      close: async () => {},
+    };
+  });
+  const { jobId } = f.queue.submit(f.request);
+  await f.queue.idle();
+  expect(f.queue.status(f.request)).toMatchObject({ state: "failed", published: null });
+  expect(f.store.catalog.prepare("SELECT * FROM output_issues").all()).toEqual([]);
+
+  f.queue.retry(jobId);
+  await f.queue.idle();
+  const ready = f.queue.status(f.request);
+  expect(ready.published?.issues).toEqual([omittedIssue(2), omittedIssue(3)]);
+  expect(f.queue.inspect(jobId).published?.issues).toEqual([omittedIssue(2), omittedIssue(3)]);
+
+  f.queue.regenerate(jobId, ready.published!.generation);
+  await f.queue.idle();
+  expect(f.queue.status(f.request)).toMatchObject({ state: "ready", published: { issues: [] } });
+  expect(f.store.catalog.prepare("SELECT * FROM output_issues").all()).toEqual([]);
+});
+
+test("stored issues are bounded, ending in the count of what was omitted", async () => {
+  const f = fixture(async () => ({
+    result: JSON.stringify("output"),
+    issues: Array.from({ length: issueLimit + 5 }, (_, index) => omittedIssue(index + 1)),
+    publish: () => undefined,
+    close: async () => {},
+  }));
+  f.queue.submit(f.request);
+  await f.queue.idle();
+  const issues = f.queue.status(f.request).published!.issues;
+  expect(issues).toHaveLength(issueLimit + 1);
+  expect(issues[issueLimit - 1]).toEqual(omittedIssue(issueLimit));
+  expect(issues.at(-1)).toMatchObject({ code: "issues-truncated", evidence: { omitted: 5 } });
+});
+
+test("a catalog written before issue storage opens and reads its publications as clean", async () => {
+  const f = fixture(async () => JSON.stringify("output"));
+  const { jobId } = f.queue.submit(f.request);
+  await f.queue.idle();
+  await f.queue.close();
+  f.store.catalog.exec("DROP TABLE output_issues");
+  const reopened = new JobQueue({
+    store: f.store,
+    providers: { newId: randomUUID },
+    execute: async () => "unused",
+    targets: {
+      pin: (target) => target as never,
+      isAvailable: () => true,
+      isDeleting: () => false,
+      isCapturing: () => false,
+    },
+  });
+  cleanup.push(() => reopened.close());
+  expect(reopened.status(f.request)).toMatchObject({ state: "ready", published: { issues: [] } });
+  expect(reopened.inspect(jobId).published?.issues).toEqual([]);
 });

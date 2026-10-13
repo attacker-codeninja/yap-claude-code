@@ -58,7 +58,7 @@ async function fixture(
     data: {
       state: "ready",
       delivery: { token: "lease", bytes: bytes.length, expiresAt: Date.now() + 30000 },
-      published: { generation: 1, output: { mediaType } },
+      published: { generation: 1, output: { mediaType }, issues: [] },
     },
   };
   return {

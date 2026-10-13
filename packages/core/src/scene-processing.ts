@@ -143,6 +143,7 @@ export class SceneProcessing {
           ? null
           : {
               generation: status.published.generation,
+              issues: status.published.issues,
               evidence: JSON.parse(status.published.result) as SceneEvidenceMetadata,
             },
     };

@@ -30,7 +30,14 @@ import { materializeSourceIndex } from "./source-index-materialization.js";
 import { RetainedIndexRead, type IndexCoverageCursor, type IndexReadCursor } from "./index-read.js";
 import { setImmediate } from "node:timers/promises";
 import { CatalogError, type Catalog } from "./catalog.js";
-import type { Job, JobAdmission, JobExecution, JobQueue, RetainedArtifact } from "./jobs.js";
+import type {
+  Job,
+  JobAdmission,
+  JobExecution,
+  JobOwner,
+  JobQueue,
+  RetainedArtifact,
+} from "./jobs.js";
 import type { SceneProcessing } from "./scene-processing.js";
 import {
   encodeIndexRecord,
@@ -168,6 +175,7 @@ export class IndexProcessing {
       published: status.published
         ? {
             generation: status.published.generation,
+            issues: status.published.issues,
             evidence: JSON.parse(
               status.published.result,
             ) as ScreenshotIndexMetadata<ProjectIndexRecords>,
@@ -278,7 +286,21 @@ export class IndexProcessing {
     return this.projectRead(input).coverage(input);
   }
   frameProject(input: ProjectIndexReference & { ordinal: number }) {
-    return this.projectRead(input).frame(input.ordinal);
+    return this.withIssues(this.projectRead(input).frame(input.ordinal), {
+      kind: "project",
+      projectId: input.projectId,
+    });
+  }
+  /** A frame read from a retained index carries the issues reported with that index publication. */
+  private withIssues<F extends { generation: string; published: object }>(
+    frame: F,
+    owner: JobOwner,
+  ) {
+    const publication = this.jobs.retainedArtifact(owner, artifact, frame.generation);
+    return {
+      ...frame,
+      published: { ...frame.published, issues: publication ? this.jobs.issues(publication) : [] },
+    };
   }
   openReadProject(input: ProjectIndexReference & { ordinal: number }) {
     return this.projectRead(input).openRead(input.ordinal);
@@ -529,6 +551,7 @@ export class IndexProcessing {
       published: status.published
         ? {
             generation: status.published.generation,
+            issues: status.published.issues,
             evidence: JSON.parse(
               status.published.result,
             ) as ScreenshotIndexMetadata<SourceIndexRecords>,
@@ -645,7 +668,10 @@ export class IndexProcessing {
     return this.sourceRead(input).coverage(input);
   }
   frameSource(input: SourceIndexReference & { ordinal: number }) {
-    return this.sourceRead(input).frame(input.ordinal);
+    return this.withIssues(this.sourceRead(input).frame(input.ordinal), {
+      kind: "asset",
+      assetId: input.assetId,
+    });
   }
   openReadSource(input: SourceIndexReference & { ordinal: number }) {
     return this.sourceRead(input).openRead(input.ordinal);

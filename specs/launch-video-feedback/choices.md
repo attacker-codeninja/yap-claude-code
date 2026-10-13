@@ -26,6 +26,42 @@ overridden. Each entry: the choice, why, and how confident.
   `UNSUPPORTED_MEDIA` as missing-prerequisite (its font and HDR uses are
   tracked separately). *Moderately confident; slice 07 revisits each.*
 
+- **Job publications key issue rows by attempt (01c).** `output_issues` rows
+  for job output use `outputKind = "artifact"` and `outputId` = the publishing
+  `attemptId`, with the published generation. An attempt publishes at most
+  once, `artifacts.attemptId` already names it, and retained reads (portable
+  transcript generations, index frames) resolve publications by attempt, so
+  every read path finds the same rows. *Confident.*
+- **Triggers retire issue rows with their artifact (01c).** Two `IF NOT
+  EXISTS` triggers on `artifacts` delete an attempt's rows when its artifact
+  row is deleted or replaced by another attempt. One rule covers regenerate,
+  forget, owner deletion and settlement replacement instead of four call
+  sites, and it adds schema objects without altering the table. *Moderately
+  confident; the repo had no production triggers before.*
+- **Invalid issues fail the attempt (01c).** A producer's issues are bounded
+  with `boundedIssues`, then parsed with `issuesSchema` inside the
+  settlement transaction. A malformed issue is a producer bug, so the attempt
+  fails like any other publication error rather than publishing unreported
+  problems. *Confident.*
+- **Issues travel on the queue publication (01d).** `ArtifactStatus.published`
+  carries `issues`, and each core domain owner copies them next to
+  `generation` into its own published shape. That keeps one source for
+  `publishedOutput()` instead of a service-side lookup by job ID, which would
+  miss publications read without a job (retained transcript generations,
+  index frames). *Confident.*
+- **Package context jobs publish no issues (01d).** In-memory package context
+  executors return only a result string, so their envelopes carry `issues: []`
+  through one `contextPublication` helper. Add a channel when a context
+  producer has issues to report. *Confident.*
+- **Export status carries only the export job's own issues (01d).** The spec
+  also names issues inherited from pinned inputs; that needs a rule for which
+  inputs count, so it waits for the first export producer that emits issues.
+  *Open.*
+- **The CLI `--wait` exit code is unchanged (01d).** A ready output already
+  exits 0, and issues never feed `waitSucceeded`. A failed job with an older
+  retained publication still exits 1, because the requested generation was
+  not produced. *Confident.*
+
 ## Slice 06 (authored ranges, done ahead of the read ranges)
 
 - **The clamp keeps the same fraction of the placement.** A placement maps

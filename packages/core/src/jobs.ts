@@ -1,9 +1,10 @@
-import { omit } from "@yap/composition";
+import { omit, type Issue } from "@yap/composition";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { ResourceReferences, type ResourceKind } from "./references.js";
 import { setImmediate } from "node:timers/promises";
 import { CatalogError, type Catalog } from "./catalog.js";
+import { createOutputIssues, outputIssues, writeOutputIssues } from "./issues.js";
 
 /** What an attempt occupies while it runs. Frame work is small and parallel; heavy work is not. */
 export type JobLane = "heavy" | "frame";
@@ -107,19 +108,29 @@ export const retainedPublicationSchema = z.strictObject({
 /** Publication provenance survives relocation without claiming a local execution. */
 export type RetainedArtifact = Artifact & Readonly<{ attemptId: string }>;
 
+/** A publication as callers read it: the artifact and every issue reported with it. */
+export type PublishedArtifact = Artifact & Readonly<{ issues: Issue[] }>;
+
 export type ArtifactStatus = Readonly<{
   state: ArtifactState;
   jobId: string | null;
   reason: string | null;
   retryable: boolean;
-  published: Artifact | null;
+  published: PublishedArtifact | null;
 }>;
 
+type Settlement =
+  | (Pick<StagedJobResult, "result" | "issues"> & Partial<Pick<StagedJobResult, "publish">>)
+  | { error: unknown };
 /** The running attempt handed to the executor, with the signal that asks it to stop. */
 export type JobExecution = Readonly<{ job: Job; signal: AbortSignal }>;
-/** File work finishes before settlement; only synchronous catalog writes join the queue fence. */
+/**
+ * File work finishes before settlement; only synchronous catalog writes join the queue fence. Issues
+ * describe this result and publish in the same transaction.
+ */
 export type StagedJobResult = {
   result: string;
+  issues?: readonly Issue[];
   publish(): undefined;
   close(): Promise<void>;
 };
@@ -383,6 +394,7 @@ export class JobQueue {
    ) STRICT;
    CREATE INDEX IF NOT EXISTS artifacts_attempt ON artifacts(targetKind,targetId,artifact,attemptId);
   `);
+    createOutputIssues(this.store);
     // Only a process that died holding an attempt can leave a running row behind, so reopening the
     // catalog resolves the ambiguity instead of leaving work that nobody is doing look busy.
     this.store.catalog
@@ -806,6 +818,7 @@ export class JobQueue {
             generation: publication.generation,
             attemptId: publication.attemptId,
             output: JSON.parse(publication.result) as unknown,
+            issues: this.issues(publication),
           }
         : null,
     };
@@ -914,8 +927,17 @@ export class JobQueue {
       jobId: job?.jobId ?? null,
       reason: job?.reason ?? null,
       retryable: job?.retryable ?? false,
-      published: published ? toArtifact(published) : null,
+      published: published ? { ...toArtifact(published), issues: this.issues(published) } : null,
     };
+  }
+
+  /** What was reported with one publication, including one retained by attempt. */
+  issues(publication: Pick<RetainedArtifact, "generation" | "attemptId">): Issue[] {
+    return outputIssues(this.store, {
+      outputKind: "artifact",
+      outputId: publication.attemptId,
+      generation: publication.generation,
+    });
   }
 
   /**
@@ -1341,7 +1363,7 @@ export class JobQueue {
     job: Pick<Job, "jobId" | "attemptId" | "lane" | "artifact">,
     owner: { target: JobOwner } | { context: ContextState },
     execute: (signal: AbortSignal) => Promise<string | StagedJobResult>,
-    settle: (outcome: { result: string; publish?: () => undefined } | { error: unknown }) => void,
+    settle: (outcome: Settlement) => void,
   ): void {
     const controller = new AbortController();
     let staged: StagedJobResult | undefined;
@@ -1389,10 +1411,7 @@ export class JobQueue {
     this.onUpdateProgress?.();
   }
 
-  private settle(
-    job: Job,
-    outcome: { result: string; publish?: () => undefined } | { error: unknown },
-  ): void {
+  private settle(job: Job, outcome: Settlement): void {
     this.store.transaction(() => {
       const current = this.store.catalog
         .prepare(`SELECT ${jobColumns} FROM jobs WHERE jobId=?`)
@@ -1440,6 +1459,11 @@ export class JobQueue {
           outcome.result,
           inputDigest(job.input),
         );
+      writeOutputIssues(
+        this.store,
+        { outputKind: "artifact", outputId: job.attemptId, generation: job.generation },
+        outcome.issues ?? [],
+      );
       this.store.catalog
         .prepare(
           "UPDATE jobs SET state='ready',reason=NULL,errorCode=NULL,errorDetails=NULL,retryable=0 WHERE jobId=?",

@@ -203,7 +203,11 @@ export class ProjectPreviewInspection {
       retryable: status.retryable,
       jobId: status.jobId,
       published: status.published
-        ? { generation: status.published.generation, preview: status.published.value }
+        ? {
+            generation: status.published.generation,
+            issues: status.published.issues,
+            preview: status.published.value,
+          }
         : null,
     };
   }

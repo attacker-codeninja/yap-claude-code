@@ -87,6 +87,7 @@ export class RenderedSpeech {
       published: status.published
         ? {
             generation: status.published.generation,
+            issues: status.published.issues,
             speech: JSON.parse(status.published.result) as RenderedSpeechEvidence,
           }
         : null,

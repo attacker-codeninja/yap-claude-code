@@ -859,6 +859,8 @@ export class MediaExports {
       },
       receipt: intent.receipt,
       output: intent.receipt ? join(intent.destination.directory, intent.destination.leaf) : null,
+      // What the export job reported with its published output; empty until it publishes.
+      issues: job.published?.issues ?? [],
       jobId: job.jobId,
       reason: intent.receipt ? null : job.reason,
       retryable: !intent.receipt && job.retryable,

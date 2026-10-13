@@ -252,7 +252,13 @@ export class TranscriptProcessing {
           "ARTIFACT_CHANGED",
           "Transcript generation belongs to another selected source",
         );
-      status = { state: "ready", jobId: null, reason: null, retryable: false, published: retained };
+      status = {
+        state: "ready",
+        jobId: null,
+        reason: null,
+        retryable: false,
+        published: { ...retained, issues: this.jobs.issues(retained) },
+      };
     }
     const models = this.models.status();
     const reason = !selected.track.available.length
@@ -271,6 +277,7 @@ export class TranscriptProcessing {
           ? null
           : {
               generation: status.published.generation,
+              issues: status.published.issues,
               transcript: JSON.parse(status.published.result) as TranscriptMetadata,
             },
       models,

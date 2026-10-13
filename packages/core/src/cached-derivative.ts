@@ -29,6 +29,7 @@ export function submitCachedDerivative<Value extends { cacheId: string }>(
     published: status.published
       ? {
           generation: status.published.generation,
+          issues: status.published.issues,
           value: JSON.parse(status.published.result) as Value,
         }
       : null,

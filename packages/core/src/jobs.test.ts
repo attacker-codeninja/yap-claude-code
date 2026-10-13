@@ -203,7 +203,7 @@ test("identical work retains its published result without another automatic atte
       target: { kind: "recording" as const, recordingId: recordingId, revisionId: null },
       artifact: "transcript",
       generation: 1,
-
+      issues: [],
       input: "narration",
       result: "transcript-a",
     },
@@ -270,7 +270,7 @@ test("a restart fails the interrupted attempt, whose late answer cannot overwrit
     target: { kind: "recording" as const, recordingId: recordingId, revisionId: null },
     artifact: "transcript",
     generation: 2,
-
+    issues: [],
     input: "narration",
     result: "answer-from-the-retry",
   });
@@ -306,7 +306,7 @@ test("an edit during processing does not move the revision the work was admitted
     target: { kind: "project" as const, projectId: projectId, revisionId: revisionId },
     artifact: "transcript",
     generation: 1,
-
+    issues: [],
     input: "narration",
     result: "transcript-a",
   });

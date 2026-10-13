@@ -116,6 +116,10 @@
       "types": "./dist/transcript-processing.d.ts",
       "default": "./dist/transcript-processing.js"
     },
+    "./issues": {
+      "types": "./dist/issues.d.ts",
+      "default": "./dist/issues.js"
+    },
     "./catalog": {
       "types": "./dist/catalog.d.ts",
       "default": "./dist/catalog.js"

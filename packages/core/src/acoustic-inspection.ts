@@ -315,6 +315,7 @@ export class AcousticInspection {
             ...retained,
             published: {
               generation: retained.published.generation,
+              issues: retained.published.issues,
               value: JSON.parse(retained.published.result) as AcousticArtifact,
             },
           }
@@ -332,7 +333,11 @@ export class AcousticInspection {
       jobId: status.jobId,
       dependency: dependency.summary,
       published: status.published
-        ? { generation: status.published.generation, artifact: status.published.value }
+        ? {
+            generation: status.published.generation,
+            issues: status.published.issues,
+            artifact: status.published.value,
+          }
         : null,
     };
   }
@@ -363,6 +368,7 @@ export class AcousticInspection {
       published: status.published
         ? {
             generation: status.published.generation,
+            issues: status.published.issues,
             artifact: status.published.value,
           }
         : null,

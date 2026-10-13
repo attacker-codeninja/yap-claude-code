@@ -352,7 +352,11 @@ export class MediaAudioInspection {
       retryable: status.retryable,
       jobId: status.jobId,
       published: status.published
-        ? { generation: status.published.generation, audio: status.published.value }
+        ? {
+            generation: status.published.generation,
+            issues: status.published.issues,
+            audio: status.published.value,
+          }
         : null,
     };
   }
@@ -488,7 +492,11 @@ export class MediaAudioInspection {
       retryable: status.retryable,
       jobId: status.jobId,
       published: status.published
-        ? { generation: status.published.generation, audio: status.published.value }
+        ? {
+            generation: status.published.generation,
+            issues: status.published.issues,
+            audio: status.published.value,
+          }
         : null,
     };
   }
@@ -579,7 +587,11 @@ export class MediaAudioInspection {
     return {
       ...status,
       published: status.published
-        ? { generation: status.published.generation, audio: status.published.value }
+        ? {
+            generation: status.published.generation,
+            issues: status.published.issues,
+            audio: status.published.value,
+          }
         : null,
     };
   }
