@@ -292,7 +292,7 @@ package enum CaptureSourcePublication {
         let url = try mediaURL("video", lease: lease, canonical: canonical)
         if kind == .camera {
             let verified = try await CameraMedia.readPublished(lease: lease, canonical: url)
-            return [try verified.identity.support.roundedSpan()]
+            return try verified.identity.availability.intervals.map { try $0.roundedSpan() }
         }
         let inspected = await CaptureMediaInspection.inspect(role: "video", url: url, acquired: nil, requested: true)
         try Task.checkCancellation()

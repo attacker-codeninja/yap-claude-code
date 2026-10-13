@@ -96,3 +96,56 @@ slice 01 gate (re-run once here).
 segments and timestamps must not change); diagnostic wording.
 
 **Out of scope.** Session start/stop (05); admission (04); any UI.
+
+## Implemented (2026-10-12)
+
+Status: built and green on the narrow checks below. Decisions the slice left open are in
+[choices.md](../choices.md).
+
+**Contract as built.** Mapping rows and receipt exactly as in Format above. `VerifiedSource`
+(admission evidence `publications.video`) now holds a `CameraAvailability` and encodes
+`support` plus `gaps` only when nonempty. `CaptureSourcePublication` support and
+`MediaRecovery.recoverCamera` return one interval per availability interval. The camera
+receipt read bound is `65536 + 100000 × 128` bytes. Explicit `run: 0` and `"gaps": []` are
+refused (one byte form per take).
+
+**Beyond the slice.**
+- Each run's first picture is a forced key frame (`CameraWriter`). Without it the 500-run
+  publication stalled in the canonical scan; see choices.md.
+- For an unsealed raw movie, `scanRaw` ends the crash prefix at the first mapped picture a
+  reordered fragment lacks (`acceptedBeyondPhysicalEOF`) instead of refusing the camera.
+- `Verification.abandon()` replaces "live inventory returns nil": the writer stops the
+  continuation when a run advances.
+- `ProbeCameraReplayTests` was already red before this slice (verified on a pre-change build of
+  054c6d09: "Retained camera mapping differs from closed observations" at the `torn` fixture).
+  Its fresh fixtures now drop the retained mapping too, as a crash before closure leaves them.
+
+**Deviations from Verification.**
+- The suite drives `CameraWriter` directly through a small harness (`GatedCameraTake`) with
+  explicit host times and the take clock, writing the same mapping rows and verification
+  checkpoints `CaptureClockIngress` writes. `FixtureCameraSession` has no way to toggle until
+  slice 05 wires the session lifecycle.
+- The listed extensions live in `CameraAvailabilityTests.swift` rather than the named files:
+  malformed/stripped/run-unjustified gaps (`malformedGapsRefused`), multi-interval
+  `supportHash` round trip (`crashRecoveryWithGaps` recovers twice with camera source
+  authority), and origin sharing for a late first run (`startsOffThenOn` with a primary origin).
+  The named files only follow the `VerifiedSource.availability` rename.
+- Case 1 compares against key sets captured from a take published by the pre-change build
+  (recorded in the test). TODO(integrator): point `singleRunIsLegacyShape` at the corpus-A
+  receipt in `specs/camera-toggle/assets/pre-toggle-corpus` once slice 01 lands it.
+
+**Evidence.** `YAP_CAMERA_AVAILABILITY_OUTPUT=<dir>`: all nine cases plus malformed gaps pass.
+Each mechanism was falsified once (gate ignoring the off-time crossing, canonical holding a
+picture across the gap, gap boundaries ignoring runs, no forced key frame, run always written):
+each went red for its own reason. `manyGaps` (500 runs, 1000 pictures at 160×120): camera Stop
+latency (close + publish) 930 ms, written to `many-gaps-stop-latency.json`. Crash recovery kept
+`[0,0.5) [1,2) [2.5,5.9)` s and lost the unfragmented tail after 5.9 s.
+
+Must-stay-green, run on this build: `CameraLivePublicationTests`, `CameraPublicationOverlapTests`,
+`IndependentPublicationTests` (with `NativeCaptureInputTests`), `ProbeCameraReplayTests` (on a
+take from this build and on a take produced by the pre-change build), `CameraJournalProvenanceTests`
+(inside `CameraSourceAdmissionTests`), plus the touched `IndependentCameraClockTests`,
+`CameraSourcePublicationTests`, `SourcePublicationRecoveryTests`, `EmptyCaptureRecoveryTests`.
+Not run: `CanonicalRecoveryTests` (no suite variable; it never reaches camera code) and
+`empty-edit-delivery.mjs` (imports a plain movie through the service; no changed code on its
+path). The slice 01 gate does not exist yet; re-run it here once it lands.

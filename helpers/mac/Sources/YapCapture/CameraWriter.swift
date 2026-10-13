@@ -23,6 +23,12 @@ package final class CameraWriter {
     private var journalOpenPauseHostUs: Int64?
     private var origin: Int64?
     private var verification: CameraMedia.Verification?
+    // Acquisition window: a picture is recorded only if its whole host interval lies inside it.
+    // An open start means the camera has been on since the take began.
+    private var onAt: CMTime?
+    private var offAt: CMTime?
+    private var run = 0
+    private var runFrames = 0
 
     package init(directory: URL, framesPerSecond: Int, binding: CameraCaptureBinding? = nil) throws {
         try binding?.validate()
@@ -38,11 +44,34 @@ package final class CameraWriter {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
         }
     }
+    /// Turns acquisition on or off at a host instant. Call on the capture writer queue; this is the
+    /// only mutator of the acquisition window. Turning on after a run that recorded a frame starts
+    /// the next run.
+    package func setAcquiring(_ on: Bool, atHostUs hostUs: Int64) {
+        let at = CMTime(value: hostUs, timescale: 1_000_000)
+        if on {
+            guard offAt != nil else { return }
+            if runFrames > 0 {
+                run += 1; runFrames = 0
+                // The live continuation proves one contiguous run; later runs publish by full scan.
+                verification?.abandon()
+            }
+            onAt = at; offAt = nil
+        } else if offAt == nil {
+            offAt = at
+        }
+    }
     package func append(_ sample: CMSampleBuffer, state: CaptureWriter.IngressState) throws -> (receipt: CaptureWriter.IngressReceipt, frame: CameraFrameMapping?) {
         guard state.accepting else { return (.init(disposition: "sealed-or-failed", sourceUs: nil), nil) }
         let host = CMTimeConvertScale(sample.presentationTimeStamp, timescale: 1_000_000, method: .roundHalfAwayFromZero).value
         let duration = sample.duration.isNumeric && sample.duration > .zero
             ? sample.duration : CMTime(value: 1, timescale: Int32(framesPerSecond))
+        // The take clock's overlap rule: a stale picture from before the turn-on, or one still
+        // showing at the turn-off, was not acquired while the camera was on.
+        if let onAt, sample.presentationTimeStamp < onAt { return (.init(disposition: "camera-off", sourceUs: nil), nil) }
+        if let offAt, CMTimeAdd(sample.presentationTimeStamp, duration) > offAt {
+            return (.init(disposition: "camera-off", sourceUs: nil), nil)
+        }
         let durationUs = CMTimeConvertScale(duration, timescale: 1_000_000, method: .roundHalfAwayFromZero).value
         // A new independent origin rounds downward so exact fractional PTS never precedes it.
         let candidateOrigin = origin ?? state.clock.originUs ?? CMTimeConvertScale(
@@ -94,6 +123,11 @@ package final class CameraWriter {
             omitted += 1; return (.init(disposition: "duplicate-or-reordered", sourceUs: nil), nil)
         }
         let retimed = try CaptureClockIngress.retime(sample, to: sourceTime, duration: duration)
+        if runFrames == 0 {
+            // Each run decodes on its own, so a passthrough edit of it copies nothing from before a gap.
+            CMSetAttachment(retimed, key: kCMSampleBufferAttachmentKey_ForceKeyFrame, value: kCFBooleanTrue,
+                attachmentMode: kCMAttachmentMode_ShouldNotPropagate)
+        }
         guard input.append(retimed) else { throw writer?.error ?? CaptureFailure("WRITE_FAILED", "Camera append failed.") }
         if origin == nil {
             origin = candidateOrigin
@@ -105,7 +139,9 @@ package final class CameraWriter {
             try journal?.recordTrackStarted(role: "video", file: "video.mov", firstSourceUs: source,
                 sampleRate: nil, channelCount: nil)
         }
-        let frame = CameraFrameMapping(ordinal: frames, start: CaptureRationalTime(sourceTime), nominalEnd: CaptureRationalTime(CMTimeAdd(sourceTime, duration)))
+        let frame = CameraFrameMapping(ordinal: frames, start: CaptureRationalTime(sourceTime),
+            nominalEnd: CaptureRationalTime(CMTimeAdd(sourceTime, duration)), run: run)
+        runFrames += 1
         lastAcceptedTime = sourceTime
         end = CMTimeConvertScale(frame.nominalEnd.time, timescale: 1_000_000, method: .roundHalfAwayFromZero).value
         frames += 1

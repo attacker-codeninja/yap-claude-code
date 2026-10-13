@@ -67,6 +67,19 @@ provenance. Neither a positive duration nor a copied locator can manufacture tha
 authority. A later journal append may preserve an earlier trusted prefix without
 making its new payload part of the earlier proof.
 
+## Camera off time is a gap
+
+A companion camera can be turned off and on during a take. Off time is a gap in
+the camera source, never a held picture. The writer records a picture only when
+its whole host interval lies inside an on window, and each run of pictures starts
+on a key frame so no run decodes from another. The raw movie stays continuous; the
+canonical movie states each gap as an explicit empty edit, and verification
+accepts a gap only where the mapping's runs place one. The receipt keeps `support`
+as the outer span and lists `gaps` only when there are any, so a camera that was
+never turned off publishes exactly the original shape.
+[CameraAvailability](CameraMedia.swift) is the one owner of that interval
+arithmetic for publication, admission and recovery.
+
 ## Journals and crash boundaries
 
 [The journal](CaptureJournal.swift) owns record types, validation, ordering and
@@ -77,7 +90,8 @@ an entire pointer history in memory.
 
 Fragmented media can preserve a decodable process-crash prefix. A crash before the
 opening fragment may leave none; these guarantees do not establish power-loss
-durability. Keep raw journals and media distinct from normalized evidence and
+durability. When the encoder flushed a reordered picture before earlier pictures,
+the camera prefix ends at the first missing one. Keep raw journals and media distinct from normalized evidence and
 publication receipts so recovery cannot overwrite its own source authority.
 
 ## Cursor and geometry clocks

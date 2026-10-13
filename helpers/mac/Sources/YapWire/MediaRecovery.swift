@@ -242,13 +242,13 @@ package enum MediaRecovery {
         let journal = try CaptureJournal.readEvidence(directory: directory, maximumBytes: 268_435_456,
             retainTiming: false, geometry: { _ in }, samples: { _ in }, displaySpace: { _ in },
             descriptor: lease.descriptor, layout: 1)
-        let span = try verified.identity.support.roundedSpan()
-        let track = RecoveredTrack(role: "video", file: "video.mov", intervals: [span],
+        let intervals = try verified.identity.availability.intervals.map { try $0.roundedSpan() }
+        let track = RecoveredTrack(role: "video", file: "video.mov", intervals: intervals,
             decodedSamples: nil, representedFrames: JournalInteger(wrappedValue: Int64(verified.identity.representedFrames)),
             decodeReachedEnd: true, acquisitionVerified: true,
             failure: verified.diagnostics.isEmpty ? nil : CaptureFailure("PARTIAL_CAMERA", verified.diagnostics.joined(separator: ", ")))
         try lease.check()
-        return RecoveredCapture(durationUs: span.endUs, tracks: [track], journal: journal,
+        return RecoveredCapture(durationUs: intervals[intervals.count - 1].endUs, tracks: [track], journal: journal,
             journalFailure: journal.invalidAtSequence == nil ? nil : CaptureFailure("INVALID_JOURNAL", "Recovery used only the validated journal prefix."))
     }
 

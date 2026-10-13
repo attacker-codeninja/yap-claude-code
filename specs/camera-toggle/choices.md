@@ -64,3 +64,68 @@ A consequence for later slices: any library closed mid-admission cannot be check
 - **Replay identity grows for every take, accepted** (06). A request first sent before the change
   and replayed after it gets `REQUEST_CONFLICT`; replay receipts are short-lived and are not
   recordings, so no compatibility is owed.
+
+### Every run starts on a forced key frame (02)
+
+`CameraWriter` marks the first picture of each run with
+`kCMSampleBufferAttachmentKey_ForceKeyFrame`. Without it, a run that began on a P-frame made
+the passthrough export copy the preceding pictures as hidden preroll for every edit: at 500
+runs the canonical movie grew to 7.5 MB against a 1.1 MB raw movie, and the publication's
+canonical scan stalled at 0% CPU inside `AVAssetReaderTrackOutput.copyNextSampleBuffer`
+reading through `MediaInput`. A plain `AVURLAsset` decoded the same file in 0.56 s, so the
+stall belongs to the `MediaInput` read path (its 8-request concurrency budget is the suspect;
+not investigated further). With forced key frames the canonical movie is the size of the raw
+movie and no run decodes from a picture before its gap. The slice did not name this.
+
+### The acquisition window, not "while off", decides (02)
+
+The gate is one rule: a picture is recorded only when its whole host interval lies inside the
+current on window `[onAt, offAt)`. A late callback for a picture that ended at or before the
+turn-off is still recorded (it was acquired while on); one that crosses the turn-off or starts
+before the turn-on gets `camera-off`. The slice said "refuses while off"; this is the same
+overlap rule as the take clock's pauses and loses no acquired picture.
+
+### `camera-off` is not counted as an omitted sample (02)
+
+`CapturedTrack.omittedSamples` keeps counting clock-rule omissions only, so a single-run take
+reports exactly what it did before. Off-time callbacks stay visible as mapping rows.
+
+### One form only: `run: 0` and `gaps: []` are refused (02)
+
+Zero runs and empty gaps are written by omission, so the readers refuse an explicit `run: 0`
+or `"gaps": []`. A take therefore has one byte form, and a single-run take is byte-shaped
+exactly like a pre-change one.
+
+### The live continuation stops at the second run (02)
+
+The slice said the live inventory should return nil for a multi-run mapping. Instead the
+writer calls `Verification.abandon()` when a run advances: the continuation accepts no further
+checkpoints and stops working at once, rather than recopying and rescanning the raw movie on
+every frame only to fail. Publication of a multi-run take then takes the sequential scan
+(`intendedSupport` is nil when any frame has a nonzero run). If no frame follows the turn-on,
+the take is still one run and the continuation's proven prefix is still used.
+
+### Gaps are checked against runs inside the canonical scan (02)
+
+"Recompute runs from the pinned mapping and require them to equal the receipt's gaps" is done
+by the canonical scan itself, which already walks every mapped frame: a run's first frame must
+start the next interval (unless no source time separates it from the previous run), and every
+other frame must stay inside the current one. Raw and canonical scans share that one rule
+(`CameraMedia.startsInterval`). `validateJournal` is unchanged.
+
+### Receipt read budget grows to fit 100 000 gaps (02)
+
+`camera.publication.json` was read with a 64 KiB bound. It is now
+`65536 + 100000 × 128` bytes (about 12.9 MB), room for the most gaps a receipt may state with
+fractional endpoints. 500 gaps take 19.8 KB. **Slice 04 must match it**: core admission
+(`packages/core/src/evidence.ts`, the `kind === "receipt" ? 65536` identity check) still
+refuses a camera receipt over 64 KiB.
+
+### A crashed reordered tail ends the camera prefix (02)
+
+A process crash can leave a fragment whose last picture was flushed ahead of earlier pictures
+in presentation order (H.264 reordering). For an unsealed raw movie only, `scanRaw` now ends
+the physical prefix at the first mapped picture the raw movie lacks, with the existing
+`acceptedBeyondPhysicalEOF` diagnostic, instead of refusing the whole camera. A sealed raw
+movie with a missing picture is still refused. Case `crashRecoveryWithGaps` needed this to be
+deterministic; before it, recovery depended on where the fragment happened to end.
