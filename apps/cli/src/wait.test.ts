@@ -1795,7 +1795,7 @@ test("one published output reports the same issues through the service, CLI --wa
   }
   expect(ready.published?.issues).toEqual([]);
 
-  // No producer reports issues yet, so the publication's issue rows are written through storage.
+  // An image import reports no issues, so its publication's issue rows are written through storage.
   const issue: Parameters<typeof writeOutputIssues>[2][number] = {
     code: "issues-truncated",
     message: "1 more issue was omitted",
