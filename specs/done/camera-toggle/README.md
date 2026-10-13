@@ -226,9 +226,10 @@ Tests and harnesses that pin it:
 ## Visual provenance
 
 **The user's report** drove the floating-controls redesign: the camera preview was drawn square
-inside an oval, overflowing it and off centre. No screenshot of it is kept. The defect had never
-been rendered with a camera (the real-app overlay shots only drive a camera-less take), so it was
-reproduced by drawing the old view with a mock camera picture: the
+inside an oval, overflowing it and off centre. The defect had never been rendered with a camera
+(the real-app overlay shots only drive a camera-less take), so it was reproduced by drawing the
+old view with a mock camera picture ([dark](assets/overlay/reported-bug-dark.png),
+[light](assets/overlay/reported-bug-light.png); the yellow border marks the picture's edges): the
 [overlay fixture](../../../apps/macos/tests/fixtures/recording-overlay.swift)'s synthetic 4:3
 frame with a circle in it, which shows squeezing and cropping at a glance. The cause was one
 capsule behind both the picture and the row, plus asymmetric padding. That reproduction set the
