@@ -1,741 +1,376 @@
 # Choices ledger
 
-Decisions made during implementation where the spec was silent or was
-overridden. Each entry: the choice, why, and how confident.
+The decisions this spec's implementation made where the slices were silent or
+were overridden, re-audited against the final code (`git diff eb91a851 HEAD`) on
+2026-10-13. Each entry names who decided: the **product owner**, the **product's
+user** (the implementing agent deciding as the agent that edits with Yap), or
+the **implementing agent** (a technical call). Groups follow the verdict, least
+confident first. Review these first: extraction drops treatment issues; a gap in
+one clip stops a mix-level processor for every clip; verdict words stay in
+retained evidence.
 
-## Slice 01
+## Needs the user
 
-- **No protocol re-export of the issue type (01b).** The spec said
-  `packages/protocol` re-exports `issues.ts`. Every protocol consumer that
-  needs it already depends on `@yap/composition`, so a re-export would give
-  one concept two import paths. Add it only if a package without the
-  composition dependency (for example the CLI) needs the type. *Confident.*
-- **The truncation rule checks only the tail (01b).** `issuesSchema` requires
-  that anything past `issueLimit` ends in `issues-truncated`; it doesn't
-  forbid that code elsewhere. Forbidding it added nothing the length rule
-  doesn't already guarantee. *Confident.*
-- **The ledger classifies literals, not constructor calls (01a).** Refusals
-  are raised through helpers (`invalid(...)`, `notReady(...)`), so
-  constructor scanning misses them. Every UPPER_SNAKE literal is classified,
-  including non-refusals (`not-a-refusal`, `issue-code`), with exact per-file
-  counts. Gates behind generic codes are tracked by message text in
-  `pendingSites`. *Confident.*
-- **Seeded categories came from name heuristics, then a manual review
-  (01a).** Borderline calls: `TOO_SHORT` and `GAIN_UNREPRESENTABLE` as
-  malformed (slice 07h converts the dialogue-proposal ones);
-  `UNSUPPORTED_MEDIA` as missing-prerequisite (its font and HDR uses are
-  tracked separately). *Moderately confident; slice 07 revisits each.*
+**Audio extracted from treated project audio carries none of its issues.**
+Rendered speech extracts a mix whose normalization missed its target. The
+extraction re-renders through the same treatment, but it publishes no
+`normalization-target-unmet` and no `support-gap`. Previews, project audio and
+exports do publish them. A rule is needed for derived artifacts that consume
+treated audio. Provisional call: leave it. To reverse it, publish the window's
+`outputIssues` and processing issues, as project audio does. _Implementing
+agent · slice 04 · open · low._
 
-- **Job publications key issue rows by attempt (01c).** `output_issues` rows
-  for job output use `outputKind = "artifact"` and `outputId` = the publishing
-  `attemptId`, with the published generation. An attempt publishes at most
-  once, `artifacts.attemptId` already names it, and retained reads (portable
-  transcript generations, index frames) resolve publications by attempt, so
-  every read path finds the same rows. *Confident.*
-- **Triggers retire issue rows with their artifact (01c).** Two `IF NOT
-  EXISTS` triggers on `artifacts` delete an attempt's rows when its artifact
-  row is deleted or replaced by another attempt. One rule covers regenerate,
-  forget, owner deletion and settlement replacement instead of four call
-  sites, and it adds schema objects without altering the table. *Moderately
-  confident; the repo had no production triggers before.*
-- **Invalid issues fail the attempt (01c).** A producer's issues are bounded
-  with `boundedIssues`, then parsed with `issuesSchema` inside the
-  settlement transaction. A malformed issue is a producer bug, so the attempt
-  fails like any other publication error rather than publishing unreported
-  problems. *Confident.*
-- **Issues travel on the queue publication (01d).** `ArtifactStatus.published`
-  carries `issues`, and each core domain owner copies them next to
-  `generation` into its own published shape. That keeps one source for
-  `publishedOutput()` instead of a service-side lookup by job ID, which would
-  miss publications read without a job (retained transcript generations,
-  index frames). *Confident.*
-- **Package context jobs publish no issues (01d).** In-memory package context
-  executors return only a result string, so their envelopes carry `issues: []`
-  through one `contextPublication` helper. Add a channel when a context
-  producer has issues to report. *Confident.*
-- **Export status carries only the export job's own issues (01d).** The spec
-  also names issues inherited from pinned inputs; that needs a rule for which
-  inputs count, so it waits for the first export producer that emits issues.
-  *Open.*
-- **The CLI `--wait` exit code is unchanged (01d).** A ready output already
-  exits 0, and issues never feed `waitSucceeded`. A failed job with an older
-  retained publication still exits 1, because the requested generation was
-  not produced. *Confident.*
+**Adopted transcripts are never reclaimed, even once stale.** A package import
+retains an asset → transcript reference for every generation the asset listed.
+Once a recipe bump makes one stale, reads skip it, but cleanup can't reclaim it.
+Fixing that changes asset dependency retention, which no slice needed.
+Provisional call: accept it; revisit if recipient libraries grow. _Implementing
+agent · slice 02 · open · medium._
 
-## Slice 02
+**`AGENTS.md` doesn't state output by default yet.** Slice 01e's paragraph needs
+`audit-agents` to run first, and the repo reserves that skill for the user.
+Provisional call: the root `README.md` "Product boundary" carries the principle
+meanwhile. _Implementing agent · slice 01e · waits on the user · high._
 
-- **What counts as stale.** A complete transcript row is stale when this version
-  can't read it, or when its `execution.recipe` or `engine.policy` isn't
-  current (`currentTranscript` in `transcript.ts`). `kindPolicy` doesn't count:
-  it isn't part of the job key, so a stale-by-kind row would still be the
-  published answer for a current input. A word-kind change must also bump
-  `transcriptPolicy`. *Confident.*
-- **Pinned stale generations are historical evidence, not skipped.** The spec
-  says every read skips a stale row. But a caption's text seed pins its
-  transcript generation, every later edit revalidates inherited seeds, and
-  export follows those pins. Skipping there would break editing and exporting
-  every captioned 0.1.33 project once slice 03 bumps the recipe. So:
-  - `retainedGeneration` takes `{ historical: true }` for pins an existing
-    revision already holds;
-  - a new seed (`text.seed`, or a newly placed seed) still needs a current
-    generation, and gets `NOT_FOUND` with `stale: true`;
-  - export carries a pinned stale generation with no publication;
-  - import adopts it without a publication.
+## Unsound
 
-  Asset-level inventories, explicit `transcript.get`/`sourceStatus` reads and
-  cleanup treat stale rows as the spec says. *Confident; it's the only reading
-  that keeps 0.1.33 projects working.*
-- **Skipped list instead of an issue (01c/01d pending).** There's no TODO in
-  code. The skipped list travels as data, ready for the issue surface:
-  - `TranscriptStore.portableGenerations` returns `{ generations, stale }`;
-  - `PinnedProjectPackage.stale` (export) and `ValidatedProjectPackage.stale`
-    (import) carry what was left out.
+None found on re-audit.
 
-  Export intents persisted before this change have no `stale` field, so a
-  reader must default it to `[]`. *Confident.*
-- **The jobs layer forgets stale publications during cleanup.**
-  `TranscriptProcessing.cleanupAsset` calls the new
-  `JobQueue.forgetPublication` for each retained stale generation. That
-  retires the artifact row together with its settled job. An active job keeps
-  its publication. `reclaim` then removes the files and rows unless a revision
-  references them. *Confident.*
-- **A queued job from an older version retires instead of crashing.**
-  `TranscriptProcessing.execute` parses the job's execution historically, so the
-  existing input comparison settles it as `ARTIFACT_CHANGED` rather than a raw
-  `ZodError`. *Confident.*
-- **Replays and ingestion.** `ingest` accepts whatever execution the request
-  names, as long as the receipt matches it, so retained replays keep their
-  historical recipe. Production requests are always built by
-  `speechExecution()`, which only produces the current recipe. *Confident.*
-- **Normalization's implementation id was already in the prepared-audio key.**
-  It reaches the key through the window manifest's processor requirements. The
-  derivation now lives in one pure function, `processorImplementations` in
-  `apps/service/src/audio-processing.ts`. Two tests cover it:
-  - `prepared-audio.test.ts` asserts that a rename re-keys a failed job;
-  - "a failed 0.1.33 normalization job re-runs after an identity bump" is
-    `test.skip` in `apps/service/src/audio-processing.test.ts`, with a pointer
-    to slice 04. It was verified red today (the old failed job answers) and
-    green under a simulated rename. Slice 04 removes the `.skip`.
+## Sound
 
-  The test observes re-execution at the prepared-audio request that
-  `audio.measure` submits, not through the operation itself, which needs
-  ffmpeg and native. *Confident.*
-- **Known limit: adopted transcripts stay referenced.** Package adoption
-  retains an asset → transcript-generation reference for every generation the
-  asset listed. Such a generation is never reclaimed even once stale, although
-  reads still skip it. Changing that means changing asset dependency retention,
-  which this slice didn't need. *Open; revisit if recipient libraries grow.*
-- **An unreadable pinned generation can't be exported.** It refuses with
-  `NOT_FOUND`, because the package can't carry evidence it can't read. No
-  0.1.33 row is unreadable, so this is theoretical. *Confident.*
+### Medium confidence
 
-## Slice 03
+**A gap in one clip splits the state of every processor that mixes it.** A
+track denoiser runs over three clips. One clip's source has a hole from 10 s to
+11 s. The denoiser's state stops at 10 s and restarts at 11 s, and over that
+second the other clips pass through unprocessed. That is "never learn across
+missing input", applied to every input. The alternative was to run the parent
+across the hole, where it would learn from a mix with a member missing. Revisit
+if users mix gappy captures under a parent denoiser. _Implementing agent · slice
+07b · medium._
 
-- **No seam shift.** Probe 1 decoded both seams shifted ±0.25 s and ±0.5 s.
-  Only −0.25 s resolved both, and a shift changes the recognized words
-  themselves, so it re-rolls evidence instead of settling it. A shifted
-  boundary would also need a 28.25 s decode or a new ownership plan.
-  Unresolved words go straight to start ownership. *Confident.*
-- **Every unresolved guarded observation gets an issue, published or not.** A
-  published one carries `at: { word }`. One that its own window doesn't
-  publish (it starts in the other core) carries `at: { range }` and
-  `published: false`, because that is where a word could be lost. Points that
-  aren't published have no `at`. *Moderately confident; it doubles the issue
-  count at a lexical disagreement such as "video"/"videos".*
-- **A pair with an ambiguous member, or one that crosses an accepted pair, is
-  unresolved on both sides**, rather than accepted. That keeps the old
-  refusal's uniqueness rule as the line between pairing and flagging.
-  *Confident.*
-- **The end-of-media expectation was wrong.** The overruns in receipts 02 and
-  04 are the trailing `.` token, and the published word is timed by its
-  speech-bearing tokens, so nothing published is clamped. The old refusal came
-  from a check on every raw token, which is deleted. Clamping applies to the
-  published spoken extent, and an issue is raised only when a published word
-  was clamped. The end-to-end run shows no `timing-clamped`. *Confident: probe
-  2 and the run agree.*
-- **A malformed token drops its whole word, not just the token.** Dropping one
-  token would publish altered text. The issue names the first malformed token;
-  `at` is the window's owned range, because the word's own time may be
-  nonfinite. Raw JSON spells nonfinite values `"NaN"`/`"Infinity"`
-  (`nonConformingFloatEncodingStrategy`); finite output is byte-identical.
-  *Confident.*
-- **`INVALID_SPEECH_TIMING` stays as `malformed` for two invariants.** One is
-  an unrepresentable raw line. The other is a merged word without a span,
-  which the merger can't produce. *Confident.*
-- **Issue codes are `boundary-unresolved`, `timing-clamped` and
-  `word-dropped`.** Their evidence names `window` (the decoded window's
-  ordinal) and `observation` or `token`, so a caller can find the candidate in
-  `raw.jsonl`. *Confident.*
-- **Raw lines carry `issues`, with `word` local to the line.** Core turns
-  `word` into the transcript ordinal at index time and validates the result
-  against the composition `issueSchema`. A malformed raw issue fails the
-  attempt as `INVALID_RESPONSE` ("Raw transcript issue is malformed"), like
-  any other malformed raw line. *Confident.*
-- **Word rows read issues by transcript generation.** A transcript generation
-  is the `attemptId` that published it, both for asset jobs and for rendered
-  recognition, so `TranscriptStore.wordRecords` looks up `output_issues` by
-  that id and `json_extract(issue,'$.at.word')`. The rows then reach
-  `transcript.get`, `transcript.review`, `transcript.render.get` and project
-  rows, which spread source rows. `TranscriptStore` creates the
-  `output_issues` table itself (table only; the retirement triggers stay with
-  the job queue), so stores that run without a queue can read it.
-  *Moderately confident; it couples the transcript store to the publication
-  key rule from 01c.*
-- **`TranscriptStore.ingest` returns `{ transcript, issues }`.** The issues
-  must reach `StagedJobResult.issues`, and the store has no job generation to
-  write them itself. The transcript job now returns a `StagedJobResult`.
-  Rendered recognition reports the transcript's issues as its own.
-  *Confident.*
-- **Package import re-derives issues.** `stagePortable` returns the issues it
-  indexed, and `adoptArtifact` takes them, so the package format is
-  unchanged. A generation the recipient already holds isn't re-indexed, so it
-  contributes none; its local publication, if any, already has them. *Open:
-  untested through a real package round trip.*
-- **Harness literals.** `editing/synchronization/recognition.mjs` sends a
-  fresh native request, so it now names recipe v3. The retained protocol
-  assertion in `full-domain-lexical-replay.mjs` keeps v2 as historical
-  evidence. *Syntax-checked only.*
+**Stored verdict words stay verdicts (departs from slices 07f and 07j).** The
+speaker-continuity receipt keeps `accepted`/`refused` and its `failedGates`.
+The alignment worker keeps `conditionalStatus: "refused"`. The slices wanted
+issues for both. These are evaluation verdicts stored in evidence, like
+synchronization evidence, so changing them would break strict reads of 0.1.33
+receipts and force an identity bump for vocabulary alone. The refusal ledger
+allow-lists both, with reasons. Revisit if a consumer reads them as operation
+refusals. _Implementing agent · slices 07f, 07j · medium._
 
-## Slice 04
+**`UNAVAILABLE_SUPPORT` stays a refusal, and names the supported runs.** An
+alignment request covers 30 s of a source with a hole at 10 s. The request
+carries one caller text, and only the caller knows which words fell in the hole,
+so aligning per run is unsound. The speaker model observes once per job
+generation. Observing per run would need new generation, result and adoption
+machinery: about 93 touch points and several hundred lines. So all four sites
+stay class A, missing prerequisite: source-channel admission
+(`selectSourceChannelRange`), native `SourceChannelPCM`, integrated loudness and
+rendered speech. Instead, each refusal's details name the runs (`available`,
+`unavailable`), so the caller narrows the range in one step. The rejected
+alternative was slice 04's "publish the supported samples". _Product's user ·
+slice 07b · high for alignment, medium for the speaker model._
 
-- **Issues are derived from the processing evidence alone.**
-  `audioProcessingIssues` in `packages/core/src/audio-measurement.ts` is the one
-  rule. Producers publish exactly its output, and retained reads, imports and
-  movies re-derive it. A stored issue list that differs is `ARTIFACT_CHANGED`
-  (read) or `INVALID_PACKAGE` (import). So 0.1.33 evidence, which only exists
-  because it met its targets, derives no issues and reads as before.
-  *Confident.*
-- **The limiter's sample peak joins its evidence.** A limiter issue can't be
-  derived without the measured peak, so evidence gains an optional
-  `limiter: { samplePeak }` (linear, compared exactly as the old gate did). 0.1.33
-  limiter evidence omits it and derives no issue; its bytes and strict schema are
-  unchanged. This is the one additive field in retained evidence. *Confident.*
-- **One `normalization-target-unmet` issue per domain, listing each missed
-  target.** `missed[]` carries `target`, `requested`, `achieved` and `excess`
-  (distance past the requested value, not past the tolerance; the tolerance only
-  decides whether the target is listed). Gain-only adds `requestedGainDb`,
-  `gainDb`, `peakToLoudnessDb` and `maximumFeasibleTargetLufs`; dynamic adds
-  `attempts`, `selectedAttempt` and `stopReason`. The domain is named by
-  `domainIndex` in evidence, because compiled domains carry no step id.
-  *Confident.*
-- **"Best" keeps the old choice among passing candidates.** The rank is the total
-  miss beyond tolerance, then integrated error, then index. A candidate that meets
-  every target has zero miss, so among those the closest to the loudness target
-  wins, exactly as before; the spec's "smallest total excess, ties by index" only
-  decides among candidates that miss. A literal "ties by index" would have made the
-  correction loop pointless whenever its first candidate already passed. Retained
-  reads check that `selectedAttempt` is this choice. *Confident.*
-- **The correction loop's step is one pure function.** `normalizationStep` decides
-  the next offset or the stop reason; the service loop and the issue derivation
-  both use it, so a stop reason is re-derivable from retained attempts. It adds
-  `target-reached`, which the old chain lacked but never needed to name. Evidence
-  whose last attempt the rule would have continued is `INVALID_RESPONSE`.
-  *Confident.*
-- **Unmeasurable means passing through at unity, in both modes.** A signal with no
-  integrated loudness, range or true peak, or a dynamic first pass with non-finite
-  statistics, renders through `volume=1` and records one attempt with a null
-  offset. `normalization-unmeasurable` names the measurement and reason. Short
-  domains (under 3 s) have no loudness range, so they now pass through instead of
-  refusing. *Confident.*
-- **Jobs without staged files return `{ result, issues }`.** `StagedJobResult`'s
-  `publish` and `close` became optional so the audio inspection, preview (movie),
-  encoded-audio and export jobs can publish issues without staging hooks.
-  *Confident.*
-- **Exports inherit their rendition's issues.** This settles slice 01's open
-  item for video and audio exports: the export intent's pinned rendition
-  (`preview`) records the issues of the preview or PCM it copies, and the export
-  job publishes them. An M4A inherits its PCM's issues. Intents admitted before
-  this change have no `issues` and inherit none. The status reads `committed` as
-  soon as the receipt lands; the issues appear once the export job publishes.
-  *Confident for video and audio; caption and package exports carry none.*
-- **Prepared-audio packages carry `issues`.** `portablePreparedAudioSchema`
-  gains an optional `issues`; an absent field (a 0.1.33 package) means none.
-  Import compares it with the re-derived list and adopts the publication with
-  those issues (`JobQueue.adoptArtifact` takes them). *Confident.*
-- **Audio extraction doesn't carry treatment issues yet.** An extraction of
-  processed project audio (rendered speech) re-renders through the same path but
-  publishes none of the treatment's issues. *Open; it needs a rule for derived
-  artifacts that consume treated audio.*
-- **`SourceChannelPCM` `UNAVAILABLE_SUPPORT` was not converted.** Core admission
-  (`selectSourceChannelRange`, `packages/core/src/source-selection.ts`) refuses
-  the same gap before native runs, so converting only the native sink changes
-  nothing a caller can reach. Its consumers are the speaker model (its admission
-  requires a complete 30 s span) and alignment, which needs a contiguous model
-  input. Publishing supported samples "never as silence" therefore means either
-  shifting alignment timing by concatenating runs or aligning each run
-  separately. That's a design decision for the providers, not a gate flip. The
-  owner chose per-run consumers; see "Slice 07b (support gaps)" below for why
-  it was measured and not shipped, and how it was resolved.
+**Face results say `unavailable` with a reason, but carry no issue
+(corrected).** A trajectory with missing observations returns
+`state: "unavailable"`, with `reason: "face_observations_unavailable"`. Linear
+prediction returns `reason: "prediction_not_implemented"`. Slice 07i asked for
+"`unavailable` plus an issue", but slice 01 exempts per-item states such as
+`prediction.state`, and no code was added. The earlier entry didn't say the
+issue was left out. _Implementing agent · slice 07i · medium._
 
-## Slice 05
+**Word rows show only the issues inside the 1000-issue bound.** Suppose a messy
+transcript publishes 1,400 speech issues. The output keeps 1,000 plus an
+`issues-truncated` marker. Rows past the bound look clean, and only the marker
+says why. Raw evidence keeps every candidate. The rejected alternative was a
+second, unbounded word-issue store. _Implementing agent · whole-spec review ·
+medium._
 
-- **Stopped at the probe; no field was built.** One RMS over the whole
-  "okay?" word drops only 3.4 dB from the dry tap to the processed tap; the
-  bar was about 10 dB. Denoise removes the word's soft onset and tail (10–16
-  dB per 20 ms bucket) but keeps its loud middle, and a whole-word average
-  is dominated by that middle. `waveform.get` already reports per-bucket RMS
-  for each channel on any tap and range, and it shows the loss. A new
-  `rmsDbfs` would be a second owner of RMS that reads the wrong way here. The
-  details are under "Probe result" in the slice. *Confident in the numbers.
-  Closing the slice versus reshaping it is the owner's call.*
-- **The probe read PCM, not an unbuilt field.** `audio.get` returns the exact
-  selected PCM that the meter would read, so its RMS is the value `rmsDbfs`
-  would have reported. That kept the probe ahead of any code. *Confident.*
+**Every unresolved seam observation gets an issue, published or not.** At the
+219 s seam, the left window hears "video" and the right window hears "videos".
+"video" publishes with `boundary-unresolved` at its word. "videos" gets one at
+its range, with `published: false`, because a word could have been lost there.
+This doubles the count at a lexical disagreement. A pair with an ambiguous
+member, or one crossing an accepted pair, is unresolved on both sides. That is
+the old refusal's uniqueness rule. _Implementing agent · slice 03 · medium._
 
-## Slice 06 (authored ranges, done ahead of the read ranges)
+**Issue rows retire through two triggers on `artifacts`.** When an artifact row
+is deleted or replaced, the triggers delete that attempt's `output_issues` rows.
+One rule covers regenerate, forget, owner deletion and settlement replacement,
+instead of four call sites each remembering. They are the repo's first
+production triggers. _Implementing agent · slice 01c · medium._
 
-- **The clamp keeps the same fraction of the placement.** A placement maps
-  linearly onto its source (`projectTime`), so the kept part of the source
-  maps to the same fraction of a project range, a content source range, or
-  clip-anchor fractions. A retimed clip keeps its rate. *Confident.*
-- **Replace clamps before its fit applies.** The fit then decides what a
-  shorter source means: hold and silence pad, exact refuses, trim trims. The
-  pinned edits test "trim past the stream's end refuses" now expects a
-  clamped, trimmed replacement with `range-clamped`. *Confident: this is the
-  slice's intended contract.*
-- **The `Selected range exceeds source bounds` pending site is retired while
-  its text remains.** The text now belongs only to strict validation of
-  *stored* documents (class A); authored selections never reach it.
-  *Confident.*
-- **Holds and image streams are untouched.** A hold is a point, and a point
-  outside its domain is malformed. *Confident.*
+**Re-anchoring shortens the clip, and the change doesn't cascade.** An anchor
+past its parent's source shortens the clip and its source by the same fraction.
+Children anchored to that clip aren't clamped in turn, and neither are the angle
+validity ranges on it. If they no longer fit, stored validation refuses the
+batch. That case is rare, so it stays strict. _Implementing agent · slice 06e ·
+medium._
 
-### 06b: read ranges, render admission and messages
+### High confidence
 
-- **One read-side helper, `admitReadRange(requested, domain)`, wraps
-  `admitRange` for wire ranges** (`range-admission.ts`). It returns the applied
-  range and `issues` (`range-clamped` or empty). A requested range that isn't a
-  nonempty half-open range is `INVALID_RANGE`. Project reads share
-  `admitProjectRange(durationUs, range)` in `project-window.ts`, so the project
-  window, rendered recognition, project evidence and package speakers apply one
-  rule. *Confident.*
-- **Where the issue goes depends on what the identity holds.** Rendered
-  recognition's job identity already keeps the requested range, so its clamp is
-  stored with the output (`StagedJobResult.issues`) and returned by
-  `transcript.render.get`. `transcript.render.prepare` admits synchronously, so a
-  range with no overlap refuses before any job. The other reads (`audio.get`,
-  preview, `transcript.get`/`review`, source and capture `timeline.events`/
-  `cursor.raw`, project evidence, package speakers) keep the *applied* range in
-  their cached identity and report the clamp as the result's top-level `issues`.
-  Every re-read of the same request, including a CLI `--wait` poll, recomputes
-  it, and a request for the applied range shares the same cached output. This
-  avoids changing those identities, which exports and extractions pin.
-  *Confident; it departs from the slice's "identity keeps the requested range"
-  for these reads, so review it.* **Superseded for rendered recognition** by the
-  whole-spec review: its identity now holds the applied range too, and every
-  clamp is reported per request.
-- **The CLI's ready marker counts a read's `issues` plus its published
-  output's `issues`.** It used to read `data.issues ?? published.issues`; an
-  always-present empty `data.issues` would hide published issues. *Confident.*
-- **Continuations keep the requested range.** A transcript page cursor stores the
-  requested range and re-admits it on each page, so every page reports the same
-  clamp. Event and evidence cursors digest the applied range. *Confident.*
-- **Integer-microsecond sites keep their own integer check** (transcript pages,
-  source and capture events) and refuse a fractional range with `INVALID_RANGE`,
-  as before. *Confident.*
-- **The trim pin "Trim range must stay within the clip's resolved interval" is
-  retired.** The kept range is admitted against the clip's resolved interval;
-  `edits.test.ts` dropped that refusal assertion and `range-admission.test.ts`
-  owns the clamp. *Confident.*
-- **Left as refusals, with reasons:**
-  - content anchors (`model.ts` ~143) and angle validity (`model.ts` ~444) are
-    stored-document validators. Clamping them at authoring time means clamping
-    inside place, reanchor and `angle.declare`, composed with the source clamp,
-    and that isn't straightforward. *Deferred; resolved in 06e (clamped when
-    authored).*
-  - the transcript execution range (`transcript-processing.ts` ~236) is part of
-    the stored speech-execution identity that native receipts are validated
-    against (`transcript.ts` ~850). It belongs with slice 03's seam work.
-    *Deferred; resolved in 06e (clamped before the identity forms).*
-  - the project alignment range (`project-service.ts` ~525) aligns caller text to
-    that range. Clamping the audio while keeping the full text needs a decision,
-    and the only test seam needs a prepared tap and the native aligner.
-    *Deferred; resolved in 06e (the text aligns against the applied range).*
-- **6b splits the curve error three ways:** a clock error (details `clock`,
-  `slot`, `expectedKey`: `fraction` or `microseconds`), a malformed curve
-  (details `reason`), and a bound error (details `slot`, `bounds`). All three
-  stay `INVALID_COMPOSITION` refusals inside `INVALID_EDIT`. *Confident.*
-- **6c maps `transcript.render.prepare` and `.retry` `--wait` to
-  `transcript.render.get`** with only `projectId`, `revisionId` and the
-  generation: the job's `attemptId`, or the already-published output's
-  generation. *Confident.*
+**Decision A: an unresolved seam word publishes, with `boundary-unresolved`.**
+A missing word is worse than a flagged one, because it breaks quotes, cuts and
+captions. The rejected option was to publish no word and record an unresolved
+span. Each word goes to the window whose core holds its start. There is no seam
+shift. Shifting by ±0.25 s or ±0.5 s resolved both seams only at −0.25 s, and a
+shift changes the recognized words themselves. _Product's user · slice 03 ·
+high._
 
+**Decision B: audio treatments always publish their best result, with issues.**
+An earlier plan's opt-in `onMiss: "publish"`, defaulting to refuse, lost to the
+principle. When gain-only targets conflict, the peak ceiling wins and loudness is
+reported unmet; full gain would have shipped about +6.7 dBTP on receipt 05. The
+dynamic loop ranks candidates by miss beyond tolerance, then integrated error,
+then index, so among passing candidates the closest to target still wins (a
+literal "ties by index" would make the loop pointless once its first candidate
+passed). An unmeasurable signal, including any domain under 3 s, passes through
+at unity with `normalization-unmeasurable`. _Product owner, revising the
+product's user · slice 04 · high._
 
-## Slice 06e (deferred range sites)
+**Decision C: no sync primitive.** The session synced the far camera (146.58 s)
+from word timings in both transcripts, then PCM. A primitive would bring
+confidence thresholds and drift policy into the product. Sync is skill guidance
+instead: word anchors, a drift check, optional PCM refinement, explicit offsets.
+Reopen only if replays show agents repeatedly failing, and then with a
+threshold-free lag-correlation curve. _Product's user · slice 08 · high._
 
-- **The transcription clamp is reported per request, not stored with the
-  generation.** The plan said the job's published issues. But the clamped range
-  forms the same identity as a request for the applied range, so both share one
-  generation. A stored clamp would show on the exact request, and a clamped
-  request that joined a finished generation wouldn't see it. So
-  `transcript.prepare`/`retry` (and `transcript.review`, which passes its range
-  as the execution range) return `range-clamped` in the status's top-level
-  `issues`, recomputed on every call, like the 06b reads. *Confident; this
-  departs from the decision's wording, so review it.*
-- **The CLI's `--wait` on `transcript.prepare` carries the clamp.** Its pinned
-  `transcript.get` read can't take an execution range, so the wait adds the
-  preparation's `issues` to that read's `issues`. *Confident.*
-- **No implementation identity bump for transcription or alignment.** An
-  in-range request forms a byte-identical identity (checked), and an overrun used
-  to produce nothing, so no existing generation's output changes. *Confident.*
-- ~~**The project alignment clamp publishes with its output.**~~ **Superseded**
-  by the whole-spec review: the identity holds the applied range and the clamp is
-  reported on each `alignment.prepare` result, like every other range. The
-  resolver still returns `issues`, but they never enter the identity.
-- **Alignment is proved in two halves.** A service test proves admission (an
-  overrun now reaches the prepared-tap lookup; no overlap is `INVALID_RANGE`); a
-  core test proves a resolver's issue publishes with the evidence. The native
-  aligner over a clamped range was not run. *Confident in the halves; the whole is
-  assumed.*
-- **A placement keeps the part every domain keeps.** The media source within its
-  stream and a content anchor within its parent's selected source each keep a
-  fraction of the placement; the clip keeps their overlap. Each range that
-  overran reports its own clamp, with the range finally stored as applied. A range
-  that shrank only because the other one overran gets no issue of its own, since
-  its bounds weren't the cause; the stored clip shows it. *Confident.*
-- **A source and an anchor that keep disjoint parts refuse** with
-  `INVALID_RANGE`, naming both requests and bounds: empty after clamping is
-  malformed. *Confident.*
-- **Reanchor shortens too.** An anchor past its parent's source shortens the clip
-  and its source by the same fraction, and "reanchor preserves the interval" now
-  means it keeps the same part of the old interval. A child content-anchored to
-  the shortened clip, or an angle validity range on it, isn't clamped in turn; if
-  it no longer fits, stored validation refuses the batch. *Fairly confident; that
-  cascade is rare and left strict.*
-- **Angle validity clamps per range; the offset never moves.** Each piecewise
-  segment is clamped on its own, and a segment wholly outside its member refuses
-  rather than being dropped. *Confident.*
-- **No pinned test asserted these four refusals**, so none flipped. *Checked by
-  search.*
+**Slice 05 closed with no new level field.** One RMS over the word "okay?"
+drops only 3.4 dB from the dry tap to the processed one. Denoise takes 10–16 dB
+off the onset and tail but spares the loud middle. `waveform.get` buckets on
+both taps already show that loss. An `rmsDbfs` field would be a second owner of
+short-window level, and on this word it would point away from the loss. The
+skill teaches the bucket comparison instead. _Product's user · slice 05 · high._
 
+**The replay uses a cloned library and no app install (departs from slice
+11).** The user's library is cloned copy-on-write to `~/.yap-replay/library`,
+and this checkout's service runs on the clone. `~/.yap-replay/bin/yap` is this
+checkout's CLI pinned to it, forwarding `yap ffmpeg` and `yap ffprobe` to the
+app's bundled tools. The personal yap skill points at the replay worktree for
+the duration; the 0.1.35 skill and `~/Movies/yap-launch` are backed up. The
+rejected option, slice 11's "build and install the normal way", would replace
+the installed app and touch the live library. _Product owner with the
+implementing agent · 2026-10-13 · high._
 
-## Slice 09
+**One range rule: work is keyed by the applied range; the clamp belongs to the
+request (departs from slice 06a).** On a 5 s project, asking for 0–10 s is the
+same work as asking for 0–5 s, and both share one job and output. Only the
+overrunning request's answer carries `range-clamped` in its top-level `issues`,
+with the requested range, the applied range and the bounds. Every re-read
+recomputes it, including a `--wait` poll. A range with no part inside, or one
+that isn't a nonempty half-open range, is `INVALID_RANGE`. The rule covers
+every read, rendered recognition, transcription execution ranges and project
+alignment (which aligns the caller's text against the applied range), all
+through one admission family built on composition's `admitRange`. A transcript
+page cursor keeps the requested range, so every page reports the same clamp. An
+empty project reads as `0..0` only when no range is stated. Slice 06a wanted the
+identity to keep the requested range and store the clamp with the output; that
+splits identical work, and a request joining a finished generation would miss
+its own clamp. The native aligner wasn't run over a clamped range.
+_Implementing agent · slices 06b, 06e, whole-spec review · high._
 
-- **The variable is `FIXTURE_LABEL`, and `omit` is its only value.** Any
-  other non-empty value fails before Swift compiles, so a typo can't
-  silently produce labelled shots. *Confident.*
-- **The runner passes the label as an argument, not through the
-  environment.** The shared `fixtureLabel()` in `fixtures/swift-controls.mjs`
-  reads the variable once. Each runner passes the result as a trailing
-  argument, the same way the fixtures already take their output directory.
-  Without that, the Swift side would depend on inheriting the environment.
-  *Confident.*
-- **The unlabelled Library title is "Library".** That's the production
-  window title (`LibraryWindow.swift`), not an empty bar. *Confident.*
-- **`settings-view-shots` doesn't honour the variable.** It draws no label,
-  so there's nothing to omit. *Confident.*
-- **The harness test runs a copy of `harness.mjs`.** The copy sits in a
-  scratch tree where no `dist/` exists, so the missing-app message is proven
-  whether or not this checkout has a build. *Confident.*
-- **The label test checks pixels, not fixture metadata.** It decodes both
-  PNGs with ffmpeg, which the macOS tests already use, so it adds no PNG
-  dependency. It requires a difference, and only inside the label's region.
-  The region is derived from the fixture's reported backing scale and
-  content height. *Confident.*
+**Authored ranges shorten the placement, and points stay refusals.** Take an
+11.46 s placement against an 11.444 s movie. The clip keeps the same fraction of
+its project range, content range or anchor fractions, and a retimed clip keeps
+its rate. When a source and a content anchor both overrun, the clip keeps the
+overlap of what each keeps, each overrunning range reports its own clamp, and
+disjoint parts refuse with `INVALID_RANGE`. Replace clamps before its fit, so
+ripple sizes from what plays. Trim clamps to the clip's interval. Angle validity
+clamps per segment and never moves the offset; a segment wholly outside refuses.
+Issues carry `operationIndex`. Holds and image streams are points, and points
+outside their domain stay malformed. Stored documents are still validated
+strictly. Holding the last frame was rejected, because it invents picture.
+_Implementing agent · slices 06a, 06e · high._
 
-## Slice 07
+**Issues are derived from retained evidence, never stored in it or carried in
+packages.** Each producer re-derives its issues from what it already keeps:
+treatments from processing evidence (`audioProcessingIssues`), prepared signals
+from recipe gaps plus processing evidence, frames from the receipt's
+`textFallbacks` (`textFallbackIssues`), and transcripts from `raw.jsonl`. A
+retained read or import compares the stored list against the derivation. A
+mismatch is `ARTIFACT_CHANGED` on read and `INVALID_PACKAGE` on import. 0.1.33
+evidence derives no issues, so it reads as before. Packages carry no `issues`,
+which makes slice 01's "read a missing `issues` as `[]`" moot. Every
+`adoptArtifact` call names its issues, and adopters whose producers publish none
+pass `[]`. A full package round trip of transcript issues is untested.
+_Implementing agent · slices 03, 04, 07a, whole-spec review · high._
 
-- **07c angle groups.** Refused evidence no longer vetoes an angle group: the
-  offsets are caller-authored, and the evidence is a reference. Stored-document
-  validation dropped the check, and `angle.declare` reports
-  `synchronization-evidence-refused`. *Confident.*
-- **07g framing collapses every unmet constraint into one issue code,
-  `framing-constraint-unmet`**, with `evidence.constraint` naming it. This
-  avoids registering seven near-identical codes. The plan is `ready`
-  (geometry plus issues) or `unavailable` with a reason: subject missing,
-  ambiguous or out of bounds, or no feasible uniform crop. *Confident.*
-- **07g's harness consumer (`subject-observations.mjs`) keeps its old
-  semantics.** "Accepted geometry" now means ready *with no issues*. Only a
-  syntax check was possible: the script is a research harness over real
-  media that no suite runs. *Unverified by execution.*
-- **07h dialogue proposals drop `peakPolicy` and the "constrained" status.**
-  Statuses are `proposed` (a gain draft, possibly with `gain-constrained`
-  issues naming the limit) or `unavailable` (a `proposal-unavailable` issue
-  naming the reason). The gain bounds now *clamp* rather than refuse,
-  consistent with the governing principle; the true-peak ceiling wins when it
-  conflicts with the minimum bound. `targetMet` is removed because the issues
-  carry it. *Confident.*
-- **07h shape validation lives in `packages/protocol/src/skill-issues.test.ts`.**
-  Skill helpers can't import the vocabulary at runtime; the protocol package
-  can, and imports the helper by relative path. *Confident.*
-- **07h harness consumer `dialogue-matching.mjs` only lost `peakPolicy`.**
-  Syntax-checked; it's a real-media harness that isn't run here. *Unverified
-  by execution.*- **07d: an SRT timing line stays a refusal; markup publishes.** Markup,
-  entities and ASS tags only risk being rendered as formatting, so they get
-  `srt-literal-markup`. A literal timing line inside a cue makes readers split
-  the file into an unintended extra cue, which is malformed for SRT. It keeps
-  `UNSUPPORTED_FORMAT`, with its own message. *Confident.*
-- **07k: caption diagnostics ride on the export job's publication.** The
-  sidecar returns `issues` (`caption-omitted`, `caption-overlap-added`,
-  `caption-styling-discarded`, `srt-literal-markup`). The exporter returns
-  them as the job's staged issues, so export status shows them through the
-  01d path. The status snapshot no longer projects `omitted`,
-  `addedOverlaps` and `discardedStyling`. Exports committed by 0.1.33 keep
-  those fields in their stored snapshot, but status no longer shows them.
-  That's a derived view, accepted under the no-compat rule. *Confident.*
-- **07k issues appear on publication, not at admission.** The harness's
-  admission-time overlap assertion moved to the committed status. *Confident.*
-- **07i face status words become `unavailable`.** `face.trajectory.get`
-  returns `state: "unavailable"` when observations are missing, and linear
-  prediction reports `state: "unavailable"`. Both are computed at read time,
-  so nothing retained changes. *Confident.*
-- **07f and 07j: verdict vocabularies stay (deviation from the slice
-  table).** The speaker-continuity receipt's accepted/refused verdict and
-  the alignment worker's `conditionalStatus` are evaluation verdicts stored
-  in retained evidence, like synchronization evidence. Renaming them, or
-  turning `failedGates` into issues, would break strict reads of retained
-  0.1.33 receipts and need an identity bump, for vocabulary alone. They're
-  allow-listed in the ledger with reasons. `failedGates` stays the gate
-  results inside the verdict. *Moderately confident: revisit if a consumer
-  reads these as operation refusals.*
-- **07e HDR stays a refusal, with what it saw.** Both HDR qualification
-  refusals carry their evidence in `details`: the container declarations and
-  FFmpeg's reading, or the codec and inspection facts. The caller can see
-  which declarations disagree. *Confident.*
-  by execution.*
+**The limiter's sample peak is the one additive field in retained evidence.** A
+limiter miss can't be derived without the measured peak. So evidence gains an
+optional, linear `limiter: { samplePeak }`. 0.1.33 evidence omits it, keeps its
+bytes and derives no issue. _Implementing agent · slice 04 · high._
 
-## Slice 07b (support gaps)
+**One `normalization-target-unmet` per domain.** It is keyed by `domainIndex`,
+because compiled domains have no step id. `missed[]` lists each target with
+`requested`, `achieved` and `excess`, measured past the requested value; the
+tolerance only decides whether a target is listed and isn't recorded, though
+slice 01 said it would be. Gain-only adds `requestedGainDb`, `gainDb`,
+`peakToLoudnessDb` and `maximumFeasibleTargetLufs`; dynamic adds `attempts`,
+`selectedAttempt` and `stopReason`. One pure step function, `normalizationStep`,
+drives the loop and re-derives the stop reason. _Implementing agent · slice 04 ·
+high._
 
-- **The split lives in the state-domain owner.** `deriveStatePlan`
-  (`packages/composition/src/processing-state.ts`) cuts every member span at
-  unavailable support anywhere in its input prefix, the detector's prefix
-  included, after the shared-state validity refusals. Each remaining run starts
-  its own domain. Like this: a denoiser that hits a hole in the recording stops,
-  and starts fresh after the hole, instead of "hearing" made-up silence.
-  Gap-free plans come out byte-identical, so no existing manifest, prepared
-  state or cache changes. *Confident.*
-- **A gap inside a mix splits the parent's state too.** For a track or output
-  processor, a hole in any one child clip cuts the parent's span, so the
-  processor doesn't run over the hole; the other clips pass through unprocessed
-  there. That is the "never learn across missing input" rule applied to every
-  input. Alternative: run the parent over the hole as its own domain (it would
-  learn from a mix with a missing member). *Moderately confident; revisit if a
-  user mixes gappy captures under a parent denoiser.*
-- **The domain records `supportGaps`; the issue is derived from it.** Each split
-  domain carries every gap cut from its span. `support-gap` evidence is
-  `{ clipId, unavailable, stepIds }` with `at: { range }`, one issue per gap,
-  naming the steps of the selected domains it split. A read of any run of a
-  split processor reports every gap of that processor's span, because whole-
-  domain processors (normalization) measure differently on both sides of a
-  split. *Confident.*
-- **`support-gap` is published with the output, not the request.**
-  `projectComposition().window()` now returns `issues` (the request's, such as
-  a clamp) and `outputIssues` (the output's). Project audio and preview jobs
-  publish `outputIssues` with their treatment issues, so exports inherit them.
-  Audio extraction still carries neither (the slice 04 open item). *Confident.*
-- **`inputs[].unavailable` stays in the plan schema and is now always empty.**
-  Removing it would change every stateful manifest and re-key prepared state
-  for every user, for no behaviour. *Confident; delete it with the next change
-  that re-keys state anyway.*
-- **Native keeps its guard as a malformed-plan check.** `CompositionState`
-  refuses a state plan that still requires unavailable support with
-  `INVALID_REQUEST`, since the compiler never produces one. *Confident.*
-- **No identity bump.** The core refusal ran when a request was planned, before
-  any job keyed by input existed, and native's guard was only reachable
-  through a prepared resource that could not have been prepared for a gapped
-  program. So no stale failed job answers for this gate. Rendered speech over a
-  gap still refuses through its own `UNAVAILABLE_SUPPORT` gate. This departs
-  from the "every conversion bumps" rule because the rule's purpose doesn't
-  apply. *Moderately confident; review.*
-- **`UNAVAILABLE_SUPPORT` (source-channel reads) was measured, not shipped.**
-  - *Alignment per run is unsound.* The request carries one caller text for the
-    whole range. Aligning that text against each run forces every word into
-    every run; the aligner can't know which words fell in the hole. Splitting
-    the text is the caller's call. A multi-run alignment is ambiguous input
-    (class A), and even a single run after an edge gap misplaces words spoken
-    in the gap. This matches 06b's deferral of the project alignment range.
-  - *The speaker model per run is disproportionate.* Speaker evidence is one
-    observation per job generation: `speaker_evidence_generations` is keyed by
-    generation, the job's `attemptId` is that generation, and portable adoption
-    checks `publication.attemptId === metadata.generation`. Per-run observation
-    needs several generations per job, a new job result shape, and new
-    adoption. Measured touch points: about 93 identity/PCM references across
-    `speaker-evidence.ts` (59), `speaker-processing.ts` (14),
-    `speaker-read.ts`, `portable-speakers.ts`, `source-channel.ts`,
-    `source-speakers.ts` and `speaker.ts`, and 25 tests across five files.
-    That's several hundred lines for this consumer alone.
-  - So `selectSourceChannelRange` and `SourceChannelPCM` still refuse, and the
-    code stays in `pendingConversion`. Two more `UNAVAILABLE_SUPPORT` sites
-    share the code: integrated loudness over a hole (`acoustic-inspection.ts`)
-    and rendered speech (`rendered-speech.ts`). Neither is in the audit, but
-    the one general rule reaches them too.
-- **Resolution: `UNAVAILABLE_SUPPORT` stays a refusal, and names the supported
-  runs.** Decided as the product's user on the measurements above. All four
-  sites (source-channel admission for alignment and the speaker model,
-  integrated loudness, rendered speech) are class A, missing prerequisite:
-  each consumer's input contract is one contiguous span, and splitting the
-  caller's text or measurement across a hole is the caller's call. What keeps
-  this cheap is the details: the source-channel refusal now returns `range`
-  and its `available` runs (integrated loudness already did; rendered speech
-  names its `unavailable` ranges), so the caller narrows to one run in one
-  step. Like this: "your 30 s window has a hole at 10 s; here are the two
-  pieces either side of it." Alternatives: per-run speaker observation
-  (several hundred lines of new generation and adoption machinery) and
-  per-run alignment (unsound). *Confident for alignment; moderately confident
-  for the speaker model, revisit if gapped captures become common.*
+**Transcription publishes past local problems.** Clamping applies to a
+published word's speech-bearing extent; the receipts' overruns were a trailing
+`.` token, so nothing published clamped. A malformed token drops its whole word
+with `word-dropped`, because dropping one token would alter the text.
+`INVALID_SPEECH_TIMING` stays only for an unrepresentable raw line and a merged
+word without a span. Raw lines carry `issues` with a line-local word, which core
+rebases to the transcript ordinal. A malformed issue fails the attempt as
+`INVALID_RESPONSE`, not the `INVALID_NATIVE_RESPONSE` slice 01 named.
+_Implementing agent · slice 03 · high._
 
-## Slice 07a
+**Transcript reads surface the issues published with what they read.** A ready
+source `transcript.get`, `.search` or `.review` returns
+`published: { generation, issues }` beside its own range issues. That's the only
+place for issues tied to no row, such as `word-dropped`. Project reads put each
+source's `issues` on its `dependencies` entry, outside the cached identity. The
+rejected alternative was one top-level list mixing a read's own clamp with
+inherited problems. _Implementing agent · slice 03, whole-spec review · high._
 
-- **A missing glyph is CoreText's last-resort face, not only glyph 0.** With
-  fallback on, CoreText never leaves glyph 0 for an uncovered character: it
-  draws it with `LastResort`, which shows a "?" box. So code points drawn by
-  `LastResort`, or drawn as glyph 0 by any face, are `glyph-missing`. Code points
-  another real face drew are `font-substituted`. A probe over 14 edge characters
-  found no glyph 0 at all. *Confident.*
-- **The receipt carries facts; core makes the issues.** Native adds
-  `textFallbacks: [{clipId, face, substituted, missing}]` to the picture receipt
-  and to the movie result. It is one entry per clip and face, deduplicated
-  across frames, and omitted when every text drew in its pinned face. Core turns
-  these into issues with one function, `textFallbackIssues`
-  (`packages/core/src/text-fallback.ts`). That keeps issues out of retained
-  evidence, as slice 01 requires, and lets a retained frame re-derive its issues
-  (slice 04's rule). Old receipts lack the field and read as clean, which is
-  true, because they refused instead. *Confident.*
-- **Evidence shape.** Both codes carry `{clipId, requested: {assetId,
-  postScriptName}, used, codePoints}`. `used` is the PostScript name actually
-  drawn. Code points are Unicode scalars in first-occurrence order, without
-  repeats. There is no `at`, because a clip isn't one of the issue subjects;
-  `clipId` names it. *Confident.*
-- **The receipt check got looser, but not open.** A layout line may now name
-  the pinned face or a face its clip's fallback report names, and every reported
-  face must appear in that clip's lines. A fallback for a clip that drew no text
-  is `INVALID_RESPONSE`. *Confident.*
-- **A project index publishes its frames' issues,** once each, in the order it
-  first saw them. Otherwise an index over fallback text would have dropped the
-  issues its frames published. *Moderately confident: the index's issues now
-  describe all its frames together, not per candidate.*
-- **The `FontFile` whole-face check is gone.** `FontFile.load` used to refuse
-  when CoreText resolved another face than the one named in the pinned file. Now
-  the raster compares each run's face by name as well as by graphics font, so
-  that case renders and reports every code point as `font-substituted`. It can't
-  be reproduced here. *Moderately confident.*
-- **All three font refusals became real codes,** not just `FONT_UNAVAILABLE`.
-  `FONT_CHANGED` (conflict) and `FONT_GLYPH_BOUNDS_UNAVAILABLE` (A) were also
-  message text inside `UNSUPPORTED_MEDIA`. Rule 4's scanner only missed them
-  because they had no `": "` suffix. A caller matching `UNSUPPORTED_MEDIA` for a
-  changed font now sees `FONT_CHANGED`; nothing in the repo matched on it.
-  *Confident.*
-- **Identity bumps:** `native-composition-picture-v20` → `v21` (frames, and
-  project indexes through their pinned frame renderer), and
-  `native-composition-movie-v24` → `v25` (previews and the exports that pin
-  them). `catalogFormat` is unchanged. *Confident.*
-- **Visual check.** Frames are in [assets/07a-fonts](assets/07a-fonts/frames.json).
-  The unprimed critique noted that the fallback check mark doesn't match Arial,
-  and that the placeholder box is a little taller than the caps and sits
-  slightly low. Both are what the issues report; nothing is clipped or
-  misaligned. Before this change, both frames refused. *Confident.*
+**Export status reports pinned issues from admission, and treatment issues on
+publication (corrected).** Caption diagnostics and a package's
+stale-transcript list live in the pinned snapshot, so status shows them from
+admission onward and across crash recovery. Video and audio exports add the
+issues of the preview or PCM they copy once they publish. Older intents carry
+none. Corrected: earlier entries said caption diagnostics ride the export job's
+publication and appear only after it publishes; they are snapshot facts
+(`apps/service/src/exports.ts:127`, `:885`). _Implementing agent · slices 01d,
+04, 07k · high._
 
-## Whole-spec review fixes (publication)
+**Caption sidecars write. Only a timing line inside a cue refuses.** SRT
+markup, entities and ASS tags publish with `srt-literal-markup`; a literal
+timing line would split the cue for readers, so it stays `UNSUPPORTED_FORMAT`.
+Overlaps never refuse, and past the issue limit they're only counted.
+`caption-styling-discarded` was removed: dropped styling is a property of the
+format, not a problem with an output. Status no longer shows `omitted`,
+`addedOverlaps` or `discardedStyling`. _Implementing agent · slices 07d, 07k,
+whole-spec review · high._
 
-- **Bounding counts what earlier bounds dropped.** `boundedIssues` now adds up
-  the `omitted` of any `issues-truncated` it finds, keeps the first 1000 other
-  issues, and ends with one marker for everything left out. So bounding twice
-  gives the same answer as bounding once, and two bounded lists can be joined
-  and bounded again without losing count. A marker that sat in the middle of a
-  short list moves to the end. *Confident.*
-- **A prepared signal's issues come from its recipe and evidence, never from
-  the package.** Prepared audio now publishes `support-gap` like project audio
-  and preview do. Its issues are worked out from two things it already keeps:
-  the recipe (where state was split at a gap) and the processing evidence
-  (normalization and limiter results). A retained read works them out again and
-  refuses stored issues that differ. A package import also works them out, so
-  the portable `issues` field was removed. It never shipped in a release, and
-  0.1.33 packages never had it. Packages written by earlier builds of this
-  branch with that field no longer import. Slice 01's "portable schemas read a
-  missing `issues` as `[]`" no longer applies here: there is nothing to read.
-  *Confident.*
-- **Every adoption names its issues.** `adoptArtifact` no longer defaults to
-  none. A project screenshot index works its issues out from its retained
-  frames, using the same "each distinct issue once, in first-seen order" rule
-  its producer uses. Asset alignment, speaker, scene and source index adopters
-  pass `[]` and say why: their producers publish no issues. The index does not
-  check stored issues against its frames on read, as prepared audio does;
-  nothing asked for that. *Confident.*
-- **Caption overlaps never refuse.** The 10000-overlap budget only limited how
-  many issue objects were built. The cue budget (10000) already limits the
-  pairwise scan, and genuine overlaps were scanned without any overlap budget.
-  Past the issue limit, overlaps are now counted into `issues-truncated`
-  without being built, and the sidecar is written. *Confident.*
-- **Word rows keep the 1000-issue bound.** Word rows read their issues from the
-  bounded publication. When an output ends in `issues-truncated`, the issues
-  past the bound appear on no row either. The alternative was a second,
-  unbounded word-issue store, which is more storage and an unbounded write.
-  Retained raw evidence still keeps every candidate. The `transcript.prepare`
-  description says so. No test pins this: building over 1000 speech issues
-  costs more than the claim is worth, and the behaviour didn't change.
-  *Moderately confident: a long, messy transcript can now show clean rows near
-  its end, and only the marker says why.*
-- **Docs and ledger say what is true now.** The core README says retained
-  evidence and portable packages never carry issues. The composition README
-  says SRT writes markup with `srt-literal-markup`, and only a timing line
-  inside a caption refuses. The refusal ledger's `rules` describe `issue-code`
-  as an UPPER_SNAKE diagnostic that stays outside the issue registry, and say
-  that `pendingConversion` must stay empty. *Confident.*
+**Stale transcripts: one rule. They're skipped when something new is made,
+and honoured when pinned.** A complete generation is stale if this version
+can't read it, or if its recipe or policy isn't current (`currentTranscript`).
+`kindPolicy` isn't in the job key, so it doesn't count. Inventories, reads and
+new seeds skip a stale generation (`NOT_FOUND` with `stale: true`). Pins an
+existing revision holds read it historically (seeds, edits, export, import's
+seed lookup); skipping would break every captioned 0.1.33 project. Packages
+leave it out with `derived-stale-skipped` and the recipient regenerates it.
+Cleanup forgets the publication, and an old queued job retires as
+`ARTIFACT_CHANGED` rather than a raw `ZodError`. Corrected: the earlier entry
+said the skipped list had no issue surface yet
+(`packages/core/src/project-package.ts:682`). _Implementing agent · slice 02,
+later fixes · high._
 
+**Identity bumps, and their deliberate absence.** A bump re-keys work, so a
+failed 0.1.33 job stops answering for an input that can now publish. Bumped:
+speech (recipe `source-windows-20s-context4s-guard1s-v3`, policy
+`transcript-v4`); treatments (`bounded-offset-normalization-v2`,
+`linked-mono-max-limiter-v2`, keyed through `processorImplementations`); font
+fallback (`native-composition-picture-v21`, `native-composition-movie-v25`). Not
+bumped: ranges (in-range identities are byte-identical, and overruns produced
+nothing before); support gaps (their refusal fired before any input-keyed job,
+so no stale failed job answers); caption sidecars; `catalogFormat`. The
+support-gap case departs from slice 02's "every conversion bumps", because
+that rule's purpose doesn't apply there. _Implementing agent, under the product
+owner's 0.1.33 rule · all slices · high._
 
-## Whole-spec review fixes (reads and ranges)
+**Support gaps split state in the compiler. The issue rides the output, not
+the request.** `deriveStatePlan` cuts each member span at unavailable support
+anywhere in its input prefix, and each run starts a fresh domain. Each domain
+records its `supportGaps`. From those, `support-gap` is derived, carrying
+`{ clipId, unavailable, stepIds }`. A read of any run reports every gap of that
+processor's span. `window()` returns the request's `issues` apart from
+`outputIssues`. The plan's `inputs[].unavailable` stays, always empty, because
+removing it would re-key everyone's prepared state; delete it with the next
+re-key. Native keeps its guard as an `INVALID_REQUEST` malformed-plan check, and
+unverified channel layouts still refuse. Plans without gaps are byte-identical.
+_Implementing agent · slice 07b · high._
 
-- **A ready source transcript read carries `published: { generation, issues }`.**
-  ELI5: the transcript is a box with a list of known problems taped to it; reads
-  used to show you the box but not the list. `transcript.get`, `.search` and
-  `.review` on a source now return the list beside their own range note
-  (`issues`). Some problems (`word-dropped`, a `boundary-unresolved` that never
-  reached the transcript) point at no row, so this is the only place they show.
-  `generation` is the queue generation, as `publishedOutput` uses everywhere; the
-  page already holds the transcript, so the publication omits `output`.
-  *Confident.*
-- **`transcript.prepare --wait` needed no change.** Its ready marker already counts
-  `data.issues` plus `data.published.issues`; an already-published ack carries both
-  and a processing ack settles on `transcript.get`, which now carries the
-  publication. A test pins both paths to the same count. *Confident.*
-- **Project transcript reads report their sources' issues, on each dependency.**
-  ELI5: a project read is built from several source transcripts and already lists
-  them in `dependencies`; each transcript dependency now carries its generation's
-  `issues`. They are refreshed at read time, so an evidence manifest cached before
-  this change reports them too; the manifest's identity (`pins`) leaves issues
-  out, so no cached work is invalidated. The CLI ready marker counts dependency
-  issues too. Not filtered to the read's range: a read reports what was published
-  with what it read, as the source read does. *Fairly confident; the alternative,
-  a single top-level list, would mix a read's own range note with inherited
-  problems.*
-- **Every range follows one rule: work is keyed by the applied range; the clamp
-  belongs to the request.** ELI5: asking for 0–10 s of a 5 s project is the same
-  work as asking for 0–5 s, so it shares that output, and only your answer says
-  "I trimmed your request". Rendered recognition and project alignment now do this
-  too, so on a 5 s project `{0,10s}` and `{0,5s}` are one job and one inference
-  run. `range-clamped` is in each result's top-level `issues`; the shared output's
-  published issues no longer hold it. The CLI's `--wait` on
-  `transcript.render.prepare` carries the preparation's clamp onto its pinned
-  words read, as it already did for `transcript.prepare`. *Confident.*
-- **No implementation identity bump.** Range inputs are integers or reduced
-  fractions, and the applied range is serialized with the same keys and values, so
-  every in-range identity is byte-identical (checked for both). An earlier overrun
-  publication keeps its old identity and stays readable by generation; a new
-  overrun request maps to the applied range's identity instead. *Confident.*
-- **One integer-range admission.** `admitMicrosecondRange` (range-admission.ts)
-  replaces three copies of "integer check, `admitReadRange`, cast". The three
-  refusal messages became one, "Range must use integer microseconds", now with the
-  requested range and bounds; the code is unchanged. *Confident.*
-- **One project-range admission, and the empty-project copies disagreed.** Project
-  evidence refused a caller's explicit `0..0` on an empty project; package speakers
-  accepted it. The refusal won (`admitProjectEvidenceRange`, project-window.ts): an
-  empty project reads as `0..0` when the caller omits the range or a continuation
-  re-reads its stored query, and a stated range must be nonempty. Reasons: the
-  spec's "empty after clamping is malformed", and the pinned evidence test.
-  *Confident; the package-speakers side has no dedicated test.*
-- **`alignment.get` and alignment preparation use `admitProjectRange`.** The read
-  hand-built `0..duration` and silently windowed an overrun; it now reports
-  `range-clamped` and refuses a range with no overlap. `admitProjectRange` keeps
-  the caller's range type, so alignment's fractional ranges go through it too.
-  *Confident in the rule; the ready project `alignment.get` path was not run (it
-  needs a prepared tap and real alignment evidence).*
-- **Replacement media fits through `fitClip`, the placement fit.** `clampSource`
-  duplicated the media-domain half; the fit now takes a clip with no placement and
-  fits only its source. Exact rational arithmetic gives the same range and issue.
-  *Confident.*
-- **Transcript staleness has one rule** (`completeGeneration` in transcript.ts),
-  and source transcription no longer returns no-op `publish`/`close`. The
-  executor's `string | StagedJobResult` union stays: collapsing it rewrites every
-  string-returning executor (scenes, capture cleanup, project evidence, package
-  context jobs, prepared audio), which is not a clean cut and crosses another
-  lane's files. *Confident.*
+**Font fallback renders and reports facts, and core derives the issues.**
+CoreText draws an uncovered character with `LastResort`, never glyph 0, so
+`LastResort` or glyph 0 means `glyph-missing` and any other face means
+`font-substituted`. Receipts gain `textFallbacks`, one entry per clip and face,
+accepted only for clips that drew text. `FontFile.load`'s whole-face refusal is
+gone; a mismatched face reports every code point as substituted. A project index
+publishes each distinct frame issue once. `FONT_CHANGED`, `FONT_UNAVAILABLE` and
+`FONT_GLYPH_BOUNDS_UNAVAILABLE` became real codes instead of message text inside
+`UNSUPPORTED_MEDIA`. The rejected alternative was refusing, because fallback
+depends on installed fonts; `used` records the face that drew instead.
+_Implementing agent · slice 07a · high._
+
+**Angle groups publish over refused sync evidence.** The caller wrote the
+offsets, and the evidence is only a reference, so `angle.declare` reports
+`synchronization-evidence-refused`. _Product's user · slice 07c · high._
+
+**HDR and unqualified sources stay refusals, and say what was seen.** No issue
+could describe a silently wrong colour. The refusals' `details` now carry the
+declarations that disagree, or the codec facts. _Product's user · slice 07e ·
+high._
+
+**Subject framing returns `ready` with issues, or `unavailable` when there's no
+geometry.** Unmet constraints share one code, `framing-constraint-unmet`, with
+the constraint named in evidence, rather than seven near-identical codes.
+`unavailable` carries a reason: missing, ambiguous or out-of-bounds subject, or
+no feasible crop. _Implementing agent · slice 07g · high._
+
+**Dialogue proposals always propose, with issues.** `peakPolicy`, the
+"constrained" status and `targetMet` are gone. Gain bounds clamp with
+`gain-constrained`. When the true-peak ceiling overrides the minimum, the
+proposal reports `gain-bound-breached`. Missing support, too short,
+unmeasurable or unrepresentable gain gives `unavailable` with
+`proposal-unavailable`. `skill-issues.test.ts` checks the shape. _Implementing
+agent · slice 07h · high._
+
+**The issue type lives in `@yap/composition`, with no protocol re-export
+(departs from slice 01).** Every protocol consumer already depends on
+composition, so a re-export would give one concept two import paths.
+_Implementing agent · slice 01b · high._
+
+**At most 1000 issues per output, and bounding is idempotent.** `boundedIssues`
+keeps 1000 issues and folds earlier `issues-truncated` counts into one final
+marker. So lists that were bounded, joined and then bounded again keep their
+count. _Implementing agent · slice 01b, whole-spec review · high._
+
+**Issues are stored by publishing attempt, in the publication transaction.**
+`output_issues` keys a job output by its `attemptId` and generation. An attempt
+publishes at most once, so every read path finds the same rows. Issues are
+parsed inside settlement, so a malformed issue fails the attempt rather than
+publishing silently. `TranscriptStore` creates the table itself so it can read
+word issues without a queue. _Implementing agent · slices 01c, 03 · high._
+
+**Issues travel on the queue publication.** `ArtifactStatus.published` carries
+`issues`. The rejected alternative was a lookup by job ID, which would miss
+publications read without a job. Package context jobs publish `[]`.
+`StagedJobResult` makes `publish` and `close` optional. The executor's
+`string | StagedJobResult` union stays, because collapsing it would rewrite
+every string executor. _Implementing agent · slices 01d, 04 · high._
+
+**`--wait` keeps its exit codes and counts every issue.** A ready output exits
+0; a failed job with an older retained publication still exits 1. The
+`op: ready (N issues)` line counts the read's own issues, its publication's and
+each dependency's, with a truncation marker counted as its `omitted`.
+`transcript.render.prepare` waits on `transcript.render.get`, keeping the
+prepare/get split, and both preparation waits carry their clamp onto the pinned
+read. _Implementing agent · slices 01d, 06c · high._
+
+**The curve-clock error splits three ways and stays a refusal.** Clock,
+malformed-curve and bound errors each name their fix in `details`; a clock error
+names `clock`, `slot` and `expectedKey`. _Implementing agent · slice 06b ·
+high._
+
+**The refusal ledger classifies every UPPER_SNAKE literal, per file.** Refusals
+go through helpers, so scanning constructor calls would miss them. UPPER_SNAKE
+per-item diagnostics are `issue-code` and stay outside the kebab-case registry;
+examples are capture recovery states and caption-proposal violations.
+`pendingConversion` is empty and must stay so. _Implementing agent · slice 01a ·
+high._
+
+**A spawn under descriptor exhaustion fails retryably.** It reports
+`MEDIA_WORKER_UNAVAILABLE` instead of a `TypeError`, because it's a resource
+bound. _Implementing agent · full run · high._
+
+**View-shot labels are turned off with `FIXTURE_LABEL=omit`.** `omit` is the
+only value, so a typo fails before Swift compiles. Runners pass it to fixtures
+as an argument. The unlabelled Library title is the production "Library", and
+`settings-view-shots` ignores the variable because it draws no label.
+_Implementing agent · slice 09 · high._
