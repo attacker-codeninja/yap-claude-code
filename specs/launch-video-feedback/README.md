@@ -14,14 +14,18 @@ turns what cost it time into contracts. Sources:
 
 ## Next Agent Prompt
 
-You are resuming this spec.
-1. Read this README, then [slice 01](slices/01-stale-derived-self-recovery.md).
-   Nothing is built yet.
-2. Start at slice 01. Every later slice that changes a recipe or
-   implementation identity depends on it, because today a recipe bump crashes
-   reads of retained rows instead of regenerating them.
-3. Slice 02 comes next. It sets the governing principle and the shared
-   `issues` type that slices 03–07 use.
+You are resuming this spec. Status: the plan is final (four independent
+drafts synthesized, fog-audited, refactor-cleaned). No code yet.
+1. Start at [slice 01](slices/01-issues-contract.md): the `issues` type, the
+   storage table, the surfaces, and the refusal ledger test (written red
+   first). Every later slice emits issues through it, and the ledger's
+   `pendingConversion` list is how you know what's left.
+2. Then [slice 02](slices/02-stale-derived-self-recovery.md). It must land
+   before any identity bump: today a recipe bump crashes reads of retained
+   rows, and a failed 0.1.33 job keeps answering "failed" for its input.
+3. Slices 03, 04, 06 and 07 convert gates. Each removes its codes from
+   `pendingConversion` and rewrites its own doc lines. 05 and 09 are
+   independent.
 4. Follow [`write-tests`](../../.agents/skills/write-tests/SKILL.md): each
    slice names its red test first. Run the narrowest check per slice, and the
    full suite once, after slice 10.
@@ -34,38 +38,55 @@ You are resuming this spec.
    checklist, and the next pickup point.
 
 Checklist:
-- [ ] [01 Stale derived generations self-recover](slices/01-stale-derived-self-recovery.md)
-- [ ] [02 Output by default: one `issues` contract](slices/02-issues-contract.md)
+- [ ] [01 Output by default: one `issues` contract and a refusal ledger](slices/01-issues-contract.md)
+- [ ] [02 Stale derived generations self-recover](slices/02-stale-derived-self-recovery.md)
 - [ ] [03 Long-media transcription always publishes](slices/03-transcription-publishes.md)
 - [ ] [04 Audio treatments publish their best result](slices/04-audio-treatments-publish.md)
 - [ ] [05 Short-window level for word-sized ranges](slices/05-short-window-level.md)
-- [ ] [06 Error and admission paper cuts](slices/06-paper-cuts.md)
-- [ ] [07 The remaining quality gates publish with issues](slices/07-remaining-quality-gates.md)
+- [ ] [06 Ranges and messages](slices/06-ranges-and-messages.md)
+- [ ] [07 The remaining gates: publish, or justify the refusal](slices/07-remaining-quality-gates.md)
 - [x] [08 Multicam sync: no new primitive (closed by decision)](slices/08-sync-estimate.md)
 - [ ] [09 View-shot fixtures](slices/09-view-shot-fixtures.md)
 - [ ] [10 Skill guidance](slices/10-skill-guidance.md)
-- [ ] Full suite run
+- [ ] Full suite run; the ledger's `pendingConversion` is empty
 - [ ] [11 Replay acceptance](slices/11-replay-acceptance.md), then [close-spec](../../.agents/skills/close-spec/SKILL.md)
 
 ## Slice graph
 
 ```
-01 self-recovery ──► 02 issues contract ──► 03 transcription ──┐
-                                        ├──► 04 audio treatments ┤
-                                        ├──► 06 paper cuts ──────┤
-                                        └──► 07 other gates ─────┤
-05 short-window level ───────────────────────────────────────────┤
-09 view shots (independent) ─────────────────────────────────────┤
-08 sync: closed, folded into 10 ─────────────────────────────────┴──► 10 skill guidance ──► full run ──► 11 replay
+01 issues + ledger ──► 02 self-recovery ──► 03 transcription ──┐
+                  │                    └──► 04 audio ──────────┤
+                  ├──► 06 ranges ──────────────────────────────┤
+                  └──► 07 other gates ─────────────────────────┤
+05 short-window level (after 02) ──────────────────────────────┤
+09 view shots (independent) ───────────────────────────────────┤
+08 sync: closed, folded into 10 ───────────────────────────────┴──► 10 skill ──► full run ──► 11 replay
 ```
 
-Ordered by pain: transcription cost ~25 minutes and 13 manual requests, and
-mastering took four edit/measure rounds.
+Ordered by dependency, then pain: transcription cost ~25 minutes and 13
+manual requests; mastering took four edit/measure rounds.
+
+## Single owners (refactor-clean)
+
+The plan adds no parallel abstraction. Each concept has one owner, and the
+old copies are deleted in the slice that replaces them:
+
+| Concept | Owner | Replaces |
+| --- | --- | --- |
+| Issue type and code registry | `packages/composition/src/issues.ts` (protocol re-exports) | `violations[]`, `failedGates[]`, `omitted`/`addedOverlaps`/`discardedStyling`, the thrown `issues[]` in `project-window.ts`, status `"refused"` in results |
+| Issue storage | `output_issues` table, `packages/core/src/issues.ts` | issues inside evidence objects (never added) |
+| Refusal classification | `packages/protocol/src/refusal-ledger.test.ts` + `refusal-ledger.json` | the audit doc, which becomes historical evidence |
+| Range admission | `admitRange` in composition | ~13 per-site range checks |
+| Stale-artifact detection | historical execution schema in `transcript.ts` + producer identity in the job input | strict literal parse of stored rows |
+| Best-attempt audio publication | `audio-measurement.ts` | `checkProjectAudioResult` re-running the refusing gates |
+
+There is no transitional scaffolding. `pendingConversion` is the one
+short-lived list, and slice 11 asserts it empty.
 
 ## Governing principle: output by default
 
 Set by the product owner on 2026-10-12, and implemented by
-[slice 02](slices/02-issues-contract.md).
+[slice 01](slices/01-issues-contract.md).
 - **If an operation can produce an output, it produces it, and reports every
   problem as an issue on that output.** This holds especially when the work is
   cheap and undoable: derived artifacts, revisions, previews, measurements, and
@@ -83,7 +104,8 @@ A refusal audit (2026-10-12) found the product mostly strict on cheap quality
 gates, and several of them throw away output that was already computed:
 normalization, the limiter, transcript seams and timing. The docs state the
 opposite principle in about ten places. Slices 03, 04, 06 and 07 fix every
-gate the audit found, and slice 02 fixes the docs.
+gate the audit found; slice 01 adds a ledger test so new quality-gate
+refusals can't creep back, and states the principle in `AGENTS.md`.
 
 ## Contracts this spec preserves
 
@@ -99,6 +121,11 @@ gate the audit found, and slice 02 fixes the docs.
 - **No silent repair.** Every clamp, fallback, dropped word or unmet target
   publishes an issue. Raw evidence keeps the original values. Output by
   default means *flagged* output, never quietly altered output.
+- **Primitives only.** This is the product owner's rule. Yap ships
+  primitives and evidence. It ships no use-case-specific tools, no business
+  logic, and nothing that adds complexity an agent could handle itself with
+  existing primitives. Slice 08's "no sync primitive" applies this rule; apply
+  it to any new operation a slice is tempted to add.
 - **Zero editorial decisions.**
   - The product sets no thresholds for "word lost", "mic is bad" or "sync is
     good".
@@ -161,7 +188,7 @@ where the product owner set a principle:
 
 - **Render words.** `transcript.render.prepare` keeps the prepare/get split
   that every evidence operation uses; the CLI's `--wait` reads
-  `transcript.render.get` instead (slice 06). Returning words from prepare
+  `transcript.render.get` instead (slice 06c). Returning words from prepare
   lost: it would be a special case.
 - **Denoise word loss.** A general `rmsDbfs` field in `audio.measure`
   (slice 05), plus skill guidance. A dedicated per-word attenuation operation
@@ -170,10 +197,23 @@ where the product owner set a principle:
   sources. A loudness summary inside `asset.get` lost: it would start a heavy
   job from a cheap describe call.
 - **Placement and read ranges.** A partly valid range is clamped with
-  `range-clamped` (slice 06). The earlier choice ("refuse; report the end")
-  lost to the governing principle.
+  `range-clamped`, shortening the placement (slice 06). Rejected: holding the
+  last frame (invents picture), and "refuse; report the end" (lost to the
+  principle). Single points outside a domain stay refusals.
+- **Gain-only normalization that can't meet both targets.** The peak ceiling
+  wins and loudness is reported unmet (slice 04). Rejected: applying the full
+  requested gain, which would ship clipped audio (receipt 05 would have hit
+  about +6.7 dBTP).
+- **Issue storage.** A separate additive `output_issues` table, never fields
+  inside retained evidence, so 0.1.33 evidence stays byte-identical and its
+  strict schemas still accept it.
+- **No severity levels on issues.** Ranking problems would be an editorial
+  call.
+- **Issue owner.** `composition`, because it's the root package (protocol and
+  core depend on it). Rejected: `protocol` (two drafts proposed it, but
+  composition's caption and framing code needs the type).
 - **0.1.33 transcript packages.** On import, drop the stale transcript and
-  regenerate it, rather than refusing the package (slice 01).
+  regenerate it, rather than refusing the package (slice 02).
 - **Unclear gates.** Each is decided per row in
   [slice 07](slices/07-remaining-quality-gates.md): font fallback, stateful
   processing over gaps, angle groups, SRT literals, unqualified sources,

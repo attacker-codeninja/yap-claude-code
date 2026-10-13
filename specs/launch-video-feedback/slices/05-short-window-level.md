@@ -14,7 +14,7 @@ for "lost"; the caller decides (zero editorial decisions).
 - The meter in `apps/service/src/acoustic-inspection.ts` (~L283 measure path)
   computes it from the same selected PCM.
 - Bump the meter's implementation identity so cached measurements regenerate.
-  This relies on slice 01's pattern.
+  This relies on slice 02's pattern.
 
 **Probe first.** On `fixtures/launch-video/narration.mov`, place a clip of
 asset time 54.12–61.96 s with `rnnoise` at mix 0.85. Measure the dry tap and

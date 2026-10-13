@@ -62,6 +62,9 @@ doesn't try to fix them in the product:
 
 ## Policy observations worth keeping
 
+> Record only. The product owner's governing principle, output by default
+> ([README.md](README.md)), supersedes the "strictness has a cost" options below.
+
 - **Denoise isn't free.** rnnoise at mix 0.85 cut the noise floor by 17 dB but
   took 14–16 dB off a soft trailing word. A rendered-speech transcript of the
   processed mix is the check that catches it.

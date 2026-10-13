@@ -4,8 +4,11 @@
 makes possible. It reflects only what earlier slices actually shipped; check
 each slice's recorded outcome first.
 
-**Changes (`skills/yap/references/media-workflows.md` and
-`creative-workflows.md`).**
+**Changes (`skills/yap/SKILL.md`, `skills/yap/references/media-workflows.md`,
+`creative-workflows.md`, `dialogue-finishing.md`).**
+- `SKILL.md:276`: read `issues` on every output; only an empty list is clean.
+- `media-workflows.md` L50–52 (the "seam is refused" wording) and L167–168:
+  rewrite under output by default. L118 and L156 stay, as class A.
 - **Transcription:**
   - explicit ranges are windowed too;
   - how to read `boundary-unresolved` and `end-clamped`;
@@ -28,7 +31,7 @@ each slice's recorded outcome first.
   shared range before choosing the dialogue source.
 - **Output by default:** read `issues` on every result before trusting it,
   including `range-clamped`, `font-substituted` and `unqualified-source`
-  (slice 02 and slice 07). Remove the skill's "a refusal is a boundary"
+  (slice 01 and slice 07). Remove the skill's "a refusal is a boundary"
   wording.
 - **Multicam sync (there is no primitive, by slice 08's decision):**
   1. `transcript.review` each co-located source.

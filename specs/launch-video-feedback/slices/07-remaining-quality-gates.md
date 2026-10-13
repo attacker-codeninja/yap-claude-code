@@ -1,45 +1,57 @@
-# 07 The remaining quality gates publish with issues
+# 07 The remaining gates: publish, or justify the refusal
 
-**Why it's here.** The product owner asked whether "output by default" holds
-across the product. A refusal audit (2026-10-12) found more quality gates on
-cheap, undoable work beyond the ones slices 03, 04 and 06 fix. Each is decided
-below as the product's user, then the slice 02 contract applies. These are
-independent fixes, one commit each, each with its existing tests flipped red
-first.
+The product owner asked whether output by default holds across the product.
+The [refusal audit](../assets/refusal-audit.md), re-verified by the
+principle-coverage draft, found the sites below beyond slices 03, 04 and 06.
+Each one was decided by the product's user. Where the four drafts disagreed,
+the alternative is recorded.
 
-| # | Gate today | After |
-| --- | --- | --- |
-| a | `UNSUPPORTED_MEDIA` `FONT_SUBSTITUTED` / `FONT_GLYPH_MISSING` / `FONT_GLYPH_BOUNDS_UNAVAILABLE` (`helpers/mac/Sources/YapFrames/TextRaster.swift:162,166,177`): CoreText fell back from the pinned face | Render with the fallback CoreText already chose. Attach `font-substituted` or `glyph-missing` with the affected characters and the face actually used. A visibly wrong glyph is easy to judge from the frame; a refusal hides it. |
-| b | `NOT_READY` "State processing requires complete verified mono or stereo input" (`packages/core/src/project-window.ts:82–115`) throws the `issues[]` it already built | Process the available support. Unavailable ranges stay `unavailable` (never silence). The already-built list becomes the result's `issues`. |
-| c | `invalid("Angle group requires accepted synchronization evidence")` (`packages/composition/src/model.ts:289–290`) | Accept the caller's explicit offsets. Attach `sync-evidence-refused` with the receipt reference. The caller authored the relationship; the evidence is information. |
-| d | `UNSUPPORTED_FORMAT` "SRT cannot reliably preserve literal subtitle syntax; choose VTT" (`packages/composition/src/caption-sidecars.ts:80–92`) | Write the SRT. Attach `srt-literal-markup` listing the cues a reader may render as markup, suggesting VTT. |
-| e | `UNSUPPORTED_MEDIA` "unqualified" HDR declarations or interpretation (`apps/service/src/hdr-conversion.ts:37–72`) and "Decoded audio has unqualified format" (`helpers/mac/Sources/YapMedia/DecodedAudioInspection.swift:82`) | Convert or decode anyway. Attach `unqualified-source` with the declarations seen. The original stays untouched, so a wrong-looking derivative costs nothing. **Exception:** if the decoder can't produce samples at all, that's a missing prerequisite and still refuses. |
-| f | Speaker continuity never promotes labels, even for an accepted receipt (`packages/core/src/speaker-continuity.ts:114–163`; `apps/service/src/project-service.ts:1477–1531`) | Publish the continuity labels. Each failed gate (DER, identity confusion, overlap recall, inference factor, peak RSS, controls) becomes an issue on the labels. Labels remain anonymous until the caller binds names. |
-| g | Subject framing returns `status: "refused"` with geometry and `violations[]` (`packages/composition/src/subject-framing.ts:89–216`) | It already produces output: rename to issues and drop the "refused" status where geometry exists. When geometry is null (`subject_missing` / `subject_ambiguous` / `subject_out_of_bounds` / `source_bounds`), it stays a refusal (class A). |
-| h | `skills/yap/scripts/dialogue-proposals.mjs:93–113` `peakPolicy: "refuse"` (`PEAK_CEILING` / `GAIN_BOUNDS` / `GAIN_UNREPRESENTABLE`) | `cap-gain` becomes the only behaviour: the draft is produced and states the unmet loudness as an issue. Delete the `refuse` option, because one rule beats an opt-in strictness flag. Update `skills/yap/references/dialogue-finishing.md`. |
+These are independent sub-slices, one commit each. In each one:
+- the existing test flips to red first;
+- its codes leave the ledger's `pendingConversion`, or are classified `A`
+  with a reason;
+- its docs line changes in the same commit.
 
-**Unchanged (class A, confirmed by the audit):**
-- identity and revision guards: `STALE_REVISION`, `REQUEST_CONFLICT`,
+| Sub | Site | Decision | Why / alternative |
+| --- | --- | --- | --- |
+| a | Font fallback: `FONT_SUBSTITUTED`, `FONT_GLYPH_MISSING` (`helpers/mac/Sources/YapFrames/TextRaster.swift:162,166`; `YapMedia/FontFile.swift:36`, where it hides as message text inside `UNSUPPORTED_MEDIA`) | **Publish** with `font-substituted` / `glyph-missing`, carrying the requested face, the face used and the missing code points. `FONT_GLYPH_BOUNDS_UNAVAILABLE` stays **A**: nothing can be laid out. | A wrong glyph is visible and easy to judge in the frame. The risk-first draft argued for refusing, because the fallback depends on the machine's installed fonts, so renders aren't reproducible. Kept as the alternative; the issue records the face actually used. |
+| b | Stateful processing `NOT_READY` (`packages/core/src/project-window.ts:82–115`; native `CompositionState.swift:184`) | **Gaps:** process each available run as its own state domain, with `unavailable` ranges and a `support-gap` issue. **An unverified channel layout** stays **A** (ambiguous). | Never silence. Splitting at gaps changes what a stateful processor sees across a gap; the issue says so. Alternative: keep refusing (fewest-slices draft). |
+| c | Angle group with refused sync evidence (`packages/composition/src/model.ts:289–290`) | **Publish** the group with `synchronization-evidence-refused` on the edit result. | The caller wrote the offsets; the evidence is information. All drafts agree. |
+| d | SRT literal markup (`caption-sidecars.ts:80–92`) | **Write** the SRT unchanged, with `srt-literal-markup` listing the placements and suggesting VTT. | All drafts agree. |
+| e | HDR or decoded-audio "unqualified" (`apps/service/src/hdr-conversion.ts:37–72`; `DecodedAudioInspection.swift:82`; and `YapFrames/VideoColorPolicy.swift:26`) | **Stay A.** Disagreeing declarations are ambiguous input; HDR interpretation is a missing prerequisite the caller supplies. | Three of four drafts. No issue could describe what's wrong in such an output, so it would be silently wrong colour. Improve the message so it names the conflicting declarations. |
+| f | Speaker continuity `failedGates` (`speaker-continuity.ts:88–163`) | **Vocabulary only.** `failedGates` becomes `issues` on a `ready` receipt. | The audit said labels are "never promoted". But no label publisher exists, so that's a missing feature, not a refusal. Out of scope. |
+| g | Subject framing `status:"refused"` with geometry (`subject-framing.ts:89–216`) | **Migrate** to `ready` plus issues where geometry exists. Null geometry becomes `unavailable` (**A**). | Only `packages/test-harness/editing/subject-observations.mjs` uses it. The principle-coverage draft suggested deleting it; kept because the harness uses it. |
+| h | `skills/yap/scripts/dialogue-proposals.mjs:93–113` `peakPolicy:"refuse"` | **Delete the policy.** Always propose the constrained gain, with issues. `GAIN_UNREPRESENTABLE`, `MISSING_SUPPORT`, `TOO_SHORT` and `UNMEASURABLE` become `unavailable` plus an issue. | One rule, no opt-in strictness. Update `skills/yap/references/dialogue-finishing.md:43`. |
+| i | Status words: `state:"refused"` (`project-service.ts:1212`) and prediction `"refused"` (`face-trajectory.ts:170`) | Rename to `unavailable` plus an issue. | These are class A in substance, but "refused" in a successful result breaks the ledger's rule 5. |
+| j | Alignment `conditionalStatus:"refused"` (`alignment-operands.ts:71`, `alignment-evidence.ts:43`) | Raw evidence keeps the worker's own word. The published view maps it to an issue. | Same rule. |
+| k | Caption sidecar `omitted` / `addedOverlaps` / `discardedStyling` (`caption-sidecars.ts:158–165`, projected at `exports.ts:118`) and `caption-proposals.mjs` `violations[]` | **Migrate** to `issues` and delete the old fields. | Already compliant in behaviour; this is one owner for the vocabulary. |
+
+**Stay A, confirmed:**
+- identity and conflict guards: `STALE_REVISION`, `REQUEST_CONFLICT`,
   `PUBLICATION_CONFLICT`, `ARTIFACT_CHANGED`, `SOURCE_CHANGED`,
   `MODEL_HASH_MISMATCH`;
-- malformed `INVALID_*` input;
-- resource budgets: `LIMIT_EXCEEDED` / `EVIDENCE_LIMIT`;
-- `AMBIGUOUS_PREPARED_AUDIO`;
-- font identity: `FONT_CHANGED` / `FONT_UNAVAILABLE`;
+- malformed input: `INVALID_*`;
+- resource bounds: `LIMIT_EXCEEDED`, `EVIDENCE_LIMIT`;
+- ambiguity: `AMBIGUOUS_PREPARED_AUDIO`;
+- font identity: `FONT_CHANGED`, `FONT_UNAVAILABLE` (`FontFile.swift:29`,
+  which must become a real code, per the ledger's rule 4);
 - missing picture: `SOURCE_PICTURE_UNAVAILABLE`;
+- manifest validation: `fresh-delivery-check.mjs` (malformed);
 - capture, deletion and publication guards.
 
-**Red tests.** Each row's existing refusal test becomes a "publishes with
-issue X" test asserting the output and the issue. Rows (a) and (e) need a
-native or real-media check:
-- (a) render one frame with a pinned face that lacks a glyph;
-- (e) the existing HDR fixture.
-
-**Must stay green.** Every class-A test listed above.
-
-**Delegated.** Issue code spellings, and whether (f)'s labels carry a
-per-label or a receipt-level issue list.
-
-**Visual check.** Row (a) changes a rendered frame. Accept it with
+**Visual check.** Sub (a) changes a rendered frame. Accept it with
 [screenshot-critique](../../../.agents/skills/screenshot-critique/SKILL.md) on
-the fallback frame.
+the fallback frame. Use a pinned face that lacks one glyph.
+
+**Docs:**
+- `packages/composition/README.md:51–52`: "SRT keeps the text and reports
+  markup a reader could interpret".
+- `helpers/mac/Sources/YapAudio/README.md:45`.
+- `skills/yap/references/media-workflows.md` L118 and L156 stay as class A.
+
+**Must stay green.** Every class-A test above.
+
+**Delegated.**
+- Issue code spellings, which go in the registry.
+- Whether (b)'s per-run split happens natively or in the compiler. Use
+  whichever already owns state domains (`processing-state.ts`).

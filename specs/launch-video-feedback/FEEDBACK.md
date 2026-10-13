@@ -23,6 +23,13 @@ what I'd change. Ordered by how much it hurt.
 >   helped.
 > - **§6 `overlay-shots.mjs` exit 7 was a usage error.** `dist/Yap.app` wasn't
 >   built (spawn ENOENT).
+> - **Superseded proposals (see [README.md](README.md)).**
+>   - The built-in audio cross-correlation estimator (§6) is closed by decision:
+>     no sync primitive. See slice 08.
+>   - The tolerance or best-effort ideas (§4) are replaced by the governing
+>     principle, output by default. See slice 02.
+>   - "Refuse with a hint" for source bounds (§6) is replaced by clamping with
+>     an issue. See slice 06.
 > - **§1–2 refusals are deliberate design.** "No estimate is silently
 >   repaired" (`helpers/mac/Sources/YapSpeech/README.md`). Any fix must keep
 >   raw evidence and make every repair explicit; see README.md.

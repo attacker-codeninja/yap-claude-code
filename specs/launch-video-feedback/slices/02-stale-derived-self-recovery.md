@@ -1,4 +1,4 @@
-# 01 Stale derived generations self-recover
+# 02 Stale derived generations self-recover
 
 **Unlocks.** A transcript row whose recipe or policy identity isn't current is
 *stale*:
@@ -40,6 +40,32 @@ their attempts, so cleanup never reclaims them.
   rename re-keys failed jobs.
 - **Firewall:** no `catalogFormat` bump; additive tables only.
 
+**Rules that every later slice relies on.**
+- **Every converted refusal bumps its producer's identity in the job input.**
+  This covers the speech recipe and policy, and the normalization and limiter
+  implementation ids (`apps/service/src/audio-processing.ts` ~L48).
+  - Jobs are keyed by input.
+  - A failed, non-retryable 0.1.33 job keeps answering for that input:
+    `submitJob` reuses it, and `status` reports `failed`
+    (`packages/core/src/jobs.ts` L565–622, L897–918).
+  - `prepareSource` only submits when `not_requested`
+    (`transcript-processing.ts` L283).
+  - Without a bump, a fixed gate would still answer "failed" for every old
+    input.
+- **Retained reads parse execution with a historical schema.** It accepts any
+  recipe string and marks the row stale. Only newly produced rows must match
+  the current recipe. `metadata()` (`transcript.ts` ~L1226) must never throw a
+  raw ZodError.
+- **Export.** Project export leaves stale derived generations out and says so
+  with an issue (slice 01), instead of crashing in `portableGenerations`.
+- **Import.** A stale derived resource is skipped with an issue and
+  regenerated, instead of failing the package with `INVALID_PACKAGE`
+  (`project-package.ts` ~L118).
+- **Replays.** Retained evidence keeps its historical recipe
+  (`packages/test-harness/speech/timing-replay.mjs` over
+  `08-bounded-speech/replay-cases.json`). Replays admit historical recipes as
+  evidence and never relabel them.
+
 **Red tests first.**
 - `packages/core/src/transcript-ownership.test.ts`:
   1. Publish a generation, then rewrite its stored `execution.recipe` to a
@@ -51,8 +77,14 @@ their attempts, so cleanup never reclaims them.
      - text seeding.
   3. Expected today: a ZodError. Expected after: the generation is
      skipped or regenerated, and `cleanupAsset` reclaims it.
-- `portable-assets.test.ts`: importing a package that holds a stale-recipe
-  transcript succeeds, and the transcript regenerates.
+- `portable-assets.test.ts` / `apps/service/tests/project-package-export.mjs`:
+  exporting with a stale generation succeeds, with an issue. Importing a
+  0.1.33-shaped package succeeds, skips the stale transcript, and
+  regenerates it.
+- A scratch catalog seeded with a failed 0.1.33 `NORMALIZATION_NOT_FEASIBLE`
+  job. After the slice 04 identity bump, `audio.measure` re-runs instead of
+  answering "failed". Write this test here; it turns green in slice 04.
+- `timing-replay.mjs` still admits the retained v2 cases.
 - The prepared-audio key includes `implementationId`.
 
 **What a human can see.** Point the dev service at a copy of a 0.1.33 library.

@@ -2,7 +2,7 @@
 
 **Unlocks.** `transcript.prepare` and `transcript.review` publish a complete
 transcript for any readable media. No local problem fails the job; each
-becomes an issue on the affected word, using slice 02's contract.
+becomes an issue on the affected word, using slice 01's contract.
 
 | Today (refuses the whole job) | After |
 | --- | --- |
@@ -28,16 +28,28 @@ becomes an issue on the affected word, using slice 02's contract.
   - malformed words are dropped and recorded;
   - the 28 s decode bound stays.
 - `WordTimingMerger.swift:59–63`: same rule.
-- **Identity bump, once:** recipe `source-windows-20s-context4s-guard1s-v3`
+- **Identity bump, once** (the rule from slice 02): recipe `source-windows-20s-context4s-guard1s-v3`
   (`SpeechWindows.swift` L5, `packages/core/src/transcript.ts:32`) and policy
-  `transcript-v4`. Slice 01 turns the bump into regeneration.
-- **Core:** an additive table carries per-word issues into reads as `issues`.
+  `transcript-v4`. Slice 02 turns the bump into regeneration.
+- **Core:** per-word issues are stored in `output_issues` (slice 01), with
+  `at` holding the word ordinal. They're derived from the raw file at index
+  time, so the package format doesn't change. Words returned by
+  `transcript.get`, `transcript.review` and `transcript.render.get` carry
+  their issues.
+- **Ledger:** remove `TRANSCRIPT_BOUNDARY_DISAGREEMENT` and the overrun use of
+  `INVALID_SPEECH_TIMING` from `pendingConversion`. Malformed input that
+  can't even be read stays classified `malformed`.
 
 **Probes first. They choose the method; whether to publish is already decided.**
-1. **Seam replay.** On `fixtures/launch-video/narration.mov`:
-   - prepare single windows that reproduce the planned decoded windows:
-     100–120 s and 120–140 s (seam 120), and 199–219 s and 219–230 s
-     (seam 219), each with 4 s context;
+1. **Seam replay and determinism.** On `fixtures/launch-video/narration.mov`,
+   use the test-only SpeechLab target, not production `transcript.prepare`.
+   Production discards the raw file on failure, and a ranged capture of the
+   219 s right window would hit the end-of-media overrun first.
+   - Dump each window's observations for the decoded windows
+     `SpeechWindows.plan` computes (100–120/120–140 and 199–219/219–230,
+     each with 4 s context), plus the final window that runs past the end.
+   - Run inference twice and compare the raw SHA-256s. If they differ, seam
+     acceptance uses retained observations only.
    - retain each `raw.jsonl` as a boundary case;
    - `main.swift --boundary-cases` reproduces both disagreements twice;
    - also decode each seam shifted ±0.25 s and ±0.5 s. If a fixed shift set
