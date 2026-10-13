@@ -1,4 +1,4 @@
-import { admitReadRange, round, fromTime, type Issue } from "@yap/composition";
+import { admitMicrosecondRange, round, fromTime, type Issue } from "@yap/composition";
 import { z } from "zod";
 import { CatalogError } from "./catalog.js";
 import { comparePageKeys, type PageBound } from "./ordered-pages.js";
@@ -256,11 +256,9 @@ export class SourceTranscriptRead {
     )
       throw new CatalogError("ARTIFACT_CHANGED", "Transcript continuation used another range");
     const whole = { startUs: 0, endUs: round(fromTime(this.metadata.source.durationUs)) };
-    if (range && (!Number.isSafeInteger(range.startUs) || !Number.isSafeInteger(range.endUs)))
-      throw new CatalogError("INVALID_RANGE", "Range must use integer microseconds");
     // The cursor keeps the requested range, so every page reports the same clamp.
-    const admitted = range ? admitReadRange(range, whole) : null;
-    const span = (admitted?.range as TimeRange | undefined) ?? whole;
+    const admitted = range ? admitMicrosecondRange(range, whole) : null;
+    const span = admitted?.range ?? whole;
     const { records, more, after } = this.traversal.page(
       admitted ? [span] : null,
       count,

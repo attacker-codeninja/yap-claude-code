@@ -9,6 +9,7 @@ import {
   createProjectCuts,
   documentAssetIds,
   validateComposition,
+  type Issue,
   type TimeValue,
   type SelectionRange,
   type SourceWindowOccurrence,
@@ -30,7 +31,7 @@ import {
   type TranscriptPosition,
 } from "./project-transcript.js";
 import type { EvidenceKey } from "./evidence-merge.js";
-import { admitProjectRange } from "./project-window.js";
+import { admitProjectEvidenceRange } from "./project-window.js";
 import { boundSourceEvidenceResponse, type CaptureDomain } from "./capture-source-read.js";
 import { initialProjectEvents, mergeEvents, type ProjectEventPosition } from "./project-events.js";
 import { SourceEvents, type SourceEventContext } from "./source-events.js";
@@ -117,6 +118,8 @@ type Dependency = {
   speaker?: ProjectSpeakerDependency;
   selection: SourceSelection;
   transcript: TranscriptMetadata | null;
+  /** The issues published with `transcript`; a project read reports its sources' problems. */
+  issues?: Issue[];
   state: string;
   reason: string | null;
   retryable: boolean;
@@ -178,7 +181,7 @@ export class ProjectEvidenceInspection {
     }
   >();
 
-  private query(input: QueryInput, allowEmpty = false) {
+  private query(input: QueryInput, storedRange = false) {
     const project = this.options.projects.get(input.projectId);
     const revisionId = input.revisionId ?? project.currentRevisionId;
     const key = JSON.stringify([input.projectId, revisionId]);
@@ -208,13 +211,8 @@ export class ProjectEvidenceInspection {
       )
       .map((track) => track.id);
     const eligibleIds = new Set(eligible);
-    const empty =
-      model.durationUs === 0 &&
-      (input.range === undefined ||
-        (allowEmpty && input.range.startUs === 0 && input.range.endUs === 0));
-    const admitted = empty
-      ? { range: { startUs: 0, endUs: 0 }, issues: [] }
-      : admitProjectRange(model.durationUs, input.range);
+    const admitted = admitProjectEvidenceRange(model.durationUs, input.range, storedRange);
+    const empty = model.durationUs === 0;
     const trackIds = [...new Set(input.trackIds ?? eligible)].sort();
     if (trackIds.some((id) => !eligibleIds.has(id)))
       throw new CatalogError("INVALID_PARAMS", "Tracks are not applicable to this evidence domain");
@@ -276,8 +274,8 @@ export class ProjectEvidenceInspection {
     };
     return { query, queryDigest: digest(query), projection, cuts, issues: admitted.issues };
   }
-  private plan(input: QueryInput, allowEmpty = false) {
-    const plan = this.query(input, allowEmpty);
+  private plan(input: QueryInput, storedRange = false) {
+    const plan = this.query(input, storedRange);
     const occurrences =
       plan.query.range.endUs === 0
         ? []
@@ -321,8 +319,8 @@ export class ProjectEvidenceInspection {
         .map(([, selection]) => selection),
     };
   }
-  private pagePlan(input: QueryInput, allowEmpty: boolean) {
-    const plan = this.query(input, allowEmpty);
+  private pagePlan(input: QueryInput, storedRange: boolean) {
+    const plan = this.query(input, storedRange);
     const occurrences = new Map<string, SourceWindowOccurrence>();
     return {
       ...plan,
@@ -418,6 +416,7 @@ export class ProjectEvidenceInspection {
       return {
         selection,
         transcript: status.published?.transcript ?? null,
+        issues: status.published?.issues ?? [],
         ...(speaker === undefined ? {} : { speaker }),
         state: status.published ? "ready" : status.state,
         reason: status.published ? null : status.reason,
@@ -697,10 +696,11 @@ export class ProjectEvidenceInspection {
       const expectedPins = digest(this.pins(manifest.dependencies));
       const validate = () => {
         this.options.projects.get(input.projectId);
-        if (digest(this.pins(this.dependencies(selections, false, plan.query))) !== expectedPins)
-          throw changed();
+        const current = this.dependencies(selections, false, plan.query);
+        if (digest(this.pins(current)) !== expectedPins) throw changed();
+        return current;
       };
-      validate();
+      const current = validate();
       const state = cursor
         ? this.acquire<ProjectCheckpoint>(cursor.checkpointId, leases)
         : ({
@@ -746,7 +746,14 @@ export class ProjectEvidenceInspection {
                 events: [],
                 speakers: [],
               };
-      const dependencies = cursor ? { manifestId } : manifest.dependencies;
+      // Issues follow the pinned generations, so a manifest cached before they were kept reports them.
+      const dependencies = cursor
+        ? { manifestId }
+        : manifest.dependencies.map((dependency, index) =>
+            current[index]!.issues === undefined
+              ? dependency
+              : { ...dependency, issues: current[index]!.issues },
+          );
       const coverage = manifest.coverage
         ? {
             manifestId,

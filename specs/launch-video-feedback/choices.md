@@ -321,7 +321,9 @@ overridden. Each entry: the choice, why, and how confident.
   it, and a request for the applied range shares the same cached output. This
   avoids changing those identities, which exports and extractions pin.
   *Confident; it departs from the slice's "identity keeps the requested range"
-  for these reads, so review it.*
+  for these reads, so review it.* **Superseded for rendered recognition** by the
+  whole-spec review: its identity now holds the applied range too, and every
+  clamp is reported per request.
 - **The CLI's ready marker counts a read's `issues` plus its published
   output's `issues`.** It used to read `data.issues ?? published.issues`; an
   always-present empty `data.issues` would hide published issues. *Confident.*
@@ -376,12 +378,10 @@ overridden. Each entry: the choice, why, and how confident.
 - **No implementation identity bump for transcription or alignment.** An
   in-range request forms a byte-identical identity (checked), and an overrun used
   to produce nothing, so no existing generation's output changes. *Confident.*
-- **The project alignment clamp publishes with its output.** That job's identity
-  keeps the request, so, like rendered recognition, the issue is stored with the
-  evidence. The project resolver adds `issues` to what it resolves only when it
-  clamps, so unclamped identities don't change. The `alignment.prepare`
-  description never stated the refusal, and lvf-07b is likely to edit it, so it
-  is unchanged. *Confident.*
+- ~~**The project alignment clamp publishes with its output.**~~ **Superseded**
+  by the whole-spec review: the identity holds the applied range and the clamp is
+  reported on each `alignment.prepare` result, like every other range. The
+  resolver still returns `issues`, but they never enter the identity.
 - **Alignment is proved in two halves.** A service test proves admission (an
   overrun now reaches the prepared-tap lookup; no overlap is `INVALID_RANGE`); a
   core test proves a resolver's issue publishes with the evidence. The native
@@ -671,3 +671,71 @@ overridden. Each entry: the choice, why, and how confident.
   inside a caption refuses. The refusal ledger's `rules` describe `issue-code`
   as an UPPER_SNAKE diagnostic that stays outside the issue registry, and say
   that `pendingConversion` must stay empty. *Confident.*
+
+
+## Whole-spec review fixes (reads and ranges)
+
+- **A ready source transcript read carries `published: { generation, issues }`.**
+  ELI5: the transcript is a box with a list of known problems taped to it; reads
+  used to show you the box but not the list. `transcript.get`, `.search` and
+  `.review` on a source now return the list beside their own range note
+  (`issues`). Some problems (`word-dropped`, a `boundary-unresolved` that never
+  reached the transcript) point at no row, so this is the only place they show.
+  `generation` is the queue generation, as `publishedOutput` uses everywhere; the
+  page already holds the transcript, so the publication omits `output`.
+  *Confident.*
+- **`transcript.prepare --wait` needed no change.** Its ready marker already counts
+  `data.issues` plus `data.published.issues`; an already-published ack carries both
+  and a processing ack settles on `transcript.get`, which now carries the
+  publication. A test pins both paths to the same count. *Confident.*
+- **Project transcript reads report their sources' issues, on each dependency.**
+  ELI5: a project read is built from several source transcripts and already lists
+  them in `dependencies`; each transcript dependency now carries its generation's
+  `issues`. They are refreshed at read time, so an evidence manifest cached before
+  this change reports them too; the manifest's identity (`pins`) leaves issues
+  out, so no cached work is invalidated. The CLI ready marker counts dependency
+  issues too. Not filtered to the read's range: a read reports what was published
+  with what it read, as the source read does. *Fairly confident; the alternative,
+  a single top-level list, would mix a read's own range note with inherited
+  problems.*
+- **Every range follows one rule: work is keyed by the applied range; the clamp
+  belongs to the request.** ELI5: asking for 0–10 s of a 5 s project is the same
+  work as asking for 0–5 s, so it shares that output, and only your answer says
+  "I trimmed your request". Rendered recognition and project alignment now do this
+  too, so on a 5 s project `{0,10s}` and `{0,5s}` are one job and one inference
+  run. `range-clamped` is in each result's top-level `issues`; the shared output's
+  published issues no longer hold it. The CLI's `--wait` on
+  `transcript.render.prepare` carries the preparation's clamp onto its pinned
+  words read, as it already did for `transcript.prepare`. *Confident.*
+- **No implementation identity bump.** Range inputs are integers or reduced
+  fractions, and the applied range is serialized with the same keys and values, so
+  every in-range identity is byte-identical (checked for both). An earlier overrun
+  publication keeps its old identity and stays readable by generation; a new
+  overrun request maps to the applied range's identity instead. *Confident.*
+- **One integer-range admission.** `admitMicrosecondRange` (range-admission.ts)
+  replaces three copies of "integer check, `admitReadRange`, cast". The three
+  refusal messages became one, "Range must use integer microseconds", now with the
+  requested range and bounds; the code is unchanged. *Confident.*
+- **One project-range admission, and the empty-project copies disagreed.** Project
+  evidence refused a caller's explicit `0..0` on an empty project; package speakers
+  accepted it. The refusal won (`admitProjectEvidenceRange`, project-window.ts): an
+  empty project reads as `0..0` when the caller omits the range or a continuation
+  re-reads its stored query, and a stated range must be nonempty. Reasons: the
+  spec's "empty after clamping is malformed", and the pinned evidence test.
+  *Confident; the package-speakers side has no dedicated test.*
+- **`alignment.get` and alignment preparation use `admitProjectRange`.** The read
+  hand-built `0..duration` and silently windowed an overrun; it now reports
+  `range-clamped` and refuses a range with no overlap. `admitProjectRange` keeps
+  the caller's range type, so alignment's fractional ranges go through it too.
+  *Confident in the rule; the ready project `alignment.get` path was not run (it
+  needs a prepared tap and real alignment evidence).*
+- **Replacement media fits through `fitClip`, the placement fit.** `clampSource`
+  duplicated the media-domain half; the fit now takes a clip with no placement and
+  fits only its source. Exact rational arithmetic gives the same range and issue.
+  *Confident.*
+- **Transcript staleness has one rule** (`completeGeneration` in transcript.ts),
+  and source transcription no longer returns no-op `publish`/`close`. The
+  executor's `string | StagedJobResult` union stays: collapsing it rewrites every
+  string-returning executor (scenes, capture cleanup, project evidence, package
+  context jobs, prepared audio), which is not a clean cut and crosses another
+  lane's files. *Confident.*

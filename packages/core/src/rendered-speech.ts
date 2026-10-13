@@ -80,13 +80,18 @@ export class RenderedSpeech {
       input: JSON.stringify({ request, execution: this.owners.transcripts.recognitionExecution() }),
     };
   }
-  /** The pinned project bounds the range: clamped with range-clamped, or refused with no overlap. */
+  /**
+   * The pinned project bounds the range: clamped with range-clamped, or refused with no overlap.
+   * Work is keyed by the applied range, so an overrun shares the applied range's output; the clamp
+   * belongs to the request and is reported on its result, never stored with that output.
+   */
   private admission(input: RenderedSpeechInput) {
     const { model } = projectComposition(this.owners.projects, this.owners.assets, input);
-    return admitProjectRange(model.durationUs, input.range);
+    const { range, issues } = admitProjectRange(model.durationUs, input.range);
+    return { applied: { ...input, range }, issues };
   }
-  private status(input: RenderedSpeechInput) {
-    const status = this.owners.jobs.status(this.identity(input));
+  private status(input: RenderedSpeechInput, admitted = this.admission(input)) {
+    const status = this.owners.jobs.status(this.identity(admitted.applied));
     return {
       ...input,
       ...status,
@@ -97,16 +102,18 @@ export class RenderedSpeech {
             speech: JSON.parse(status.published.result) as RenderedSpeechEvidence,
           }
         : null,
+      issues: admitted.issues,
     };
   }
   prepare(input: RenderedSpeechInput) {
-    this.admission(input);
-    const identity = this.identity(input);
+    const admitted = this.admission(input);
+    const { applied } = admitted;
+    const identity = this.identity(applied);
     if (!this.owners.jobs.status(identity).published)
       this.owners.jobs.submitDeferred({ ...identity, lane: "heavy" }, (job) => {
         const dependencies = this.owners.projects.revisionDependencies(
-          input.projectId,
-          input.revisionId,
+          applied.projectId,
+          applied.revisionId,
         );
         for (const kind of resourceKinds)
           this.owners.jobs.retainInputs(
@@ -115,7 +122,7 @@ export class RenderedSpeech {
             dependencies.filter((d) => d.kind === kind).map((d) => d.id),
           );
       });
-    return this.status(input);
+    return this.status(input, admitted);
   }
   private selection(job: Job) {
     const input = (JSON.parse(job.input) as { request: RenderedSpeechInput }).request;
@@ -184,16 +191,17 @@ export class RenderedSpeech {
     return { state: "ready" };
   }
   retry(input: RenderedSpeechInput) {
-    const current = this.status(input);
+    const admitted = this.admission(input);
+    const current = this.status(input, admitted);
     if (current.published) return current;
     if (!current.jobId)
       throw new CatalogError("NOT_READY", "Use transcript.render.prepare before retry");
     const parent = this.owners.jobs.job(current.jobId);
     if (["waiting", "queued", "running"].includes(parent.state)) return current;
-    const extracted = this.owners.extraction.request(input);
+    const extracted = this.owners.extraction.request(admitted.applied);
     if (!extracted.published && extracted.jobId) this.owners.jobs.retry(extracted.jobId);
     this.owners.jobs.retry(current.jobId);
-    return this.status(input);
+    return this.status(input, admitted);
   }
   async execute({ job, signal }: JobExecution): Promise<StagedJobResult> {
     signal.throwIfAborted();
@@ -222,8 +230,7 @@ export class RenderedSpeech {
     let published = false;
     return {
       result: JSON.stringify(speech),
-      // The range admission's clamp, then the issues of the transcript it measured.
-      issues: [...this.admission(input).issues, ...issues],
+      issues,
       publish: () => {
         this.references.retain("transcript-generation", { kind: "job", id: job.jobId }, [
           resourceId,

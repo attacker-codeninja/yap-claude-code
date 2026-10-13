@@ -422,6 +422,49 @@ test("a clamped transcript preparation keeps its range-clamped issue through the
   expect(output.stderr).toContain("transcript.prepare: ready (1 issues)");
 });
 
+test.each(["processing", "ready"])(
+  "a %s transcript preparation reports the published transcript's issues once it settles",
+  async (acknowledged) => {
+    const generation = "c6df7efc-a023-4c40-aa08-3b8b1c0b1b90";
+    const selection = { assetId: "a", streamId: "s" };
+    // Anchored to no word, so only the publication carries it.
+    const dropped = {
+      code: "word-dropped",
+      message: "dropped",
+      at: { range: { startUs: 0, endUs: 1000 } },
+      evidence: {},
+    };
+    const published = { generation: 2, issues: [dropped] };
+    const f = await fixture((request) => {
+      if (request.operation === "transcript.prepare")
+        return {
+          ok: true,
+          data: {
+            ...selection,
+            state: acknowledged,
+            jobId: "job",
+            issues: [],
+            published: acknowledged === "ready" ? { ...published, output: { generation } } : null,
+          },
+        };
+      if (request.operation === "job.get")
+        return {
+          ok: true,
+          data: { ...job("ready"), attemptId: generation, target: { kind: "asset", assetId: "a" } },
+        };
+      expect(request.operation).toBe("transcript.get");
+      return {
+        ok: true,
+        data: { ...selection, state: "ready", generation, issues: [], published, page: {} },
+      };
+    });
+    const output = await f.run("transcript.prepare", selection, ["--wait", "--timeout-ms", "1000"]);
+    expect(output.code, output.stdout + output.stderr).toBe(0);
+    expect(JSON.parse(output.stdout).data.published.issues).toEqual([dropped]);
+    expect(output.stderr).toContain("transcript.prepare: ready (1 issues)");
+  },
+);
+
 test("rendered recognition waits on the project attempt and reads its words pinned to the published generation", async () => {
   const params = {
     projectId: "p",
@@ -475,6 +518,43 @@ test("rendered recognition waits on the project attempt and reads its words pinn
     "transcript.render.get",
   ]);
   expect(f.calls[2]!.params).toEqual({ projectId: "p", revisionId: "r", generation });
+});
+
+test("a clamped render preparation keeps its range-clamped issue through the pinned words read", async () => {
+  const params = {
+    projectId: "p",
+    revisionId: "r",
+    range: { startUs: 0, endUs: 5000 },
+    tap: { target: { kind: "output" }, point: { kind: "processed" } },
+    rendition: { sampleRate: 16000, channels: 1 },
+  };
+  const generation = "c6df7efc-a023-4c40-aa08-3b8b1c0b1b90";
+  const clamp = { code: "range-clamped", message: "clamped", evidence: {} };
+  const f = await fixture((request) => {
+    if (request.operation === "transcript.render.get")
+      return {
+        ok: true,
+        data: { projectId: "p", revisionId: "r", generation, state: "ready", issues: [], page: {} },
+      };
+    return {
+      ok: true,
+      data: {
+        ...params,
+        state: "ready",
+        jobId: null,
+        issues: [clamp],
+        published: { generation: 1, attemptId: generation, output: { generation }, issues: [] },
+      },
+    };
+  });
+  const output = await f.run("transcript.render.prepare", params, [
+    "--wait",
+    "--timeout-ms",
+    "1000",
+  ]);
+  expect(output.code, output.stdout + output.stderr).toBe(0);
+  expect(JSON.parse(output.stdout).data.issues).toEqual([clamp]);
+  expect(output.stderr).toContain("transcript.render.prepare: ready (1 issues)");
 });
 
 test("an already published render preparation reads its words without waiting on a job", async () => {
@@ -1715,7 +1795,7 @@ test("one published output reports the same issues through the service, CLI --wa
   }
   expect(ready.published?.issues).toEqual([]);
 
-  // No producer reports issues yet, so the publication's issue rows are written through storage.
+  // An image import reports no issues, so its publication's issue rows are written through storage.
   const issue: Parameters<typeof writeOutputIssues>[2][number] = {
     code: "issues-truncated",
     message: "1 more issue was omitted",
@@ -1794,6 +1874,31 @@ test("a ready read counts its admission issues beside its published issues", asy
   );
   // The stub serves no delivery; the progress line is the claim here.
   expect(output.stderr.split("\n")).toContain("audio.get: ready (2 issues)");
+});
+
+test("a ready project read counts the issues of the source generations it names", async () => {
+  const dropped = { code: "word-dropped", message: "dropped", evidence: {} };
+  const f = await fixture(() => ({
+    ok: true,
+    data: {
+      projectId: "p",
+      revisionId: "r",
+      state: "ready",
+      issues: [],
+      dependencies: [
+        { selection: { assetId: "a", streamId: "s" }, issues: [dropped] },
+        { selection: { assetId: "b", streamId: "s" }, issues: [] },
+      ],
+      page: { rows: [], nextCursor: null },
+    },
+  }));
+  const output = await f.run("transcript.get", { projectId: "p" }, [
+    "--wait",
+    "--timeout-ms",
+    "1000",
+  ]);
+  expect(output.code, output.stdout + output.stderr).toBe(0);
+  expect(output.stderr.split("\n")).toContain("transcript.get: ready (1 issues)");
 });
 
 test("the ready marker counts the issues a truncation entry stands for", async () => {

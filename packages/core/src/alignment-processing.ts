@@ -42,8 +42,6 @@ export type ResolvedProjectAlignment = {
   projectId: string;
   revisionId: string;
   preparedResourceId: string;
-  /** Admission issues (a clamped range); the job keeps the request, so they publish with it. */
-  issues?: Issue[];
 };
 export type AlignmentObserver = (
   request: {
@@ -69,7 +67,11 @@ export type AlignmentProcessingOptions = {
   observe: AlignmentObserver;
   decoder: AlignmentEvidenceSource["decoder"] | null;
   project?: {
-    resolve(input: ProjectAlignmentRequest): ResolvedProjectAlignment;
+    /**
+     * Admit the request against its revision. The source keeps the applied range; `issues` reports
+     * a clamp to this request only, since the applied range keys the work.
+     */
+    resolve(input: ProjectAlignmentRequest): ResolvedProjectAlignment & { issues?: Issue[] };
   };
 };
 /** Explicit work shares Models readiness, job replay, source retention and publication fences. */
@@ -148,7 +150,7 @@ export class AlignmentProcessing {
   prepareProject(input: ProjectAlignmentRequest) {
     if (!this.options.project)
       throw new CatalogError("UNSUPPORTED_JOB", "Project alignment is unavailable");
-    const resolved = this.options.project.resolve(input),
+    const { issues = [], ...resolved } = this.options.project.resolve(input),
       identity = {
         target: {
           kind: "project" as const,
@@ -156,7 +158,11 @@ export class AlignmentProcessing {
           revisionId: resolved.revisionId,
         },
         artifact: projectArtifact,
-        input: JSON.stringify({ request: input, resolved }),
+        // Keyed by the applied range, so an overrun shares the applied range's evidence.
+        input: JSON.stringify({
+          request: { ...input, range: resolved.source.sourceRange },
+          resolved,
+        }),
       },
       status = this.options.jobs.status(identity),
       model = this.options.models.alignment(input.modelId),
@@ -200,6 +206,7 @@ export class AlignmentProcessing {
         revisionId: resolved.revisionId,
         preparedResourceId: resolved.preparedResourceId,
         assetId: resolved.source.assetId,
+        issues,
       };
     }
     return {
@@ -211,6 +218,7 @@ export class AlignmentProcessing {
       revisionId: resolved.revisionId,
       preparedResourceId: resolved.preparedResourceId,
       assetId: resolved.source.assetId,
+      issues,
     };
   }
   async execute({ job, signal }: JobExecution): Promise<StagedJobResult> {
@@ -218,7 +226,6 @@ export class AlignmentProcessing {
     if (!project && (job.target.kind !== "asset" || job.artifact !== artifact))
       throw new CatalogError("UNSUPPORTED_JOB", "Alignment processor cannot execute this job");
     let input: AlignmentSourceInput,
-      issues: Issue[] = [],
       selected: ReturnType<typeof selectAlignmentSource>,
       source: AlignmentDescriptorSource,
       projectOwner: { kind: "project"; projectId: string } | undefined;
@@ -229,7 +236,7 @@ export class AlignmentProcessing {
           request: ProjectAlignmentRequest;
           resolved: ResolvedProjectAlignment;
         },
-        resolved = this.options.project.resolve(value.request);
+        { issues: _, ...resolved } = this.options.project.resolve(value.request);
       if (!isDeepStrictEqual(resolved, value.resolved))
         throw new CatalogError(
           "ARTIFACT_CHANGED",
@@ -243,7 +250,6 @@ export class AlignmentProcessing {
         throw new CatalogError("ARTIFACT_CHANGED", "Prepared project revision changed");
       projectOwner = { kind: "project", projectId: resolved.projectId };
       input = alignmentSourceSchema.parse(resolved.source);
-      issues = resolved.issues ?? [];
       ({ selected, source } = this.descriptor(input));
     } else {
       input = alignmentSourceSchema.parse(JSON.parse(job.input).request);
@@ -324,7 +330,6 @@ export class AlignmentProcessing {
     const staged = this.options.evidence.stage(identity, descriptor, observed.operands, job.jobId);
     return {
       result: JSON.stringify(staged.metadata),
-      issues,
       publish: staged.publish,
       close: staged.close,
     };

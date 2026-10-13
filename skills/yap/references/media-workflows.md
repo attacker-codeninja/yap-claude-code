@@ -52,7 +52,9 @@ boundary decisions remain in raw evidence; unowned decoded context is
 
 Transcription decodes overlapping windows, explicit ranges included, and always
 publishes; never hand-chunk a long source to get a transcript. Read the
-generation's issues: `boundary-unresolved` marks a word at a window seam that the
+generation's issues in `published.issues` on any ready source read (a project
+read's `dependencies[].issues`), not only on rows: some anchor to no published
+word. `boundary-unresolved` marks a word at a window seam that the
 two windows disagreed on (`published` says whether it reached the transcript),
 `timing-clamped` an estimate past the decoded edge, and `word-dropped` a token
 the engine timed impossibly. Check those words against the audio or the raw
@@ -416,10 +418,11 @@ A range that runs past its source or project is clamped to the part inside it: t
 result carries a `range-clamped` issue with the requested range, the applied range
 and the bounds, so read the applied range rather than assuming the request. A
 range with no part inside refuses with `INVALID_RANGE` and names the bounds.
-Synchronous reads report the issue as the result's `issues`; rendered recognition
-and project alignment report it with their published output. A transcription
-`executionRange` past the source reports it in the `transcript.prepare` result's
-`issues`, and shares the generation a request for the applied range would get.
+The issue is always in the result's own `issues`, recomputed for each request,
+never stored with an output: work is keyed by the applied range, so a range past
+the end shares the output a request for the applied range gets. That holds for
+reads, a transcription `executionRange`, rendered recognition and project
+alignment alike; `--wait` keeps the clamp on the read it settles with.
 
 For timeline inspection, use advertised `timeline.events` reads. Video scene changes
 need a selected asset/stream, not capture metadata; add acquisition only to apply

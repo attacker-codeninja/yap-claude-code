@@ -413,12 +413,7 @@ export class TranscriptProcessing {
       scope,
       signal,
     );
-    return {
-      result: JSON.stringify(transcript),
-      issues,
-      publish: () => undefined,
-      close: async () => {},
-    };
+    return { result: JSON.stringify(transcript), issues };
   }
 
   private async transcribeSource(

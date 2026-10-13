@@ -501,11 +501,7 @@ export class TranscriptStore implements TranscriptRecords {
     identity: Pick<TranscriptIdentity, "owner" | "generation">,
     { historical = false }: { historical?: boolean } = {},
   ): TranscriptMetadata {
-    const row = this.store.catalog
-      .prepare(`SELECT * FROM transcript_generations WHERE ${where}`)
-      .get(...ownerIdentity(identity.owner), identity.generation) as GenerationRow | undefined;
-    const value = row?.state === "complete" ? readable(row) : null;
-    const stale = row?.state === "complete" && (!value || !currentTranscript(value));
+    const { value, stale } = this.completeGeneration(identity);
     if (!value || (stale && !historical))
       throw new CatalogError("NOT_FOUND", "Retained transcript generation is unavailable", {
         generation: identity.generation,
@@ -516,12 +512,17 @@ export class TranscriptStore implements TranscriptRecords {
 
   /** Whether a complete retained generation is unreadable or names a recipe or policy that isn't current. */
   isStale(identity: Pick<TranscriptIdentity, "owner" | "generation">): boolean {
+    return this.completeGeneration(identity).stale;
+  }
+
+  /** The one staleness rule: a complete generation this version can't read, or isn't current. */
+  private completeGeneration(identity: Pick<TranscriptIdentity, "owner" | "generation">) {
     const row = this.store.catalog
       .prepare(`SELECT * FROM transcript_generations WHERE ${where}`)
       .get(...ownerIdentity(identity.owner), identity.generation) as GenerationRow | undefined;
-    if (row?.state !== "complete") return false;
+    if (row?.state !== "complete") return { value: null, stale: false };
     const value = readable(row);
-    return !value || !currentTranscript(value);
+    return { value, stale: !value || !currentTranscript(value) };
   }
 
   /** Current generations travel in packages; stale ones are left out and named for the caller to report. */

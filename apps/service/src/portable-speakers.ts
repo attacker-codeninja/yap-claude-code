@@ -2,7 +2,10 @@ import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { acquisitionContext } from "@yap/core/acquisitions";
 import { CatalogError } from "@yap/core/catalog";
-import { admitProjectRange, projectCompositionFromRevision } from "@yap/core/project-window";
+import {
+  admitProjectEvidenceRange,
+  projectCompositionFromRevision,
+} from "@yap/core/project-window";
 import { sourceSelectionKey, type SourceSelection } from "@yap/core/source-selection";
 import { selectSourceChannel } from "@yap/core/source-selection";
 import {
@@ -98,12 +101,11 @@ export function portableProjectSpeakers(
     [...acquisitions.values()].map(acquisitionContext),
   );
   const projection = createSourceRangeProjection(model);
-  const requestedRange = input.range ?? previous?.manifest.query.range;
-  const admitted =
-    model.durationUs === 0 &&
-    (requestedRange === undefined || (requestedRange.startUs === 0 && requestedRange.endUs === 0))
-      ? { range: { startUs: 0, endUs: 0 }, issues: [] }
-      : admitProjectRange(model.durationUs, requestedRange);
+  const admitted = admitProjectEvidenceRange(
+    model.durationUs,
+    input.range ?? previous?.manifest.query.range,
+    input.range === undefined,
+  );
   const selectedRange = admitted.range;
   const eligible = model.document.tracks
     .filter((track) => track.kind === "audio")
