@@ -169,6 +169,10 @@ key-window focus. Status stays outside the scrolling controls.
 The native popover frame owns the backdrop and arrow together; content adds no
 outer panel or stroke. Library has one entry point in the capture header, and its
 canonical controls action stays the same regardless of that placement.
+The source chooser shows a picture of each display or window, taken only while the panel is open
+and once per opening, so a closed panel captures nothing. A display's picture uses the same
+[exclusion](../../helpers/mac/Sources/YapCapture/CaptureExclusion.swift) as a take of it, so it
+shows what would be recorded rather than Yap's own panel.
 When a recording is available, the popover appends the latest library item below its transport
 actions and routes Play and Copy agent prompt through the same controls actions as Library.
 
