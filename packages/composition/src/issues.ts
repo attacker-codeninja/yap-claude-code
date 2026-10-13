@@ -65,6 +65,19 @@ export const normalizationStopReasonSchema = z.enum([
   "offset-unavailable",
 ]);
 
+const index = z.int().nonnegative().max(Number.MAX_SAFE_INTEGER);
+/**
+ * An engine value exactly as reported; a nonfinite one is spelled out, since JSON has no NaN.
+ * Literals, not `z.enum`: declaration emit turns an enum key "-Infinity" into `[-Infinity]` and
+ * drops it from the built type.
+ */
+const engineValueSchema = z.union([
+  z.number().finite(),
+  z.literal("NaN"),
+  z.literal("Infinity"),
+  z.literal("-Infinity"),
+]);
+
 export const issueSchema = z.discriminatedUnion("code", [
   issue(
     "issues-truncated",
@@ -144,6 +157,45 @@ export const issueSchema = z.discriminatedUnion("code", [
     z.object({ placementId: z.string().min(1), alternative: z.literal("vtt") }).strict(),
   ),
   issue("framing-constraint-unmet", z.object({ constraint: framingConstraintSchema }).strict()),
+  // Speech inference (helpers/mac/Sources/YapSpeech). `window` is the decoded window's ordinal and
+  // `observation` its index in that window's raw observations; raw evidence keeps every candidate.
+  issue(
+    "boundary-unresolved",
+    z
+      .object({
+        boundaryUs: timeValueSchema,
+        window: index,
+        observation: index,
+        text: z.string().min(1).max(1024),
+        published: z.boolean(),
+      })
+      .strict(),
+  ),
+  issue(
+    "timing-clamped",
+    z
+      .object({
+        window: index,
+        observation: index,
+        decoded: selectionRangeSchema,
+        startSeconds: z.number().finite(),
+        endSeconds: z.number().finite(),
+      })
+      .strict(),
+  ),
+  issue(
+    "word-dropped",
+    z
+      .object({
+        window: index,
+        token: index,
+        text: z.string().max(1024),
+        startSeconds: engineValueSchema,
+        endSeconds: engineValueSchema,
+        confidence: engineValueSchema,
+      })
+      .strict(),
+  ),
   issue(
     "range-clamped",
     z

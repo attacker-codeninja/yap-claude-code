@@ -40,7 +40,7 @@ export function recognize({ native, models, source, durationUs, name, out, secon
       execution: {
         executionRange: null,
         context: { beforeUs: 0, afterUs: 0 },
-        recipe: "source-windows-20s-context4s-guard1s-v2",
+        recipe: "source-windows-20s-context4s-guard1s-v3",
       },
     },
   };

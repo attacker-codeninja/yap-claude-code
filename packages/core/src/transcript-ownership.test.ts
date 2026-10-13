@@ -158,8 +158,8 @@ test("recording and asset owners with the same ID/generation retain separate fil
   const f = await fixture();
   const recordingInput = await f.input(recording, recordingSource);
   const assetInput = await f.input(asset, source);
-  const recorded = await f.store.ingest(recordingInput);
-  const selected = await f.store.ingest(assetInput);
+  const recorded = (await f.store.ingest(recordingInput)).transcript;
+  const selected = (await f.store.ingest(assetInput)).transcript;
   expect(selected.owner).toEqual(asset.owner);
   expect(selected.source).toEqual(source);
   expect(selected.track.sourceOffsetUs).toBe(-250000);
@@ -288,7 +288,7 @@ test.each(Object.keys(staleRewrites) as (keyof typeof staleRewrites)[])(
     const portableSource = { ...source, acquisitionId: randomUUID() };
     f.authoritative.set("asset", { sourceId: portable.sourceId, source: portableSource });
     const [currentId, oldId] = [randomUUID(), randomUUID()];
-    const current = await f.store.ingest(
+    const { transcript: current } = await f.store.ingest(
       await f.input({ ...portable, generation: currentId }, portableSource),
     );
     await f.store.ingest(await f.input({ ...portable, generation: oldId }, portableSource));
@@ -334,7 +334,7 @@ test("a replay admits retained evidence under its historical recipe and never re
   const f = await fixture();
   const input = await f.input(asset, source);
   const historical = { ...input.request.execution, recipe: "source-windows-historical-v1" };
-  const replay = await f.store.ingest({
+  const { transcript: replay } = await f.store.ingest({
     ...input,
     request: { ...input.request, execution: historical },
     receipt: { ...input.receipt, execution: historical },
@@ -396,27 +396,29 @@ test("the retained native recording transcript preserves every inherited word an
   });
   await writeFile(output, adapted.body);
   const metadata = recordingTranscript(
-    await store.ingest({
-      identity,
-      source: {
-        kind: "recording",
-        durationUs: 134025574,
-        sourceGeneration: "captured-native-fixture",
-      },
-      request: { ...nativeRequest.params, execution: speechExecution(), output },
-      receipt: {
-        ...nativeReply.data,
-        execution: speechExecution(),
-        segments: nativeReply.data.segments.map((segment: { source: unknown }) => ({
-          ...segment,
-          owned: segment.source,
-        })),
-        available: nativeRequest.params.track.available,
-        output: { file: output, bytes: adapted.body.length, sha256: adapted.sha256 },
-      },
-      pins: { ...manifest.models.pins, modelDigest: manifest.models.digest },
-      signal: new AbortController().signal,
-    }),
+    (
+      await store.ingest({
+        identity,
+        source: {
+          kind: "recording",
+          durationUs: 134025574,
+          sourceGeneration: "captured-native-fixture",
+        },
+        request: { ...nativeRequest.params, execution: speechExecution(), output },
+        receipt: {
+          ...nativeReply.data,
+          execution: speechExecution(),
+          segments: nativeReply.data.segments.map((segment: { source: unknown }) => ({
+            ...segment,
+            owned: segment.source,
+          })),
+          available: nativeRequest.params.track.available,
+          output: { file: output, bytes: adapted.body.length, sha256: adapted.sha256 },
+        },
+        pins: { ...manifest.models.pins, modelDigest: manifest.models.digest },
+        signal: new AbortController().signal,
+      })
+    ).transcript,
   );
   expect(metadata.wordCount).toBe(306);
   expect(

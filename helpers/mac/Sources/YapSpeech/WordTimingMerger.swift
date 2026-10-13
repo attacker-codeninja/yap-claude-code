@@ -15,6 +15,16 @@ public struct EngineWord: Codable, Sendable {
     public let confidence: Float
 }
 
+/// A word the engine reported with a malformed token: nonfinite or reversed time, a negative start,
+/// or confidence outside 0–1. It is never published; its first malformed token is kept as reported.
+public struct DroppedEngineWord: Sendable, Equatable {
+    public let text: String
+    public let token: Int
+    public let startTime: TimeInterval
+    public let endTime: TimeInterval
+    public let confidence: Float
+}
+
 /// Lexical grouping follows FluidAudio 0.15.7
 /// `Sources/FluidAudioCLI/.../TranscribeCommand.swift` (`WordTimingMerger.mergeTokensIntoWords`),
 /// which lives in the CLI target rather than the library. The model gate evaluated the CLI's word
@@ -22,12 +32,14 @@ public struct EngineWord: Codable, Sendable {
 /// word, and confidence is the token average. The library's public `buildWordTimings` differs (no
 /// confidence, skips blank pieces) and is not a substitute.
 ///
-/// Speech-bearing extent and invalid-operand refusal belong to this repository.
+/// Speech-bearing extent and dropping words with malformed tokens belong to this repository.
 public enum WordTimingMerger {
-    public static func mergeTokensIntoWords(_ tokenTimings: [TokenTiming]) throws -> [EngineWord] {
-        guard !tokenTimings.isEmpty else { return [] }
-
+    public static func mergeTokensIntoWords(_ tokenTimings: [TokenTiming])
+        -> (words: [EngineWord], dropped: [DroppedEngineWord])
+    {
         var wordTimings: [EngineWord] = []
+        var dropped: [DroppedEngineWord] = []
+        var malformed: (index: Int, timing: TokenTiming)?
         var currentWord = ""
         var currentStartTime: TimeInterval?
         var currentEndTime: TimeInterval = 0
@@ -40,6 +52,13 @@ public enum WordTimingMerger {
         }
 
         func flush() {
+            defer { malformed = nil }
+            if let malformed {
+                dropped.append(DroppedEngineWord(text: currentWord, token: malformed.index,
+                    startTime: malformed.timing.startTime, endTime: malformed.timing.endTime,
+                    confidence: malformed.timing.confidence))
+                return
+            }
             guard !currentWord.isEmpty, let startTime = currentStartTime else { return }
             // Nothing in this word was said — it is punctuation on its own — so it keeps the only
             // time the engine gave it.
@@ -56,16 +75,14 @@ public enum WordTimingMerger {
         }
 
         for (index, timing) in tokenTimings.enumerated() {
-            guard timing.startTime.isFinite, timing.endTime.isFinite, timing.startTime >= 0,
-                  timing.endTime >= timing.startTime, timing.confidence.isFinite,
-                  timing.confidence >= 0, timing.confidence <= 1 else {
-                throw NativeFailure("INVALID_SPEECH_TIMING",
-                    "Token \(index) has invalid estimate [\(timing.startTime),\(timing.endTime)] or confidence \(timing.confidence).")
-            }
+            let valid = timing.startTime.isFinite && timing.endTime.isFinite && timing.startTime >= 0
+                && timing.endTime >= timing.startTime && timing.confidence.isFinite
+                && timing.confidence >= 0 && timing.confidence <= 1
             let token = timing.token
 
             if token.hasPrefix(" ") || token.hasPrefix("\n") || token.hasPrefix("\t") {
                 flush()
+                if !valid { malformed = (index, timing) }
 
                 currentWord = token.trimmingCharacters(in: .whitespacesAndNewlines)
                 currentStartTime = timing.startTime
@@ -73,6 +90,7 @@ public enum WordTimingMerger {
                 currentSpoken = spoken(token) ? (timing.startTime, timing.endTime) : nil
                 currentConfidences = [timing.confidence]
             } else {
+                if !valid && malformed == nil { malformed = (index, timing) }
                 if currentStartTime == nil {
                     currentStartTime = timing.startTime
                 }
@@ -92,7 +110,7 @@ public enum WordTimingMerger {
 
         flush()
 
-        return wordTimings
+        return (wordTimings, dropped)
     }
 
     private static func averageConfidence(_ confidences: [Float]) -> Float {

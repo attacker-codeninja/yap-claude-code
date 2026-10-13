@@ -1212,6 +1212,7 @@ export class ProjectPackages {
                   stage.metadata,
                   resource.available,
                   resource.publication,
+                  stage.issues,
                 );
               }
               for (const { resource, stage } of scenes) {

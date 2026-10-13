@@ -835,8 +835,8 @@ export class JobQueue {
   }
 
   /**
-   * The dependency owner validates the result and its issues; the publication joins the caller's
-   * catalog transaction.
+   * The dependency owner validates the result and its issues, which it re-derives locally from
+   * what the producer reported; the publication joins the caller's catalog transaction.
    */
   adoptArtifact(receipt: RetainedArtifact, issues: readonly Issue[] = []): void {
     this.requireOpen();

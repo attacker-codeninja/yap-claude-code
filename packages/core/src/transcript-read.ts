@@ -1,4 +1,4 @@
-import { admitReadRange, round, fromTime } from "@yap/composition";
+import { admitReadRange, round, fromTime, type Issue } from "@yap/composition";
 import { z } from "zod";
 import { CatalogError } from "./catalog.js";
 import { comparePageKeys, type PageBound } from "./ordered-pages.js";
@@ -201,6 +201,8 @@ export type SourceTranscriptRow = {
       instant?: true;
       confidence: number | null;
       segment: number;
+      /** What the publication reported about this word; absent when nothing. */
+      issues?: Issue[];
     }
   | { type: "gap"; reason: GapReason }
 );
@@ -279,6 +281,7 @@ export class SourceTranscriptRead {
             confidence: row.confidence,
             segment: row.segment,
             ...(row.instant ? { instant: true as const } : {}),
+            ...(row.issues ? { issues: row.issues } : {}),
             ...common,
           }
         : { type: "gap", reason: row.reason, ...common };

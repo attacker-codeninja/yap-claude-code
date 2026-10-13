@@ -9,6 +9,8 @@ import {
   type SignedTimeValue,
   type TimeValue,
   omit,
+  issueSchema,
+  type Issue,
 } from "@yap/composition";
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
@@ -21,15 +23,16 @@ import { setImmediate } from "node:timers/promises";
 import { z } from "zod";
 import type { CaptureStore } from "./capture-store.js";
 import { CatalogError, type Catalog } from "./catalog.js";
+import { createOutputIssueTable, wordIssues } from "./issues.js";
 import { ownerIdentity, type JobOwner } from "./jobs.js";
 import type { PageQuery } from "./ordered-pages.js";
 import type { SpeechEnginePins, SpeechModelRequest } from "./models.js";
 import type { TimeRange } from "./presentation-time.js";
 import { wordKind, wordKindPolicy, type WordKind } from "./word-kind.js";
 
-export const transcriptPolicy = "transcript-v3";
+export const transcriptPolicy = "transcript-v4";
 
-const speechWindowRecipe = "source-windows-20s-context4s-guard1s-v2";
+const speechWindowRecipe = "source-windows-20s-context4s-guard1s-v3";
 /** Retained and replayed execution keeps whatever recipe produced it; it is never relabelled. */
 export const historicalSpeechExecutionSchema = z.strictObject({
   executionRange: selectionRangeSchema.nullable(),
@@ -280,6 +283,8 @@ export type TranscriptWordRecord = {
   confidence: number | null;
   /** Connected primary observation run; native inference windows are retained separately. */
   segment: number;
+  /** What the publication reported about this word, when anything. */
+  issues?: Issue[];
 };
 export type TranscriptGapRecord = { startUs: number; endUs: number; reason: GapReason };
 /** One decoded inference window as the engine saw it. */
@@ -295,6 +300,8 @@ export type TranscriptRecordQuery = Omit<PageQuery, "index"> & {
   /** Estimated intervals intersect the half-open window; zero-width observations are points. */
   intersects?: TimeRange;
 };
+/** An indexed generation and the issues its raw evidence reports, ready for its publication. */
+export type IndexedTranscript = { transcript: TranscriptMetadata; issues: Issue[] };
 export type TranscriptRecords = {
   wordRecords(identity: TranscriptIdentity, query: TranscriptRecordQuery): TranscriptWordRecord[];
   gapRecords(identity: TranscriptIdentity, query: TranscriptRecordQuery): TranscriptGapRecord[];
@@ -347,6 +354,18 @@ const lineSchema = z.object({
       confidence: z.number().min(0).max(1).nullable().optional(),
     }),
   ),
+  /** Local problems native reported; `word` indexes this line's words. Absent before recipe v3. */
+  issues: z
+    .array(
+      z.strictObject({
+        code: z.string(),
+        message: z.string(),
+        word: time.optional(),
+        range: selectionRangeSchema.optional(),
+        evidence: z.unknown(),
+      }),
+    )
+    .optional(),
 });
 function invalid(message: string, details: Record<string, unknown> = {}): never {
   throw new CatalogError("INVALID_RESPONSE", message, details);
@@ -388,6 +407,7 @@ export class TranscriptStore implements TranscriptRecords {
     ) => void,
   ) {
     this.references = new ResourceReferences(store);
+    createOutputIssueTable(store);
     store.catalog.exec(`
       CREATE TABLE IF NOT EXISTS transcript_generations (
         ownerKind TEXT NOT NULL,ownerId TEXT NOT NULL,sourceId TEXT NOT NULL,generation TEXT NOT NULL,
@@ -654,6 +674,8 @@ export class TranscriptStore implements TranscriptRecords {
       }
       return {
         metadata: existing,
+        // The local generation was indexed already; its publication, if any, carries its issues.
+        issues: [],
         close: async () => {},
         publish: () => {
           signal.throwIfAborted();
@@ -681,7 +703,7 @@ export class TranscriptStore implements TranscriptRecords {
         "policy",
         "kindPolicy",
       );
-      const indexed = await this.index({
+      const { transcript: indexed, issues } = await this.index({
         identity: expected,
         source: expected.source,
         request: { track, output, execution: expected.execution },
@@ -705,6 +727,7 @@ export class TranscriptStore implements TranscriptRecords {
       }
       return {
         metadata: indexed,
+        issues,
         close,
         publish: () => {
           signal.throwIfAborted();
@@ -761,11 +784,11 @@ export class TranscriptStore implements TranscriptRecords {
     receipt: SpeechTranscriptionReceipt;
     pins: SpeechEnginePins & { modelDigest: string };
     signal: AbortSignal;
-  }): Promise<TranscriptMetadata> {
+  }): Promise<IndexedTranscript> {
     this.validateOwner(input.identity, input.source);
     const result = await this.index(input);
     input.signal.throwIfAborted();
-    this.store.transaction(() => this.publish(result));
+    this.store.transaction(() => this.publish(result.transcript));
     return result;
   }
   private publish(value: TranscriptMetadata): void {
@@ -781,7 +804,7 @@ export class TranscriptStore implements TranscriptRecords {
     receipt: SpeechTranscriptionReceipt;
     pins: SpeechEnginePins & { modelDigest: string };
     signal: AbortSignal;
-  }): Promise<TranscriptMetadata> {
+  }): Promise<IndexedTranscript> {
     const { identity, request, pins, signal } = input;
     const { owner, sourceId, generation } = identity;
     const [ownerKind, ownerId] = ownerIdentity(owner);
@@ -934,6 +957,7 @@ export class TranscriptStore implements TranscriptRecords {
       await setImmediate(undefined, { signal });
     };
 
+    const issues: Issue[] = [];
     let lines = 0,
       ordinal = 0,
       maxWordUs = 0,
@@ -974,6 +998,19 @@ export class TranscriptStore implements TranscriptRecords {
         connectedRun++;
       previousSegment = segment;
       segments.push(segment);
+      for (const { word, range, ...reported } of line.data.issues ?? []) {
+        const parsed = issueSchema.safeParse({
+          ...reported,
+          ...(word === undefined
+            ? range === undefined
+              ? {}
+              : { at: { range } }
+            : { at: { word: ordinal + word } }),
+        });
+        if (!parsed.success || (word !== undefined && word >= line.data.words.length))
+          invalid("Raw transcript issue is malformed", { line: lines - 1 });
+        issues.push(parsed.data);
+      }
       const observed = {
         startUs: round(fromTime(segment.source.startUs)),
         endUs: round(fromTime(segment.source.endUs)),
@@ -1082,11 +1119,14 @@ export class TranscriptStore implements TranscriptRecords {
           ownerId,
           generation,
         );
-      return metadata(
-        this.store.catalog
-          .prepare(`SELECT * FROM transcript_generations WHERE ${where}`)
-          .get(ownerKind, ownerId, generation) as GenerationRow,
-      );
+      return {
+        transcript: metadata(
+          this.store.catalog
+            .prepare(`SELECT * FROM transcript_generations WHERE ${where}`)
+            .get(ownerKind, ownerId, generation) as GenerationRow,
+        ),
+        issues,
+      };
     });
   }
 
@@ -1095,7 +1135,17 @@ export class TranscriptStore implements TranscriptRecords {
       TranscriptWordRecord,
       "instant"
     > & { instant: number })[];
-    return rows.map(({ instant, ...word }) => ({ ...word, instant: instant === 1 }));
+    if (!rows.length) return [];
+    const ordinals = rows.map((row) => row.ordinal);
+    // A transcript generation is the attempt that published it, so its issues are found by it.
+    const issues = wordIssues(this.store, identity.generation, {
+      first: Math.min(...ordinals),
+      last: Math.max(...ordinals),
+    });
+    return rows.map(({ instant, ...word }) => {
+      const reported = issues.get(word.ordinal);
+      return { ...word, instant: instant === 1, ...(reported ? { issues: reported } : {}) };
+    });
   }
 
   gapRecords(identity: TranscriptIdentity, query: TranscriptRecordQuery): TranscriptGapRecord[] {
