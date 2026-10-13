@@ -15,8 +15,9 @@ Words used throughout:
   TypeScript process that owns the library and answers the app, CLI and MCP.
 - **run**: the pictures between one turn-on and the next turn-off. **gap**: the off time between
   two runs.
-- **mapping** (`camera.mapping.jsonl`): one row per capture callback the take received, written
-  live. **receipt** (`camera.publication.json`): the camera's published statement of what it
+- **mapping** (`camera.mapping.jsonl`): one row per camera callback, written live. Mappings
+  saved before KU6 was fixed, including 0.1.33's, also hold a row per screen and microphone
+  callback. **receipt** (`camera.publication.json`): the camera's published statement of what it
   recorded. Its **support** is the outer span from first to last recorded picture.
 - **raw movie**: the camera file as written live. **canonical movie** (`video.mov`): the published
   copy, with off time as explicit empty edits.
@@ -24,81 +25,28 @@ Words used throughout:
   acquisition. It probes the canonical movie and requires the probed intervals to equal the
   receipt's.
 
-**Review these first:** [every reserved take logs every callback (KU6)](#ku6-every-take-that-reserves-a-camera-logs-every-screen-and-microphone-callback)
-(needs-user), [a crashed take whose camera never recorded recovers as `NO_CAMERA`](#a-crashed-take-whose-camera-recorded-nothing-recovers-as-no_camera)
+**Review these first:** [a crashed take whose camera never recorded recovers as `NO_CAMERA`](#a-crashed-take-whose-camera-recorded-nothing-recovers-as-no_camera)
 (sound, low confidence) and [a toggle's release failure is reported on that toggle](#a-device-release-failure-from-a-turn-off-or-failed-turn-on-belongs-to-that-toggle)
-(sound, corrected, medium confidence).
+(sound, corrected, medium confidence). The two entries that needed the user are settled:
+[the mapping logs camera callbacks only (KU6)](#ku6-the-camera-mapping-logs-camera-callbacks-only)
+(fixed) and [the camera button's look](#the-camera-buttons-look-and-the-floating-controls-open-polish)
+(approved).
 
-Counts: needs-user 2, sound 39, plus 9 trivial calls (end of file).
+Counts: needs-user 0, sound 41, plus 9 trivial calls (end of file).
 
 ---
 
 ## Needs user
 
-### KU6: every take that reserves a camera logs every screen and microphone callback
-
-- **When:** `6a5407f5` (a reserved-off camera gets a mapping from the take's start); measured by
-  the never-on journey (`70b19317`), recorded in `8c98f911`.
-- **The choice:** Take a 2-hour screen take with the microphone on. The person has granted camera
-  access, so the take reserves the default camera, but they never turn it on. The companion
-  camera's mapping file is written by the same component that receives every screen and
-  microphone callback (`CaptureClockIngress`), and it writes a row for every one of them: about
-  29 screen rows and 93 microphone rows a second, roughly 380 bytes each, so **about 2.75 MB per
-  minute**, whether the camera is on or off. What happens next depends on the camera:
-  ```
-  camera never turned on   -> mapping is never read; the take completes
-  camera turned on at all  -> publication reads the mapping; over 256 MiB it refuses the camera
-                              (reached after ~97 min with the microphone, ~55 with system audio,
-                              sooner with the camera on)
-  any reserved take        -> the ingress fails the take (EVIDENCE_LIMIT) at 5,000,000 rows,
-                              about 11 hours at these rates
-  ```
-  The row rate was measured; the over-budget refusal and the row cap are derived from the code
-  (`CameraMedia.retainMapping`, `CaptureClockIngress`'s `maximumRows`), not observed.
-  Before this feature only takes with the camera on carried a mapping, and those already hit the
-  same 256 MiB budget at the same length. Now every screen take by a person who granted camera
-  access carries one. The unbuilt alternative: the companion's mapping logs only camera rows,
-  so its size follows camera time, not take time.
-- **The gap:** The spec named this as a known unknown and asked slice 08 to measure it and raise
-  it before closing; it did not decide the answer.
-- **The reach:** The 11-hour row cap now applies to ordinary screen takes for anyone with camera
-  access, and long takes with the camera on lose the camera exactly as 0.1.33 camera takes did.
-  Changing the mapping's contents changes a pinned, hashed recording member, so it is easier to
-  decide before many such takes exist.
-- **Verdict:** needs-user. It trades file size and a long-take ceiling against changing what the
-  mapping records. **Provisional call:** leave it as built (no regression for takes with the
-  camera on; never-on takes still complete). **Recommended follow-up:** the companion ingress
-  logs only camera rows (owner `CaptureClockIngress`). It is reversible: readers already accept
-  any mapping that validates, so a later build can write fewer rows.
-- **Confidence:** low.
-
-### The camera button's look, and the floating controls' open polish
-
-- **When:** `b291b7dc` (camera button); `d35c2d1b` (slice 00 card, minimize and restore).
-- **The choice:** During a take with a reserved camera, the floating controls (the small panel
-  with the clock, pause, finish and cancel) gain a camera button after pause/finish, behind a
-  separator. On: the system's "engaged" chip behind a filled camera (`video.fill`). Off: a
-  struck-through camera (`video.slash.fill`) with no chip, at full contrast. Two unprimed
-  critiques drove this. A plain icon left on and off to a thin slash, and the system's own off
-  style dimmed it so it read as disabled. While the picture is minimized, the restore button
-  (`pip.exit`) joins the camera button's group with no separator. Polish left open: the slash is
-  a hairline at 1x, the chip is pale in light mode, minimize is a "−" (the user asked that it
-  look like a window minimize), the row changes width when the camera or restore button
-  appears, the separator after the clock sits off-centre, the trash glyph sits further from the
-  right edge than the dot from the left, and the chip crowds its separator.
-- **The gap:** The slice delegated icon weights and spacing and named the symbols. It did not
-  settle the on/off treatment or the open polish, and the user has not yet seen the redrawn shots.
-- **The reach:** Any later control in this row will copy this toggle style.
-- **Verdict:** needs-user. It is taste. **Provisional call:** keep it as built and show the
-  [overlay shots](assets/overlay/). It is reversible: it is view code in
-  `RecordingOverlayPanel`, with no contract behind it.
-- **Confidence:** medium.
+None. Both entries that needed the user are settled and sit at the end of [Sound](#sound):
+[KU6](#ku6-the-camera-mapping-logs-camera-callbacks-only) and
+[the camera button's look](#the-camera-buttons-look-and-the-floating-controls-open-polish).
 
 ---
 
 ## Sound
 
-Ranked least-confident first.
+Ranked least-confident first; the two entries the user settled come last.
 
 ### A crashed take whose camera recorded nothing recovers as `NO_CAMERA`
 
@@ -112,11 +60,25 @@ Ranked least-confident first.
   alternative was `CAMERA_NOT_TURNED_ON`, the code a live stop uses. But a crashed directory looks
   the same whether the camera was never turned on or was lost before its first picture, so
   recovery states only what it can prove.
+
+  Rechecked after [KU6](#ku6-the-camera-mapping-logs-camera-callbacks-only): a camera that was
+  never on now leaves an empty mapping. That still does not prove it was never on. A turn-on
+  writes nothing; only a callback from the device does. So a camera that was turned on and
+  crashed or was lost before its first callback also leaves an empty mapping:
+  ```
+  never turned on                                      -> empty mapping
+  turned on, crash before the device's first callback  -> empty mapping
+  turned on, callbacks but no recorded picture         -> camera rows, no journal
+  ```
+  A live stop's `CAMERA_NOT_TURNED_ON` also means "off at stop", not "never on" (on and off before
+  any picture gets it too), and the mapping does not say whether the camera was on at the crash.
+  Telling them apart needs a row written at each turn-on, which is a new marker. Not built.
 - **The gap:** Slice 05 asked for "an explicit unavailable code" and left which one open.
 - **The reach:** In the CLI's `recording.get`, a person who never used the camera sees a code
   that reads like a device failure. The app's library treats any unavailable publication as
   settled, so it shows nothing wrong. Telling the two cases apart would need a durable record of
-  turn-ons, which the README rejected (no journal events).
+  turn-ons, which the README rejected (no journal events). Recovery accepts both an empty mapping
+  and a 0.1.33 one that holds screen rows (`EmptyCaptureRecoveryTests`).
 - **Verdict:** sound. It claims nothing the directory can't prove.
 - **Confidence:** low.
 
@@ -568,7 +530,8 @@ Ranked least-confident first.
   releases it. Without access, nothing is reserved and there is no toggle.
 - **The gap:** None. The user decided this.
 - **The reach:** Every take by someone with camera access now has a camera source, published
-  `CAMERA_NOT_TURNED_ON` when unused (and see KU6).
+  `CAMERA_NOT_TURNED_ON` when unused, with an empty mapping since
+  [KU6](#ku6-the-camera-mapping-logs-camera-callbacks-only) was fixed.
 - **Verdict:** sound.
 - **Confidence:** high.
 
@@ -741,6 +704,73 @@ Ranked least-confident first.
 - **The gap:** Slice 01 delegated storage.
 - **The reach:** The corpus can't be regenerated from the current tree, by design.
 - **Verdict:** sound.
+- **Confidence:** high.
+
+### KU6: the camera mapping logs camera callbacks only
+
+- **When:** `6a5407f5` (a reserved-off camera gets a mapping from the take's start); measured by
+  the never-on journey (`70b19317`), recorded in `8c98f911`; fixed in `207ade6f` after the user
+  chose the fix.
+- **The choice:** Take a 2-hour screen take with the microphone on. The person has granted camera
+  access, so the take reserves the default camera, but they never turn it on. The companion
+  camera's mapping file is written by the same component that receives every screen and
+  microphone callback (`CaptureClockIngress`). As first built, it wrote a row for every one of
+  them: about 29 screen rows and 93 microphone rows a second, roughly 380 bytes each, so about
+  2.75 MB per minute, whether the camera was on or off. It now writes a row only for a camera
+  callback, so that take leaves an empty mapping:
+  ```
+                           as first built                     now
+  camera never turned on   ~2.75 MB a minute, never read      0 bytes
+  camera on                over 256 MiB publication refuses   about 0.9 MB a minute of camera
+                           the camera: ~97 min of take with   time (30 rows a second, ~515 bytes
+                           the microphone, ~55 with system    each), so ~4.8 hours with the
+                           audio                              camera on
+  any reserved take        EVIDENCE_LIMIT at 5,000,000 rows,  5,000,000 camera rows, ~46 hours
+                           ~11 hours of take                  with the camera on
+  ```
+  The never-on journey measured 0 bytes over a 2.6 s take whose screen recorded throughout, and
+  now asserts it. The new limits are derived from the code and a measured row size, not observed.
+
+  Nothing read the screen and microphone rows. Every reader of the mapping (publication's scans,
+  live verification, recovery's republication) goes through `CameraMedia.Mapping`, which skips
+  any row that is not an accepted camera row. The camera's origin and pauses come from its
+  journal, not the mapping. Core, the service and source export treat the file as bytes pinned
+  by hash. The primary's own journal and result already count its callbacks, including those a
+  pause omits; one test that read the pause from the mapping's screen rows now reads it there.
+  Camera rows keep their shape (`role: "camera"`, `clockDomain: "camera-session"`), so a new
+  mapping is a strict subset of a 0.1.33 one, and readers still accept mappings that hold screen
+  and microphone rows.
+- **The gap:** The spec named this as a known unknown and asked slice 08 to measure it and raise
+  it before closing. The user decided: fix it.
+- **The reach:** A mapping's size now follows camera time, not take time, for every take that
+  reserves a camera. Recordings saved earlier keep their larger mappings, which still read: the
+  [preservation gate](README.md#existing-recordings-keep-working) passed on corpora A and B with
+  delivered frames byte-identical to the baseline. A crash before any camera callback now leaves
+  an empty mapping, which recovery accepts (see
+  [the `NO_CAMERA` entry](#a-crashed-take-whose-camera-recorded-nothing-recovers-as-no_camera)).
+- **Verdict:** sound. Resolved by the user's decision on 2026-10-13.
+- **Confidence:** high.
+
+### The camera button's look, and the floating controls' open polish
+
+- **When:** `b291b7dc` (camera button); `d35c2d1b` (slice 00 card, minimize and restore).
+- **The choice:** During a take with a reserved camera, the floating controls (the small panel
+  with the clock, pause, finish and cancel) gain a camera button after pause/finish, behind a
+  separator. On: the system's "engaged" chip behind a filled camera (`video.fill`). Off: a
+  struck-through camera (`video.slash.fill`) with no chip, at full contrast. Two unprimed
+  critiques drove this. A plain icon left on and off to a thin slash, and the system's own off
+  style dimmed it so it read as disabled. While the picture is minimized, the restore button
+  (`pip.exit`) joins the camera button's group with no separator. Polish noted and not acted on:
+  the slash is a hairline at 1x, the chip is pale in light mode, minimize is a "−" (the user
+  asked that it look like a window minimize), the row changes width when the camera or restore
+  button appears, the separator after the clock sits off-centre, the trash glyph sits further
+  from the right edge than the dot from the left, and the chip crowds its separator.
+- **The gap:** The slice delegated icon weights and spacing and named the symbols. It did not
+  settle the on/off treatment or the open polish.
+- **The reach:** Any later control in this row will copy this toggle style.
+- **Verdict:** sound — approved by the user on 2026-10-13 after seeing the
+  [overlay shots](assets/overlay/). It is view code in `RecordingOverlayPanel`, with no contract
+  behind it.
 - **Confidence:** high.
 
 ---

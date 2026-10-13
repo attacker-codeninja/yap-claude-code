@@ -74,7 +74,10 @@ the camera source, never a held picture. The writer records a picture only when
 its whole host interval lies inside an on window, and each run of pictures starts
 on a key frame so no run decodes from another. The raw movie stays continuous; the
 canonical movie states each gap as an explicit empty edit, and verification
-accepts a gap only where the mapping's runs place one. The receipt keeps `support`
+accepts a gap only where the mapping's runs place one. The mapping logs camera
+callbacks only, so its size follows camera time and an off camera adds nothing;
+screen and audio callbacks are the primary's evidence. Older mappings, including
+those of release 0.1.33, also hold screen and microphone rows, which readers skip. The receipt keeps `support`
 as the outer span and lists `gaps` only when there are any, so a camera that was
 never turned off publishes the same receipt as a release that had no off time.
 [CameraAvailability](CameraMedia.swift) is the one owner of that interval

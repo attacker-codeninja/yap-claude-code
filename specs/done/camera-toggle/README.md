@@ -35,7 +35,7 @@ record (`054c6d09`..`5af2b3d9`).
 | Concept | Owner | Shape |
 |---|---|---|
 | Camera availability | The camera receipt (`camera.publication.json`); arithmetic in `CameraAvailability` ([CameraMedia.swift](../../../helpers/mac/Sources/YapCapture/CameraMedia.swift)); TypeScript computes intervals only through `cameraProofIntervals()`; [evidence.ts](../../../packages/core/src/evidence.ts) validates gaps on read | `support` stays the outer span. Optional `gaps: [{startUs, endUs}]`, omitted when empty. Intervals are support minus gaps. |
-| Run boundaries | `CameraWriter` (numbering), `CameraFrameMapping` (row form) | Mapping rows carry optional `cameraFrame.run`, omitted when 0. Callbacks while off are logged with disposition `camera-off`. |
+| Run boundaries | `CameraWriter` (numbering), `CameraFrameMapping` (row form) | Mapping rows carry optional `cameraFrame.run`, omitted when 0. Camera callbacks while off are logged with disposition `camera-off`. The mapping holds camera rows only; readers skip the screen and microphone rows that older mappings, including 0.1.33's, also hold. |
 | Toggle operation | [operations.ts](../../../packages/protocol/src/operations.ts) | `capture.setCamera {recordingId, on}` answers like `capture.status`. CLI and MCP get it from the shared operation. |
 | Start state | Capture selection ([capture.ts](../../../packages/protocol/src/capture.ts)) | Optional `cameraAtStart: "on" \| "off"`; absent with a camera means on. |
 | Live camera state | `NativeCapture.companionCamera`, reported as `capture.status` `device.camera` | `{deviceId, state: "on" \| "off"} \| null`. Never stored in the catalog. |
@@ -201,7 +201,11 @@ Tests and harnesses that pin it:
 - **Crash recovery keeps a prefix.** For an unsealed raw movie, recovery ends the camera at the
   first mapped picture the movie lacks; the last run's unfragmented tail is lost, as accepted.
   A crashed directory with only a mapping recovers as `NO_CAMERA`: it cannot tell "never turned
-  on" from "lost before the first picture".
+  on" from "lost before the first picture". An empty mapping doesn't settle it either, because a
+  turn-on writes nothing before the device's first callback.
+- **The mapping logs camera callbacks only** (KU6, decided by the user after the close). As
+  first built it logged every screen and microphone callback of every take that reserved a
+  camera, about 2.75 MB a minute even with the camera off. Nothing read those rows.
 - **The device measurement never ran.** No step blocked on a device, and every question it would
   have answered was settled by design (lazy open, compatible format, observers removed before
   stop, a 20 s turn-on wait). This Mac has no camera.
@@ -221,16 +225,12 @@ Tests and harnesses that pin it:
 
 ## Open follow-ups
 
-- **KU6, needs the user.** Every take that reserves a camera writes a mapping row for every screen
-  and microphone callback, about 2.75 MB a minute whether the camera is on or off. In a take
-  whose camera is turned on at all, the mapping exceeds the 256 MiB read budget after at most
-  about 97 minutes (about 55 with system audio), sooner the longer the camera is on; every
-  reserved take hits the 5 000 000-row cap after about 11 hours. Both limits are derived from the
-  code (`CameraMedia.retainMapping`, `CaptureClockIngress`'s `maximumRows`), not observed. The
-  recommended change is for the companion ingress (`CaptureClockIngress`) to log only camera
-  rows. Built as is; see the [ledger entry](choices.md#ku6-every-take-that-reserves-a-camera-logs-every-screen-and-microphone-callback).
-- **The camera button's look and the floating controls' open polish, needs the user** ([ledger entry](choices.md#the-camera-buttons-look-and-the-floating-controls-open-polish)).
-  Minimize is a "−", not yet a window-minimize glyph.
+- **Long camera-on takes.** The mapping now grows only with camera time, about 0.9 MB a minute,
+  so publication's 256 MiB read budget is reached after about 4.8 hours with the camera on (derived,
+  not observed); see [KU6](choices.md#ku6-the-camera-mapping-logs-camera-callbacks-only).
+- **Floating-controls polish, noted and not acted on.** The user approved the camera button's
+  look; the small polish items in its [ledger entry](choices.md#the-camera-buttons-look-and-the-floating-controls-open-polish)
+  remain, including minimize as a "−" rather than a window-minimize glyph.
 - **Camera loss while on still interrupts the take.** Whether it should become "camera off" is
   the user's call. Likewise, a release failure at stop of a camera that is on still fails the
   take, on purpose.
@@ -263,7 +263,7 @@ and [no camera](assets/overlay/no-camera.png), each with a `dark-` twin. Two unp
 earlier drafts drove the camera button's treatment: a plain icon left on and off to a thin slash,
 and the system's off style read as disabled. The shots were redrawn after the clock fix. They
 show content geometry, not the live app: the real app cannot reserve a camera on this Mac. The
-user has not yet signed off on the look.
+user approved the look on 2026-10-13.
 
 **The [pre-toggle baseline frames](assets/pre-toggle-corpus/baseline/)** are frames the
 pre-change build delivered from the corpus libraries. They are the before picture for
