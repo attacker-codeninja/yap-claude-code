@@ -1715,7 +1715,9 @@ test("one published output reports the same issues through the service, CLI --wa
   const waited = JSON.parse(cli.stdout) as { ok: boolean; data: typeof served };
   expect(waited).toMatchObject({ ok: true, wait: { state: "settled" } });
   expect(waited.data.published?.issues).toEqual(served.published?.issues);
-  expect(cli.stderr.trim().split("\n").at(-1)).toBe("asset.import: ready (1 issues)");
+  expect(cli.stderr.trim().split("\n").at(-1)).toMatch(
+    /^asset\.import: ready \(1 issues\) \(\S+, generation 1\)$/,
+  );
 
   const client = new Client({ name: "issue-parity", version: "1" });
   cleanups.push(() => client.close());
@@ -1753,4 +1755,30 @@ test("a ready read counts its admission issues beside its published issues", asy
   );
   // The stub serves no delivery; the progress line is the claim here.
   expect(output.stderr.split("\n")).toContain("audio.get: ready (2 issues)");
+});
+
+test("the ready marker counts the issues a truncation entry stands for", async () => {
+  const f = await fixture(async () => ({
+    ok: true,
+    data: {
+      assetId: "a",
+      streamId: "s",
+      state: "ready",
+      issues: [],
+      published: {
+        generation: 1,
+        output: {},
+        issues: [
+          { code: "range-clamped", message: "m", evidence: {} },
+          { code: "issues-truncated", message: "m", evidence: { omitted: 41 } },
+        ],
+      },
+    },
+  }));
+  const output = await f.run(
+    "audio.get",
+    { assetId: "a", streamId: "s", range: { startUs: 0, endUs: 2 } },
+    ["--wait", "--timeout-ms", "1000"],
+  );
+  expect(output.stderr.split("\n")).toContain("audio.get: ready (42 issues)");
 });

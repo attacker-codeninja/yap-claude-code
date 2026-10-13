@@ -287,10 +287,20 @@ export async function waitForWork(options: {
       const issues = [data.issues, record(data.published).issues].flatMap((value) =>
         Array.isArray(value) ? value : [],
       );
+      // A final issues-truncated entry stands for the issues it omitted.
+      const issueCount = issues.reduce(
+        (count: number, issue) =>
+          count +
+          (record(issue).code === "issues-truncated"
+            ? Number(record(record(issue).evidence).omitted ?? 0)
+            : 1),
+        0,
+      );
+      const suffix = current ? `(${current.jobId}, generation ${current.generation})` : "";
       const marker =
-        work.state === "ready" && issues.length > 0
-          ? `${request.operation}: ready (${issues.length} issues)`
-          : `${request.operation}: ${String(work.state ?? "batch")} ${current ? `(${current.jobId}, generation ${current.generation})` : ""}`;
+        work.state === "ready" && issueCount > 0
+          ? `${request.operation}: ready (${issueCount} issues)${suffix ? ` ${suffix}` : ""}`
+          : `${request.operation}: ${String(work.state ?? "batch")} ${suffix}`;
       if (marker !== progress) {
         progress = marker;
         options.progress(marker);
