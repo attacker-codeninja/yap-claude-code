@@ -695,7 +695,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
     })
     .strict()
     .describe(
-      "Read source-bound face trajectory evidence from a retained face-observation index generation. Rows preserve source clock, detector implementation, exact observed boxes, gaps, reset reasons and ambiguity; they never authorize a crop or edit. prediction:linear is an explicit refusal until a prediction method is implemented, so inferred boxes are never mislabeled as observations. Continuations pin source identity and index generation.",
+      "Read source-bound face trajectory evidence from a retained face-observation index generation. Rows preserve source clock, detector implementation, exact observed boxes, gaps, reset reasons and ambiguity; they never authorize a crop or edit. prediction:linear reports state unavailable until a prediction method is implemented, so inferred boxes are never mislabeled as observations. Continuations pin source identity and index generation.",
     ),
   z
     .object({

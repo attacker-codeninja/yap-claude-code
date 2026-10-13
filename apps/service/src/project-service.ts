@@ -1212,7 +1212,7 @@ export async function startProjectService(options: {
               return {
                 ok: true,
                 data: {
-                  state: "refused",
+                  state: "unavailable",
                   reason: "face_observations_unavailable",
                   generation,
                   nextCursor: page.page.nextCursor,

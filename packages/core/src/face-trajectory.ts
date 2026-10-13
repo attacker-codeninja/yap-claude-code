@@ -74,7 +74,7 @@ export type FaceTrajectory = {
   maxGapUs: number;
   prediction: {
     method: FacePredictionMethod;
-    state: "disabled" | "refused";
+    state: "disabled" | "unavailable";
     reason?: "prediction_not_implemented";
   };
   samples: FaceTrajectoryInputSample[];
@@ -167,7 +167,7 @@ export function buildFaceTrajectory(input: FaceTrajectoryInput): FaceTrajectory 
     prediction:
       parsed.prediction === "none"
         ? { method: "none", state: "disabled" }
-        : { method: parsed.prediction, state: "refused", reason: "prediction_not_implemented" },
+        : { method: parsed.prediction, state: "unavailable", reason: "prediction_not_implemented" },
     samples,
     tracks: trajectoryTracks,
     refusals,

@@ -40,15 +40,12 @@
   "allowed": {
    "packages/composition/src/schema.ts": "caller-authored synchronization verdict",
    "packages/protocol/src/correspondence.ts": "caller-authored correspondence verdict",
-   "packages/composition/src/edits.ts": "reads a caller-authored synchronization verdict to report it as an issue"
+   "packages/composition/src/edits.ts": "reads a caller-authored synchronization verdict to report it as an issue",
+   "packages/core/src/alignment-evidence.ts": "retained alignment-worker evidence keeps the worker's own verdict word",
+   "packages/core/src/alignment-operands.ts": "retained alignment-worker evidence keeps the worker's own verdict word",
+   "packages/core/src/speaker-continuity.ts": "an evaluation verdict over measured gates, like synchronization evidence; retained receipts keep it"
   },
-  "pending": {
-   "packages/core/src/alignment-evidence.ts": "07j",
-   "packages/core/src/alignment-operands.ts": "07j",
-   "packages/core/src/speaker-continuity.ts": "07f",
-   "packages/core/src/face-trajectory.ts": "07i",
-   "apps/service/src/project-service.ts": "07i"
-  }
+  "pending": {}
  },
  "messageCodes": {
   "pending": {

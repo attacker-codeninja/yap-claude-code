@@ -212,3 +212,16 @@ overridden. Each entry: the choice, why, and how confident.
   That's a derived view, accepted under the no-compat rule. *Confident.*
 - **07k issues appear on publication, not at admission.** The harness's
   admission-time overlap assertion moved to the committed status. *Confident.*
+- **07i face status words become `unavailable`.** `face.trajectory.get`
+  returns `state: "unavailable"` when observations are missing, and linear
+  prediction reports `state: "unavailable"`. Both are computed at read time,
+  so nothing retained changes. *Confident.*
+- **07f and 07j: verdict vocabularies stay (deviation from the slice
+  table).** The speaker-continuity receipt's accepted/refused verdict and
+  the alignment worker's `conditionalStatus` are evaluation verdicts stored
+  in retained evidence, like synchronization evidence. Renaming them, or
+  turning `failedGates` into issues, would break strict reads of retained
+  0.1.33 receipts and need an identity bump, for vocabulary alone. They're
+  allow-listed in the ledger with reasons. `failedGates` stays the gate
+  results inside the verdict. *Moderately confident: revisit if a consumer
+  reads these as operation refusals.*

@@ -74,7 +74,7 @@ test("labels ambiguous matches and refuses unimplemented prediction", () => {
   });
   expect(trajectory.prediction).toEqual({
     method: "linear",
-    state: "refused",
+    state: "unavailable",
     reason: "prediction_not_implemented",
   });
   expect(trajectory.tracks[0]!.samples[1]).toMatchObject({
