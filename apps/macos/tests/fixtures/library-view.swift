@@ -25,6 +25,7 @@ import YapControls
         deniedCopy.performClick(nil)
         precondition(actions == [.playRecording("fixture-recording"), .copyRecordingPrompt("fixture-recording"), .copyRecordingPrompt("fixture-recording")], "Inapplicable playback cannot escape while local copying remains available")
         let output = CommandLine.arguments[1]
+        let labelled = CommandLine.arguments[2] != "omit"
         var observations: [[String: Any]] = []
         for (name, facts, deliveries, tab, height) in [
             ("recordings", fixture(), ExportsState(), LibraryView.Tab.recordings, CGFloat(476)),
@@ -38,7 +39,7 @@ import YapControls
             let content = LibraryView(state: facts, exports: deliveries) { actions.append($0) }
             content.frame.size = NSSize(width: 768, height: height)
             let shot = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 768, height: height), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-            shot.title = "Library · Synthetic presentation fixture"
+            shot.title = labelled ? "Library · Synthetic presentation fixture" : "Library"
             shot.isReleasedWhenClosed = false
             shot.appearance = NSAppearance(named: .aqua)
             shot.contentView = content

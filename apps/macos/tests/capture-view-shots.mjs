@@ -3,9 +3,10 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { compileControlsCheck } from "./fixtures/swift-controls.mjs";
+import { compileControlsCheck, fixtureLabel } from "./fixtures/swift-controls.mjs";
 
 // Draw and drive the production view. Facts are synthetic; no device/service/permission access.
+const label = fixtureLabel();
 const output = resolve(process.env.SHOTS ?? "/tmp/yap-capture-view-shots");
 mkdirSync(output, { recursive: true });
 const scratch = mkdtempSync(join(tmpdir(), "yap-capture-view-"));
@@ -43,7 +44,7 @@ try {
     ["CaptureView", "CapturePopover", "CaptureDisplays", "RegionSelection"],
     readFileSync(new URL("./fixtures/capture-view.swift", import.meta.url), "utf8"),
   );
-  execFileSync(executable, [output, resolve("apps/macos/BrandMark.png")], {
+  execFileSync(executable, [output, resolve("apps/macos/BrandMark.png"), label], {
     timeout: 20_000,
     stdio: "inherit",
   });

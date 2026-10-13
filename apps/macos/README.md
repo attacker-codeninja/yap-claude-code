@@ -165,7 +165,8 @@ actions and routes Play and Copy agent prompt through the same controls actions 
 
 Run `node apps/macos/tests/capture-view-shots.mjs` from the repository root for
 focused native interaction, applicability and scroll checks plus offscreen images.
-`SHOTS` selects the output directory. The [fixture](tests/fixtures/capture-view.swift)
+`SHOTS` selects the output directory. `FIXTURE_LABEL=omit` makes this renderer and the Library one
+leave out their "synthetic presentation fixture" label for site and video shots; by default it stays. The [fixture](tests/fixtures/capture-view.swift)
 owns synthetic scenarios; its images and metadata record native size, appearance
 and backing scale. This renderer never enumerates devices, inspects permissions,
 starts capture or activates the app.

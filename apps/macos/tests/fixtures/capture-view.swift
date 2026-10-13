@@ -134,6 +134,7 @@ import YapControls
             precondition(permissions.control(identifier: id)!.isEnabled, "Granting access must re-enable screen selection: \(id)")
         }
         let output = CommandLine.arguments[1]
+        let labelled = CommandLine.arguments[3] != "omit"
         var observations: [[String: Any]] = []
         for (name, facts, limit) in [
             ("idle", fixture(), CGFloat(0)),
@@ -155,11 +156,13 @@ import YapControls
             stage.layer?.backgroundColor = NSColor(white: 0.10, alpha: 1).cgColor
             capture.frame = NSRect(x: 20, y: 20, width: CaptureView.preferredWidth, height: height)
             stage.addSubview(capture)
-            let caption = NSTextField(labelWithString: "Synthetic facts · presentation fixture")
-            caption.font = .systemFont(ofSize: 9)
-            caption.textColor = .secondaryLabelColor
-            caption.frame = NSRect(x: 20, y: 2, width: CaptureView.preferredWidth, height: 14)
-            stage.addSubview(caption)
+            if labelled {
+                let caption = NSTextField(labelWithString: "Synthetic facts · presentation fixture")
+                caption.font = .systemFont(ofSize: 9)
+                caption.textColor = .secondaryLabelColor
+                caption.frame = NSRect(x: 20, y: 2, width: CaptureView.preferredWidth, height: 14)
+                stage.addSubview(caption)
+            }
             let shotWindow = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: CaptureView.preferredWidth + 40, height: height + 40), styleMask: .borderless, backing: .buffered, defer: false)
             shotWindow.isReleasedWhenClosed = false
             shotWindow.appearance = NSAppearance(named: name.contains("dark") ? .darkAqua : .aqua)
