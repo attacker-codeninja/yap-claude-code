@@ -6,7 +6,6 @@ import { basename, dirname, join } from "node:path";
 import {
   audioOutputCapabilities,
   executionWindowManifestSchema,
-  issuesSchema,
   isMediaClip,
   type ProcessingTap,
   type ExecutionWindowManifest,
@@ -28,6 +27,7 @@ import {
   compositionMediaInputs,
   projectWindow,
   projectComposition,
+  stateSupportIssues,
   validateProjectAudio,
 } from "./project-window.js";
 import {
@@ -69,8 +69,6 @@ export const portablePreparedAudioSchema = z.strictObject({
         .max(25000),
     })
     .strict(),
-  /** Absent in packages written before audio treatments published their issues: none. */
-  issues: issuesSchema.optional(),
 });
 export type PortablePreparedAudio = z.infer<typeof portablePreparedAudioSchema>;
 export const preparedAudioResource = (projectId: string, attemptId: string) =>
@@ -93,6 +91,17 @@ function audioDependencies(
       acquisitions.add(clip.acquisitionId);
   for (const id of acquisitions) dependencies.push({ kind: "acquisition", id });
   return dependencies;
+}
+
+/**
+ * A prepared signal's issues follow from its recipe (state split at support gaps) and its
+ * processing evidence, so a stored or adopted publication must carry exactly these.
+ */
+function preparedAudioIssues(
+  recipe: Pick<ExecutionWindowManifest, "state">,
+  audio: Pick<PreparedAudio, "processingEvidence">,
+) {
+  return [...stateSupportIssues(recipe), ...audioProcessingIssues(audio.processingEvidence ?? [])];
 }
 
 /** Compare semantics while binding requirements to the publication's original policy. */
@@ -199,12 +208,12 @@ export class PreparedAudioStore {
         if (
           !isDeepStrictEqual(
             this.owners.jobs.issues(publication),
-            audioProcessingIssues(read.value.processingEvidence ?? []),
+            preparedAudioIssues(recipe, read.value),
           )
         )
           throw new CatalogError(
             "ARTIFACT_CHANGED",
-            "Prepared audio issues differ from its processing evidence",
+            "Prepared audio issues differ from its recipe and processing evidence",
           );
         candidates.push({ resourceId: reference.id, publication, audio: read.value, recipe });
       } finally {
@@ -338,7 +347,7 @@ export class PreparedAudioStore {
       const publication = staged;
       return {
         result: JSON.stringify(value),
-        issues: audioProcessingIssues(value.processingEvidence ?? []),
+        issues: preparedAudioIssues(plan.window.manifest, value),
         publish: () => {
           publication.publish();
           this.retain(value, plan.window.manifest.revisionId);
@@ -410,7 +419,6 @@ export class PreparedAudioStore {
           input: publication.input,
         },
         audio,
-        issues: this.owners.jobs.issues(publication),
       });
     } finally {
       read.release();
@@ -460,12 +468,8 @@ export class PreparedAudioStore {
       throw new CatalogError("INVALID_PACKAGE", "Prepared audio omitted an upstream dependency");
     signal.throwIfAborted();
     checkProjectAudioResult({ ...portable.audio, file: path }, bound, path);
-    const issues = audioProcessingIssues(portable.audio.processingEvidence ?? []);
-    if (!isDeepStrictEqual(portable.issues ?? [], issues))
-      throw new CatalogError(
-        "INVALID_PACKAGE",
-        "Prepared audio issues differ from its processing evidence",
-      );
+    // Issues are not carried in the package: the recipient derives them from what it carries.
+    const issues = preparedAudioIssues(recipe, portable.audio);
     const file = await open(path, "r");
     let identity: FileIdentity;
     try {

@@ -2465,12 +2465,12 @@ test("retained publications survive restart without invented jobs and precede la
   };
   expect(() =>
     first.store.transaction(() => {
-      first.queue.adoptArtifact(receipt);
+      first.queue.adoptArtifact(receipt, []);
       throw new Error("owner publication failed");
     }),
   ).toThrow("owner publication failed");
   expect(first.queue.status(identity).state).toBe("not_requested");
-  first.store.transaction(() => first.queue.adoptArtifact(receipt));
+  first.store.transaction(() => first.queue.adoptArtifact(receipt, []));
   expect(first.queue.status(identity)).toMatchObject({
     state: "ready",
     jobId: null,
@@ -2480,9 +2480,9 @@ test("retained publications survive restart without invented jobs and precede la
     first.queue.retainedArtifact(identity.target, identity.artifact, receipt.attemptId),
   ).toEqual(receipt);
   expect(first.attempts.size).toBe(0);
-  first.store.transaction(() => first.queue.adoptArtifact(receipt));
+  first.store.transaction(() => first.queue.adoptArtifact(receipt, []));
   expect(() =>
-    first.store.transaction(() => first.queue.adoptArtifact({ ...receipt, result: "changed" })),
+    first.store.transaction(() => first.queue.adoptArtifact({ ...receipt, result: "changed" }, [])),
   ).toThrow(/conflicts/);
   await first.queue.close();
   queues.splice(queues.indexOf(first.queue), 1);
@@ -2563,14 +2563,17 @@ test("digest candidates never merge different exact recipes at admission, adopti
   expect(f.queue.job(original.jobId).input).toBe("original");
   expect(() =>
     f.store.transaction(() =>
-      f.queue.adoptArtifact({
-        target,
-        artifact: "job",
-        input: "candidate",
-        generation: 1,
-        attemptId: "cross-table",
-        result: "{}",
-      }),
+      f.queue.adoptArtifact(
+        {
+          target,
+          artifact: "job",
+          input: "candidate",
+          generation: 1,
+          attemptId: "cross-table",
+          result: "{}",
+        },
+        [],
+      ),
     ),
   ).toThrow(/same digest/);
   expect(f.queue.retainedArtifact(target, "job", "cross-table")).toBe(null);
@@ -2589,12 +2592,12 @@ test("digest candidates never merge different exact recipes at admission, adopti
     input: "candidate",
     lane: "frame",
   });
-  f.store.transaction(() => f.queue.adoptArtifact(receipt));
+  f.store.transaction(() => f.queue.adoptArtifact(receipt, []));
   f.store.catalog
     .prepare("UPDATE artifacts SET inputSha256=? WHERE artifact=?")
     .run(digest, receipt.artifact);
   expect(() =>
-    f.store.transaction(() => f.queue.adoptArtifact({ ...receipt, input: "candidate" })),
+    f.store.transaction(() => f.queue.adoptArtifact({ ...receipt, input: "candidate" }, [])),
   ).toThrow(/same digest/);
   (await f.started(candidate.attemptId)).finish('{"wrong":true}');
   await Promise.resolve();
@@ -2620,7 +2623,7 @@ test("inspection keeps a previous publication during replacement and hides it af
     attemptId: "donor",
     result: '{"retained":true}',
   };
-  f.store.transaction(() => f.queue.adoptArtifact(receipt));
+  f.store.transaction(() => f.queue.adoptArtifact(receipt, []));
   const job = f.queue.submit({ ...receipt, lane: "frame" });
   expect(f.queue.inspect(job.jobId)).toMatchObject({
     state: "running",

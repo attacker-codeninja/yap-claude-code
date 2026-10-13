@@ -276,11 +276,11 @@ export class SpeakerProcessing {
         "INVALID_PACKAGE",
         "Speaker publication differs from its source and generation",
       );
-    this.options.jobs.adoptArtifact({
-      ...identity,
-      ...publication,
-      result: JSON.stringify(metadata),
-    });
+    // Speaker evidence publishes no issues.
+    this.options.jobs.adoptArtifact(
+      { ...identity, ...publication, result: JSON.stringify(metadata) },
+      [],
+    );
   }
   async cleanup(signal: AbortSignal): Promise<void> {
     let afterSequence = 0;

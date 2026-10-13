@@ -624,3 +624,50 @@ overridden. Each entry: the choice, why, and how confident.
   and that the placeholder box is a little taller than the caps and sits
   slightly low. Both are what the issues report; nothing is clipped or
   misaligned. Before this change, both frames refused. *Confident.*
+
+## Whole-spec review fixes (publication)
+
+- **Bounding counts what earlier bounds dropped.** `boundedIssues` now adds up
+  the `omitted` of any `issues-truncated` it finds, keeps the first 1000 other
+  issues, and ends with one marker for everything left out. So bounding twice
+  gives the same answer as bounding once, and two bounded lists can be joined
+  and bounded again without losing count. A marker that sat in the middle of a
+  short list moves to the end. *Confident.*
+- **A prepared signal's issues come from its recipe and evidence, never from
+  the package.** Prepared audio now publishes `support-gap` like project audio
+  and preview do. Its issues are worked out from two things it already keeps:
+  the recipe (where state was split at a gap) and the processing evidence
+  (normalization and limiter results). A retained read works them out again and
+  refuses stored issues that differ. A package import also works them out, so
+  the portable `issues` field was removed. It never shipped in a release, and
+  0.1.33 packages never had it. Packages written by earlier builds of this
+  branch with that field no longer import. Slice 01's "portable schemas read a
+  missing `issues` as `[]`" no longer applies here: there is nothing to read.
+  *Confident.*
+- **Every adoption names its issues.** `adoptArtifact` no longer defaults to
+  none. A project screenshot index works its issues out from its retained
+  frames, using the same "each distinct issue once, in first-seen order" rule
+  its producer uses. Asset alignment, speaker, scene and source index adopters
+  pass `[]` and say why: their producers publish no issues. The index does not
+  check stored issues against its frames on read, as prepared audio does;
+  nothing asked for that. *Confident.*
+- **Caption overlaps never refuse.** The 10000-overlap budget only limited how
+  many issue objects were built. The cue budget (10000) already limits the
+  pairwise scan, and genuine overlaps were scanned without any overlap budget.
+  Past the issue limit, overlaps are now counted into `issues-truncated`
+  without being built, and the sidecar is written. *Confident.*
+- **Word rows keep the 1000-issue bound.** Word rows read their issues from the
+  bounded publication. When an output ends in `issues-truncated`, the issues
+  past the bound appear on no row either. The alternative was a second,
+  unbounded word-issue store, which is more storage and an unbounded write.
+  Retained raw evidence still keeps every candidate. The `transcript.prepare`
+  description says so. No test pins this: building over 1000 speech issues
+  costs more than the claim is worth, and the behaviour didn't change.
+  *Moderately confident: a long, messy transcript can now show clean rows near
+  its end, and only the marker says why.*
+- **Docs and ledger say what is true now.** The core README says retained
+  evidence and portable packages never carry issues. The composition README
+  says SRT writes markup with `srt-literal-markup`, and only a timing line
+  inside a caption refuses. The refusal ledger's `rules` describe `issue-code`
+  as an UPPER_SNAKE diagnostic that stays outside the issue registry, and say
+  that `pendingConversion` must stay empty. *Confident.*

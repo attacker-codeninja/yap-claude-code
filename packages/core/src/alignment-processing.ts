@@ -376,11 +376,11 @@ export class AlignmentProcessing {
         "INVALID_PACKAGE",
         "Alignment publication differs from its source and generation",
       );
-    this.options.jobs.adoptArtifact({
-      ...identity,
-      ...publication,
-      result: JSON.stringify(metadata),
-    });
+    // An asset alignment publishes no issues; only a project request's clamp does.
+    this.options.jobs.adoptArtifact(
+      { ...identity, ...publication, result: JSON.stringify(metadata) },
+      [],
+    );
   }
   async cleanup(signal: AbortSignal) {
     let afterSequence = 0;

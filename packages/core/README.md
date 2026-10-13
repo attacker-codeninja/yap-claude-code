@@ -33,8 +33,10 @@ measured silence or concatenate neighboring material. A null gate result is
 evidence of measurement limits, never an instruction to normalize. Explicit
 normalization publication retains complete before/after measurements and every
 bounded candidate offset/result, and publishes the selected candidate with an
-issue naming each missed target. Retained reads and imports re-derive those issues
-from the evidence and refuse stored issues that differ. Prepared excerpts preserve that complete
+issue naming each missed target. A prepared signal's issues, including a `support-gap`
+where its recipe split state, follow from its recipe and evidence: retained reads
+re-derive them and refuse stored issues that differ, and a package import derives them
+rather than carrying them. Prepared excerpts preserve that complete
 processing evidence rather than relabeling it as an excerpt measurement. An explicit
 prepared signal pin must match its complete tap, ordered processing recipe and revision
 inputs. Selected taps retain the same whole state domains as ordinary inspection;
@@ -124,8 +126,8 @@ media share these owners rather than introducing separate queues or stores.
 A producer reports problems with its output as [issues](../composition/src/issues.ts).
 [Issue storage](src/issues.ts) is an additive table written in the publication's
 transaction and keyed by the publishing attempt, so it lands, rolls back and is
-retired with that publication. Retained evidence objects never carry issues, and a
-publication without rows, including one from an older catalog, reads as clean.
+retired with that publication. Retained evidence objects and portable packages never
+carry issues, and a publication without rows, including one from an older catalog, reads as clean.
 Where evidence holds the facts, the issues are derived from it alone: a picture's or
 movie's font fallbacks become [text fallback issues](src/text-fallback.ts), and a
 project index publishes the issues of the frames it retained.

@@ -63,9 +63,11 @@ requested. Repeated uses must remain distinct through evidence queries.
 [Caption sidecars](src/caption-sidecars.ts) serialize explicitly selected displayed
 text using resolved surviving support. Transcript word timing and clip envelopes
 cannot replace that support. Millisecond rounding encloses each exact fragment;
-new overlaps are reported, while genuine overlaps keep their authored meaning.
-Plain subtitles discard visual styling. Format-specific refusal protects literal
-text when a reader could interpret it as formatting rather than silently rewriting it.
+new overlaps are reported as issues, while genuine overlaps keep their authored meaning.
+Plain subtitles discard visual styling. Text is never rewritten: SRT writes text a
+reader may render as formatting as-is and reports `srt-literal-markup` (VTT escapes
+it). Only a timing line inside a caption refuses SRT, since it would split the file
+into an unintended cue.
 
 ## Routing, processing and curves
 

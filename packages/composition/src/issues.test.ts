@@ -37,13 +37,45 @@ describe("issues", () => {
   });
 
   it("bounds an output's issues and reports what it omitted", () => {
-    const many = Array.from({ length: issueLimit + 25 }, () => truncated(1));
+    const many = Array.from({ length: issueLimit + 25 }, (_, index): Issue => ({
+      code: "caption-omitted",
+      message: "omitted",
+      evidence: { placementId: `c${index}`, reason: "empty-text" },
+    }));
     const bounded = boundedIssues(many);
     expect(bounded).toHaveLength(issueLimit + 1);
     expect(bounded.at(-1)).toEqual(truncated(25));
     expect(issuesSchema.parse(bounded)).toEqual(bounded);
     expect(boundedIssues(many.slice(0, issueLimit))).toHaveLength(issueLimit);
     expect(issuesSchema.safeParse([...bounded, truncated(1)]).success).toBe(false);
+  });
+
+  it("keeps counting what an earlier bound omitted when bounded lists are combined", () => {
+    const omittedCaption = (index: number): Issue => ({
+      code: "caption-omitted",
+      message: `Caption c${index} was omitted: no-display-support`,
+      evidence: { placementId: `c${index}`, reason: "no-display-support" },
+    });
+    // A sidecar bounds its own issues; export status bounds them again beside the job's issues.
+    const sidecar = boundedIssues(Array.from({ length: 1500 }, (_, i) => omittedCaption(i)));
+    const status = boundedIssues([...sidecar]);
+    expect(status).toEqual(sidecar);
+    expect(status.at(-1)).toEqual(truncated(500));
+    const represented = status.reduce(
+      (count, issue) => count + (issue.code === "issues-truncated" ? issue.evidence.omitted : 1),
+      0,
+    );
+    expect(represented).toBe(1500);
+
+    // Two bounded lists: the first keeps its first 1000; everything else is counted, once.
+    const combined = boundedIssues([...sidecar, ...sidecar.slice(0, 3)]);
+    expect(combined.slice(0, issueLimit)).toEqual(sidecar.slice(0, issueLimit));
+    expect(combined.at(-1)).toEqual(truncated(503));
+    // A marker inside a short list still stands for its omissions, as the final entry.
+    expect(boundedIssues([truncated(7), omittedCaption(1)])).toEqual([
+      omittedCaption(1),
+      truncated(7),
+    ]);
   });
 
   it("treats an empty list as clean", () => {

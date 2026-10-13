@@ -3,7 +3,7 @@ import type { Issue } from "@yap/composition";
 import { CatalogError } from "./catalog.js";
 import { JobDependencyLost, type JobQueue } from "./jobs.js";
 import type { DerivedCache } from "./cache.js";
-import type { MediaFrameInspection } from "./frame-inspection.js";
+import { pictureTextIssues, type MediaFrameInspection } from "./frame-inspection.js";
 import { waitForIndexFrame, retainIndexFrame } from "./index-frame.js";
 import { encodeIndexRecord, type ScreenshotIndexStore } from "./screenshot-index.js";
 import type { SceneEvidenceMetadata, SceneEvidenceStore } from "./scene-evidence.js";
@@ -36,6 +36,35 @@ async function* observedChunks(
     afterStartUs = page.nextStartUs;
     await setImmediate(undefined, { signal });
   }
+}
+
+/** Each distinct issue once, in first-seen order: frames repeat their text's issues. */
+function distinctIssues(): { add(issues: readonly Issue[]): void; list(): Issue[] } {
+  const seen = new Map<string, Issue>();
+  return {
+    add: (issues) => {
+      for (const issue of issues) seen.set(JSON.stringify(issue), issue);
+    },
+    list: () => [...seen.values()],
+  };
+}
+
+/**
+ * The issues a retained project index published, derived from its retained frames alone, so an
+ * adopted index carries the same issues its producer published.
+ */
+export function retainedProjectIndexIssues(
+  index: ScreenshotIndexStore<ProjectIndexRecords>,
+  identity: ProjectIndexIdentity,
+): Issue[] {
+  const issues = distinctIssues();
+  let afterOrdinal: number | undefined;
+  do {
+    const page = index.page({ identity, ...(afterOrdinal === undefined ? {} : { afterOrdinal }) });
+    for (const entry of page.entries) issues.add(pictureTextIssues(entry.frame));
+    afterOrdinal = page.nextOrdinal ?? undefined;
+  } while (afterOrdinal !== undefined);
+  return issues.list();
 }
 
 /**
@@ -103,8 +132,7 @@ export async function materializeProjectIndex(
         project: { startUs: through, endUs },
       });
   }
-  // Frames repeat their text's issues; the index reports each once, in first-seen order.
-  const issues = new Map<string, Issue>();
+  const issues = distinctIssues();
   try {
     index.begin(identity);
     for (const candidate of candidates) {
@@ -142,7 +170,7 @@ export async function materializeProjectIndex(
           { dependency: { artifact: "frame", jobId: status.jobId, ...input } },
           status.retryable,
         );
-      for (const issue of status.published.issues) issues.set(JSON.stringify(issue), issue);
+      issues.add(status.published.issues);
       const frame = status.published.frame;
       if (frame.implementationId !== identity.implementationId)
         throw new CatalogError("ARTIFACT_CHANGED", "Pinned picture renderer changed");
@@ -163,7 +191,7 @@ export async function materializeProjectIndex(
     }
     gap(plan.model.durationUs);
     signal.throwIfAborted();
-    return { metadata: await index.finish(identity, signal), issues: [...issues.values()] };
+    return { metadata: await index.finish(identity, signal), issues: issues.list() };
   } catch (error) {
     await index.remove(identity);
     throw error;

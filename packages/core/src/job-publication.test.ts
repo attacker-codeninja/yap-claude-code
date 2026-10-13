@@ -116,16 +116,16 @@ test("canceled stale completion cannot publish after a replacement and closes be
   expect(closed).toBe(2);
 });
 
-const omittedIssue = (omitted: number): Issue => ({
-  code: "issues-truncated",
-  message: `${omitted} omitted`,
-  evidence: { omitted },
+const numberedIssue = (number: number): Issue => ({
+  code: "caption-omitted",
+  message: `Caption c${number} was omitted`,
+  evidence: { placementId: `c${number}`, reason: "empty-text" },
 });
 
 test("issues publish with their output, roll back with it, and are replaced by the next generation", async () => {
   const attempts: { issues: Issue[]; refuse?: boolean }[] = [
-    { issues: [omittedIssue(1)], refuse: true },
-    { issues: [omittedIssue(2), omittedIssue(3)] },
+    { issues: [numberedIssue(1)], refuse: true },
+    { issues: [numberedIssue(2), numberedIssue(3)] },
     { issues: [] },
   ];
   const f = fixture(async () => {
@@ -148,8 +148,8 @@ test("issues publish with their output, roll back with it, and are replaced by t
   f.queue.retry(jobId);
   await f.queue.idle();
   const ready = f.queue.status(f.request);
-  expect(ready.published?.issues).toEqual([omittedIssue(2), omittedIssue(3)]);
-  expect(f.queue.inspect(jobId).published?.issues).toEqual([omittedIssue(2), omittedIssue(3)]);
+  expect(ready.published?.issues).toEqual([numberedIssue(2), numberedIssue(3)]);
+  expect(f.queue.inspect(jobId).published?.issues).toEqual([numberedIssue(2), numberedIssue(3)]);
 
   f.queue.regenerate(jobId, ready.published!.generation);
   await f.queue.idle();
@@ -160,7 +160,7 @@ test("issues publish with their output, roll back with it, and are replaced by t
 test("stored issues are bounded, ending in the count of what was omitted", async () => {
   const f = fixture(async () => ({
     result: JSON.stringify("output"),
-    issues: Array.from({ length: issueLimit + 5 }, (_, index) => omittedIssue(index + 1)),
+    issues: Array.from({ length: issueLimit + 5 }, (_, index) => numberedIssue(index + 1)),
     publish: () => undefined,
     close: async () => {},
   }));
@@ -168,7 +168,7 @@ test("stored issues are bounded, ending in the count of what was omitted", async
   await f.queue.idle();
   const issues = f.queue.status(f.request).published!.issues;
   expect(issues).toHaveLength(issueLimit + 1);
-  expect(issues[issueLimit - 1]).toEqual(omittedIssue(issueLimit));
+  expect(issues[issueLimit - 1]).toEqual(numberedIssue(issueLimit));
   expect(issues.at(-1)).toMatchObject({ code: "issues-truncated", evidence: { omitted: 5 } });
 });
 

@@ -12,7 +12,10 @@ import {
   type ProjectIndexIdentity,
   type ProjectIndexRecords,
 } from "./project-index.js";
-import { materializeProjectIndex } from "./project-index-materialization.js";
+import {
+  materializeProjectIndex,
+  retainedProjectIndexIssues,
+} from "./project-index-materialization.js";
 import { isDeepStrictEqual } from "node:util";
 import type { AssetStore } from "./assets.js";
 import type { AcquisitionStore } from "./acquisitions.js";
@@ -416,13 +419,16 @@ export class IndexProcessing {
         );
       return scene;
     });
-    this.jobs.adoptArtifact({
-      ...publication,
-      target: { kind: "project", projectId: adopted.projectId, revisionId: adopted.revisionId },
-      input: encodeIndexRecord(projectRecipe({ ...adopted, scenes })),
-      artifact,
-      result: JSON.stringify(this.project.index.metadata(adopted)),
-    });
+    this.jobs.adoptArtifact(
+      {
+        ...publication,
+        target: { kind: "project", projectId: adopted.projectId, revisionId: adopted.revisionId },
+        input: encodeIndexRecord(projectRecipe({ ...adopted, scenes })),
+        artifact,
+        result: JSON.stringify(this.project.index.metadata(adopted)),
+      },
+      retainedProjectIndexIssues(this.project.index, adopted),
+    );
   }
   portableSource(metadata: ScreenshotIndexMetadata<SourceIndexRecords>) {
     const publication = this.jobs.retainedArtifact(
@@ -486,12 +492,16 @@ export class IndexProcessing {
         "INVALID_PACKAGE",
         "Retained screenshot index recipe differs from metadata",
       );
-    this.jobs.adoptArtifact({
-      ...publication,
-      target: { kind: "asset", assetId: metadata.assetId },
-      artifact,
-      result: JSON.stringify(this.asset.index.metadata(metadata)),
-    });
+    // A source index publishes no issues: its frames draw no text.
+    this.jobs.adoptArtifact(
+      {
+        ...publication,
+        target: { kind: "asset", assetId: metadata.assetId },
+        artifact,
+        result: JSON.stringify(this.asset.index.metadata(metadata)),
+      },
+      [],
+    );
   }
   private sourceRecipe(
     options: ReturnType<MediaFrameInspection["sourcePlan"]>["options"],

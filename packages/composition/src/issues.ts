@@ -309,11 +309,22 @@ export const issuesSchema = z
     "Only a final issues-truncated entry may follow the issue limit",
   );
 
+/**
+ * The first `issueLimit` issues, then one `issues-truncated` counting every issue left out —
+ * including those an earlier bound already folded into a marker. Bounding is idempotent, so lists
+ * bounded at their source can be combined and bounded again without losing count.
+ */
 export function boundedIssues(issues: readonly Issue[]): Issue[] {
-  if (issues.length <= issueLimit) return [...issues];
-  const omitted = issues.length - issueLimit;
+  let omitted = 0;
+  const kept: Issue[] = [];
+  for (const issue of issues) {
+    if (issue.code === "issues-truncated") omitted += issue.evidence.omitted;
+    else if (kept.length < issueLimit) kept.push(issue);
+    else omitted++;
+  }
+  if (!omitted) return kept;
   return [
-    ...issues.slice(0, issueLimit),
+    ...kept,
     {
       code: "issues-truncated",
       message: `${omitted} more issues were omitted`,

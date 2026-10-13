@@ -1,5 +1,5 @@
 {
-  "rules": "Owned by packages/protocol/src/refusal-ledger.test.ts; see specs/launch-video-feedback/slices/01-issues-contract.md. codes: every UPPER_SNAKE string literal in product source, with a category and per-file counts. Refusal categories: malformed, ambiguous, conflict, resource-bound, missing-prerequisite, destructive, execution-failure. issue-code: already an output diagnostic (migrates to issues). not-a-refusal: another constant. pending-conversion: a quality gate the spec converts; its slice removes it. pendingSites: quality gates hiding behind generic codes, keyed by message text. refusedStatus: files using a 'refused' status literal. messageCodes: UPPER_SNAKE codes embedded in messages.",
+  "rules": "Owned by packages/protocol/src/refusal-ledger.test.ts; see specs/launch-video-feedback/slices/01-issues-contract.md. codes: every UPPER_SNAKE string literal in product source, with a category and per-file counts. Refusal categories: malformed, ambiguous, conflict, resource-bound, missing-prerequisite, destructive, execution-failure. issue-code: an UPPER_SNAKE diagnostic reported on output (a per-item warning or state), never a refusal; it stays outside the kebab-case issue registry. not-a-refusal: another constant. pending-conversion: a quality gate still awaiting conversion to an issue; none remain, and pendingConversion must stay empty. pendingSites: quality gates hiding behind generic codes, keyed by message text (none remain). refusedStatus: files using a 'refused' status literal. messageCodes: UPPER_SNAKE codes embedded in messages.",
   "pendingConversion": {},
   "pendingSites": [],
   "refusedStatus": {
@@ -770,7 +770,7 @@
         "packages/core/src/index-processing.ts": 6,
         "packages/core/src/jobs.ts": 3,
         "packages/core/src/package-archive.ts": 1,
-        "packages/core/src/prepared-audio.ts": 5,
+        "packages/core/src/prepared-audio.ts": 4,
         "packages/core/src/project-package.ts": 2,
         "packages/core/src/projects.ts": 5,
         "packages/core/src/scene-processing.ts": 4,
@@ -1187,7 +1187,7 @@
         "helpers/mac/Sources/YapWire/MovieAudioTail.swift": 2,
         "helpers/mac/Sources/YapWire/ProbeOperation.swift": 1,
         "helpers/mac/Sources/YapWire/PublicationOperation.swift": 2,
-        "packages/composition/src/caption-sidecars.ts": 3,
+        "packages/composition/src/caption-sidecars.ts": 2,
         "packages/composition/src/errors.ts": 1,
         "packages/core/src/acoustic-inspection.ts": 2,
         "packages/core/src/acquisitions.ts": 2,

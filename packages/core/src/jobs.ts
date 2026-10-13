@@ -835,10 +835,11 @@ export class JobQueue {
   }
 
   /**
-   * The dependency owner validates the result and its issues, which it re-derives locally from
-   * what the producer reported; the publication joins the caller's catalog transaction.
+   * The dependency owner validates the result and supplies its issues, which it re-derives
+   * locally from the adopted evidence; every adopter names them, even when there are none. The
+   * publication joins the caller's catalog transaction.
    */
-  adoptArtifact(receipt: RetainedArtifact, issues: readonly Issue[] = []): void {
+  adoptArtifact(receipt: RetainedArtifact, issues: readonly Issue[]): void {
     this.requireOpen();
     this.targets.pin(receipt.target);
     const existing = this.publication(receipt);
