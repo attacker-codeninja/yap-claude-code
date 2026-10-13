@@ -133,7 +133,7 @@ try {
       if (mode === "wrong-binding") rows[0].data.cameraBinding.deviceId = "another-device";
       if (mode === "wrong-origin") rows.find((row) => row.event === "origin").data.hostUs += 1;
       if (mode === "wrong-pause")
-        rows.find((row) => row.event === "pausePlaced").data.elapsedPauseUs += 1;
+        rows.find((row) => row.event === "pauseEnded").data.pause.elapsedPauseUs += 1;
       await writeFile(file, rows.map(JSON.stringify).join("\n") + "\n");
     }
     const pending = await service.call("acquisition.import", { path, requestId: mode });
