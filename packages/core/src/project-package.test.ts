@@ -12,6 +12,7 @@ import { test, expect } from "vitest";
 import {
   collectPortableResources,
   resourceIdentity,
+  resourceMembers,
   type PortableResource,
 } from "./project-package.js";
 
@@ -449,4 +450,107 @@ test("HDR package receipts bind the selected source to the retained original met
       expect(() => read("track:1", changedAsset, changedStream)).toThrowError(
         expect.objectContaining({ code: "INVALID_PACKAGE" }),
       );
+});
+
+test("an imported package drops a stale transcript no revision pins and keeps one a revision pins", () => {
+  const assetId = "a".repeat(64);
+  const asset: Extract<PortableResource, { kind: "asset" }> = {
+    kind: "asset",
+    asset: {
+      id: assetId,
+      bytes: 1,
+      fileName: assetId + ".wav",
+      createdAt: "now",
+      originUs: 0,
+      streams: [
+        {
+          id: "audio",
+          kind: "audio",
+          codec: "pcm",
+          decodable: true,
+          startUs: 0,
+          endUs: 1000,
+          channels: 1,
+          sampleRate: 48000,
+          segments: [
+            { startUs: 0, endUs: 1000, empty: false, mediaStartUs: 0, mediaDurationUs: 1000 },
+          ],
+        },
+      ],
+    },
+    origins: [],
+    dependencies: [],
+  };
+  const transcript = (
+    generation: string,
+    recipe: string,
+  ): Extract<PortableResource, { kind: "transcript-generation" }> => ({
+    kind: "transcript-generation",
+    metadata: {
+      owner: { kind: "asset", assetId },
+      sourceId: assetId,
+      generation,
+      source: { kind: "asset", streamId: "audio", supportDigest: "d".repeat(64), durationUs: 1000 },
+      engine: {
+        runtime: "FluidAudio",
+        runtimeVersion: "0.15.7",
+        runtimeRevision: "r",
+        decoder: "parakeet-tdt-batch",
+        model: "m",
+        modelRevision: "r",
+        modelDigest: "e".repeat(64),
+        encoderPrecision: "int8",
+        computeUnits: "cpu",
+        policy: "transcript-v3",
+        kindPolicy: "word-kind-v1",
+      },
+      execution: { executionRange: null, context: { beforeUs: 0, afterUs: 0 }, recipe },
+      available: [],
+      track: { streamId: "audio", sourceOffsetUs: 0 },
+      segmentCount: 0,
+      wordCount: 0,
+      gapCount: 0,
+      maxWordUs: 0,
+      raw: { bytes: 1, sha256: "f".repeat(64) },
+    },
+    available: [],
+    publication: null,
+    receipt: { bytes: 1, sha256: "f".repeat(64) },
+  });
+  const foreign = "source-windows-foreign-v0";
+  const dropped = transcript("00000000-0000-4000-8000-000000000001", foreign),
+    pinned = transcript("00000000-0000-4000-8000-000000000002", foreign);
+  asset.dependencies = [dropped, pinned].map((value) => resourceIdentity(value));
+  const snapshot = snapshotFixture();
+  snapshot.references = [
+    {
+      revisionId: "r0",
+      resources: [{ kind: "asset", id: assetId }, resourceIdentity(pinned)],
+    },
+  ];
+  const revision = JSON.stringify(snapshot.revisions[0]);
+  const resources = [asset, dropped, pinned];
+  const members = resources.map(resourceMetadataMember);
+  const manifest = projectPackageManifest(snapshot, resources, [
+    {
+      path: "revisions/0.json",
+      bytes: Buffer.byteLength(revision),
+      sha256: createHash("sha256").update(revision).digest("hex"),
+    },
+    ...resources.flatMap(resourceMembers),
+    ...members.map((member) => member.reference.metadata),
+  ] as ReturnType<typeof projectPackageManifest>["inventory"]);
+  const validated = validateProjectPackage(
+    JSON.stringify(manifest),
+    new Map([["revisions/0.json", revision]]),
+    archiveLimits,
+    new Map(members.map((member) => [member.reference.metadata.path, member.body])),
+  );
+  expect(validated.resources.map((resource) => resourceIdentity(resource).id).sort()).toEqual(
+    [assetId, resourceIdentity(pinned).id].sort(),
+  );
+  expect(validated.resources.find((resource) => resource.kind === "asset")).toMatchObject({
+    dependencies: [resourceIdentity(pinned)],
+  });
+  expect(validated.stale).toEqual([resourceIdentity(dropped)]);
 });

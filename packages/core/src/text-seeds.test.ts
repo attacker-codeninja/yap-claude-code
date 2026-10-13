@@ -293,6 +293,46 @@ test("seeding keeps repeated occurrence identity, mutable display and transcript
   });
 });
 
+test("a stale generation seeds no new captions, while captions an existing revision pins keep editing", async () => {
+  const f = await fixture();
+  const seeded = f.store.seedText(f.projectId, {
+    requestId: "seed",
+    expectedRevisionId: f.authored.revision.id,
+    cues: [f.cue(0)],
+  });
+  const row = f.catalog.catalog
+    .prepare("SELECT execution FROM transcript_generations WHERE generation='words'")
+    .get() as { execution: string };
+  f.catalog.catalog
+    .prepare("UPDATE transcript_generations SET execution=? WHERE generation='words'")
+    .run(JSON.stringify({ ...JSON.parse(row.execution), recipe: "foreign-recipe-v0" }));
+  expect(() =>
+    f.store.seedText(f.projectId, {
+      requestId: "seed-stale",
+      expectedRevisionId: seeded.revision.id,
+      cues: [f.cue(1)],
+    }),
+  ).toThrow(
+    expect.objectContaining({
+      code: "NOT_FOUND",
+      details: expect.objectContaining({ stale: true }),
+    }),
+  );
+  const caption = seeded.revision.document.clips.find((clip) => clip.source.kind === "text")!;
+  if (caption.source.kind !== "text") throw new Error("text");
+  const edited = f.store.apply(f.projectId, {
+    requestId: "edit-pinned",
+    expectedRevisionId: seeded.revision.id,
+    operations: [
+      { operation: "text.set", clipId: caption.id, source: { ...caption.source, text: "Kept" } },
+    ],
+  });
+  expect(f.store.revisionDependencies(f.projectId, edited.revision.id)).toContainEqual({
+    kind: "transcript-generation",
+    id: transcriptGenerationResource(f.identity),
+  });
+});
+
 test("missing or false generation/word/origin pins refuse atomically, including ordinary placement", async () => {
   const f = await fixture();
   for (const [name, patch] of [

@@ -263,6 +263,87 @@ test("restart reclamation protects retained generations and the other owner name
   expect(await readFile(recordingInput.request.output, "utf8")).toBe(raw);
 });
 
+const staleRewrites = {
+  recipe: (row: { execution: string; engine: string }) => ({
+    ...row,
+    execution: JSON.stringify({ ...JSON.parse(row.execution), recipe: "foreign-recipe-v0" }),
+  }),
+  policy: (row: { execution: string; engine: string }) => ({
+    ...row,
+    engine: JSON.stringify({ ...JSON.parse(row.engine), policy: "transcript-v0" }),
+  }),
+  unreadable: (row: { execution: string; engine: string }) => ({
+    ...row,
+    execution: JSON.stringify({ recipe: 7 }),
+  }),
+};
+test.each(Object.keys(staleRewrites) as (keyof typeof staleRewrites)[])(
+  "a retained generation with a %s that is not current is stale: reads and inventories skip it without a schema error",
+  async (kind) => {
+    const f = await fixture();
+    const portable = {
+      owner: { kind: "asset" as const, assetId: "c".repeat(64) },
+      sourceId: "c".repeat(64),
+    };
+    const portableSource = { ...source, acquisitionId: randomUUID() };
+    f.authoritative.set("asset", { sourceId: portable.sourceId, source: portableSource });
+    const [currentId, oldId] = [randomUUID(), randomUUID()];
+    const current = await f.store.ingest(
+      await f.input({ ...portable, generation: currentId }, portableSource),
+    );
+    await f.store.ingest(await f.input({ ...portable, generation: oldId }, portableSource));
+    const row = f.catalog.catalog
+      .prepare("SELECT execution,engine FROM transcript_generations WHERE generation=?")
+      .get(oldId) as { execution: string; engine: string };
+    const rewritten = staleRewrites[kind](row);
+    f.catalog.catalog
+      .prepare("UPDATE transcript_generations SET execution=?,engine=? WHERE generation=?")
+      .run(rewritten.execution, rewritten.engine, oldId);
+    const old = { owner: portable.owner, generation: oldId };
+    expect(() => f.store.retainedGeneration(old)).toThrow(
+      expect.objectContaining({ code: "NOT_FOUND", details: { generation: oldId, stale: true } }),
+    );
+    expect(f.store.isStale(old)).toBe(true);
+    expect(f.store.isStale(current)).toBe(false);
+    expect(f.store.retainedGeneration(current).generation).toBe(currentId);
+    const inventory = f.store.portableGenerations(portable.owner.assetId);
+    expect(inventory.generations.map((value) => value.generation)).toEqual([currentId]);
+    expect(inventory.stale).toEqual([oldId]);
+    if (kind !== "unreadable")
+      expect(f.store.retainedGeneration(old, { historical: true })).toMatchObject(
+        kind === "recipe"
+          ? { execution: { recipe: "foreign-recipe-v0" } }
+          : { engine: { policy: "transcript-v0" } },
+      );
+    else
+      expect(() => f.store.retainedGeneration(old, { historical: true })).toThrow(
+        expect.objectContaining({ code: "NOT_FOUND" }),
+      );
+    await f.store.reclaim(
+      portable.owner,
+      (generation) => !f.store.isStale({ owner: portable.owner, generation }),
+      new AbortController().signal,
+    );
+    expect(
+      f.catalog.catalog.prepare("SELECT generation FROM transcript_generations").all(),
+    ).toEqual([{ generation: currentId }]);
+  },
+);
+
+test("a replay admits retained evidence under its historical recipe and never relabels it", async () => {
+  const f = await fixture();
+  const input = await f.input(asset, source);
+  const historical = { ...input.request.execution, recipe: "source-windows-historical-v1" };
+  const replay = await f.store.ingest({
+    ...input,
+    request: { ...input.request, execution: historical },
+    receipt: { ...input.receipt, execution: historical },
+  });
+  expect(replay.execution.recipe).toBe("source-windows-historical-v1");
+  expect(f.store.wordRecords(asset, { limit: 10 }).map((word) => word.text)).toEqual(["kept"]);
+  expect(f.store.isStale(asset)).toBe(true);
+});
+
 test("the retained native recording transcript preserves every inherited word and portable metadata", async () => {
   const home = await mkdtemp("/tmp/transcript-recording-parity-");
   const library = new CaptureStore(join(home, "catalog.sqlite"), {

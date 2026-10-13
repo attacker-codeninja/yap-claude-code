@@ -294,54 +294,13 @@ test("canceled package keeps admitted transcript bytes through regeneration and 
   });
   let block = true,
     word = "original";
-  const models = {
-    status: () => ({ state: "ready" }),
-    nativeRequest: async () => ({ directory: "/unused-model-seam", files: [] }),
-    modelDigest: "a".repeat(64),
-    pins: {
-      runtime: "FluidAudio",
-      runtimeVersion: "0.15.7",
-      runtimeRevision: "fixture-runtime",
-      decoder: "parakeet-tdt-batch",
-      model: "fixture-model",
-      modelRevision: "fixture-revision",
-    },
-  };
+  const speech = transcription(() => word);
   const f = await fixture(t, {
-    transcriptionModels: models,
+    ...speech,
     render: async (request, signal, render) => {
       previewEntered.resolve();
       await previewRelease.promise;
       return render(request, signal);
-    },
-    transcribe: async (request) => {
-      const lines = request.track.available.map((source, ordinal) => ({
-        ordinal,
-        source,
-        owned: source,
-        state: "transcribed",
-        words: [{ text: word, source: { startUs: 100, endUs: 900000 }, confidence: 0.8 }],
-      }));
-      const body = lines.map((line) => JSON.stringify(line) + "\n").join("");
-      await writeFile(request.output, body);
-      return {
-        execution: request.execution,
-        available: request.track.available,
-        output: {
-          file: request.output,
-          bytes: Buffer.byteLength(body),
-          sha256: createHash("sha256").update(body).digest("hex"),
-        },
-        engine: {
-          runtime: models.pins.runtime,
-          runtimeVersion: models.pins.runtimeVersion,
-          decoder: models.pins.decoder,
-          encoderPrecision: "int8",
-          computeUnits: "cpuAndNeuralEngine",
-        },
-        segments: lines.map(({ words, ...line }) => ({ ...line, wordCount: words.length })),
-        wordCount: lines.length,
-      };
     },
     wrap:
       (run) =>
@@ -353,40 +312,7 @@ test("canceled package keeps admitted transcript bytes through regeneration and 
         return run(operation, ...args);
       },
   });
-  const donor = join(f.home, "voice.wav");
-  await writeFile(donor, "audio source identity");
-  const voice = await f.assets.import(donor, { kind: "import" }, async () => ({
-    originUs: 0,
-    streams: [
-      {
-        id: "audio",
-        kind: "audio",
-        codec: "pcm",
-        decodable: true,
-        startUs: 0,
-        endUs: 1000000,
-        segments: [{ startUs: 0, endUs: 1000000, empty: false }],
-      },
-    ],
-  }));
-  f.projects.apply(f.projectId, {
-    requestId: "voice",
-    expectedRevisionId: f.placed.revision.id,
-    operations: [
-      { operation: "track.add", track: { kind: "audio", order: 0 }, label: "audio" },
-      {
-        operation: "place",
-        clip: {
-          trackId: { label: "audio" },
-          assetId: voice.id,
-          streamId: "audio",
-          source: { kind: "range", range: { startUs: 0, endUs: 1000000 } },
-          placement: { kind: "project", range: { startUs: 0, endUs: 1000000 } },
-        },
-      },
-    ],
-  });
-  const selection = { assetId: voice.id, streamId: "audio" };
+  const selection = await placeVoice(f);
   f.transcripts.prepareSource(selection);
   await f.jobs.idle();
   const first = f.transcripts.sourceStatus(selection);
@@ -463,6 +389,157 @@ test("canceled package keeps admitted transcript bytes through regeneration and 
   assert.equal(adopted.state, "ready", JSON.stringify(adopted));
   assert.deepEqual(recipient.transcriptRecords.wordRecords(old, { limit: 10 }), original);
   await recipient.packages.closeAdmission(admission.id);
+});
+
+/** A transcriber that publishes one word per available interval, without models or native inference. */
+function transcription(word) {
+  const models = {
+    status: () => ({ state: "ready" }),
+    nativeRequest: async () => ({ directory: "/unused-model-seam", files: [] }),
+    modelDigest: "a".repeat(64),
+    pins: {
+      runtime: "FluidAudio",
+      runtimeVersion: "0.15.7",
+      runtimeRevision: "fixture-runtime",
+      decoder: "parakeet-tdt-batch",
+      model: "fixture-model",
+      modelRevision: "fixture-revision",
+    },
+  };
+  return {
+    transcriptionModels: models,
+    transcribe: async (request) => {
+      const lines = request.track.available.map((source, ordinal) => ({
+        ordinal,
+        source,
+        owned: source,
+        state: "transcribed",
+        words: [{ text: word(), source: { startUs: 100, endUs: 900000 }, confidence: 0.8 }],
+      }));
+      const body = lines.map((line) => JSON.stringify(line) + "\n").join("");
+      await writeFile(request.output, body);
+      return {
+        execution: request.execution,
+        available: request.track.available,
+        output: {
+          file: request.output,
+          bytes: Buffer.byteLength(body),
+          sha256: createHash("sha256").update(body).digest("hex"),
+        },
+        engine: {
+          runtime: models.pins.runtime,
+          runtimeVersion: models.pins.runtimeVersion,
+          decoder: models.pins.decoder,
+          encoderPrecision: "int8",
+          computeUnits: "cpuAndNeuralEngine",
+        },
+        segments: lines.map(({ words, ...line }) => ({ ...line, wordCount: words.length })),
+        wordCount: lines.length,
+      };
+    },
+  };
+}
+
+/** Imports a one-second voice asset and places it in the fixture project. */
+async function placeVoice(f) {
+  const donor = join(f.home, "voice.wav");
+  await writeFile(donor, "audio source identity");
+  const voice = await f.assets.import(donor, { kind: "import" }, async () => ({
+    originUs: 0,
+    streams: [
+      {
+        id: "audio",
+        kind: "audio",
+        codec: "pcm",
+        decodable: true,
+        startUs: 0,
+        endUs: 1000000,
+        segments: [{ startUs: 0, endUs: 1000000, empty: false }],
+      },
+    ],
+  }));
+  f.projects.apply(f.projectId, {
+    requestId: "voice",
+    expectedRevisionId: f.placed.revision.id,
+    operations: [
+      { operation: "track.add", track: { kind: "audio", order: 0 }, label: "audio" },
+      {
+        operation: "place",
+        clip: {
+          trackId: { label: "audio" },
+          assetId: voice.id,
+          streamId: "audio",
+          source: { kind: "range", range: { startUs: 0, endUs: 1000000 } },
+          placement: { kind: "project", range: { startUs: 0, endUs: 1000000 } },
+        },
+      },
+    ],
+  });
+  return { assetId: voice.id, streamId: "audio" };
+}
+
+test("a project package leaves a stale derived transcript out and the recipient regenerates it", async (t) => {
+  const f = await fixture(
+    t,
+    transcription(() => "older"),
+  );
+  const selection = await placeVoice(f);
+  f.transcripts.prepareSource(selection);
+  await f.jobs.idle();
+  const ready = f.transcripts.sourceStatus(selection);
+  assert.equal(ready.state, "ready", JSON.stringify(ready));
+  const old = ready.published.transcript;
+  // What an older version left behind: its job key, publication and row all name its recipe.
+  const foreign = (execution) => ({ ...execution, recipe: "source-windows-foreign-v0" });
+  const job = f.catalog.catalog.prepare("SELECT input FROM jobs WHERE jobId=?").get(ready.jobId);
+  const parsed = JSON.parse(job.input);
+  const input = JSON.stringify({ ...parsed, execution: foreign(parsed.execution) });
+  const digest = createHash("sha256").update(input).digest("hex");
+  f.catalog.catalog
+    .prepare("UPDATE jobs SET input=?,inputSha256=? WHERE jobId=?")
+    .run(input, digest, ready.jobId);
+  f.catalog.catalog
+    .prepare("UPDATE artifacts SET input=?,inputSha256=? WHERE attemptId=?")
+    .run(input, digest, old.generation);
+  f.catalog.catalog
+    .prepare("UPDATE transcript_generations SET execution=? WHERE generation=?")
+    .run(JSON.stringify(foreign(old.execution)), old.generation);
+  const pinned = f.packages.pin(f.projectId);
+  assert.deepEqual(
+    pinned.resources.filter((resource) => resource.kind === "transcript-generation"),
+    [],
+  );
+  assert.deepEqual(pinned.stale, [
+    { kind: "transcript-generation", id: transcriptGenerationResource(old) },
+  ]);
+  const request = { ...f.request(), kind: "processed-package", leaf: "stale.zip" };
+  await f.exports.create(request);
+  await f.jobs.idle();
+  const committed = f.exports.status(request.exportId);
+  assert.equal(committed.state, "committed", JSON.stringify(committed));
+  const recipient = await fixture(
+    t,
+    transcription(() => "fresh"),
+  );
+  const admission = await recipient.packages.open(committed.output);
+  await recipient.jobs.idle();
+  const opened = recipient.packages.status(admission.id);
+  assert.equal(opened.state, "ready", JSON.stringify(opened));
+  recipient.packages.adopt(opened.packageHandle, "stale");
+  await recipient.jobs.idle();
+  assert.equal(recipient.packages.adopt(opened.packageHandle, "stale").state, "ready");
+  await recipient.packages.closeAdmission(admission.id);
+  assert.equal(recipient.transcripts.sourceStatus(selection).state, "not_requested");
+  recipient.transcripts.prepareSource(selection);
+  await recipient.jobs.idle();
+  const regenerated = recipient.transcripts.sourceStatus(selection);
+  assert.equal(regenerated.state, "ready", JSON.stringify(regenerated));
+  assert.deepEqual(
+    recipient.transcriptRecords
+      .wordRecords(regenerated.published.transcript, { limit: 10 })
+      .map((entry) => entry.text),
+    ["fresh"],
+  );
 });
 
 function grayPNG(shade) {
