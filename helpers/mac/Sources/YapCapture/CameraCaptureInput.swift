@@ -9,8 +9,11 @@ package struct CaptureCameraSelection {
     package let directory: URL
     package let observations: URL
     package let binding: CameraCaptureBinding?
-    package init(id: String, directory: URL, observations: URL, binding: CameraCaptureBinding? = nil) {
+    /// Whether the camera is on when the take starts; off reserves it without opening the device.
+    package let startsOn: Bool
+    package init(id: String, directory: URL, observations: URL, binding: CameraCaptureBinding? = nil, startsOn: Bool = true) {
         self.id = id; self.directory = directory; self.observations = observations; self.binding = binding
+        self.startsOn = startsOn
     }
 }
 
@@ -89,23 +92,32 @@ package struct CaptureInputPreparation {
             throw CaptureFailure("INVALID_REQUEST", "Camera binding differs from the selected device.")
         }
         try requireScreenAuthorization(request)
-        guard cameraAuthorized() else {
-            throw CaptureFailure("CAMERA_PERMISSION_REQUIRED", "Camera access must already be authorized. No permission was requested automatically.")
-        }
-        guard let selected = cameras().first(where: { $0.id == camera.id }) else {
-            throw CaptureFailure("SOURCE_UNAVAILABLE", "The selected camera is unavailable.")
-        }
+        let selected = try companionCamera(camera.id)
         let screen = try await prepareScreen(request)
         do {
             try Task.checkCancellation(); try checkInterruption()
-            return CameraCaptureInput(primary: screen,
-                camera: try selected.makeSession(framesPerSecond: measurement.framesPerSecond, microphone: nil),
-                selection: camera, measurement: measurement)
+            // A camera that starts off is reserved, not opened. One that starts on is opened here,
+            // so a camera that cannot open refuses the take before any output exists.
+            let opened = camera.startsOn
+                ? try selected.makeSession(framesPerSecond: measurement.framesPerSecond, microphone: nil) : nil
+            return CameraCaptureInput(primary: screen, selection: camera, measurement: measurement,
+                devices: self, opened: opened)
         } catch {
             _ = await screen.stop()
             await screen.discardMedia()
             throw error
         }
+    }
+
+    /// A companion camera may be opened only while access is authorized and the device is present.
+    func companionCamera(_ id: String) throws -> any CaptureCameraDevice {
+        guard cameraAuthorized() else {
+            throw CaptureFailure("CAMERA_PERMISSION_REQUIRED", "Camera access must already be authorized. No permission was requested automatically.")
+        }
+        guard let selected = cameras().first(where: { $0.id == id }) else {
+            throw CaptureFailure("SOURCE_UNAVAILABLE", "The selected camera is unavailable.")
+        }
+        return selected
     }
 }
 
@@ -163,14 +175,33 @@ private final class PrimaryCameraCaptureInput: CaptureInputSession {
 }
 
 /// One acquisition/ingress owner; NativeCapture owns termination, closed media and publication.
+/// The companion camera is reserved for the whole take but opened only while it is on: each
+/// turn-on opens a new session on the device and each turn-off releases it.
 @MainActor
-package final class CameraCaptureInput: CaptureInputSession {
+package final class CameraCaptureInput: CaptureInputSession, CompanionCameraSwitch {
     private let primary: any CaptureInputSession
-    private let camera: any CaptureCameraSession
     private let selection: CaptureCameraSelection
     private let measurement: CameraCaptureMeasurement
+    private let devices: CaptureInputPreparation
+    /// Opened by preparation for a camera that starts on; the first turn-on uses it.
+    private var opened: (any CaptureCameraSession)?
+    /// The session acquiring now; nil while the camera is off.
+    private var session: (any CaptureCameraSession)?
+    private var sessionFailure: CaptureFailure?
     private var ingress: CaptureClockIngress?
+    private var onFailure: (@Sendable (CaptureFailure) -> Void)?
     private var observing = false
+    /// The last switch requested; the next one, stop and discard wait for it.
+    private var switching: Task<Void, Never>?
+    private var ended = false
+    /// Whether the camera was meant to be on at some point: from the start, or turned on since.
+    private var everOn: Bool
+    /// Every turn-on that opened acquisition, including the one at the take's start.
+    private var turnOns = 0
+    static let maximumTurnOns = CameraAvailability.maximumGaps + 1
+    package var deviceId: String { selection.id }
+    package var isOn: Bool { session != nil }
+    package var companionCamera: (any CompanionCameraSwitch)? { self }
     package var width: Int { primary.width }
     package var height: Int { primary.height }
     package var requestedSourceRect: CGRect? { primary.requestedSourceRect }
@@ -179,29 +210,86 @@ package final class CameraCaptureInput: CaptureInputSession {
         set { primary.previewFrame = newValue }
     }
 
-    package init(primary: any CaptureInputSession, camera: any CaptureCameraSession,
-        selection: CaptureCameraSelection, measurement: CameraCaptureMeasurement = .init()) {
-        self.primary = primary; self.camera = camera; self.selection = selection; self.measurement = measurement
+    init(primary: any CaptureInputSession, selection: CaptureCameraSelection, measurement: CameraCaptureMeasurement,
+        devices: CaptureInputPreparation, opened: (any CaptureCameraSession)?) {
+        self.primary = primary; self.selection = selection; self.measurement = measurement
+        self.devices = devices; self.opened = opened; everOn = selection.startsOn
     }
     package func start(writer: CaptureWriter, output: any SCStreamOutput, framesPerSecond: Int?,
         onFailure: @escaping @Sendable (CaptureFailure) -> Void, checkInterruption: @escaping @MainActor () throws -> Void) async throws {
         let cameraWriter = try CameraWriter(directory: selection.directory,
             framesPerSecond: measurement.framesPerSecond ?? 30, binding: selection.binding)
+        if !selection.startsOn { cameraWriter.stopAcquiring(atHostUs: CaptureHostTime.nowUs()) }
         let ingress = try CaptureClockIngress(writer: writer, destination: .companion(cameraWriter),
             observations: selection.binding == nil ? selection.observations : selection.directory.appendingPathComponent(CameraMedia.mappingFile),
             failure: onFailure)
         self.ingress = ingress
+        self.onFailure = onFailure
         ingress.previewFrame = previewFrame
-        ingress.captureSessionClock = { [camera] in camera.synchronizationClock }
         observeDeviceLoss(onFailure: onFailure)
         try await primary.start(writer: writer, output: ingress,
             framesPerSecond: measurement.framesPerSecond, onFailure: onFailure, checkInterruption: checkInterruption)
         try checkInterruption()
-        guard try await measurement.beforeStart() else { return }
+        guard selection.startsOn, try await measurement.beforeStart() else { return }
         try Task.checkCancellation(); try checkInterruption()
-        try await camera.start(ingress: ingress)
+        // Startup is fenced by NativeCapture's generation, so this turn-on is not joined: a stop
+        // during startup stops the session it is opening.
+        try await turnOn()
         try Task.checkCancellation(); try checkInterruption()
     }
+    package func setOn(_ on: Bool) async throws {
+        let previous = switching
+        let change = Task { @MainActor [self] in
+            await previous?.value
+            guard !ended else { throw CaptureFailure("INVALID_STATE", "The take has stopped capturing.") }
+            if on, session == nil { try await turnOn(); everOn = true }
+            if !on, let session { await turnOff(session) }
+        }
+        switching = Task { _ = await change.result }
+        try await change.value
+    }
+    /// Opens a new session on the reserved device. Any refusal leaves the camera off.
+    private func turnOn() async throws {
+        guard let ingress, let camera = ingress.companion else { throw CaptureFailure("INVALID_STATE", "The take is not capturing.") }
+        // Each turn-on can start one availability interval and a take publishes at most
+        // `maximumTurnOns`. Counting turn-ons, not recorded runs, can only overestimate.
+        guard turnOns < Self.maximumTurnOns else {
+            throw CaptureFailure("CAMERA_TOGGLE_LIMIT",
+                "This take has turned its camera on \(turnOns) times, the most one take can hold.")
+        }
+        let device = opened == nil ? try devices.companionCamera(selection.id) : nil
+        turnOns += 1
+        ingress.writer.queue.sync { camera.startAcquiring(atHostUs: CaptureHostTime.nowUs()) }
+        var starting: (any CaptureCameraSession)?
+        do {
+            let fresh = try opened ?? device!.makeSession(framesPerSecond: measurement.framesPerSecond, microphone: nil)
+            opened = nil
+            guard ingress.writer.queue.sync(execute: { camera.admits(width: fresh.width, height: fresh.height) }) else {
+                throw CaptureFailure("CAMERA_FORMAT_CHANGED", "The camera now delivers a different picture size than earlier in this take.")
+            }
+            ingress.writer.queue.sync { ingress.captureSessionClock = { [fresh] in fresh.synchronizationClock } }
+            session = fresh; starting = fresh
+            if let onFailure { fresh.observeDeviceLoss(onFailure: onFailure) }
+            try await fresh.start(ingress: ingress)
+        } catch {
+            ingress.writer.queue.sync { camera.stopAcquiring(atHostUs: CaptureHostTime.nowUs()) }
+            // A stop during startup has already taken and stopped this session.
+            if let starting, session === starting {
+                session = nil
+                note(await starting.stop())
+            }
+            throw error
+        }
+    }
+    /// Closes acquisition before the session stops, so nothing recorded crosses the turn-off.
+    private func turnOff(_ current: any CaptureCameraSession) async {
+        if let ingress, let camera = ingress.companion {
+            ingress.writer.queue.sync { camera.stopAcquiring(atHostUs: CaptureHostTime.nowUs()) }
+        }
+        session = nil
+        note(await current.stop())
+    }
+    private func note(_ failure: CaptureFailure?) { sessionFailure = sessionFailure ?? failure }
     package func startCursorSampling(writer: CaptureWriter) {
         if measurement.samplesCursor { primary.startCursorSampling(writer: writer) }
     }
@@ -209,22 +297,29 @@ package final class CameraCaptureInput: CaptureInputSession {
         guard !observing else { return }
         observing = true
         primary.observeDeviceLoss(onFailure: onFailure)
-        camera.observeDeviceLoss(onFailure: onFailure)
     }
     package func stop() async -> CaptureFailure? {
-        let cameraFailure = await camera.stop()
+        ended = true
+        await switching?.value
+        for open in [session, opened].compactMap({ $0 }) { note(await open.stop()) }
+        session = nil; opened = nil
         let primaryFailure = await primary.stop()
         if let ingress { ingress.writer.queue.sync {} }
-        return primaryFailure ?? cameraFailure
+        return primaryFailure ?? sessionFailure
     }
     package func closeMedia(clock: CaptureClock, failure: CaptureFailure?) async -> CaptureInputClosure {
-        guard let ingress else { return CaptureInputClosure() }
-        var reason = failure
-        do { try ingress.close() } catch { reason = reason ?? CaptureFailure("WRITE_FAILED", error.localizedDescription) }
-        return CaptureInputClosure(camera: await ingress.companion!.close(clock: clock, failure: reason,
-            observations: ingress.observationURL!))
+        guard let ingress, let camera = ingress.companion else { return CaptureInputClosure() }
+        var closeFailure: CaptureFailure?
+        do { try ingress.close() } catch { closeFailure = CaptureFailure("WRITE_FAILED", error.localizedDescription) }
+        if !everOn, ingress.writer.queue.sync(execute: { camera.isEmpty }) {
+            return CaptureInputClosure(camera: .notTurnedOn, failure: closeFailure)
+        }
+        return CaptureInputClosure(camera: .closed(await camera.close(clock: clock, failure: failure ?? closeFailure,
+            observations: ingress.observationURL!)))
     }
     package func discardMedia() async {
+        ended = true
+        await switching?.value
         guard let ingress else { return }
         await ingress.companion!.discard()
         try? ingress.close()

@@ -80,6 +80,7 @@ func runSelectedCameraInputTests(output: String? = nil) async throws {
     try await verifySelectedLifecycle(root: root, screenSource: screenSource, cameraSource: cameraSource)
     try await verifyDiscardedPreparation(root: root, screenSource: screenSource, cameraSource: cameraSource)
     try await verifyWriterRefusal(root: root, screenSource: screenSource, cameraSource: cameraSource)
+    try await verifyCameraSwitch(root: root, screenSource: screenSource, cameraSource: cameraSource)
     try await runCaptureStreamInputTests(root: root)
 
 }
@@ -413,4 +414,218 @@ private func verifyWriterRefusal(root: URL, screenSource: URL, cameraSource: URL
             .write(to: folder.appendingPathComponent("drain-counts.json"))
         print("PASS writer refusal\(held ? " across new generation" : ""): local resource cleanup once, no activation/output overwrite or newer-take mutation")
     }
+}
+
+/// A screen take that reserved a companion camera, driven through the real NativeCapture and the
+/// real CameraCaptureInput. Only the device and its sessions are fixtures.
+@MainActor
+private final class SwitchTake {
+    let folder: URL
+    let screen: PrerecordedCaptureInput
+    let device: FixtureCameraDevice
+    var capture: NativeCapture!
+    var authorized = true
+    var present = true
+    var interruption: CaptureFailure?
+    private let session: () -> FixtureCameraSession
+    var camera: URL { folder.appendingPathComponent("camera") }
+    /// Later opens build sessions configured differently from the first.
+    func reopen(_ configure: @escaping (FixtureCameraSession) -> Void) {
+        device.reopen = { [session] in let next = session(); configure(next); return next }
+    }
+
+    init(root: URL, name: String, screenSource: URL, cameraSource: URL, startsOn: Bool,
+        session configure: @escaping (FixtureCameraSession) -> Void = { _ in }) throws {
+        folder = root.appendingPathComponent(name)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
+        let screen = PrerecordedCaptureInput(source: screenSource)
+        self.screen = screen
+        func session() -> FixtureCameraSession {
+            let session = FixtureCameraSession(source: cameraSource, origin: { screen.fixtureOrigin! })
+            session.startsAtNow = true
+            configure(session)
+            return session
+        }
+        device = FixtureCameraDevice("chosen", session: session())
+        device.reopen = session
+        self.session = session
+        var preparation = CaptureInputPreparation()
+        preparation.requireScreenAuthorization = { _ in }
+        preparation.prepareScreen = { _ in screen }
+        let folder = folder, device = device
+        let binding = CameraCaptureBinding(recordingId: name, sourceId: "\(name)-camera", deviceId: "chosen")
+        preparation.cameraAuthorized = { [unowned self] in authorized }
+        preparation.cameras = { [unowned self] in present ? [device] : [] }
+        capture = NativeCapture(prepareInput: { [preparation] request, check in
+            try await preparation.prepare(request, camera: CaptureCameraSelection(id: "chosen",
+                directory: folder.appendingPathComponent("camera"),
+                observations: folder.appendingPathComponent("camera").appendingPathComponent(CameraMedia.mappingFile),
+                binding: binding, startsOn: startsOn), checkInterruption: check)
+        })
+        capture.onInterruption = { [unowned self] reason in interruption = reason }
+    }
+    func start() async throws {
+        try await capture.start(CaptureRequest(source: CaptureSource(kind: "offline-prerecorded"),
+            outputDirectory: folder.appendingPathComponent("screen").path, microphone: false, systemAudio: false))
+    }
+    func stop() async throws -> CaptureResult { try await capture.stop() }
+    func refused(_ on: Bool, _ code: String) async {
+        do { try await capture.setCamera(on: on); preconditionFailure("Turning the camera \(on) must refuse \(code)") }
+        catch let error as CaptureFailure { precondition(error.code == code, "Expected \(code), got \(error.code): \(error.message)") }
+        catch { preconditionFailure("Unexpected \(error)") }
+        precondition(capture.deviceState == "recording" && capture.companionCamera?.on == false,
+            "A refused turn-on leaves the camera off and the take recording")
+    }
+    /// Lets the pictures a session stamped from its start become past, so a turn-off follows them.
+    func record() async throws { try await Task.sleep(for: .milliseconds(350)) }
+    var gaps: [Any]? {
+        let receipt = try! JSONSerialization.jsonObject(with: Data(contentsOf:
+            camera.appendingPathComponent("camera.publication.json"))) as! [String: Any]
+        return receipt["gaps"] as? [Any]
+    }
+    var cameraUnavailableCode: String? {
+        if case .unavailable(let reason) = capture.publication?.camera { return reason.code }
+        return nil
+    }
+}
+
+@MainActor
+private func verifyCameraSwitch(root: URL, screenSource: URL, cameraSource: URL) async throws {
+    func take(_ name: String, startsOn: Bool, session: @escaping (FixtureCameraSession) -> Void = { _ in }) throws -> SwitchTake {
+        try SwitchTake(root: root, name: name, screenSource: screenSource, cameraSource: cameraSource,
+            startsOn: startsOn, session: session)
+    }
+
+    // Reserved but never turned on: the device is never opened and the take completes.
+    var t = try take("reserved-off-never-on", startsOn: false)
+    try await t.start()
+    precondition(t.capture.companionCamera?.deviceId == "chosen" && t.capture.companionCamera?.on == false)
+    var result = try await t.stop()
+    precondition(t.device.opens == 0, "A camera that was never turned on is never opened")
+    precondition(result.state == "complete" && result.failure == nil && result.camera == nil,
+        "A never-turned-on camera does not fail the take: \(String(describing: result.failure))")
+    precondition(t.cameraUnavailableCode == "CAMERA_NOT_TURNED_ON")
+    let members = try FileManager.default.contentsOfDirectory(atPath: t.camera.path)
+    precondition(members == [CameraMedia.mappingFile],
+        "A never-turned-on camera leaves only its mapping")
+    print("PASS reserved-off-never-on: no open, take complete, camera CAMERA_NOT_TURNED_ON")
+
+    // Off, on, off, on: each turn-on opens a fresh session and each turn-off drops it.
+    t = try take("off-on-off-on", startsOn: false)
+    t.reopen { $0.equivalentFormat = true }
+    try await t.start()
+    try await t.capture.setCamera(on: true)
+    precondition(t.capture.companionCamera?.on == true)
+    try await t.record()
+    try await t.capture.setCamera(on: false)
+    precondition(t.capture.companionCamera?.on == false)
+    try await t.capture.setCamera(on: true)
+    try await t.record()
+    result = try await t.stop()
+    precondition(t.device.opens == 2 && t.device.sessions.allSatisfy { $0.starts == 1 && $0.stops == 1 },
+        "Every turn-on opens one session and every session stops once")
+    precondition(result.state == "complete" && result.failure == nil && result.camera?.state == "complete",
+        "An equivalent re-created format is accepted: \(String(describing: result.failure ?? result.camera?.failure))")
+    precondition(result.camera?.tracks.first?.samples == 6)
+    precondition(t.gaps?.count == 1, "Two runs publish one gap: \(String(describing: t.gaps))")
+    print("PASS off-on-off-on: two opens, two stops, one gap; an equivalent re-created format is accepted")
+
+    // A re-created session with different dimensions is refused; the take keeps its first run.
+    t = try take("format-changed", startsOn: true)
+    t.reopen { $0.width = RecoveryFixture.width * 2 }
+    try await t.start()
+    try await t.record()
+    try await t.capture.setCamera(on: false)
+    await t.refused(true, "CAMERA_FORMAT_CHANGED")
+    result = try await t.stop()
+    precondition(t.device.sessions.last!.starts == 0 && t.device.session.stops == 1)
+    precondition(result.state == "complete" && result.camera?.tracks.first?.samples == 3)
+    print("PASS format-changed: a different picture size refuses the turn-on and the take continues")
+
+    for (mode, code) in [("turn-on-device-missing", "SOURCE_UNAVAILABLE"), ("turn-on-permission-revoked", "CAMERA_PERMISSION_REQUIRED")] {
+        t = try take(mode, startsOn: false)
+        try await t.start()
+        if mode == "turn-on-device-missing" { t.present = false } else { t.authorized = false }
+        await t.refused(true, code)
+        result = try await t.stop()
+        precondition(t.device.opens == 0 && result.state == "complete" && t.cameraUnavailableCode == "CAMERA_NOT_TURNED_ON")
+        print("PASS \(mode): refused with \(code), no open, take complete")
+    }
+
+    // Stop joins a turn-on in flight; no session outlives the take.
+    t = try take("stop-during-turn-on", startsOn: false) { $0.holdStart = true }
+    try await t.start()
+    let switching = t
+    let turning = Task { try await switching.capture.setCamera(on: true) }
+    await t.device.session.startEntered.wait()
+    let stopping = Task { try await switching.stop() }
+    await Task.yield()
+    t.device.session.releaseStart.release()
+    try await turning.value
+    result = try await stopping.value
+    precondition(t.device.opens == 1 && t.device.session.starts == 1 && t.device.session.stops == 1
+        && t.device.session.stopsDuringStart == 0,
+        "Stop waits for the switch in flight, then stops the session it opened")
+    precondition(t.capture.deviceState == "idle")
+    print("PASS stop-during-turn-on: no orphan session (\(result.camera?.failure?.code ?? result.state))")
+
+    // Loss while off reaches no observer; the next turn-on finds the device gone.
+    t = try take("device-loss-while-off", startsOn: true)
+    try await t.start()
+    try await t.record()
+    try await t.capture.setCamera(on: false)
+    t.present = false
+    t.device.session.loseDevice()
+    try await Task.sleep(for: .milliseconds(50))
+    precondition(t.interruption == nil && t.capture.deviceState == "recording", "Loss while off does not interrupt the take")
+    await t.refused(true, "SOURCE_UNAVAILABLE")
+    result = try await t.stop()
+    precondition(result.state == "complete" && result.camera?.state == "complete" && result.camera?.tracks.first?.samples == 3)
+    print("PASS device-loss-while-off: no interruption; turn-on refuses SOURCE_UNAVAILABLE")
+
+    // Loss while on interrupts the whole take, as before.
+    t = try take("device-loss-while-on", startsOn: true)
+    try await t.start()
+    t.device.session.loseDevice()
+    for _ in 0..<100 where t.interruption == nil { try await Task.sleep(for: .milliseconds(10)) }
+    precondition(t.interruption?.code == "SOURCE_LOST")
+    result = try await t.stop()
+    precondition(result.state == "interrupted" && result.failure?.code == "SOURCE_LOST")
+    print("PASS device-loss-while-on: whole-take interruption")
+
+    // Setting the current state changes nothing.
+    t = try take("idempotent-set", startsOn: true)
+    try await t.start()
+    try await t.capture.setCamera(on: true)
+    precondition(t.device.opens == 1 && t.capture.companionCamera?.on == true)
+    try await t.record()
+    try await t.capture.setCamera(on: false)
+    try await t.capture.setCamera(on: false)
+    precondition(t.device.session.stops == 1 && t.capture.companionCamera?.on == false)
+    result = try await t.stop()
+    precondition(t.device.opens == 1 && t.device.session.stops == 1 && result.state == "complete")
+    do { try await t.capture.setCamera(on: true); preconditionFailure("A settled take cannot toggle") }
+    catch let error as CaptureFailure { precondition(error.code == "INVALID_STATE") }
+    print("PASS idempotent-set: repeating a state opens and stops nothing more; a settled take refuses")
+
+    // A take turns its camera on at most 500 times, counting the turn-on at its start: the 501st
+    // is refused, so availability never exceeds what publication and recovery accept.
+    t = try take("toggle-limit", startsOn: true) { $0.pulseUs = 1000 }
+    try await t.start()
+    var turnOns = 1
+    var refusal: CaptureFailure?
+    for _ in 0..<600 {
+        try await Task.sleep(for: .milliseconds(3))
+        try await t.capture.setCamera(on: false)
+        do { try await t.capture.setCamera(on: true); turnOns += 1 }
+        catch let error as CaptureFailure { refusal = error; break }
+    }
+    precondition(turnOns == 500 && refusal?.code == "CAMERA_TOGGLE_LIMIT",
+        "Expected 500 turn-ons then the toggle limit, got \(turnOns) and \(String(describing: refusal))")
+    precondition(t.capture.deviceState == "recording" && t.capture.companionCamera?.on == false)
+    result = try await t.stop()
+    precondition(result.state == "complete" && result.camera?.state == "complete",
+        "A take at the limit publishes: \(String(describing: result.failure ?? result.camera?.failure))")
+    precondition(t.gaps?.count == CameraAvailability.maximumGaps, "Refused only at run 500: \(t.gaps?.count ?? 0) gaps")
+    print("PASS toggle-limit: 500 turn-ons publish \(CameraAvailability.maximumGaps) gaps; the 501st is refused")
 }

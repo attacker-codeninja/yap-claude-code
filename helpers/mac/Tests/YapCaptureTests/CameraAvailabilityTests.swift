@@ -267,14 +267,16 @@ private func crashRecoveryWithGaps(root: URL, pictures: [CMSampleBuffer]) async 
     take.setCamera(false, at: 1_500_000); take.setCamera(true, at: 2_000_000)
     try await run(from: 2_000_000, frames: 10)
     take.setCamera(false, at: 3_000_000); take.setCamera(true, at: 3_500_000)
-    try await run(from: 3_500_000, frames: 45)
-    // Copy the take the way a crashed process leaves it, once a fragment reaches the third run.
+    // The writer cuts fragments on its own schedule, and only while pictures keep arriving. Keep
+    // the third run going and copy the take the way a crashed process leaves it once a fragment
+    // holds third-run pictures; the pictures after that fragment are the lost tail.
     let crashed = root.appendingPathComponent("crash-recovered")
     let members = ["camera.raw.mov", "capture.journal.jsonl", CameraMedia.mappingFile]
-    let deadline = Date().addingTimeInterval(20)
+    var offeredEndUs: Int64 = 3_500_000
     var reachedThirdRun = false
-    while !reachedThirdRun && Date() < deadline {
-        try await Task.sleep(for: .milliseconds(200))
+    while !reachedThirdRun && offeredEndUs < 60_000_000 {
+        try await run(from: offeredEndUs, frames: 10)
+        offeredEndUs += 1_000_000
         try? FileManager.default.removeItem(at: crashed)
         try FileManager.default.createDirectory(at: crashed, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
         for member in members {
@@ -290,7 +292,7 @@ private func crashRecoveryWithGaps(root: URL, pictures: [CMSampleBuffer]) async 
     let video = recovered.tracks.first { $0.role == "video" }!
     let bounds = RecoveryFixture.bounds(video.intervals)
     precondition(bounds.count == 3 && bounds[0] == [0, 500000] && bounds[1] == [1_000_000, 2_000_000]
-        && bounds[2][0] == 2_500_000 && bounds[2][1] > 2_600_000 && bounds[2][1] < 8_000_000, "Unexpected recovered intervals \(bounds)")
+        && bounds[2][0] == 2_500_000 && bounds[2][1] > 2_600_000 && bounds[2][1] < offeredEndUs - 1_000_000, "Unexpected recovered intervals \(bounds)")
     precondition(video.failure?.code == "PARTIAL_CAMERA" && recovered.durationUs == bounds[2][1])
     guard case .published(let source) = recovered.sourcePublication else { preconditionFailure("Recovered camera source was not published") }
     precondition(source.sourceDurationUs == bounds[2][1])
@@ -421,7 +423,9 @@ private final class GatedCameraTake {
         self.pictures = pictures
         self.clock = clock
     }
-    func setCamera(_ on: Bool, at hostUs: Int64) { camera.setAcquiring(on, atHostUs: hostUs) }
+    func setCamera(_ on: Bool, at hostUs: Int64) {
+        if on { camera.startAcquiring(atHostUs: hostUs) } else { camera.stopAcquiring(atHostUs: hostUs) }
+    }
     /// Offers the next fixture picture at `hostUs`; the real-time encoder needs a moment between pictures.
     func offer(_ hostUs: Int64, durationUs: Int64 = 50000) async throws -> String {
         try await Task.sleep(for: .milliseconds(4))

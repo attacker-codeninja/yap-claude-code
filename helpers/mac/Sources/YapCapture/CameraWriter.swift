@@ -2,6 +2,27 @@
 import Foundation
 import Darwin
 
+/// What decoding and passthrough export depend on in a camera picture's format. A camera opened
+/// again mid-take may describe the same format with a description that is not byte-equal, so a
+/// take accepts any picture whose format is compatible with its first: same dimensions, pixel
+/// format and colour tags.
+struct CameraFormat: Equatable {
+    let width: Int32
+    let height: Int32
+    let pixelFormat: FourCharCode
+    let colour: [String?]
+
+    init(_ description: CMFormatDescription) {
+        let size = CMVideoFormatDescriptionGetDimensions(description)
+        width = size.width; height = size.height
+        pixelFormat = CMFormatDescriptionGetMediaSubType(description)
+        colour = [kCMFormatDescriptionExtension_ColorPrimaries, kCMFormatDescriptionExtension_TransferFunction,
+            kCMFormatDescriptionExtension_YCbCrMatrix].map {
+            CMFormatDescriptionGetExtension(description, extensionKey: $0) as? String
+        }
+    }
+}
+
 /// Video-only companion to CaptureWriter; never writes or publishes audio.
 package final class CameraWriter {
     private let directory: URL
@@ -18,7 +39,7 @@ package final class CameraWriter {
     private var omitted = 0
     private var width = 0
     private var height = 0
-    private var format: CMFormatDescription?
+    private var format: CameraFormat?
     private var recordedPauseCount = 0
     private var journalOpenPauseHostUs: Int64?
     private var origin: Int64?
@@ -44,22 +65,28 @@ package final class CameraWriter {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
         }
     }
-    /// Turns acquisition on or off at a host instant. Call on the capture writer queue; this is the
-    /// only mutator of the acquisition window. Turning on after a run that recorded a frame starts
-    /// the next run.
-    package func setAcquiring(_ on: Bool, atHostUs hostUs: Int64) {
-        let at = CMTime(value: hostUs, timescale: 1_000_000)
-        if on {
-            guard offAt != nil else { return }
-            if runFrames > 0 {
-                run += 1; runFrames = 0
-                // The live continuation proves one contiguous run; later runs publish by full scan.
-                verification?.abandon()
-            }
-            onAt = at; offAt = nil
-        } else if offAt == nil {
-            offAt = at
+    // The acquisition window has two mutators and no other: call them on the capture writer queue.
+
+    /// Opens acquisition at a host instant. Turning on after a run that recorded a frame starts the
+    /// next run.
+    package func startAcquiring(atHostUs hostUs: Int64) {
+        guard offAt != nil else { return }
+        if runFrames > 0 {
+            run += 1; runFrames = 0
+            // The live continuation proves one contiguous run; later runs publish by full scan.
+            verification?.abandon()
         }
+        onAt = CMTime(value: hostUs, timescale: 1_000_000); offAt = nil
+    }
+    /// Closes acquisition at a host instant.
+    package func stopAcquiring(atHostUs hostUs: Int64) {
+        if offAt == nil { offAt = CMTime(value: hostUs, timescale: 1_000_000) }
+    }
+    /// No picture has been accepted, so nothing has been written.
+    package var isEmpty: Bool { writer == nil }
+    /// Whether a camera producing pictures of this size can continue this take.
+    package func admits(width: Int, height: Int) -> Bool {
+        format.map { Int($0.width) == width && Int($0.height) == height } ?? true
     }
     package func append(_ sample: CMSampleBuffer, state: CaptureWriter.IngressState) throws -> (receipt: CaptureWriter.IngressReceipt, frame: CameraFrameMapping?) {
         guard state.accepting else { return (.init(disposition: "sealed-or-failed", sourceUs: nil), nil) }
@@ -84,11 +111,11 @@ package final class CameraWriter {
             let description = sample.formatDescription else {
             throw CaptureFailure("INVALID_CAMERA_FRAME", "Camera callback lacks usable video.")
         }
-        if let format, !CMFormatDescriptionEqual(format, otherFormatDescription: description) {
+        if let format, format != CameraFormat(description) {
             throw CaptureFailure("CAMERA_FORMAT_CHANGED", "Selected camera format changed during the take.")
         }
         if writer == nil {
-            format = description
+            format = CameraFormat(description)
             let size = CMVideoFormatDescriptionGetDimensions(description)
             width = Int(size.width); height = Int(size.height)
             let journal = try CaptureJournal(directory: directory.path,

@@ -80,6 +80,15 @@ never turned off publishes exactly the original shape.
 [CameraAvailability](CameraMedia.swift) is the one owner of that interval
 arithmetic for publication, admission and recovery.
 
+A reserved companion camera is open only while it is on. Each turn-on opens a new
+session on the device and each turn-off releases it, so an off camera holds no
+device and no light. Sessions that open again may describe the same picture format
+differently; the writer accepts any compatible one and refuses a different size
+before opening. A camera never turned on leaves the take complete with the camera
+unavailable. Losing the device while it is off is found at the next turn-on;
+losing it while on interrupts the take. Turn-ons per take are bounded so the
+availability stays within what publication and recovery accept.
+
 ## Journals and crash boundaries
 
 [The journal](CaptureJournal.swift) owns record types, validation, ordering and

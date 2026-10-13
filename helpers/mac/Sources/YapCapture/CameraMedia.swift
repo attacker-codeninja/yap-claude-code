@@ -49,7 +49,8 @@ package struct CameraFrameMapping: Codable {
 /// the outer span and `gaps` the off time strictly inside it, so a camera never turned off has
 /// no gaps. The only owner of camera interval arithmetic.
 package struct CameraAvailability: Sendable, Equatable {
-    /// A take turns its camera on at most 500 times (`CAMERA_TOGGLE_LIMIT`), so at most 499 gaps;
+    /// A take turns its camera on at most 500 times, counting a turn-on at its start; the 501st is
+    /// refused (`CAMERA_TOGGLE_LIMIT`). Each turn-on starts at most one run, so at most 499 gaps;
     /// that keeps the receipt inside its 64 KiB read bound and the normalized receipt's 32 KiB.
     package static let maximumGaps = 499
     package let support: ExactRange

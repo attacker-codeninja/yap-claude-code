@@ -24,10 +24,10 @@ off any number of times, and end cleanly if it was never turned on.
   A fixture test proves a re-created session with an equivalent description is accepted and one
   with different dimensions is refused.
 - `CameraCaptureInput` turn on: check authorization and presence → `makeSession` → check the
-  session's format with the predicate (`CAMERA_FORMAT_CHANGED`) → `writer.queue.sync { camera.setAcquiring(true, now) }` →
+  session's format with the predicate (`CAMERA_FORMAT_CHANGED`) → `writer.queue.sync { camera.startAcquiring(now) }` →
   observe device loss on this session (the latch moves from the input to each session) →
-  `session.start`. If start fails: `setAcquiring(false)`, drop the session, rethrow.
-  Turn off: `setAcquiring(false, now)` → remove this session's observers → `session.stop` → drop
+  `session.start`. If start fails: `stopAcquiring(now)`, drop the session, rethrow.
+  Turn off: `stopAcquiring(now)` → remove this session's observers → `session.stop` → drop
   the session. Removing observers first means a notification posted by `stopRunning` can never
   be mistaken for device loss.
   `start()` starts the primary, then turns on only when `startsOn`.
@@ -41,8 +41,8 @@ off any number of times, and end cleanly if it was never turned on.
   `CaptureResult.camera = nil`, so `withCamera` (`CaptureTypes.swift:234-238`) folds no failure
   and the take completes. Add the code to the terminal list (`CaptureTypes.swift:152`).
 - Toggle limit: the receipt files are size-capped (normalized receipt 32 KiB, `camera.publication.json`
-  64 KiB), which fits about 700 gaps (slice 04 finding). A turn-on that would start run 500 is
-  refused with `CAMERA_TOGGLE_LIMIT`; the camera stays off and the take keeps recording. Test:
+  64 KiB), which fits about 700 gaps (slice 04 finding). A take turns its camera on at most 500 times,
+  counting a turn-on at its start; the 501st is refused with `CAMERA_TOGGLE_LIMIT`; the camera stays off and the take keeps recording. Test:
   `toggle-limit` mode. Slice 08 measures a real 500-run receipt against both caps.
 - Device lost while off: mark lost, no interruption; the next turn-on throws `SOURCE_UNAVAILABLE`.
   Lost while on: whole-take interruption, unchanged.
@@ -67,3 +67,55 @@ while off, which is what keeps the light off).
 
 **Open follow-up for the user (not in this slice).** Should losing the camera while it is on
 become "camera off" instead of interrupting the take?
+
+## Implemented (2026-10-12)
+
+Status: built and green on the narrow checks below. Decisions are in [choices.md](../choices.md)
+under "Slice 05 and the native part of 06".
+
+**Contract as built.**
+- `CaptureCameraRequest.startsOn` (decodes `true` when absent) and
+  `CaptureCameraSelection.startsOn`.
+- `CompanionCameraSwitch {deviceId, isOn, setOn(_:)}`; `CaptureInputSession.companionCamera`
+  (default nil). `CameraCaptureInput` is the only conformer.
+- `NativeCapture.setCamera(on:)` (public): `INVALID_STATE` unless recording or paused with no
+  failure, `CAMERA_NOT_RESERVED` without a companion camera, otherwise the switch's own refusals
+  (`CAMERA_PERMISSION_REQUIRED`, `SOURCE_UNAVAILABLE`, `CAMERA_FORMAT_CHANGED`,
+  `CAMERA_TOGGLE_LIMIT`). `NativeCapture.companionCamera: (deviceId, on)?` (public), held until
+  the take ends.
+- `CameraClosure {notTurnedOn, closed(ClosedCameraSource)}` in `CaptureInputClosure.camera`.
+  `.notTurnedOn` publishes the camera `unavailable` with `CAMERA_NOT_TURNED_ON` (terminal) and
+  `CaptureResult.camera = nil`; the take completes.
+- `CameraWriter`: the compatible-format predicate is `CameraFormat` (size, pixel format, colour
+  tags); `admits(width:height:)` applies its size part before a session starts. The acquisition
+  window's mutator is split into `startAcquiring`/`stopAcquiring`.
+- Recovery: a camera authority directory whose only member is the mapping closes `unavailable`
+  with `NO_CAMERA` (`media.recover`), keeping the mapping.
+
+**Deviations.**
+- A camera that starts on is still opened in preparation (see choices). Only a camera that starts
+  off is reserved without opening.
+- The limit is counted in `CameraCaptureInput` as turn-ons, not by the writer (coordinator rule).
+- The turn-on order opens acquisition before `makeSession` rather than after the format check;
+  every refusal closes it again.
+- `stop-during-turn-on` ends `NO_CAMERA` (the sealed writer accepts nothing after stop).
+- Recovery pins `NO_CAMERA`, not `CAMERA_NOT_TURNED_ON`: a crashed directory cannot tell the two
+  apart.
+- `CameraAvailabilityTests.crashRecoveryWithGaps` (slice 02) failed in the full native product run
+  once these cases were added: it waited for a fragment the writer cuts only while pictures keep
+  arriving. It now keeps the third run going until a fragment holds it.
+
+**Evidence.** `YAP_SELECTED_CAMERA_INPUT_OUTPUT=<dir>`: `reserved-off-never-on`, `off-on-off-on`
+(an equivalent, not byte-equal, re-created format is accepted), `format-changed`,
+`turn-on-device-missing`, `turn-on-permission-revoked`, `stop-during-turn-on`,
+`device-loss-while-off`, `device-loss-while-on`, `idempotent-set`, `toggle-limit` (500 turn-ons
+publish 499 gaps; the 501st is refused). `EmptyCaptureRecoveryTests`: mapping-only camera.
+`NativeCaptureInputTests`: screen-only and camera-only takes have no switch. Falsified once each:
+strict description equality (off-on-off-on red), a limit of 501 (toggle-limit red), stop not
+joining the switch (stop-during-turn-on red).
+
+Must-stay-green, run on this build: the whole `YapCaptureTests` product with no suite variable
+(includes `PrimaryCameraInputTests`, `PrimaryCameraPublicationTests`, `DeferredPauseTests`,
+`CaptureTerminationTests`, `IndependentCameraClockTests`, all `SelectedCameraInputTests` modes)
+and `YAP_SELECTED_STOP_OUTPUT`. The slice 01 preservation gate passed on corpora A and B with
+this build's `yap-native` and `dist/`.

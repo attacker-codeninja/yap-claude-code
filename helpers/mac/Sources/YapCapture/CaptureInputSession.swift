@@ -3,12 +3,33 @@ import CoreGraphics
 import Foundation
 @preconcurrency import ScreenCaptureKit
 
+/// How a reserved companion camera ended: never turned on, or closed with whatever it recorded.
+package enum CameraClosure {
+    case notTurnedOn
+    case closed(ClosedCameraSource)
+
+    var source: ClosedCameraSource? {
+        if case .closed(let source) = self { return source }
+        return nil
+    }
+}
+
 package struct CaptureInputClosure {
-    package var camera: ClosedCameraSource? = nil
+    package var camera: CameraClosure? = nil
     package var failure: CaptureFailure? = nil
-    package init(camera: ClosedCameraSource? = nil, failure: CaptureFailure? = nil) {
+    package init(camera: CameraClosure? = nil, failure: CaptureFailure? = nil) {
         self.camera = camera; self.failure = failure
     }
+}
+
+/// A take's reserved companion camera, turned on and off while the take runs. Turning it on opens
+/// the device; turning it off releases it. Calls are serialized, and setting the current state
+/// changes nothing.
+@MainActor
+package protocol CompanionCameraSwitch: AnyObject {
+    var deviceId: String { get }
+    var isOn: Bool { get }
+    func setOn(_ on: Bool) async throws
 }
 
 /// Acquires inputs; NativeCapture orders physical drain and optional companion-media closure.
@@ -17,6 +38,8 @@ package protocol CaptureInputSession: AnyObject {
     var width: Int { get }
     var height: Int { get }
     var requestedSourceRect: CGRect? { get }
+    /// The reserved companion camera, if this take has one.
+    var companionCamera: (any CompanionCameraSwitch)? { get }
     var previewFrame: (@Sendable (NativeCapture.CameraPreviewFrame) -> Void)? { get set }
     func start(writer: CaptureWriter, output: any SCStreamOutput, framesPerSecond: Int?, onFailure: @escaping @Sendable (CaptureFailure) -> Void,
         checkInterruption: @escaping @MainActor () throws -> Void) async throws
@@ -28,6 +51,7 @@ package protocol CaptureInputSession: AnyObject {
 }
 
 extension CaptureInputSession {
+    package var companionCamera: (any CompanionCameraSwitch)? { nil }
     package func closeMedia(clock: CaptureClock, failure: CaptureFailure?) async -> CaptureInputClosure { CaptureInputClosure() }
     package func discardMedia() async {}
 }

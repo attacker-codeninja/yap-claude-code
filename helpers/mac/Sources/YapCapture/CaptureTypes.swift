@@ -65,9 +65,19 @@ public struct CaptureRequest: Codable, Sendable {
 public struct CaptureCameraRequest: Codable, Sendable {
     public let binding: CameraCaptureBinding
     public let outputDirectory: String
-    public init(binding: CameraCaptureBinding, outputDirectory: String) {
+    /// Whether the camera is on when the take starts. Off reserves it without opening the device.
+    public let startsOn: Bool
+    public init(binding: CameraCaptureBinding, outputDirectory: String, startsOn: Bool = true) {
         self.binding = binding
         self.outputDirectory = outputDirectory
+        self.startsOn = startsOn
+    }
+    private enum Keys: String, CodingKey { case binding, outputDirectory, startsOn }
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: Keys.self)
+        binding = try values.decode(CameraCaptureBinding.self, forKey: .binding)
+        outputDirectory = try values.decode(String.self, forKey: .outputDirectory)
+        startsOn = try values.decodeIfPresent(Bool.self, forKey: .startsOn) ?? true
     }
 }
 
@@ -149,7 +159,7 @@ public struct CaptureFinalizationError: Codable, Sendable {
         message = String(decoding: (failure?.message ?? native?.message ?? error.localizedDescription).utf16.prefix(4096), as: UTF16.self)
         retryable = !["INVALID_REQUEST", "INVALID_JOURNAL", "INVALID_JOURNAL_PREFIX", "JOURNAL_CHANGED", "JOURNAL_CLOSED", "INVALID_MEDIA",
             "INVALID_AUDIO_TIMING", "PUBLICATION_CONFLICT", "PACKED_MEDIA_INVALID", "AUDIO_UNAVAILABLE",
-            "NOT_REQUESTED", "EVIDENCE_LIMIT", "INVALID_CAMERA_MAPPING", "NO_CAMERA"].contains(rawCode)
+            "NOT_REQUESTED", "EVIDENCE_LIMIT", "INVALID_CAMERA_MAPPING", "NO_CAMERA", "CAMERA_NOT_TURNED_ON"].contains(rawCode)
     }
 }
 

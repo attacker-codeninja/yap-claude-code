@@ -116,8 +116,10 @@ other frame must stay inside the current one. Raw and canonical scans share that
 ### At most 499 gaps, inside the original receipt bounds (02, 04, revised at integration)
 
 Slice 02 first grew the `camera.publication.json` read bound to fit 100 000 gaps. Integration
-reverted that: slice 05 refuses a turn-on that would start run 500 (`CAMERA_TOGGLE_LIMIT`), so a
-take has at most 499 gaps. 500 gaps take about 20 KB, inside the original 64 KiB receipt bound
+reverted that: a take turns its camera on at most 500 times, counting a turn-on at its start, and
+slice 05 refuses the 501st (`CAMERA_TOGGLE_LIMIT`). Each turn-on starts at most one run, so a take
+has at most 500 runs and 499 gaps; counting turn-ons rather than recorded runs can only
+overestimate. 501 runs would make publication and recovery refuse the whole camera. 500 gaps take about 20 KB, inside the original 64 KiB receipt bound
 and the normalized receipt's 32 KiB, so no bound changes. Swift (`CameraAvailability.maximumGaps`)
 and TypeScript (`maxCameraGaps`) both state 499 and both have a test at the edge.
 
@@ -152,11 +154,57 @@ deterministic; before it, recovery depended on where the fragment happened to en
   `recording` or `paused` (else `INVALID_STATE` with `details.state`), and reserved a camera (else
   `CAMERA_NOT_RESERVED`). It does not check that native's answer names the same take; native
   refuses another take itself.
-- **The native call deadline stays 10 s (06).** The public wait is `2*nativeCall`, but the service's
-  call to native is still bounded by the control channel's single per-call deadline. A cold
-  turn-on slower than 10 s answers `TIMEOUT` while native may still finish it. Open: give
-  `capture.setCamera` its own control-call deadline if slice 03 or 05 measures a slower start.
+- **~~The native call deadline stays 10 s (06).~~** Superseded at integration: the service's native
+  call for `capture.setCamera` gets the public 20 s budget (entry above), implemented with the
+  native side.
 - **The coordination harness was stale before this slice (06).** It expected a companion
   `cameraDeviceId` to be refused (`INVALID_PARAMS`), and its terminal report carried no source
   publication, so the take was never admitted. Fixed both: a different camera on a reused request
   ID is `REQUEST_CONFLICT`, and the report now publishes the primary's authority.
+
+### Slice 05 and the native part of 06 (implementation decisions)
+
+- **A camera that starts on is opened during preparation; only a camera that starts off is
+  reserved without opening (05).** The slice said preparation no longer calls `makeSession`. Kept
+  for `startsOn` so a camera that cannot open still refuses the take before any output exists
+  (existing `disappeared` case) and a continuous take acquires exactly as before. Every later
+  turn-on opens a new session.
+- **The limit counts turn-ons in `CameraCaptureInput`, not runs in `CameraWriter` (05).** Coordinator
+  rule: 500 turn-ons, the 501st refused, checked before the device is opened. A turn-on refused
+  before acquisition opens (permission, presence, the limit) does not count; one refused after it
+  (open failure, format change, start failure) does, which only overestimates. The writer keeps only
+  the acquisition window; its single `setAcquiring(Bool)` became `startAcquiring`/`stopAcquiring`
+  so the off path cannot throw.
+- **Turn-on order (05).** Authorization and presence → turn-on count → `startAcquiring` →
+  `makeSession` → compatible-format check → observe loss → `start`. Opening acquisition before
+  the session is harmless (no picture arrives before `start`) and any later refusal closes it
+  again, so the camera is off after every refusal.
+- **Before a session starts, "compatible format" can only compare picture size (05).** A session
+  states its dimensions, not its pictures' description. The full predicate (`CameraFormat`: size,
+  pixel format, colour tags) is applied to every picture in `append`; a mismatch found there
+  interrupts the take as a format change always did. The turn-on refusal covers what can be known
+  before opening.
+- **Never turned on means "no turn-on was requested and nothing was recorded" (05).** A camera
+  that started on but whose start was skipped (probe `beforeStart`) is still `NO_CAMERA`, as
+  before. Failed turn-ons do not count as turned on.
+- **Loss while off needs no latch (05).** The off camera has no session and so no observer;
+  presence is checked at each turn-on (`SOURCE_UNAVAILABLE`). No "lost" flag is stored.
+- **Startup's turn-on is not joined by stop (05).** It is fenced by NativeCapture's generation, and
+  a stop during startup must stop the session being opened (existing `discarded-startup` case).
+  Turn-ons through `setCamera` are serialized and joined by stop and discard.
+- **Stop during a turn-on yields `NO_CAMERA` (05).** The joined turn-on completes, but the writer
+  is already sealed, so the camera records nothing and the take is interrupted with `NO_CAMERA`,
+  the existing meaning of "turned on but never delivered". Open: whether a run that recorded
+  nothing because the take stopped should count as never turned on.
+- **Recovery of a mapping-only camera directory answers `NO_CAMERA` (05).** A crashed take leaves
+  the same directory whether the camera was never turned on or lost before its first picture, so
+  recovery states what it can prove. Only a camera authority whose single member is the mapping
+  (a regular file) qualifies; a stray mapping in a primary directory still refuses.
+- **`device.camera` stays reported while finalizing (06).** `NativeCapture` holds the reserved
+  switch until the take ends, so status reports the camera (state `off` once inputs stop) through
+  finalizing, as slice 06 asks.
+- **The app-channel routing proof is a controller-journey harness (06).**
+  `packages/test-harness/editing/camera-toggle-controls.mjs` drives the real `CaptureController`,
+  host channel and service from the CLI and MCP with a fixture camera. The real-app
+  `capture-service.test.mjs` records only its own window and lists no camera, so it can show only
+  `device.camera: null`.

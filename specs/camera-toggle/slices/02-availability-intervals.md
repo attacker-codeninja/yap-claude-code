@@ -38,7 +38,7 @@ No other Swift type computes camera intervals. `ClosedCameraSource.result` keeps
 
 ## Changes (line numbers measured 2026-10-12)
 
-- `CameraWriter.setAcquiring(_ on: Bool, atHostUs: Int64)`, on the writer queue, sole mutator of
+- `CameraWriter.startAcquiring(atHostUs:)` and `stopAcquiring(atHostUs:)` (one `setAcquiring` until slice 05 split it), on the writer queue, sole mutators of
   the gate. `append` (`CameraWriter.swift:41-113`) refuses with `camera-off` while off and for a
   buffer whose host interval starts before the current on-time (stale) or crosses the off-time
   (same overlap rule as `CaptureClock.accepts`, `CaptureClock.swift:183-191`).
@@ -67,7 +67,7 @@ No other Swift type computes camera intervals. `ClosedCameraSource.result` keeps
 
 New `helpers/mac/Tests/YapCaptureTests/CameraAvailabilityTests.swift`, suite variable
 `YAP_CAMERA_AVAILABILITY_OUTPUT`, driving `FixtureCameraSession` (`offer(at:)`) and calling
-`CameraWriter.setAcquiring` between offers:
+`CameraWriter.startAcquiring`/`stopAcquiring` between offers:
 
 1. `singleRunIsLegacyShape`: no `gaps` key, no `run` key; JSON key sets equal a corpus-A receipt from slice 01.
 2. `startsOffThenOn`: one run, leading empty edit, fast path used.

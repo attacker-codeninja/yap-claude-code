@@ -10,11 +10,13 @@ public final class NativeCapture {
         init(_ buffer: CVPixelBuffer) { self.buffer = buffer }
     }
     private var input: (any CaptureInputSession)?
+    /// The running take's companion camera, held until the take ends so status reports it while finalizing.
+    private var reservedCamera: (any CompanionCameraSwitch)?
     private let prepareInput: @MainActor (CaptureRequest, @MainActor () throws -> Void) async throws -> any CaptureInputSession
     private var generations = CaptureGeneration()
     private var sink: CaptureWriter?
     private var closedResult: CaptureResult?
-    private var closedCamera: ClosedCameraSource?
+    private var closedCamera: CameraClosure?
     private var companionFailure: CaptureFailure?
     private var primaryCompletionRecorded = false
     public private(set) var publication: CapturePublicationObservation?
@@ -194,6 +196,7 @@ public final class NativeCapture {
         }
         state = .recording
         started = true
+        reservedCamera = prepared.companionCamera
         prepared.startCursorSampling(writer: writer)
         lifecycleSequence = writer.note("recording", reason: nil)
         prepared.observeDeviceLoss(onFailure: onFailure)
@@ -225,6 +228,23 @@ public final class NativeCapture {
             sink.resume()
             state = .recording
         }
+    }
+
+    /// The running take's reserved companion camera and whether it is on. Nil when no take holds one.
+    public var companionCamera: (deviceId: String, on: Bool)? {
+        reservedCamera.map { ($0.deviceId, $0.isOn) }
+    }
+
+    /// Turns the running take's reserved companion camera on or off. Valid while the take is
+    /// recording or paused; any refusal while turning on leaves the camera off and the take recording.
+    public func setCamera(on: Bool) async throws {
+        guard sink != nil, failure == nil, state == .recording || state == .paused else {
+            throw CaptureFailure("INVALID_STATE", "No healthy capture is active.")
+        }
+        guard let reservedCamera else {
+            throw CaptureFailure("CAMERA_NOT_RESERVED", "This take reserved no companion camera.")
+        }
+        try await reservedCamera.setOn(on)
     }
 
     /// Publication remembers cancellation even while encoder closure is in flight.
@@ -278,8 +298,9 @@ public final class NativeCapture {
             self.closedResult = nil
             primaryCompletionRecorded = false
             companionFailure = nil
-            closedCamera?.releaseJournal()
+            closedCamera?.source?.releaseJournal()
             closedCamera = nil
+            reservedCamera = nil
             generations.end(generation)
             sink.releaseJournal()
             state = .idle
@@ -297,7 +318,13 @@ public final class NativeCapture {
     private func publishCameraSource(generation: UUID) async -> (camera: CapturedCameraSource?, error: (any Error)?) {
         var camera: CapturedCameraSource?
         var publicationError: (any Error)?
-        if let closedCamera {
+        if case .notTurnedOn = closedCamera {
+            // Nothing was recorded and nothing failed: the take completes without a camera source.
+            publication?.camera = .unavailable(CaptureFailure("CAMERA_NOT_TURNED_ON",
+                "The reserved camera was never turned on during this take."))
+            reportPublication(generation)
+        }
+        if let closedCamera = closedCamera?.source {
             do {
                 let value = try await CameraMedia.publish(closedCamera)
                 camera = value
@@ -461,8 +488,9 @@ public final class NativeCapture {
             primaryCompletionRecorded = false
             companionFailure = nil
             publication = nil
-            await closedCamera?.discard()
+            await closedCamera?.source?.discard()
             closedCamera = nil
+            reservedCamera = nil
             generations.end(generation)
             sink.releaseJournal()
             state = .idle
