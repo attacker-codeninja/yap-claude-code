@@ -449,6 +449,10 @@ private final class CaptureButton: NSButton {
     private var kind: Kind
     private var symbol: String?
     override var isFlipped: Bool { true }
+    override class var cellClass: AnyClass? {
+        get { CaptureButtonCell.self }
+        set {}
+    }
     init(title: String, kind: Kind, symbol: String?) {
         self.kind = kind
         self.symbol = symbol
@@ -526,6 +530,19 @@ private final class CaptureButton: NSButton {
             if symbol != nil { image(bounds.insetBy(dx: 6, dy: 6), color: muted) }
             else { text(title, y: (bounds.height - NSFont.systemFont(ofSize: 11).boundingRectForFont.height) / 2, size: 11, weight: .regular, color: muted) }
         }
+        if isHighlighted {
+            let radius: CGFloat = switch kind { case .tile: 9; case .primary: 10; default: 7 }
+            capturePressedColor().setFill()
+            NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).fill()
+        }
+    }
+}
+
+/// Click tracking toggles the cell's highlight; the button draws itself, so it must repaint.
+@MainActor
+private final class CaptureButtonCell: NSButtonCell {
+    override var isHighlighted: Bool {
+        didSet { if isHighlighted != oldValue { controlView?.needsDisplay = true } }
     }
 }
 
@@ -569,6 +586,14 @@ private func captureRaisedColor() -> NSColor {
         appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             ? NSColor.white.withAlphaComponent(0.065)
             : NSColor.black.withAlphaComponent(0.045)
+    }
+}
+
+private func capturePressedColor() -> NSColor {
+    NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor.white.withAlphaComponent(0.12)
+            : NSColor.black.withAlphaComponent(0.10)
     }
 }
 

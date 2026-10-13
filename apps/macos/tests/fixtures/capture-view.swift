@@ -34,6 +34,19 @@ import YapControls
         (recent.control(identifier: "recording.copyPrompt.fixture-recording") as! NSButton).performClick(nil)
         precondition(recorded.last == .controls(.copyRecordingPrompt("fixture-recording")),
                      "The capture menu dispatches the same prompt action as Library")
+        func pixels(_ button: NSButton) -> Data {
+            let bitmap = button.bitmapImageRepForCachingDisplay(in: button.bounds)!
+            button.cacheDisplay(in: button.bounds, to: bitmap)
+            return bitmap.tiffRepresentation!
+        }
+        for id in ["recording.play.fixture-recording", "recording.copyPrompt.fixture-recording"] {
+            let button = recent.control(identifier: id) as! NSButton
+            let resting = pixels(button)
+            button.cell!.highlight(true, withFrame: button.bounds, in: button)
+            precondition(pixels(button) != resting, "A pressed recording action must look pressed: \(id)")
+            button.cell!.highlight(false, withFrame: button.bounds, in: button)
+            precondition(pixels(button) == resting, "A released recording action returns to rest: \(id)")
+        }
         recorded.removeAll()
         let rowIcons = view.scrollView.documentView!.subviews.compactMap { $0 as? NSImageView }.filter { $0.frame.width == 16 }
         for icon in rowIcons {
