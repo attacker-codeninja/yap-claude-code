@@ -92,10 +92,11 @@ has no call left to answer, so it writes a `camera off:` line on native's stderr
   picture only if it was captured wholly inside an on window; publication's canonical scan
   requires the occupied segments to equal the receipt's intervals exactly; core admission
   requires the probed `available[]` to deep-equal the proof's intervals.
-- Swift computes camera intervals only in `CameraAvailability`: publication, admission and
-  recovery, and the live and full canonical scans, read a movie's occupied segments through it.
-  The raw scan decides only where a run's interval starts (`startsInterval`, shared with the
-  canonical scan). TypeScript computes intervals only through `cameraProofIntervals()`;
+- `CameraAvailability` owns camera interval arithmetic in Swift: merging, support, gaps and the
+  gap limit. The raw scan derives each run's acquired range from the mapping (it starts a range
+  by `startsInterval`, shared with the canonical scan, and ends it at the last frame's
+  acquisition, clipped to the native end); the canonical scan then proves the published movie's
+  segments equal those ranges through `CameraAvailability`. TypeScript computes intervals only through `cameraProofIntervals()`;
   `evidence.ts` validates gaps on read. Downstream readers that were already gap-aware (asset
   availability, composition, the renderer) carry no camera special case.
 - A take has at most 500 turn-ons and so at most 499 gaps (`CAMERA_TOGGLE_LIMIT`), inside the
