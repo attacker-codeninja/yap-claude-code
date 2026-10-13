@@ -1,5 +1,6 @@
 import AppKit
 import CoreImage
+import ScreenCaptureKit
 import YapCapture
 import YapControls
 
@@ -39,6 +40,7 @@ final class RecordingControls: NSObject {
     private var permissionRequests = 0
     private var lastUpdateBlockers: [String] = []
     private var sourcePreviews: [String: NSImage] = [:]
+    private var sourcePreviewRequests = Set<String>()
     private lazy var preview = PreviewController(
         call: { [weak self] operation, params in
             guard let self else { throw Self.noService }
@@ -921,20 +923,41 @@ final class RecordingControls: NSObject {
     }
 
     private func sourcePreview(display id: Int) -> NSImage? {
-        if let cached = sourcePreviews["display:\(id)"] { return cached }
-        guard let image = CGDisplayCreateImage(CGDirectDisplayID(id)) else { return nil }
-        let preview = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
-        sourcePreviews["display:\(id)"] = preview
-        return preview
+        sourcePreview(key: "display:\(id)") { content in
+            content.displays.first { Int($0.displayID) == id }.map { SCContentFilter(display: $0, excludingWindows: []) }
+        }
     }
 
     private func sourcePreview(window id: Int) -> NSImage? {
-        if let cached = sourcePreviews["window:\(id)"] { return cached }
-        guard let image = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(id),
-                                                   [.bestResolution, .boundsIgnoreFraming]) else { return nil }
-        let preview = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
-        sourcePreviews["window:\(id)"] = preview
-        return preview
+        sourcePreview(key: "window:\(id)") { content in
+            content.windows.first { Int($0.windowID) == id }.map { SCContentFilter(desktopIndependentWindow: $0) }
+        }
+    }
+
+    /// A source's thumbnail, or nil until ScreenCaptureKit answers; the answer redraws the menu.
+    private func sourcePreview(key: String, filter: @escaping (SCShareableContent) -> SCContentFilter?) -> NSImage? {
+        if let cached = sourcePreviews[key] { return cached }
+        guard sourcePreviewRequests.insert(key).inserted else { return nil }
+        Task { [weak self] in
+            let image = try? await Self.thumbnail(filter)
+            guard let self else { return }
+            sourcePreviewRequests.remove(key)
+            guard let image else { return }
+            sourcePreviews[key] = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
+            render()
+        }
+        return nil
+    }
+
+    private static func thumbnail(_ filter: (SCShareableContent) -> SCContentFilter?) async throws -> CGImage? {
+        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        guard let filter = filter(content) else { return nil }
+        let config = SCStreamConfiguration()
+        let scale = min(1, 480 / max(filter.contentRect.width, 1))
+        config.width = max(1, Int(filter.contentRect.width * scale * CGFloat(filter.pointPixelScale)))
+        config.height = max(1, Int(filter.contentRect.height * scale * CGFloat(filter.pointPixelScale)))
+        config.showsCursor = false
+        return try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
     }
 
     private func showStatusItem() {
