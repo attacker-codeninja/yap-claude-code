@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from "vitest";
+import { admitReadRange } from "@yap/composition";
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -296,6 +297,35 @@ test("project alignment uses a project job while retaining the prepared tap sour
   const beforeCleanup = f.processing.prepareProject(request);
   await f.processing.cleanup(new AbortController().signal);
   expect(f.processing.prepareProject(request)).toEqual(beforeCleanup);
+});
+
+test("a project alignment range the resolver clamped publishes its issue with the evidence", async () => {
+  const f = await fixture();
+  const clamp = admitReadRange(
+    { startUs: f.input.sourceRange.startUs, endUs: 9_000_000 },
+    { startUs: 0, endUs: f.input.sourceRange.endUs },
+  ).issues[0]!;
+  f.options.project = {
+    resolve: (input) => ({
+      source: f.input,
+      projectId: input.projectId,
+      revisionId: "revision",
+      preparedResourceId: input.preparedResourceId,
+      issues: [clamp],
+    }),
+  };
+  const request = {
+    projectId: "project",
+    preparedResourceId: "prepared",
+    tap: { target: { kind: "output" }, point: { kind: "processed" } },
+    range: { startUs: f.input.sourceRange.startUs, endUs: 9_000_000 },
+    channel: f.input.channel,
+    text: f.input.text,
+    modelId: f.input.modelId,
+  } as const;
+  f.processing.prepareProject(request);
+  await expect.poll(() => f.processing.prepareProject(request).state).toBe("ready");
+  expect(f.processing.prepareProject(request).published?.issues).toEqual([clamp]);
 });
 
 test("project alignment cancellation drains the pinned tap and retry publishes a fresh generation", async () => {

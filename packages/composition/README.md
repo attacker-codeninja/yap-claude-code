@@ -43,6 +43,13 @@ never holds a last frame or invents support. A single point outside its domain i
 malformed, because a point can't be partly valid. Stored documents stay strictly
 validated, so only the authoring operation clamps.
 
+A placement maps linearly onto its source, so it must fit every domain at once: its
+media source within the stream, and a content anchor within the parent's selected
+source. Each domain keeps a fraction of the placement and the clip keeps the part
+they all keep; each range that overran reports its own clamp, and a source and
+anchor that keep disjoint parts are malformed. An angle's validity range is clamped
+to its member's interval; its offset is the caller's and never moves.
+
 [Editorial boundaries](src/project-cuts.ts) use the same source mapping for
 authored cuts and explicit two-sided review points. Opening/ending and nearby
 candidate coordinates stay exact; asking about a point never authors a cut or

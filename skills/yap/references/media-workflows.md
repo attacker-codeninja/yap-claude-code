@@ -408,7 +408,9 @@ result carries a `range-clamped` issue with the requested range, the applied ran
 and the bounds, so read the applied range rather than assuming the request. A
 range with no part inside refuses with `INVALID_RANGE` and names the bounds.
 Synchronous reads report the issue as the result's `issues`; rendered recognition
-reports it with its published output.
+and project alignment report it with their published output. A transcription
+`executionRange` past the source reports it in the `transcript.prepare` result's
+`issues`, and shares the generation a request for the applied range would get.
 
 For timeline inspection, use advertised `timeline.events` reads. Video scene changes
 need a selected asset/stream, not capture metadata; add acquisition only to apply

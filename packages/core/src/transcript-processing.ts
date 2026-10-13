@@ -1,4 +1,11 @@
-import { fromTime, compare, type SelectionRange, omit, type Issue } from "@yap/composition";
+import {
+  admitReadRange,
+  fromTime,
+  compare,
+  type SelectionRange,
+  omit,
+  type Issue,
+} from "@yap/composition";
 import { z } from "zod";
 import { setImmediate } from "node:timers/promises";
 import { isDeepStrictEqual } from "node:util";
@@ -241,17 +248,25 @@ export class TranscriptProcessing {
       issues,
     );
   }
-  sourceStatus(selection: TranscriptPreparation & { generation?: string | undefined }) {
+  /**
+   * The execution range is clamped to the source before it forms the speech-execution identity,
+   * so a clamped request and a request for its applied range share one generation. The clamp is
+   * reported per request, never stored with the shared generation.
+   */
+  private admitSource(selection: TranscriptPreparation) {
     const selected = selectedAudio(this.asset, selection);
-    const scope = speechExecution(selection);
-    if (
-      scope.executionRange &&
-      compare(fromTime(scope.executionRange.endUs), fromTime(selected.durationUs)) > 0
-    )
-      throw new CatalogError(
-        "INVALID_REQUEST",
-        "Transcript execution range exceeds source duration",
-      );
+    const admitted = selection.executionRange
+      ? admitReadRange(selection.executionRange, { startUs: 0, endUs: selected.durationUs })
+      : null;
+    const scope = speechExecution({
+      ...selection,
+      executionRange: admitted?.range ?? selection.executionRange,
+    });
+    return { selected, scope, issues: admitted?.issues ?? [] };
+  }
+
+  sourceStatus(selection: TranscriptPreparation & { generation?: string | undefined }) {
+    const { selected, scope, issues } = this.admitSource(selection);
     let status = this.jobs.status(this.sourceIdentity(selected, this.execution(), scope));
     if (selection.generation !== undefined) {
       const owner = { kind: "asset" as const, assetId: selection.assetId };
@@ -298,6 +313,7 @@ export class TranscriptProcessing {
             },
       models,
       dependencies: [],
+      issues,
     };
   }
 
@@ -305,14 +321,10 @@ export class TranscriptProcessing {
     const status = this.sourceStatus(selection);
     if (status.state !== "not_requested" || status.reason !== null) return;
     this.jobs.submit(
-      () => ({
-        ...this.sourceIdentity(
-          selectedAudio(this.asset, selection),
-          this.execution(),
-          speechExecution(selection),
-        ),
-        lane: "heavy",
-      }),
+      () => {
+        const { selected, scope } = this.admitSource(selection);
+        return { ...this.sourceIdentity(selected, this.execution(), scope), lane: "heavy" };
+      },
       (job) => {
         const owner = { kind: "job" as const, id: job.jobId };
         this.asset.assets.retain(owner, [selection.assetId]);

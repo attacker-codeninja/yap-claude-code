@@ -290,6 +290,69 @@ test("project alignment preparation resolves the project-owned tap before source
   });
   expect(result).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
 });
+
+test("a project alignment range past the revision is admitted clamped; one wholly past it refuses", async () => {
+  const f = await projectServiceFixture(cleanup, async (operation) => {
+    if (operation === "media.probe") return { ok: true, data: probe };
+    throw new Error(`Unexpected project alignment work ${operation}`);
+  });
+  const imported = await f.call("asset.import", { requestId: "clamped-alignment", path: f.path });
+  if (!imported.ok) throw new Error(JSON.stringify(imported));
+  const assetId = (await f.job((imported.data as { jobId: string }).jobId, "ready")).published!
+    .output.assetId;
+  const created = await f.call("project.create", {
+    requestId: "clamped-alignment-project",
+    canvas: {
+      width: 64,
+      height: 48,
+      fps: { numerator: 30, denominator: 1 },
+      background: "#000000ff",
+    },
+  });
+  if (!created.ok) throw new Error(JSON.stringify(created));
+  const { project, revision } = created.data as {
+    project: { projectId: string };
+    revision: { id: string };
+  };
+  const placed = await f.call("edit.apply", {
+    projectId: project.projectId,
+    requestId: "place",
+    expectedRevisionId: revision.id,
+    operations: [
+      { operation: "track.add", label: "sound", track: { kind: "audio", order: 0 } },
+      {
+        operation: "place",
+        clip: {
+          trackId: { label: "sound" },
+          assetId,
+          streamId: "a1",
+          source: { kind: "range", range: { startUs: 0, endUs: 1_000_000 } },
+          placement: { kind: "project", range: { startUs: 0, endUs: 1_000_000 } },
+        },
+      },
+    ],
+  });
+  if (!placed.ok) throw new Error(JSON.stringify(placed));
+  const request = (range: { startUs: number; endUs: number }) =>
+    f.call("alignment.prepare", {
+      projectId: project.projectId,
+      preparedResourceId: "prepared-project-tap",
+      tap: { target: { kind: "output" }, point: { kind: "processed" } },
+      range,
+      channel: 0,
+      text: "hello world",
+      modelId: "nemo-ctc110",
+    });
+  // Admission clamps to the revision, so the request reaches the prepared-tap lookup.
+  expect(await request({ startUs: 500_000, endUs: 3_000_000 })).toMatchObject({
+    ok: false,
+    error: { code: "ARTIFACT_CHANGED", message: "Pinned prepared signal is no longer referenced" },
+  });
+  expect(await request({ startUs: 1_000_000, endUs: 3_000_000 })).toMatchObject({
+    ok: false,
+    error: { code: "INVALID_RANGE" },
+  });
+});
 test("public pinned pages, thresholds and original bytes survive restart without models or native work", async () => {
   const f = await projectServiceFixture(cleanup, async (operation) => {
     if (operation !== "media.probe") throw new Error(operation);

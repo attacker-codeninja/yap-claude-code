@@ -14,8 +14,7 @@ turns what cost it time into contracts. Sources:
 
 ## Next Agent Prompt
 
-You are resuming this spec. Status (2026-10-13): slices 01–04, 08 and 09 and
-06a–d are merged on `t3code/create-launch-video`, as are 07c–07k. The refusal
+You are resuming this spec. Status (2026-10-13): slices 01–06, 08 and 09 are merged on `t3code/create-launch-video`, as are 07c–07k. The refusal
 ledger (`packages/protocol/src/refusal-ledger.json`) is the live to-do list:
 `pendingConversion`, `pendingSites` and `messageCodes.pending` name every gate
 still to convert, with its owning slice.
@@ -27,12 +26,9 @@ In flight, each in its own worktree `../lvf-<slice>` on branch `lvf/<slice>`:
   (`UNAVAILABLE_SUPPORT`) treat each available run as its own domain, with
   `unavailable` ranges and a `support-gap` issue. Alignment and the speaker
   model work per run. This is the user-side decision recorded in choices.md.
-- 06e: the four range sites 06 deferred (transcript execution range, project
-  alignment range, content anchors, angle validity) clamp with
-  `range-clamped`. Stored-document validation stays strict.
 
 Next pickup, in order:
-1. Merge 07a, 07b and 06e: rerun the touched packages' checks on the merged
+1. Merge 07a and 07b: rerun the touched packages' checks on the merged
    tree, then remove each worktree and branch.
 2. [10](slices/10-skill-guidance.md): skill guidance, written against what
    shipped (read each slice's choices).
@@ -66,7 +62,7 @@ Checklist:
 - [x] [03 Long-media transcription always publishes](slices/03-transcription-publishes.md)
 - [x] [04 Audio treatments publish their best result](slices/04-audio-treatments-publish.md) (`UNAVAILABLE_SUPPORT` moved to 07b)
 - [x] [05 Short-window level for word-sized ranges](slices/05-short-window-level.md) (closed by probe: no new field)
-- [ ] [06 Ranges and messages](slices/06-ranges-and-messages.md) (06e open)
+- [x] [06 Ranges and messages](slices/06-ranges-and-messages.md)
 - [ ] [07 The remaining gates: publish, or justify the refusal](slices/07-remaining-quality-gates.md) (a, b open)
 - [x] [08 Multicam sync: no new primitive (closed by decision)](slices/08-sync-estimate.md)
 - [x] [09 View-shot fixtures](slices/09-view-shot-fixtures.md)

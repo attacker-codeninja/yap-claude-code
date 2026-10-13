@@ -325,3 +325,247 @@ test("a trim range past the clip's interval keeps the overlapping part, with ran
     }),
   );
 });
+
+test("an angle validity range past its clip's interval is clamped to it, with range-clamped", () => {
+  const cameras = [...assets, { ...assets[0]!, id: "camera" }];
+  const placed = applyBatch(
+    empty,
+    [
+      place(
+        { startUs: 0, endUs: 2_000_000 },
+        { kind: "project", range: { startUs: 1_000_000, endUs: 3_000_000 } },
+      ),
+      {
+        ...place(
+          { startUs: 0, endUs: 2_000_000 },
+          { kind: "project", range: { startUs: 1_000_000, endUs: 3_000_000 } },
+        ),
+        label: "other",
+        clip: {
+          ...place(
+            { startUs: 0, endUs: 2_000_000 },
+            { kind: "project", range: { startUs: 1_000_000, endUs: 3_000_000 } },
+          ).clip,
+          assetId: "camera",
+          trackId: "u",
+        },
+      },
+    ],
+    { ...context, assets: cameras },
+  );
+  const declare = (validRange: { startUs: number; endUs: number }) =>
+    applyBatch(
+      placed.document,
+      [
+        {
+          operation: "angle.declare",
+          sessionId: "session",
+          originClipId: placed.labels.clip,
+          evidence: {
+            id: "sync",
+            generation: "g1",
+            status: "accepted",
+            method: "mixed-reference",
+            fingerprint: "sha256:angle",
+            sources: [
+              { assetId: "movie", streamId: "v" },
+              { assetId: "camera", streamId: "v" },
+            ],
+          },
+          members: [
+            {
+              clipId: placed.labels.clip,
+              offsetUs: 0,
+              validRange: { startUs: 1_000_000, endUs: 3_000_000 },
+            },
+            { clipId: placed.labels.other, offsetUs: 0, validRange },
+          ],
+        },
+      ],
+      { assets: cameras, namespace: "range-admission-angle" },
+    );
+  const result = declare({ startUs: 2_000_000, endUs: 5_000_000 });
+  expect(result.document.angleGroups![0]!.members[1]).toMatchObject({
+    validRange: { startUs: 2_000_000, endUs: 3_000_000 },
+  });
+  expect(result.issues).toEqual([
+    {
+      code: "range-clamped",
+      message: expect.any(String),
+      at: { range: { startUs: 2_000_000, endUs: 3_000_000 } },
+      evidence: {
+        requested: { startUs: 2_000_000, endUs: 5_000_000 },
+        applied: { startUs: 2_000_000, endUs: 3_000_000 },
+        bounds: { startUs: 1_000_000, endUs: 3_000_000 },
+        operationIndex: 0,
+      },
+    },
+  ]);
+  expect(() => declare({ startUs: 3_000_000, endUs: 5_000_000 })).toThrow(
+    expect.objectContaining({
+      code: "INVALID_EDIT",
+      details: expect.objectContaining({ cause: "INVALID_RANGE" }),
+    }),
+  );
+});
+
+// A parent selecting 4 s of the movie (0–4 s unless given), placed at 0–4 s, and a child
+// content-anchored to it.
+const withParent = (startUs = 0) =>
+  applyBatch(
+    empty,
+    [
+      place(
+        { startUs, endUs: startUs + 4_000_000 },
+        { kind: "project", range: { startUs: 0, endUs: 4_000_000 } },
+      ),
+    ],
+    context,
+  );
+const placeChild = (
+  parent: ReturnType<typeof withParent>,
+  source: { startUs: number; endUs: number },
+  sourceRange: { startUs: number; endUs: number },
+) =>
+  applyBatch(
+    parent.document,
+    [
+      {
+        operation: "place",
+        label: "child",
+        clip: {
+          ...place(source, { kind: "content", clipId: parent.labels.clip, sourceRange }).clip,
+          trackId: "u",
+        },
+      },
+    ],
+    { ...context, namespace: "range-admission-content" },
+  );
+
+test("a content anchor past its parent's selected source is shortened to it, with its source", () => {
+  const parent = withParent();
+  const result = placeChild(
+    parent,
+    { startUs: 0, endUs: 3_000_000 },
+    { startUs: 3_000_000, endUs: 6_000_000 },
+  );
+  const child = result.document.clips.find((value) => value.id === result.labels.child)!;
+  expect(child.placement).toEqual({
+    kind: "content",
+    clipId: parent.labels.clip,
+    sourceRange: { startUs: 3_000_000, endUs: 4_000_000 },
+  });
+  expect(child.source).toEqual({ kind: "range", range: { startUs: 0, endUs: 1_000_000 } });
+  expect(result.issues).toEqual([
+    {
+      code: "range-clamped",
+      message: expect.any(String),
+      at: { range: { startUs: 3_000_000, endUs: 4_000_000 } },
+      evidence: {
+        requested: { startUs: 3_000_000, endUs: 6_000_000 },
+        applied: { startUs: 3_000_000, endUs: 4_000_000 },
+        bounds: { startUs: 0, endUs: 4_000_000 },
+        operationIndex: 0,
+      },
+    },
+  ]);
+});
+
+test("a content anchor and a source that both overrun keep only the part both keep", () => {
+  // The source keeps the first 2/3 of the placement, the anchor its first 5/6: the clip keeps 2/3.
+  const result = placeChild(
+    withParent(),
+    { startUs: movieEndUs - 2_000_000, endUs: movieEndUs + 1_000_000 },
+    { startUs: 1_500_000, endUs: 4_500_000 },
+  );
+  const child = result.document.clips.find((value) => value.id === result.labels.child)!;
+  expect(child.source).toEqual({
+    kind: "range",
+    range: { startUs: movieEndUs - 2_000_000, endUs: movieEndUs },
+  });
+  expect(child.placement).toMatchObject({ sourceRange: { startUs: 1_500_000, endUs: 3_500_000 } });
+  expect(result.issues.map((issue) => issue.evidence)).toEqual([
+    {
+      requested: { startUs: movieEndUs - 2_000_000, endUs: movieEndUs + 1_000_000 },
+      applied: { startUs: movieEndUs - 2_000_000, endUs: movieEndUs },
+      bounds: { startUs: 0, endUs: movieEndUs },
+      operationIndex: 0,
+    },
+    {
+      requested: { startUs: 1_500_000, endUs: 4_500_000 },
+      applied: { startUs: 1_500_000, endUs: 3_500_000 },
+      bounds: { startUs: 0, endUs: 4_000_000 },
+      operationIndex: 0,
+    },
+  ]);
+});
+
+test("a content anchor and a source that keep disjoint parts of the placement refuse", () => {
+  // The parent selects 2–6 s. The anchor keeps the last 2/3 of the placement, the source the first 1/3.
+  expect(() =>
+    placeChild(
+      withParent(2_000_000),
+      { startUs: movieEndUs - 1_000_000, endUs: movieEndUs + 2_000_000 },
+      { startUs: 0, endUs: 3_000_000 },
+    ),
+  ).toThrow(
+    expect.objectContaining({
+      code: "INVALID_EDIT",
+      details: expect.objectContaining({ cause: "INVALID_RANGE" }),
+    }),
+  );
+});
+
+test("reanchoring onto content past the parent's source shortens the clip to it, with range-clamped", () => {
+  const parent = withParent();
+  const placed = applyBatch(
+    parent.document,
+    [
+      {
+        operation: "place",
+        label: "child",
+        clip: {
+          ...place(
+            { startUs: 0, endUs: 4_000_000 },
+            { kind: "project", range: { startUs: 2_000_000, endUs: 6_000_000 } },
+          ).clip,
+          trackId: "u",
+        },
+      },
+    ],
+    { ...context, namespace: "range-admission-reanchor-place" },
+  );
+  const result = applyBatch(
+    placed.document,
+    [
+      {
+        operation: "reanchor",
+        clipId: placed.labels.child,
+        placement: {
+          kind: "content",
+          clipId: parent.labels.clip,
+          sourceRange: { startUs: 2_000_000, endUs: 6_000_000 },
+        },
+      },
+    ],
+    { ...context, namespace: "range-admission-reanchor" },
+  );
+  const child = result.document.clips.find((value) => value.id === placed.labels.child)!;
+  expect(child.placement).toEqual({
+    kind: "content",
+    clipId: parent.labels.clip,
+    sourceRange: { startUs: 2_000_000, endUs: 4_000_000 },
+  });
+  expect(child.source).toEqual({ kind: "range", range: { startUs: 0, endUs: 2_000_000 } });
+  expect(result.issues).toMatchObject([
+    {
+      code: "range-clamped",
+      evidence: {
+        requested: { startUs: 2_000_000, endUs: 6_000_000 },
+        applied: { startUs: 2_000_000, endUs: 4_000_000 },
+        bounds: { startUs: 0, endUs: 4_000_000 },
+        operationIndex: 0,
+      },
+    },
+  ]);
+});

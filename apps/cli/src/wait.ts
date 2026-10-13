@@ -181,6 +181,8 @@ export async function waitForWork(options: {
     read === "transcript.get" &&
     (request.operation === "transcript.prepare" ||
       (request.operation === "transcript.retry" && "assetId" in request.params));
+  // The pinned read can't re-admit the execution range, so it carries the preparation's clamp.
+  const admission = sourcePreparation && Array.isArray(pins.issues) ? pins.issues : [];
   if (sourcePreparation) {
     delete params.executionRange;
     delete params.context;
@@ -250,7 +252,17 @@ export async function waitForWork(options: {
       }
     }
     closed.clear();
-    latest = result;
+    const read = record(result.ok ? result.data : null);
+    latest =
+      result.ok && admission.length
+        ? {
+            ...result,
+            data: {
+              ...read,
+              issues: [...admission, ...(Array.isArray(read.issues) ? read.issues : [])],
+            },
+          }
+        : result;
   };
   try {
     if (

@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { z } from "zod";
 import { isDeepStrictEqual } from "node:util";
 import { setImmediate } from "node:timers/promises";
-import type { ProcessingTap, SelectionRange } from "@yap/composition";
+import type { Issue, ProcessingTap, SelectionRange } from "@yap/composition";
 import type { AssetStore } from "./assets.js";
 import type { AcquisitionStore } from "./acquisitions.js";
 import { CatalogError } from "./catalog.js";
@@ -42,6 +42,8 @@ export type ResolvedProjectAlignment = {
   projectId: string;
   revisionId: string;
   preparedResourceId: string;
+  /** Admission issues (a clamped range); the job keeps the request, so they publish with it. */
+  issues?: Issue[];
 };
 export type AlignmentObserver = (
   request: {
@@ -216,6 +218,7 @@ export class AlignmentProcessing {
     if (!project && (job.target.kind !== "asset" || job.artifact !== artifact))
       throw new CatalogError("UNSUPPORTED_JOB", "Alignment processor cannot execute this job");
     let input: AlignmentSourceInput,
+      issues: Issue[] = [],
       selected: ReturnType<typeof selectAlignmentSource>,
       source: AlignmentDescriptorSource,
       projectOwner: { kind: "project"; projectId: string } | undefined;
@@ -240,6 +243,7 @@ export class AlignmentProcessing {
         throw new CatalogError("ARTIFACT_CHANGED", "Prepared project revision changed");
       projectOwner = { kind: "project", projectId: resolved.projectId };
       input = alignmentSourceSchema.parse(resolved.source);
+      issues = resolved.issues ?? [];
       ({ selected, source } = this.descriptor(input));
     } else {
       input = alignmentSourceSchema.parse(JSON.parse(job.input).request);
@@ -320,6 +324,7 @@ export class AlignmentProcessing {
     const staged = this.options.evidence.stage(identity, descriptor, observed.operands, job.jobId);
     return {
       result: JSON.stringify(staged.metadata),
+      issues,
       publish: staged.publish,
       close: staged.close,
     };
