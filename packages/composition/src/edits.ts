@@ -24,13 +24,14 @@ import {
   interpolationSchema,
   signedTimeValueSchema,
   synchronizationEvidenceSchema,
+  type Anchor,
   type MediaClip,
   type TimeValue,
 } from "./schema.js";
 import { validateComposition, type ValidatedComposition, type ExactRange } from "./model.js";
 
 import { partitionClips } from "./partition.js";
-import { add, subtract, compare, fromTime, toFraction, toTime } from "./rational.js";
+import { add, subtract, compare, fromTime, rational, toFraction, toTime } from "./rational.js";
 import {
   admitRange,
   keepSameFraction,
@@ -534,56 +535,107 @@ export function applyBatch(
       placement:
         anchor.kind === "project" ? anchor : { ...anchor, clipId: resolve(anchor.clipId, "clip") },
     };
-    if (!("assetId" in placed)) return placed;
-    const clamp = clampSource(placed, operationIndex);
-    if (!clamp) return placed;
-    const { requested, kept } = clamp;
-    const placement = placed.placement;
-    return {
-      ...placed,
-      source: clamp.source,
-      placement:
-        placement.kind === "project"
-          ? {
-              ...placement,
-              range: wire(keepSameFraction(requested, kept, interval(placement.range))),
-            }
-          : placement.kind === "content"
-            ? {
-                ...placement,
-                sourceRange: wire(
-                  keepSameFraction(requested, kept, interval(placement.sourceRange)),
-                ),
-              }
-            : (() => {
-                const span = keepSameFraction(requested, kept, {
-                  start: fromTime(placement.start),
-                  end: fromTime(placement.end),
-                });
-                return { ...placement, start: toFraction(span.start), end: toFraction(span.end) };
-              })(),
-    };
+    return fitPlacement(placed, operationIndex).clip;
   };
   const interval = (range: { startUs: TimeValue; endUs: TimeValue }): Interval => ({
     start: fromTime(range.startUs),
     end: fromTime(range.endUs),
   });
   const wire = (range: Interval) => ({ startUs: toTime(range.start), endUs: toTime(range.end) });
+  const unit: Interval = { start: rational(0n), end: rational(1n) };
+  const sourceDomain = (clip: object) => {
+    if (!("assetId" in clip)) return null;
+    const media = clip as Pick<MediaClip, "assetId" | "streamId" | "source">;
+    const stream = model.assets
+      .find((asset) => asset.id === media.assetId)
+      ?.streams.find((value) => value.id === media.streamId);
+    if (!stream || stream.kind === "image" || media.source.kind !== "range") return null;
+    return { requested: interval(media.source.range), bounds: interval(stream.bounds) };
+  };
+  const contentDomain = (anchor: Anchor) => {
+    if (anchor.kind !== "content") return null;
+    const parent = model.clips.find((value) => value.clip.id === anchor.clipId)?.clip;
+    if (parent?.source.kind !== "range") return null;
+    return { requested: interval(anchor.sourceRange), bounds: interval(parent.source.range) };
+  };
   // Authored selections past a stream's support are shortened to it, never extended or held.
   const clampSource = (
     media: { assetId: string; streamId: string; source: MediaClip["source"] },
     operationIndex: number,
   ) => {
-    const stream = model.assets
-      .find((asset) => asset.id === media.assetId)
-      ?.streams.find((value) => value.id === media.streamId);
-    if (!stream || stream.kind === "image" || media.source.kind !== "range") return null;
-    const requested = interval(media.source.range);
-    const bounds = interval(stream.bounds);
-    const { range: kept, clamped } = admitRange(requested, bounds);
+    const domain = sourceDomain(media);
+    if (!domain) return null;
+    const { range: kept, clamped } = admitRange(domain.requested, domain.bounds);
     if (!clamped) return null;
-    issues.push(rangeClampedIssue(requested, kept, bounds, operationIndex));
-    return { requested, kept, source: { ...media.source, range: wire(kept) } };
+    issues.push(rangeClampedIssue(domain.requested, kept, domain.bounds, operationIndex));
+    return { source: { ...media.source, range: wire(kept) } as MediaClip["source"] };
+  };
+  /**
+   * A placement maps linearly onto its source, so each domain it must fit (a media source within
+   * its stream, a content anchor within its parent's selected source) keeps a fraction of it. The
+   * clip keeps the overlap of those fractions, and each range that overran reports range-clamped.
+   */
+  const fitPlacement = <T extends { placement: Anchor; source: unknown }>(
+    clip: T,
+    operationIndex: number,
+  ) => {
+    const media = sourceDomain(clip),
+      content = contentDomain(clip.placement);
+    const domains = [media, content].flatMap((domain) =>
+      domain ? [{ ...domain, ...admitRange(domain.requested, domain.bounds) }] : [],
+    );
+    let kept = unit;
+    for (const domain of domains) {
+      const fraction = keepSameFraction(domain.requested, domain.range, unit);
+      kept = {
+        start: compare(fraction.start, kept.start) > 0 ? fraction.start : kept.start,
+        end: compare(fraction.end, kept.end) < 0 ? fraction.end : kept.end,
+      };
+    }
+    // Each domain alone keeps a nonempty part, so only both together can keep nothing.
+    if (compare(kept.start, kept.end) >= 0)
+      throw new CompositionError(
+        "INVALID_RANGE",
+        "The source and the content anchor keep no common part of the placement",
+        {
+          source: { requested: wire(media!.requested), bounds: wire(media!.bounds) },
+          anchor: { requested: wire(content!.requested), bounds: wire(content!.bounds) },
+        },
+      );
+    if (!domains.some((domain) => domain.clamped)) return { clip, kept };
+    const keep = (range: Interval) => keepSameFraction(unit, kept, range);
+    for (const domain of domains)
+      if (domain.clamped)
+        issues.push(
+          rangeClampedIssue(
+            domain.requested,
+            keep(domain.requested),
+            domain.bounds,
+            operationIndex,
+          ),
+        );
+    const placement = clip.placement;
+    return {
+      kept,
+      clip: {
+        ...clip,
+        ...(media
+          ? { source: { ...(clip.source as object), range: wire(keep(media.requested)) } }
+          : {}),
+        placement:
+          placement.kind === "project"
+            ? { ...placement, range: wire(keep(interval(placement.range))) }
+            : placement.kind === "content"
+              ? { ...placement, sourceRange: wire(keep(interval(placement.sourceRange))) }
+              : (() => {
+                  const span = keep({
+                    start: fromTime(placement.start),
+                    end: fromTime(placement.end),
+                  });
+                  return { ...placement, start: toFraction(span.start), end: toFraction(span.end) };
+                })(),
+      } as T,
+    };
   };
   const addTrack = (
     operation: Extract<z.infer<typeof editOperationSchema>, { operation: "track.add" }>,
@@ -1367,14 +1419,23 @@ export function applyBatch(
               anchor.kind === "project"
                 ? anchor
                 : { ...anchor, clipId: resolve(anchor.clipId, "clip") };
+            // An anchor past its parent's source shortens the clip; it keeps that part of its interval.
+            let kept = unit;
             next = {
               ...before,
-              clips: before.clips.map((clip) =>
-                clip.id === id ? { ...clip, placement: resolvedAnchor } : clip,
-              ),
+              clips: before.clips.map((clip) => {
+                if (clip.id !== id) return clip;
+                const fitted = fitPlacement({ ...clip, placement: resolvedAnchor }, operationIndex);
+                kept = fitted.kept;
+                return fitted.clip;
+              }),
             };
             const candidate = validateComposition(next, model.assets, model.acquisitions);
-            const oldRange = model.clips.find((value) => value.clip.id === id)!.range;
+            const oldRange = keepSameFraction(
+              unit,
+              kept,
+              model.clips.find((value) => value.clip.id === id)!.range,
+            );
             const newRange = candidate.clips.find((value) => value.clip.id === id)!.range;
             if (
               compare(oldRange.start, newRange.start) !== 0 ||
@@ -1673,9 +1734,23 @@ export function applyBatch(
                 assetId: clip.clip.assetId,
                 streamId: clip.clip.streamId,
               };
+              // Validity is kept to the part inside the member's interval; the offset is untouched.
+              const valid = (range: { startUs: TimeValue; endUs: TimeValue }) => {
+                const requested = interval(range);
+                const { range: kept, clamped } = admitRange(requested, clip.range);
+                if (!clamped) return range;
+                issues.push(rangeClampedIssue(requested, kept, clip.range, operationIndex));
+                return wire(kept);
+              };
               return operation.mapping === "piecewise-local"
-                ? { ...base, segments: member.segments! }
-                : { ...base, offsetUs: member.offsetUs!, validRange: member.validRange! };
+                ? {
+                    ...base,
+                    segments: member.segments!.map((segment) => ({
+                      ...segment,
+                      validRange: valid(segment.validRange),
+                    })),
+                  }
+                : { ...base, offsetUs: member.offsetUs!, validRange: valid(member.validRange!) };
             });
             const id = allocate("angleGroup");
             bind(operation.label, "angleGroup", id);
