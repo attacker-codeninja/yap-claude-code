@@ -113,7 +113,7 @@ import { SourceSpeakerRead } from "@yap/core/speaker-read";
 import { attributeTranscriptWords } from "@yap/core/speaker-attribution";
 import { speakerObserver } from "./speaker.js";
 import { SpeakerLabelStore } from "@yap/core/speaker-labels";
-import type { SelectionRange } from "@yap/composition";
+import type { Issue, SelectionRange } from "@yap/composition";
 import { sourcePCMDecoder } from "./source-channel.js";
 import { evaluateSpeakerContinuity } from "@yap/core/speaker-continuity";
 import { admitCorrespondence, verifyCorrespondenceReceipt } from "@yap/core/correspondence";
@@ -129,6 +129,15 @@ type TranscriptSpeakerRequest = {
   generation: string;
 };
 type TranscriptSpeakerCursor = TranscriptSpeakerRequest & { bindingDigest?: string };
+
+/**
+ * A ready source read reports the issues published with the transcript it reads, beside its own
+ * range admission. Issues anchored to no word (word-dropped, an unpublished boundary peer) appear
+ * only here. The page already carries the transcript, so the publication omits it.
+ */
+function sourceTranscriptPublication(published: { generation: number | string; issues: Issue[] }) {
+  return { generation: published.generation, issues: published.issues };
+}
 
 function sameTranscriptSpeakerRequest(
   a: TranscriptSpeakerRequest,
@@ -1887,6 +1896,7 @@ export async function startProjectService(options: {
                 state: "ready",
                 generation: metadata.generation,
                 issues,
+                published: sourceTranscriptPublication(current.published),
                 page: {
                   transcript: metadata,
                   ...attributedPage,
@@ -1972,6 +1982,7 @@ export async function startProjectService(options: {
                 state: "ready",
                 generation: metadata.generation,
                 issues,
+                published: sourceTranscriptPublication(current.published),
                 page: { transcript: metadata, ...page },
               },
             };

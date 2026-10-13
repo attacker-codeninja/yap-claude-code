@@ -11,6 +11,7 @@ import type { SourceTranscriptRow } from "@yap/core/transcript-read";
 import { callLocal } from "@yap/client";
 import { REQUEST_FRAME_BYTES, type OperationRequest, type OperationResponse } from "@yap/protocol";
 import { projectServiceFixture } from "./project-service.fixture.js";
+import type { MediaWorker } from "./worker.js";
 import { publishControlledObservation, speakerSource } from "./speaker.fixture.js";
 
 const cleanups: (() => Promise<void>)[] = [];
@@ -270,9 +271,12 @@ const spoken = [
   { text: "press", startUs: 4500000, endUs: 5000000 },
   { text: "record", startUs: 5100000, endUs: 5800000 },
 ];
-test("selected-source transcript preserves filler, phrase and ready retry through actual model metadata", async () => {
-  const requests: SpeechTranscriptionRequest[] = [];
-  const f = await projectServiceFixture(cleanups, async (operation, params) => {
+/** A controlled native edge: probe two audio streams and transcribe `spoken`, with raw line issues. */
+function controlledSpeech(
+  requests: SpeechTranscriptionRequest[],
+  lineIssues: Record<string, unknown>[] = [],
+): MediaWorker {
+  return async (operation, params) => {
     if (operation === "media.probe")
       return {
         ok: true,
@@ -322,7 +326,14 @@ test("selected-source transcript preserves filler, phrase and ready retry throug
           startSeconds: (range.startUs - Number(source.startUs)) / 1e6,
           endSeconds: (range.endUs - Number(source.startUs)) / 1e6,
         }));
-      return { ordinal, source, owned: source, state: "transcribed" as const, words };
+      return {
+        ordinal,
+        source,
+        owned: source,
+        state: "transcribed" as const,
+        words,
+        ...(ordinal === 0 && lineIssues.length ? { issues: lineIssues } : {}),
+      };
     });
     const raw = lines.map((line) => JSON.stringify(line) + "\n").join("");
     await writeFile(request.output, raw);
@@ -351,7 +362,11 @@ test("selected-source transcript preserves filler, phrase and ready retry throug
         wordCount: spoken.length,
       },
     };
-  });
+  };
+}
+test("selected-source transcript preserves filler, phrase and ready retry through actual model metadata", async () => {
+  const requests: SpeechTranscriptionRequest[] = [];
+  const f = await projectServiceFixture(cleanups, controlledSpeech(requests));
   const model = await modelMetadata(await realpath(join(f.home, "library")));
   const receipt = await readFile(model.receipt);
   const status = await f.call("model.status", { modelId: "parakeet" });
@@ -603,6 +618,45 @@ test("selected-source transcript preserves filler, phrase and ready retry throug
       ],
     },
   });
+});
+
+test("ready source transcript reads carry the issues published with the transcript they read", async () => {
+  // A word-dropped issue anchors to no word, so no row can carry it.
+  const dropped = {
+    code: "word-dropped",
+    message: "Token 3 of 'bad' has a malformed engine estimate; the word is dropped.",
+    range: { startUs: 2000000, endUs: 3000000 },
+    evidence: {
+      window: 0,
+      token: 3,
+      text: "bad",
+      startSeconds: "NaN",
+      endSeconds: 2.5,
+      confidence: 1,
+    },
+  };
+  const f = await projectServiceFixture(cleanups, controlledSpeech([], [dropped]));
+  await modelMetadata(await realpath(join(f.home, "library")));
+  const imported = await f.call("asset.import", { requestId: "speech", path: f.path });
+  if (!imported.ok) throw new Error(JSON.stringify(imported));
+  const ready = await f.job((imported.data as { jobId: string }).jobId, "ready");
+  const selection = { assetId: ready.published!.output.assetId, streamId: "track:1" };
+  const pending = await f.call("transcript.prepare", selection);
+  if (!pending.ok) throw new Error(JSON.stringify(pending));
+  const { published: publication } = await f.job(
+    (pending.data as { jobId: string }).jobId,
+    "ready",
+  );
+  const { range, ...reported } = dropped;
+  const published = {
+    generation: publication!.generation,
+    issues: [{ ...reported, at: { range } }],
+  };
+  for (const operation of ["transcript.get", "transcript.review"])
+    expect(await f.call(operation, selection), operation).toMatchObject({
+      ok: true,
+      data: { state: "ready", generation: publication!.attemptId, issues: [], published },
+    });
 });
 
 test("ready and canceled source jobs retain identity through public cancel and restart", async () => {

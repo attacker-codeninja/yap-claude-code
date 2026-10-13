@@ -422,6 +422,49 @@ test("a clamped transcript preparation keeps its range-clamped issue through the
   expect(output.stderr).toContain("transcript.prepare: ready (1 issues)");
 });
 
+test.each(["processing", "ready"])(
+  "a %s transcript preparation reports the published transcript's issues once it settles",
+  async (acknowledged) => {
+    const generation = "c6df7efc-a023-4c40-aa08-3b8b1c0b1b90";
+    const selection = { assetId: "a", streamId: "s" };
+    // Anchored to no word, so only the publication carries it.
+    const dropped = {
+      code: "word-dropped",
+      message: "dropped",
+      at: { range: { startUs: 0, endUs: 1000 } },
+      evidence: {},
+    };
+    const published = { generation: 2, issues: [dropped] };
+    const f = await fixture((request) => {
+      if (request.operation === "transcript.prepare")
+        return {
+          ok: true,
+          data: {
+            ...selection,
+            state: acknowledged,
+            jobId: "job",
+            issues: [],
+            published: acknowledged === "ready" ? { ...published, output: { generation } } : null,
+          },
+        };
+      if (request.operation === "job.get")
+        return {
+          ok: true,
+          data: { ...job("ready"), attemptId: generation, target: { kind: "asset", assetId: "a" } },
+        };
+      expect(request.operation).toBe("transcript.get");
+      return {
+        ok: true,
+        data: { ...selection, state: "ready", generation, issues: [], published, page: {} },
+      };
+    });
+    const output = await f.run("transcript.prepare", selection, ["--wait", "--timeout-ms", "1000"]);
+    expect(output.code, output.stdout + output.stderr).toBe(0);
+    expect(JSON.parse(output.stdout).data.published.issues).toEqual([dropped]);
+    expect(output.stderr).toContain("transcript.prepare: ready (1 issues)");
+  },
+);
+
 test("rendered recognition waits on the project attempt and reads its words pinned to the published generation", async () => {
   const params = {
     projectId: "p",
