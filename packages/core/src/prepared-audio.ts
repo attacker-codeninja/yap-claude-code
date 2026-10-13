@@ -235,7 +235,10 @@ export class PreparedAudioStore {
         jobId: this.owners.jobs.status(retained.publication).jobId,
         reason: null,
         retryable: false,
-        published: retained.publication,
+        published: {
+          ...retained.publication,
+          issues: this.owners.jobs.issues(retained.publication),
+        },
       };
     const plan = composition.window({ tap: input.tap }, this.owners.renderer, "audio");
     const frames = plan.window.manifest.sampleRange.end - plan.window.manifest.sampleRange.start;

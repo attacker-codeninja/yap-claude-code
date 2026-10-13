@@ -110,6 +110,12 @@ and portable storage retain their serialized result contract. Readiness means ad
 and published output, not merely a completed native call. Models and generated
 media share these owners rather than introducing separate queues or stores.
 
+A producer reports problems with its output as [issues](../composition/src/issues.ts).
+[Issue storage](src/issues.ts) is an additive table written in the publication's
+transaction and keyed by the publishing attempt, so it lands, rolls back and is
+retired with that publication. Retained evidence objects never carry issues, and a
+publication without rows, including one from an older catalog, reads as clean.
+
 Capture recovery receipts cross this boundary once through
 [capture-publication.ts](src/capture-publication.ts): the bounded native receipt is
 strictly admitted before source publication is interpreted, and ambiguous media
