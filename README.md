@@ -223,6 +223,13 @@ agent) decides what to change and submits explicit operations. Defaults fill
 parameters within a requested operation; they never authorize another treatment
 or an automatic edit. Original media remains intact.
 
+**Output by default.** If an operation can produce its output, it does, and
+reports every problem as an issue on that output. Refusal is for malformed or
+ambiguous input, identity or revision conflicts, resource bounds, missing
+prerequisites, and destructive actions. Each clamp, fallback or unmet target
+names what was requested and what was produced. The
+[protocol guide](packages/protocol/README.md#issues) describes the contract.
+
 Development verifies those primitives with explicit fixture operations. A user's
 recording is reusable test input, not an invitation to edit it or ask its owner
 for personal keep/remove judgments.

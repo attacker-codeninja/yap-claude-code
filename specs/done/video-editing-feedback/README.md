@@ -4,6 +4,11 @@ Status: closed rationale. The implementation is shipped in the repository, with
 several quality boundaries deliberately retained as refusals because the frozen
 real-video evidence did not justify promotion.
 
+> Superseded in part (2026-10-13): for cheap, undoable work, quality and target
+> gates now publish their output with issues instead of refusing. See
+> [launch-video feedback](../../launch-video-feedback/README.md). This record
+> keeps its original wording.
+
 ## Purpose
 
 A video-editing agent needs evidence and precise operations, while the caller
