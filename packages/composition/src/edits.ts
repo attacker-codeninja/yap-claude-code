@@ -1682,6 +1682,21 @@ export function applyBatch(
             });
             const id = allocate("angleGroup");
             bind(operation.label, "angleGroup", id);
+            // The caller authored the offsets; refused evidence is information, not a veto.
+            if (operation.evidence.status === "refused")
+              issues.push({
+                code: "synchronization-evidence-refused",
+                message:
+                  "The angle group's synchronization evidence was refused; its offsets are the caller's",
+                evidence: {
+                  angleGroupId: id,
+                  evidenceId: operation.evidence.id,
+                  generation: operation.evidence.generation,
+                  method: operation.evidence.method,
+                  fingerprint: operation.evidence.fingerprint,
+                  operationIndex,
+                },
+              });
             next = {
               ...before,
               angleGroups: [

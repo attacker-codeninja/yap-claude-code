@@ -26,12 +26,6 @@
    "why": "gaps: process each run with unavailable + support-gap"
   },
   {
-   "slice": "07c",
-   "file": "packages/composition/src/model.ts",
-   "text": "Angle group requires accepted synchronization evidence",
-   "why": "caller-authored offsets publish with synchronization-evidence-refused"
-  },
-  {
    "slice": "07d",
    "file": "packages/composition/src/caption-sidecars.ts",
    "text": "SRT cannot reliably preserve literal subtitle syntax",
@@ -53,7 +47,8 @@
  "refusedStatus": {
   "allowed": {
    "packages/composition/src/schema.ts": "caller-authored synchronization verdict",
-   "packages/protocol/src/correspondence.ts": "caller-authored correspondence verdict"
+   "packages/protocol/src/correspondence.ts": "caller-authored correspondence verdict",
+   "packages/composition/src/edits.ts": "reads a caller-authored synchronization verdict to report it as an issue"
   },
   "pending": {
    "packages/composition/src/subject-framing.ts": "07g",

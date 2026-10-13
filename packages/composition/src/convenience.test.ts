@@ -750,34 +750,40 @@ test("angle declaration refuses synchronization evidence without an accepted sou
     ],
     { assets, namespace: "angle-evidence-setup" },
   );
-  expect(() =>
-    applyBatch(
-      setup.document,
-      [
-        {
-          operation: "angle.declare",
-          sessionId: "session-1",
-          originClipId: setup.labels.a!,
-          evidence: {
-            id: "sync-evidence",
-            generation: "g1",
-            status: "refused",
-            method: "waveform",
-            fingerprint: "sha256:refused",
-            sources: [
-              { assetId: "camera-a", streamId: "video" },
-              { assetId: "camera-b", streamId: "video" },
-            ],
-          },
-          members: [
-            { clipId: setup.labels.a!, offsetUs: 0, validRange: { startUs: 0, endUs: 1000000 } },
-            { clipId: setup.labels.b!, offsetUs: 0, validRange: { startUs: 0, endUs: 1000000 } },
+  // Output by default: refused evidence doesn't veto the caller's explicit offsets.
+  const refused = applyBatch(
+    setup.document,
+    [
+      {
+        operation: "angle.declare",
+        sessionId: "session-1",
+        originClipId: setup.labels.a!,
+        evidence: {
+          id: "sync-evidence",
+          generation: "g1",
+          status: "refused",
+          method: "waveform",
+          fingerprint: "sha256:refused",
+          sources: [
+            { assetId: "camera-a", streamId: "video" },
+            { assetId: "camera-b", streamId: "video" },
           ],
         },
-      ],
-      { assets, namespace: "angle-evidence-refused" },
-    ),
-  ).toThrow(/accepted synchronization evidence/);
+        members: [
+          { clipId: setup.labels.a!, offsetUs: 0, validRange: { startUs: 0, endUs: 1000000 } },
+          { clipId: setup.labels.b!, offsetUs: 0, validRange: { startUs: 0, endUs: 1000000 } },
+        ],
+      },
+    ],
+    { assets, namespace: "angle-evidence-refused" },
+  );
+  expect(refused.document.angleGroups).toHaveLength(1);
+  expect(refused.issues).toMatchObject([
+    {
+      code: "synchronization-evidence-refused",
+      evidence: { evidenceId: "sync-evidence", fingerprint: "sha256:refused", operationIndex: 0 },
+    },
+  ]);
 
   expect(() =>
     applyBatch(

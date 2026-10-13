@@ -286,8 +286,6 @@ export function resolveComposition(
     }
   const angleMembers = new Set<string>();
   for (const group of unique(document.angleGroups ?? [], "angle group").values()) {
-    if (group.evidence.status !== "accepted")
-      invalid(`Angle group requires accepted synchronization evidence: ${group.id}`);
     const members = new Set<string>();
     const sources = new Set(
       group.evidence.sources.map((source) => `${source.assetId}\0${source.streamId}`),

@@ -38,6 +38,19 @@ export const issueSchema = z.discriminatedUnion("code", [
     z.object({ omitted: z.int().positive().max(Number.MAX_SAFE_INTEGER) }).strict(),
   ),
   issue(
+    "synchronization-evidence-refused",
+    z
+      .object({
+        angleGroupId: z.string().min(1),
+        evidenceId: z.string().min(1),
+        generation: z.string().min(1),
+        method: z.enum(["waveform", "lexical-anchor", "mixed-reference"]),
+        fingerprint: z.string().min(1),
+        operationIndex: z.int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+      })
+      .strict(),
+  ),
+  issue(
     "range-clamped",
     z
       .object({
