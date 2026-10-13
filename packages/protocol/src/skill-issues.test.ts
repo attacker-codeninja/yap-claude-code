@@ -44,7 +44,7 @@ describe("skill helper issues", () => {
       issuesSchema.parse(proposal.issues).map((issue) => issue.code),
     );
     expect(codes).toEqual([
-      ["gain-constrained", "gain-constrained", "gain-constrained"],
+      ["gain-constrained", "gain-constrained", "gain-bound-breached"],
       ["gain-constrained"],
       ["proposal-unavailable"],
     ]);

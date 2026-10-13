@@ -1253,6 +1253,12 @@ export function applyBatch(
             break;
           }
           case "replace": {
+            // Every fit sees the clamped source, so ripple sizes the clip from what plays.
+            const media = {
+              ...operation.media,
+              source:
+                clampSource(operation.media, operationIndex)?.source ?? operation.media.source,
+            };
             const result = replaceClip(
               operation.processing === "reset"
                 ? resolveComposition(
@@ -1270,11 +1276,7 @@ export function applyBatch(
                 : model,
               clips([operation.clipId])[0]!,
               operation.kind,
-              {
-                ...operation.media,
-                source:
-                  clampSource(operation.media, operationIndex)?.source ?? operation.media.source,
-              },
+              media,
               operation.fit,
               allocate,
               operation.pitch,
@@ -1283,9 +1285,9 @@ export function applyBatch(
             removedAttachments.push(...result.removedAttachments);
             clipLineage.push(...result.lineage);
             if (operation.fit === "ripple") {
-              if (operation.media.source.kind !== "range")
+              if (media.source.kind !== "range")
                 invalid("Ripple replacement needs a source range with a duration");
-              const source = operation.media.source.range;
+              const source = media.source.range;
               const resized = retimeClips(
                 resolveComposition(next, model.assets, model.acquisitions),
                 [resolve(operation.clipId, "clip")],

@@ -164,12 +164,5 @@ export function captionSidecar(model: ValidatedComposition, input: CaptionSideca
     blocks.push(block);
   }
   const content = blocks.join("");
-  const styled = [...new Set(cues.map((cue) => cue.placementId))];
-  if (styled.length)
-    issues.push({
-      code: "caption-styling-discarded",
-      message: "Plain sidecars keep caption text but not its styling",
-      evidence: { placementIds: styled },
-    });
   return { kind: request.kind, cues, issues: boundedIssues(issues), content };
 }

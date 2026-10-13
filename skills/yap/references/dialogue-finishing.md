@@ -15,7 +15,9 @@ Use the selected occurrence IDs from the current revision. Run `--help` for usag
 
 The gain bounds and the true-peak ceiling constrain the draft; the ceiling wins
 when they conflict. Each limit that changed the requested gain is a
-`gain-constrained` issue on the proposal, so read `issues` before applying it.
+`gain-constrained` issue on the proposal; if the ceiling forces the gain below
+the minimum bound, a `gain-bound-breached` issue says so. Read `issues` before
+applying it.
 No limiter, compressor or normalization is inserted. A short, unmeasurable or
 gapped selection, or an unrepresentable gain, is `status:"unavailable"` with a
 `proposal-unavailable` issue and no draft. Choose the minimum useful duration

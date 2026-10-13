@@ -517,6 +517,10 @@ test("a project package leaves a stale derived transcript out and the recipient 
   await f.jobs.idle();
   const committed = f.exports.status(request.exportId);
   assert.equal(committed.state, "committed", JSON.stringify(committed));
+  assert.deepEqual(
+    committed.issues.map((issue) => [issue.code, issue.evidence.id]),
+    [["derived-stale-skipped", transcriptGenerationResource(old)]],
+  );
   const recipient = await fixture(
     t,
     transcription(() => "fresh"),
@@ -525,6 +529,7 @@ test("a project package leaves a stale derived transcript out and the recipient 
   await recipient.jobs.idle();
   const opened = recipient.packages.status(admission.id);
   assert.equal(opened.state, "ready", JSON.stringify(opened));
+  assert.deepEqual(opened.issues, [], "the package already left the stale transcript out");
   recipient.packages.adopt(opened.packageHandle, "stale");
   await recipient.jobs.idle();
   assert.equal(recipient.packages.adopt(opened.packageHandle, "stale").state, "ready");

@@ -71,12 +71,26 @@ export const issueSchema = z.discriminatedUnion("code", [
       .strict(),
   ),
   issue(
+    "gain-bound-breached",
+    z
+      .object({
+        bound: z.literal("gain-minimum"),
+        boundDb: z.number().finite(),
+        gainDb: z.number().finite(),
+      })
+      .strict(),
+  ),
+  issue(
     "proposal-unavailable",
     z
       .object({
         reason: z.enum(["missing-support", "too-short", "unmeasurable", "gain-unrepresentable"]),
       })
       .strict(),
+  ),
+  issue(
+    "derived-stale-skipped",
+    z.object({ kind: z.literal("transcript-generation"), id: z.string().min(1) }).strict(),
   ),
   issue(
     "caption-omitted",
@@ -101,10 +115,6 @@ export const issueSchema = z.discriminatedUnion("code", [
         endMs: z.int().nonnegative(),
       })
       .strict(),
-  ),
-  issue(
-    "caption-styling-discarded",
-    z.object({ placementIds: z.array(z.string().min(1)).min(1) }).strict(),
   ),
   issue(
     "srt-literal-markup",

@@ -237,3 +237,44 @@ test("a replacement source past the stream's end is clamped before its fit appli
     range: { startUs: movieEndUs - 500_000, endUs: movieEndUs },
   });
 });
+
+test("a ripple replacement is sized from the clamped source, so nothing is retimed", () => {
+  const placed = applyBatch(
+    empty,
+    [
+      place(
+        { startUs: 0, endUs: 2_000_000 },
+        { kind: "project", range: { startUs: 0, endUs: 2_000_000 } },
+      ),
+    ],
+    context,
+  );
+  const result = applyBatch(
+    placed.document,
+    [
+      {
+        operation: "replace",
+        clipId: placed.labels.clip,
+        kind: "video",
+        fit: "ripple",
+        ripple: { trackIds: ["t"] },
+        media: {
+          assetId: "movie",
+          streamId: "v",
+          source: {
+            kind: "range",
+            range: { startUs: movieEndUs - 3_000_000, endUs: movieEndUs + 7_000_000 },
+          },
+        },
+      },
+    ],
+    { ...context, namespace: "range-admission-ripple" },
+  );
+  const clip = result.document.clips.find((value) => value.id === placed.labels.clip)!;
+  expect(clip.source).toEqual({
+    kind: "range",
+    range: { startUs: movieEndUs - 3_000_000, endUs: movieEndUs },
+  });
+  expect(clip.placement).toEqual({ kind: "project", range: { startUs: 0, endUs: 3_000_000 } });
+  expect(result.issues.map((issue) => issue.code)).toEqual(["range-clamped"]);
+});

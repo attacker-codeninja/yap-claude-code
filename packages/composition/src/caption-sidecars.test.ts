@@ -81,12 +81,7 @@ test("selected displayed captions retain corrected Unicode text and outward timi
         startMs: 1,
         endMs: 2,
       },
-    },
-    {
-      code: "caption-styling-discarded",
-      message: expect.any(String),
-      evidence: { placementIds: ["a", "b"] },
-    },
+    }
   ]);
   const vtt = captionSidecar(composition, { ...request, kind: "vtt" });
   expect(vtt.content).toBe(

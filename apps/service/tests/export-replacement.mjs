@@ -445,6 +445,6 @@ test("an SRT export of literal markup publishes and reports the issue in its sta
   const status = await f.good("export.status", { exportId: request.exportId }, true);
   assert.deepEqual(
     status.issues.map((issue) => issue.code),
-    ["srt-literal-markup", "caption-styling-discarded"],
+    ["srt-literal-markup"],
   );
 });

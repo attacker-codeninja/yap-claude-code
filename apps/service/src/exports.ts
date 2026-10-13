@@ -2,10 +2,11 @@ import {
   normalizeOutputRequest,
   normalizeAudioOutputRequest,
   type AudioOutputSettingsInput,
+  type Issue,
   type OutputSettingsInput,
 } from "@yap/composition";
-import { ResourceReferences, resourceKinds } from "@yap/core/references";
-import { resourceIdentity } from "@yap/core/project-package";
+import { ResourceReferences, resourceKinds, type ResourceReference } from "@yap/core/references";
+import { resourceIdentity, staleTranscriptIssues } from "@yap/core/project-package";
 import type { ProjectPackages, PinnedProjectPackage } from "./project-packages.js";
 import type { operationSchema } from "@yap/protocol";
 import { projectCaptionSidecar, type PinnedCaptionSidecar } from "@yap/core/project-window";
@@ -23,7 +24,6 @@ import {
   type Job,
   type JobAdmission,
   type JobExecution,
-  type StagedJobResult,
   type JobQueue,
 } from "@yap/core/jobs";
 import type { ProjectStore } from "@yap/core/projects";
@@ -120,6 +120,15 @@ const statusSnapshotSql = `CASE WHEN targetKind='project' AND kind='processed-pa
     'kind',kind,'placementIds',json_extract(snapshot,'$.placementIds'),
     'cueCount',json_array_length(snapshot,'$.cues'))
   ELSE snapshot END`;
+// Issues are facts of the pinned snapshot, so status reports them from admission onward,
+// including after crash recovery commits the receipt.
+const statusIssuesSql = `CASE WHEN kind IN ('srt','vtt') THEN json_extract(snapshot,'$.issues')
+  WHEN targetKind='project' AND kind='processed-package' THEN json_extract(snapshot,'$.stale') END`;
+function snapshotIssues(kind: string, projected: string | null): Issue[] {
+  if (projected === null) return [];
+  if (kind === "srt" || kind === "vtt") return JSON.parse(projected) as Issue[];
+  return staleTranscriptIssues(JSON.parse(projected) as ResourceReference[]);
+}
 const artifact = "export-media",
   recoveryArtifact = "export-recovery";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -813,7 +822,7 @@ export class MediaExports {
   status(exportId: string) {
     const row = this.owners.catalog.catalog
       .prepare(`SELECT exportId,targetKind,targetId,kind,
-      ${statusSnapshotSql} AS snapshot,destination,receipt,abandoning,
+      ${statusSnapshotSql} AS snapshot,${statusIssuesSql} AS issues,destination,receipt,abandoning,
       assembly IS NOT NULL AS assembly,staging IS NOT NULL AS staging,stagingCleared
       FROM export_intents INDEXED BY export_intents_status_projection WHERE exportId=?`)
       .get(exportId) as
@@ -827,8 +836,7 @@ export class MediaExports {
           | "destination"
           | "receipt"
           | "abandoning"
-        > &
-          Lifecycle)
+        > & { issues: string | null } & Lifecycle)
       | undefined;
     if (!row) throw new CatalogError("NOT_FOUND", "Export intent does not exist", { exportId });
     const intent = {
@@ -861,8 +869,7 @@ export class MediaExports {
       },
       receipt: intent.receipt,
       output: intent.receipt ? join(intent.destination.directory, intent.destination.leaf) : null,
-      // What the export job reported with its published output; empty until it publishes.
-      issues: job.published?.issues ?? [],
+      issues: snapshotIssues(intent.kind, row.issues),
       jobId: job.jobId,
       reason: intent.receipt ? null : job.reason,
       retryable: !intent.receipt && job.retryable,
@@ -1083,19 +1090,7 @@ export class MediaExports {
         "Export cannot replace an original imported source",
       );
   }
-  /** Caption intents publish the sidecar's issues with the export, so export status reports them. */
-  async execute(execution: JobExecution): Promise<string | StagedJobResult> {
-    const result = await this.executeExport(execution);
-    if (execution.job.artifact !== artifact) return result;
-    const snapshot = this.require(execution.job.input).snapshot;
-    const issues =
-      "placementIds" in snapshot ? ((snapshot as PinnedCaptionSidecar).issues ?? []) : [];
-    return issues.length
-      ? { result, issues, publish: () => undefined, close: async () => {} }
-      : result;
-  }
-
-  private async executeExport({ job, signal }: JobExecution): Promise<string> {
+  async execute({ job, signal }: JobExecution): Promise<string> {
     if (job.artifact === recoveryArtifact) return this.reconcile({ job, signal });
     if (job.artifact !== artifact)
       throw new CatalogError("UNSUPPORTED_JOB", "Media exporter cannot execute this job");

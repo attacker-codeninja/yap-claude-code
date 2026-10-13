@@ -47,6 +47,7 @@ import {
   parseProjectPackageManifest,
   resourceMetadataMember,
   type ProjectPackageManifest,
+  staleTranscriptIssues,
   validateProjectPackage,
   type ValidatedProjectPackage,
 } from "@yap/core/project-package";
@@ -437,6 +438,7 @@ export class ProjectPackages {
         assets: manifest.resources.filter((resource) => resource.kind === "asset").length,
         acquisitions: manifest.resources.filter((resource) => resource.kind === "acquisition")
           .length,
+        issues: staleTranscriptIssues(manifest.stale),
       };
     }
     return { usage: this.registry?.usage() ?? null, admissions: this.registry?.active() ?? [] };

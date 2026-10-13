@@ -116,7 +116,11 @@ test("the peak ceiling and gain bounds constrain the gain, reported as issues, n
   input.clips[0].evidence.measurement.truePeakDbtp = -1;
   quiet = dialogueProposals(input).proposals[0];
   assert.equal(quiet.gainDb, -1, "the ceiling wins over the minimum bound");
-  assert.deepEqual(reasons(quiet), ["true-peak-ceiling", "gain-minimum"]);
+  assert.deepEqual(
+    quiet.issues.map((issue) => issue.code),
+    ["gain-constrained", "gain-bound-breached"],
+  );
+  assert.deepEqual(quiet.issues[1].evidence, { bound: "gain-minimum", boundDb: 2, gainDb: -1 });
   assert.deepEqual(dialogueProposals(request()).proposals[0].issues, []);
 });
 test("foreign revisions, dry taps and duplicate occurrences cannot become edit proposals", () => {

@@ -119,9 +119,10 @@ export function dialogueProposals(request) {
       if (gainDb > peakGainDb) {
         gainDb = peakGainDb;
         limits.push("true-peak-ceiling");
-        if (gainDb < request.gainBounds.minimumDb && !limits.includes("gain-minimum"))
-          limits.push("gain-minimum");
       }
+      const breached = gainDb < request.gainBounds.minimumDb;
+      if (breached && limits.includes("gain-minimum"))
+        limits.splice(limits.indexOf("gain-minimum"), 1);
       const gain = 10 ** (gainDb / 20);
       if (!Number.isFinite(gain) || gain === 0) return unavailable("gain-unrepresentable");
       return {
@@ -132,11 +133,27 @@ export function dialogueProposals(request) {
         gainStep: { enabled: true, processor: { type: "gain", gain } },
         predictedIntegratedLufs: measurement.integratedLufs + gainDb,
         predictedTruePeakDbtp: measurement.truePeakDbtp + gainDb,
-        issues: limits.map((limit) => ({
-          code: "gain-constrained",
-          message: `The ${limit} limit constrained the requested gain`,
-          evidence: { limit, requestedGainDb, gainDb },
-        })),
+        issues: [
+          ...limits.map((limit) => ({
+            code: "gain-constrained",
+            message: `The ${limit} limit constrained the requested gain`,
+            evidence: { limit, requestedGainDb, gainDb },
+          })),
+          // The ceiling wins over the caller's minimum: report the breached bound, not a clamp.
+          ...(breached
+            ? [
+                {
+                  code: "gain-bound-breached",
+                  message: "The true-peak ceiling forced the gain below the minimum bound",
+                  evidence: {
+                    bound: "gain-minimum",
+                    boundDb: request.gainBounds.minimumDb,
+                    gainDb,
+                  },
+                },
+              ]
+            : []),
+        ],
       };
     }),
   };

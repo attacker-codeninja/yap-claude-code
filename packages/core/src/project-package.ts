@@ -6,10 +6,12 @@ import { indexGenerationResource } from "./screenshot-index.js";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import {
+  boundedIssues,
   documentAcquisitionIds,
   selectionRangeSchema,
   documentAssetIds,
   validateComposition,
+  type Issue,
 } from "@yap/composition";
 import { CatalogError } from "./catalog.js";
 import { hdrConversionEvidenceMatchesMetadata } from "./asset-origins.js";
@@ -674,6 +676,17 @@ export function resolveProjectPackage(
         : [resource],
   );
   return { ...manifest, resources: adopted, snapshot, stale };
+}
+
+/** A transcript left out because an older recipe made it stale; the recipient regenerates it. */
+export function staleTranscriptIssues(stale: readonly ResourceReference[]): Issue[] {
+  return boundedIssues(
+    stale.map((resource) => ({
+      code: "derived-stale-skipped" as const,
+      message: "A transcript from an older recipe was left out; the recipient regenerates it",
+      evidence: { kind: "transcript-generation" as const, id: resource.id },
+    })),
+  );
 }
 
 export function validateProjectPackage(

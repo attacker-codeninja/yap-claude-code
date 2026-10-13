@@ -606,7 +606,8 @@ export const stateRecipeSchema = z.union([
 const synchronizationSourceSchema = z.object({ assetId: id, streamId: id }).strict();
 /**
  * Evidence is an immutable caller-supplied receipt. Composition validates its
- * identity and verdict; it never computes or promotes synchronization itself.
+ * identity and records its verdict; a refused verdict is reported as an issue,
+ * never a veto. It never computes or promotes synchronization itself.
  */
 export const synchronizationEvidenceSchema = z
   .object({
