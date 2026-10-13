@@ -38,6 +38,10 @@ owned by the [tag workflow](../scripts/README.md#versioned-github-releases).
 [FFmpeg parity and agent media workflows](done/ffmpeg-parity/README.md) records
 bundled media tools, explicit offline treatments and task-side agent workflows.
 
+[Camera on and off during a take](done/camera-toggle/README.md) records why a screen take's
+companion camera leaves real gaps rather than held pictures, how pre-toggle recordings keep
+working without migration, and the open long-take mapping question.
+
 ## Archived plans
 
 The [reliable autonomous video editing rationale](done/video-editing-feedback/README.md)

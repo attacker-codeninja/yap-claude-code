@@ -755,3 +755,131 @@ test("integer capture evidence maps into exact normalized acquisition support", 
     { startUs: 160, endUs: 200 },
   ]);
 });
+
+type CameraSegment = { startUs: number; endUs: number; empty: boolean };
+/** Native boundary fixture: the receipt carries a camera proof and the probe reports edit segments. */
+function cameraNative(
+  f: Awaited<ReturnType<typeof fixture>>,
+  proof: Record<string, unknown>,
+  originUs: number,
+  segments: CameraSegment[],
+) {
+  const canonical = { bytes: "5", sha256: createHash("sha256").update("video").digest("hex") };
+  return {
+    exportSource: (async (...args) => ({
+      ...(await f.native.exportSource(...args)),
+      publications: { video: { ...proof, canonical } },
+    })) as SourceExporter,
+    probe: async (path: string) => {
+      const probed = await f.native.probe(path);
+      if (probed.streams[0]!.kind !== "video") return probed;
+      return {
+        originUs,
+        streams: [{ ...probed.streams[0]!, startUs: 0, endUs: segments.at(-1)!.endUs, segments }],
+      };
+    },
+  };
+}
+const cameraFile = { bytes: "10", sha256: "b".repeat(64) };
+const gappedCameraProof = {
+  receipt: cameraFile,
+  mapping: cameraFile,
+  representedFrames: 9,
+  support: { startUs: 100, endUs: 400 },
+  gaps: [
+    { startUs: 150, endUs: 200 },
+    { startUs: 250, endUs: 300 },
+  ],
+};
+// Canonical edits for the gapped proof at asset origin 100: occupied pictures, empty edits between.
+const gappedCameraSegments = [
+  { startUs: 0, endUs: 50, empty: false },
+  { startUs: 50, endUs: 100, empty: true },
+  { startUs: 100, endUs: 150, empty: false },
+  { startUs: 150, endUs: 200, empty: true },
+  { startUs: 200, endUs: 300, empty: false },
+];
+
+test("a gapped camera proof admits a canonical movie whose occupied edits equal its intervals", async () => {
+  const f = await fixture();
+  const intent = await f.admit("gapped-camera");
+  const value = await f.importer.executeImport(
+    intent.acquisitionId,
+    "gapped",
+    cameraNative(f, gappedCameraProof, 100, gappedCameraSegments),
+    signal(),
+  );
+  const video = value.bindings.find((row) => row.sourceRoles.includes("video"))!;
+  expect(video.available).toEqual([
+    { startUs: 0, endUs: 50 },
+    { startUs: 100, endUs: 150 },
+    { startUs: 200, endUs: 300 },
+  ]);
+  expect(video.sourceToAssetOffsetUs).toBe(-100);
+  expect(value.evidence.receipt.publications?.video?.gaps).toEqual(gappedCameraProof.gaps);
+});
+
+test.each([
+  [
+    "a held picture across the off time",
+    gappedCameraProof,
+    [{ startUs: 0, endUs: 300, empty: false }],
+  ],
+  [
+    "gaps the canonical edits do not show",
+    { ...gappedCameraProof, gaps: [{ startUs: 150, endUs: 210 }, gappedCameraProof.gaps[1]!] },
+    gappedCameraSegments,
+  ],
+  [
+    "a continuous proof over a gapped movie",
+    { ...gappedCameraProof, gaps: undefined },
+    gappedCameraSegments,
+  ],
+])("camera admission refuses %s", async (_name, proof, segments) => {
+  const f = await fixture();
+  const intent = await f.admit("refused-camera");
+  await expect(
+    f.importer.executeImport(
+      intent.acquisitionId,
+      "refused",
+      cameraNative(f, proof, 100, segments),
+      signal(),
+    ),
+  ).rejects.toMatchObject({
+    code: "INVALID_EVIDENCE",
+    message: "Camera physical support differs from verified source support",
+  });
+  expect(() => f.acquisitions.get(intent.acquisitionId)).toThrow(/not completed/);
+});
+
+test("a 0.1.33 camera proof admits unchanged", async () => {
+  const f = await fixture();
+  // Proof stored by release 0.1.33 for corpus B's camera take
+  // (specs/done/camera-toggle/assets/pre-toggle-corpus/b.tar.gz, acquisitions table); only the canonical
+  // identity is replaced by this fixture's movie.
+  const retained = {
+    mapping: {
+      bytes: "9654",
+      sha256: "ac4c08db438064cfdd2204cb9ae9104fd7f7b24fa9e7c84ff724252b3c3efdff",
+    },
+    receipt: {
+      bytes: "1018",
+      sha256: "90560b7900b880187d91376efdfc94927798c72a25270329eab6459dc318c064",
+    },
+    representedFrames: 5,
+    support: { endUs: 933333, startUs: 200000 },
+  };
+  const intent = await f.admit("camera-0.1.33");
+  const value = await f.importer.executeImport(
+    intent.acquisitionId,
+    "attempt-1",
+    cameraNative(f, retained, 200000, [{ startUs: 0, endUs: 733333, empty: false }]),
+    signal(),
+  );
+  const video = value.bindings.find((row) => row.sourceRoles.includes("video"))!;
+  expect(video.available).toEqual([{ startUs: 0, endUs: 733333 }]);
+  expect(value.evidence.receipt.publications?.video).toEqual({
+    ...retained,
+    canonical: { bytes: "5", sha256: createHash("sha256").update("video").digest("hex") },
+  });
+});

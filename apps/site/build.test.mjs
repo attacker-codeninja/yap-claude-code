@@ -46,11 +46,22 @@ test("the one indexed page is sitemapped, allowed and canonical at the productio
 test("the product page publishes complete crawler and social metadata", () => {
   const page = built()("index.html");
   assert.match(page, /<meta name="robots" content="index, follow">/);
-  assert.match(page, /<meta property="og:image:alt" content="Yap — agent-assisted video editing on Mac">/);
+  assert.match(
+    page,
+    /<meta property="og:image:alt" content="Yap — agent-assisted video editing on Mac">/,
+  );
   assert.match(page, /<meta property="og:image" content="https:\/\/yap\.example\/og\.png">/);
-  assert.match(page, /<meta name="twitter:title" content="Yap — just yap; your agent makes it a great video">/);
+  assert.match(
+    page,
+    /<meta name="twitter:title" content="Yap — just yap; your agent makes it a great video">/,
+  );
   assert.match(page, /<script type="application\/ld\+json">[\s\S]*"@type":"SoftwareApplication"/);
   assert.match(page, /"operatingSystem":"macOS"/);
+});
+
+test("the product page loads Vercel Web Analytics", () => {
+  const page = built()("index.html");
+  assert.match(page, /<script defer src="\/_vercel\/insights\/script\.js"><\/script>/);
 });
 
 test("the page offers no download, only the agent route", () => {

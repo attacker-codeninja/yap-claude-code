@@ -49,6 +49,7 @@ test("public status preserves every native camera authorization state without ca
       sourceId: null,
       elapsedUs: null,
       selection: null,
+      camera: null,
       permissions: { screen: true, microphone: "authorized", camera },
     };
     await f.reply("capture.status", device);
@@ -168,6 +169,205 @@ test("a published primary reaches ready while its selected camera publication re
     ok: true,
     data: { id: acquisitionId, sourceId },
   });
+});
+
+test("a reserved camera starts off and turns on and off in the take's control order, answering like status", async () => {
+  const f = await fixture(undefined, undefined, "capture.pause");
+  const started = await f.call("capture.start", {
+    requestId: "camera-starts-off",
+    source: { kind: "display", displayId: 1 },
+    cameraDeviceId: "camera-a",
+    cameraAtStart: "off",
+  });
+  if (!started.ok) throw new Error(JSON.stringify(started));
+  const { recordingId, sourceId } = started.data as { recordingId: string; sourceId: string };
+  expect(
+    f.nativeRequests.find((request) => request.operation === "capture.start")?.params,
+  ).toMatchObject({ cameraDeviceId: "camera-a", cameraAtStart: "off" });
+  expect(await f.call("capture.status")).toMatchObject({
+    ok: true,
+    data: { device: { recordingId, camera: { deviceId: "camera-a", state: "off" } } },
+  });
+  // A toggle joins the capture control order: it waits behind a pause native has not answered.
+  const paused = f.call("capture.pause", { recordingId });
+  await expect.poll(() => f.nativeCalls).toContain("capture.pause");
+  const turnedOn = f.call("capture.setCamera", { recordingId, on: true });
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(f.nativeCalls).not.toContain("capture.setCamera");
+  await f.reply("capture.pause", { recordingId, sourceId, sequence: 2, state: "paused" });
+  expect(await paused).toMatchObject({ ok: true, data: { state: "paused" } });
+  expect(await turnedOn).toMatchObject({
+    ok: true,
+    data: {
+      device: { state: "paused", recordingId, camera: { deviceId: "camera-a", state: "on" } },
+      recording: { recordingId, state: "paused", camera: { deviceId: "camera-a" } },
+    },
+  });
+  expect(await f.call("capture.setCamera", { recordingId, on: false })).toMatchObject({
+    ok: true,
+    data: {
+      device: { camera: { deviceId: "camera-a", state: "off" } },
+      recording: { recordingId },
+    },
+  });
+  expect(
+    f.nativeRequests
+      .filter((request) => request.operation === "capture.setCamera")
+      .map((request) => request.params),
+  ).toEqual([
+    { recordingId, on: true },
+    { recordingId, on: false },
+  ]);
+});
+
+test("a camera turn-on that outlasts an ordinary native call is still answered", async () => {
+  // The channel's ordinary deadline is shortened here; a cold camera start gets the operation's
+  // own public budget, so native's late answer still reaches the caller.
+  const f = await fixture(undefined, undefined, "capture.setCamera", 100);
+  const started = await f.call("capture.start", {
+    requestId: "slow-camera",
+    source: { kind: "display", displayId: 1 },
+    cameraDeviceId: "camera-a",
+    cameraAtStart: "off",
+  });
+  if (!started.ok) throw new Error(JSON.stringify(started));
+  const { recordingId, sourceId } = started.data as { recordingId: string; sourceId: string };
+  const turnedOn = f.call("capture.setCamera", { recordingId, on: true });
+  await expect.poll(() => f.nativeCalls).toContain("capture.setCamera");
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  await f.reply("capture.setCamera", {
+    state: "recording",
+    recordingId,
+    sourceId,
+    elapsedUs: 0,
+    selection: { source: { kind: "display", displayId: 1 }, cameraDeviceId: "camera-a" },
+    camera: { deviceId: "camera-a", state: "on" },
+    permissions: { screen: true, microphone: "authorized", camera: "authorized" },
+  });
+  expect(await turnedOn).toMatchObject({
+    ok: true,
+    data: { device: { camera: { deviceId: "camera-a", state: "on" } } },
+  });
+});
+
+test("a camera toggle refuses without a reserved camera or a live take, and carries native's refusal", async () => {
+  const f = await fixture();
+  const started = await f.call("capture.start", {
+    requestId: "camera-refusals",
+    source: { kind: "display", displayId: 1 },
+    cameraDeviceId: "camera-a",
+    cameraAtStart: "off",
+  });
+  if (!started.ok) throw new Error(JSON.stringify(started));
+  const { recordingId } = started.data as { recordingId: string };
+  f.refuseNext("capture.setCamera", "SOURCE_UNAVAILABLE", "The camera is gone.");
+  expect(await f.call("capture.setCamera", { recordingId, on: true })).toMatchObject({
+    ok: false,
+    error: { code: "SOURCE_UNAVAILABLE", message: "The camera is gone." },
+  });
+  // A failed turn-on leaves the take recording.
+  expect(await f.call("recording.get", { recordingId })).toMatchObject({
+    ok: true,
+    data: { state: "recording" },
+  });
+  expect(await f.call("capture.cancel", { recordingId })).toMatchObject({
+    ok: true,
+    data: { state: "canceled" },
+  });
+  expect(await f.call("capture.setCamera", { recordingId, on: true })).toMatchObject({
+    ok: false,
+    error: { code: "INVALID_STATE", details: { state: "canceled" } },
+  });
+
+  const plain = await f.call("capture.start", {
+    requestId: "no-camera",
+    source: { kind: "display", displayId: 1 },
+  });
+  if (!plain.ok) throw new Error(JSON.stringify(plain));
+  const screenOnly = (plain.data as { recordingId: string }).recordingId;
+  expect(await f.call("capture.setCamera", { recordingId: screenOnly, on: true })).toMatchObject({
+    ok: false,
+    error: { code: "CAMERA_NOT_RESERVED" },
+  });
+  // Only the live, reserved take reached native.
+  expect(f.nativeCalls.filter((operation) => operation === "capture.setCamera")).toHaveLength(1);
+});
+
+test("a take whose reserved camera never turned on completes and admits its primary", async () => {
+  const f = await fixture(undefined, sourceWorker);
+  const started = await f.call("capture.start", {
+    requestId: "camera-never-on",
+    source: { kind: "display", displayId: 1 },
+    cameraDeviceId: "camera-a",
+    cameraAtStart: "off",
+  });
+  if (!started.ok) throw new Error(JSON.stringify(started));
+  const { recordingId, sourceId, camera } = started.data as {
+    recordingId: string;
+    sourceId: string;
+    camera: { sourceId: string };
+  };
+  const root = join(f.home, "library/recordings", recordingId, "source");
+  const journal = JSON.stringify({ sessionID: sourceId });
+  await writeFile(join(root, "source.journal.jsonl"), journal);
+  await writeFile(join(root, "capture.journal.jsonl"), journal);
+  await writeFile(join(root, "video.mov"), "video");
+  const hash = (value: string) => createHash("sha256").update(value).digest("hex");
+  const notTurnedOn = {
+    state: "unavailable",
+    error: { code: "CAMERA_NOT_TURNED_ON", message: "The camera was never turned on." },
+  };
+  expect(await f.call("capture.stop", { recordingId })).toMatchObject({ ok: true });
+  expect(
+    await f.report({
+      recordingId,
+      sourceId,
+      sequence: 3,
+      state: "complete",
+      sourceDurationUs: 100,
+      publication: {
+        generation: "never-on",
+        sourceId,
+        inputsClosed: true,
+        primary: {
+          state: "published",
+          source: {
+            kind: "primary",
+            sourceId,
+            sourceDurationUs: 100,
+            originHostUs: 0,
+            journal: {
+              file: "source.journal.jsonl",
+              bytes: Buffer.byteLength(journal),
+              sha256: hash(journal),
+              lastSequence: 2,
+              layout: 2,
+            },
+            members: { "video.mov": { bytes: "5", sha256: hash("video") } },
+          },
+        },
+        camera: notTurnedOn,
+      },
+    }),
+  ).toMatchObject({ ok: true, data: { state: "complete" } });
+  await expect
+    .poll(() => f.call("recording.get", { recordingId }))
+    .toMatchObject({
+      ok: true,
+      data: {
+        state: "complete",
+        sourceAdmissions: [
+          { kind: "primary", sourceId, acquisitionId: expect.any(String), job: { state: "ready" } },
+          {
+            kind: "camera",
+            sourceId: camera.sourceId,
+            acquisitionId: null,
+            job: null,
+            publication: notTurnedOn,
+          },
+        ],
+      },
+    });
 });
 
 test("source admission failure remains discoverable through stop replay and service reopen", async () => {

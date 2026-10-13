@@ -96,7 +96,7 @@ private func literalCameraProjection(root: URL, samples: [CMSampleBuffer], later
     defer { lease.release() }
     let replay = try await CameraMedia.publish(lease: lease, observationURL: observations)
     let verified = try await CameraMedia.readPublished(lease: lease, canonical: directory.appendingPathComponent("video.mov"))
-    precondition(replay.pictureSHA256 == receipt.pictureSHA256 && verified.identity.support == receipt.support)
+    precondition(replay.pictureSHA256 == receipt.pictureSHA256 && verified.identity.availability.support == receipt.support)
     let journalAfter = try Data(contentsOf: journalURL)
     precondition(journalAfter == journal, "Recovery cannot rewrite the camera's stable clock authority")
     let decoded = try await cameraClockSamples(directory.appendingPathComponent("video.mov"))
@@ -267,7 +267,7 @@ private final class SteppedCameraInput: CaptureInputSession {
         closures += 1
         finalClock = clock
         try? ingress.close()
-        return CaptureInputClosure(camera: await ingress.companion!.close(clock: clock, failure: failure, observations: ingress.observationURL!))
+        return CaptureInputClosure(camera: .closed(await ingress.companion!.close(clock: clock, failure: failure, observations: ingress.observationURL!)))
     }
     func discardMedia() async { await ingress.companion!.discard(); try? ingress.close() }
 }

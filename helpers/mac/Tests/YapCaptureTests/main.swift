@@ -34,6 +34,8 @@ if ProcessInfo.processInfo.environment["YAP_CAPTURE_CLOCK"] != nil {
     try await runSourcePublicationRecoveryTests(output: output)
 } else if let output = ProcessInfo.processInfo.environment["YAP_SHARED_INTERRUPTION_OUTPUT"] {
     try await runSharedInterruptionDuringFinishTests(output: output)
+} else if let output = ProcessInfo.processInfo.environment["YAP_CAMERA_AVAILABILITY_OUTPUT"] {
+    try await runCameraAvailabilityTests(output: output)
 } else if let output = ProcessInfo.processInfo.environment["YAP_CAMERA_CLOCK_OUTPUT"] {
     try await runIndependentCameraClockTests(output: output)
 } else if let output = ProcessInfo.processInfo.environment["YAP_CAMERA_WITHOUT_PRIMARY_OUTPUT"] {
@@ -125,6 +127,7 @@ if ProcessInfo.processInfo.environment["YAP_CAPTURE_CLOCK"] != nil {
   try await runCaptureWriterTests()
   runCaptureClockTests()
   try await runIndependentCameraClockTests()
+  try await runCameraAvailabilityTests()
   try await runCameraWithoutPrimaryTests()
   await runHeldTailFrameTests()
   try await runCaptureJournalTests()

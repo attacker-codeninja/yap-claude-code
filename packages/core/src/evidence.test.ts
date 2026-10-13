@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { CaptureStore } from "./capture-store.js";
-import { recordingEvidenceOwner, SourceEvidenceStore } from "./evidence.js";
+import { cameraProofIntervals, recordingEvidenceOwner, SourceEvidenceStore } from "./evidence.js";
 const roots: string[] = [];
 const stores: CaptureStore[] = [];
 afterEach(() => {
@@ -125,6 +125,97 @@ test("declared camera evidence cannot be indexed without its verified publicatio
   await expect(f.evidence.ingest({ ...f.identity, file: f.file, receipt })).rejects.toThrow(
     "camera publication",
   );
+});
+
+function cameraProof(changes: Record<string, unknown> = {}) {
+  const file = { bytes: "10", sha256: "a".repeat(64) };
+  return {
+    canonical: file,
+    receipt: file,
+    mapping: file,
+    support: { startUs: 100, endUs: 400 },
+    representedFrames: 9,
+    ...changes,
+  };
+}
+
+test("camera proof intervals are support minus gaps; a proof without gaps is one interval", async () => {
+  const f = fixture();
+  const continuous = cameraProof();
+  const gapped = cameraProof({
+    gaps: [
+      { startUs: 150, endUs: 200 },
+      { startUs: 250, endUs: { numerator: 1000, denominator: 3 } },
+    ],
+  });
+  for (const [generation, video] of [
+    ["continuous", continuous],
+    ["gapped", gapped],
+  ] as const) {
+    const receipt = { ...f.receipt, publications: { video } };
+    const admitted = await f.evidence.ingest({ ...f.identity, generation, file: f.file, receipt });
+    expect(admitted.receipt.publications?.video).toEqual(video);
+  }
+  expect(cameraProofIntervals(continuous)).toEqual([{ startUs: 100, endUs: 400 }]);
+  expect(cameraProofIntervals(gapped)).toEqual([
+    { startUs: 100, endUs: 150 },
+    { startUs: 200, endUs: 250 },
+    { startUs: { numerator: 1000, denominator: 3 }, endUs: 400 },
+  ]);
+});
+
+test("a take carries at most 499 camera gaps, one fewer than its 500 runs", async () => {
+  const f = fixture();
+  const gaps = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({ startUs: 102 + 2 * i, endUs: 103 + 2 * i }));
+  const support = { startUs: 100, endUs: 1200 };
+  const within = {
+    ...f.receipt,
+    publications: { video: cameraProof({ support, gaps: gaps(499) }) },
+  };
+  await f.evidence.ingest({ ...f.identity, generation: "within", file: f.file, receipt: within });
+  const beyond = {
+    ...f.receipt,
+    publications: { video: cameraProof({ support, gaps: gaps(500) }) },
+  };
+  await expect(
+    f.evidence.ingest({ ...f.identity, generation: "beyond", file: f.file, receipt: beyond }),
+  ).rejects.toMatchObject({ code: "INVALID_EVIDENCE", message: "Invalid verified camera gaps" });
+});
+
+test("malformed camera gaps refuse the whole receipt", async () => {
+  const f = fixture();
+  const cases = {
+    empty: [],
+    notList: { startUs: 150, endUs: 200 },
+    emptyRange: [{ startUs: 150, endUs: 150 }],
+    fractionalMicro: [{ startUs: 150.5, endUs: 200 }],
+    unsorted: [
+      { startUs: 250, endUs: 300 },
+      { startUs: 150, endUs: 200 },
+    ],
+    overlapping: [
+      { startUs: 150, endUs: 260 },
+      { startUs: 250, endUs: 300 },
+    ],
+    adjacent: [
+      { startUs: 150, endUs: 200 },
+      { startUs: 200, endUs: 300 },
+    ],
+    atSupportStart: [{ startUs: 100, endUs: 200 }],
+    atSupportEnd: [{ startUs: 300, endUs: 400 }],
+    outsideSupport: [{ startUs: 350, endUs: 500 }],
+  };
+  for (const [generation, gaps] of Object.entries(cases)) {
+    const receipt = { ...f.receipt, publications: { video: cameraProof({ gaps }) } };
+    await expect(
+      f.evidence.ingest({ ...f.identity, generation, file: f.file, receipt } as never),
+      generation,
+    ).rejects.toMatchObject({ code: "INVALID_EVIDENCE", message: "Invalid verified camera gaps" });
+    expect(() =>
+      f.evidence.page({ ...f.identity, generation, range: { startUs: 0, endUs: 100 } }),
+    ).toThrow(expect.objectContaining({ code: "NOT_READY" }));
+  }
 });
 
 test("generations and recording identities never share pages; duplicate ingestion preserves evidence", async () => {

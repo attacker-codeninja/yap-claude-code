@@ -321,6 +321,8 @@ test("a source this app may not capture fails the start and settles that take", 
     },
     { state: "idle", recordingId: null, sourceId: null, elapsedUs: null },
   );
+  // The app states its live camera on every status answer; no take holds one here.
+  assert.equal(device.camera, null);
   assert.equal(
     device.permissions.screen,
     true,

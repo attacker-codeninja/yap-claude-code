@@ -67,6 +67,38 @@ provenance. Neither a positive duration nor a copied locator can manufacture tha
 authority. A later journal append may preserve an earlier trusted prefix without
 making its new payload part of the earlier proof.
 
+## Camera off time is a gap
+
+A companion camera can be turned off and on during a take. Off time is a gap in
+the camera source, never a held picture. The writer records a picture only when
+its whole host interval lies inside an on window, and each run of pictures starts
+on a key frame so no run decodes from another. The raw movie stays continuous; the
+canonical movie states each gap as an explicit empty edit, and verification
+accepts a gap only where the mapping's runs place one. The mapping logs camera
+callbacks only, so its size follows camera time and an off camera adds nothing;
+screen and audio callbacks are the primary's evidence. Older mappings, including
+those of release 0.1.33, also hold screen and microphone rows, which readers skip. The receipt keeps `support`
+as the outer span and lists `gaps` only when there are any, so a camera that was
+never turned off publishes the same receipt as a release that had no off time.
+[CameraAvailability](CameraMedia.swift) is the one owner of that interval
+arithmetic for publication, admission and recovery.
+
+A reserved companion camera is open only while it is on. Each turn-on opens a new
+session on the device and each turn-off releases it, so an off camera holds no
+device and no light. Sessions that open again may describe the same picture format
+differently; the writer accepts any compatible one and refuses a different size
+before opening. Colour tags must keep matching, since one track cannot play two. A
+turned-on session that delivers an otherwise incompatible picture ends its run: the
+picture is not recorded and the camera turns off. Only the session whose picture
+established the format interrupts the take by changing it. A camera that is off at stop and recorded nothing, whether never
+turned on or turned off before any picture, leaves the take complete with the
+camera unavailable; only a camera on at stop that never delivered interrupts it.
+Ending the take while a turn-on is starting cancels that turn-on: its session is
+released and the camera closes as if it had never been asked. Losing the device
+while it is off is found at the next turn-on; losing it while on interrupts the
+take. Turn-ons per take are bounded so the availability stays within what
+publication and recovery accept.
+
 ## Journals and crash boundaries
 
 [The journal](CaptureJournal.swift) owns record types, validation, ordering and
@@ -77,8 +109,10 @@ an entire pointer history in memory.
 
 Fragmented media can preserve a decodable process-crash prefix. A crash before the
 opening fragment may leave none; these guarantees do not establish power-loss
-durability. Keep raw journals and media distinct from normalized evidence and
-publication receipts so recovery cannot overwrite its own source authority.
+durability. When the encoder flushed a reordered picture before earlier pictures,
+the camera prefix ends at the first missing one. Keep raw journals and media
+distinct from normalized evidence and publication receipts so recovery cannot
+overwrite its own source authority.
 
 ## Cursor and geometry clocks
 

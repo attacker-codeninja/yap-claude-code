@@ -242,9 +242,12 @@ func runSourcePublicationCrashChild() async throws {
     let binding = CameraCaptureBinding(recordingId: "crash-\(mode)", sourceId: "crash-\(mode)-camera", deviceId: "prerecorded-device")
     if mode == "pause" { input.pauseJournal = folder.appendingPathComponent("capture.journal.jsonl") }
     let camera = FixtureCameraSession(source: source, origin: { input.fixtureOrigin! })
-    let wrapped = CameraCaptureInput(primary: input, camera: camera, selection: .init(id: binding.deviceId,
-        directory: folder.appendingPathComponent("camera"), observations: folder.appendingPathComponent("timestamps.jsonl"), binding: binding))
-    let capture = NativeCapture(prepareInput: { _, _ in wrapped })
+    let selection = CaptureCameraSelection(id: binding.deviceId, directory: folder.appendingPathComponent("camera"),
+        observations: folder.appendingPathComponent("timestamps.jsonl"), binding: binding)
+    let device = FixtureCameraDevice(binding.deviceId, session: camera)
+    let capture = NativeCapture(prepareInput: { request, _ in
+        try await prepareFixtureCompanion(request, screen: input, device: device, selection: selection)
+    })
     let request = CaptureRequest(source: .init(kind: "offline-prerecorded"), outputDirectory: folder.path, sourceId: "crash-\(mode)-primary")
     try await capture.start(request)
     try JSONEncoder().encode(request).write(to: folder.appendingPathComponent("request.json"))

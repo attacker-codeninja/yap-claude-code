@@ -12,7 +12,8 @@ func runProbeCameraReplayTests(source: String, output: String) async throws {
         try FileManager.default.copyItem(at: original.appendingPathComponent("camera"), to: result.appendingPathComponent("camera"))
         try FileManager.default.copyItem(at: original.appendingPathComponent("timestamps.jsonl"), to: result.appendingPathComponent("timestamps.jsonl"))
         if fresh {
-            for file in ["video.mov", "camera.publication.json"] {
+            // Unpublished input as a crash leaves it: closure has not yet retained the mapping.
+            for file in ["video.mov", "camera.publication.json", CameraMedia.mappingFile] {
                 try FileManager.default.removeItem(at: result.appendingPathComponent("camera/" + file))
             }
         }

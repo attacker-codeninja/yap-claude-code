@@ -1,0 +1,2001 @@
+{
+  "scope": "Published companion-camera take (pause/resume) closed before admission reserved anything; prerecorded input, actual controller, camera input and service",
+  "passed": true,
+  "trace": [
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "running"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": true,
+      "state": "queued"
+    },
+    {
+      "operation": "asset.import",
+      "transport": "cli",
+      "ok": false,
+      "error": {
+        "code": "LIMIT_EXCEEDED",
+        "message": "Too much work is already waiting; retry once the queue drains",
+        "retryable": true,
+        "details": {
+          "queued": 32
+        }
+      }
+    },
+    {
+      "operation": "capture.start",
+      "transport": "cli",
+      "ok": true,
+      "state": "recording"
+    },
+    {
+      "operation": "capture.pause",
+      "transport": "cli",
+      "ok": true,
+      "state": "paused"
+    },
+    {
+      "operation": "capture.resume",
+      "transport": "cli",
+      "ok": true,
+      "state": "recording"
+    },
+    {
+      "operation": "capture.stop",
+      "transport": "cli",
+      "ok": true,
+      "state": "finalizing"
+    },
+    {
+      "operation": "recording.get",
+      "transport": "cli",
+      "ok": true,
+      "state": "complete"
+    }
+  ],
+  "exchanges": [
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-0",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "add84735-3179-430f-b256-72f8e467679c",
+          "attemptId": "99191c36-8a60-4e2b-b0ce-d6884092d6aa",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "running",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "91591c6c-4402-477e-8517-74d4eb0d670f"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "1bc31fcc-7cf7-4c95-8bda-96f6d23b0e49"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-1",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "170881e9-d03b-4932-9b2a-cefdd064519c",
+          "attemptId": "43bc51b9-3d3b-458b-acde-1bc2e5a7f806",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "d5506e31-64f6-43c5-ad63-2c0fb5f01fef"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "96c65393-9314-4168-8250-880d8e86a432"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-2",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "cff12e38-360e-4a59-adc1-00f3da089508",
+          "attemptId": "4315c293-f84e-4c93-8a3b-d11cc86db9e0",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "e2327da2-8e7b-40f3-bb9d-bce46fada73e"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "d439cd79-65a8-4ffa-9f40-345f36dd1a06"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-3",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "846121c2-b609-4b28-b440-63452b7161b9",
+          "attemptId": "9c0b097a-b221-4b3e-bf50-8462b8d23423",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "bcbfbf9b-2e95-427d-b551-8be985837428"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "e37a903d-4aa0-4659-a86c-a20a3c0135c0"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-4",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "8147aa44-40ac-477e-b0c0-e6e282bbd868",
+          "attemptId": "b47dfef4-6137-4e08-9f56-6a162c2b0bc8",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "424a134d-39f8-4c7e-8253-7c47697385d1"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "8ce81144-5808-4d9c-b332-5a2bc40f0f8d"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-5",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "8ec58b6d-c3f4-408c-a303-9bd26d0add27",
+          "attemptId": "8f8ea1b2-89c8-4564-877a-1a36e4977c85",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "450e2df3-9bf9-4a68-844f-4ee1287aec83"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "c92e4490-972d-469b-952a-e0a4b1428d74"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-6",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "7480e72b-bb7c-4b83-abfd-0e1e90c3a1f8",
+          "attemptId": "cf49c359-62ae-4c16-84aa-5aec8504b639",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "184961ca-e695-48f8-be24-e0c2d0644ca9"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "9b3cc28c-1192-46c0-ba61-c76e31c12e40"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-7",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "6d8f0eeb-68eb-4c4f-9f69-2411c5b12ad7",
+          "attemptId": "127943a7-392a-4101-bcd3-477dd71a22f6",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "dfce199f-c653-42d2-9f37-bb1f8a3f6391"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "2dc56603-e66d-44be-b342-8bec3a5c68c0"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-8",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "5a764faa-7e7c-41fc-8df7-f29c042e785e",
+          "attemptId": "802ce5fe-dfe3-4d63-8bf8-b0dfdaea39da",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "c3e38130-2d67-474e-9464-4992f6d4cebd"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "c8cb2b9c-c2d2-4f8a-a8c2-1491b0996444"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-9",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "fc906be7-0978-4cc4-99d4-2a78d230ef74",
+          "attemptId": "0a1d7ca4-9fac-4efe-87c8-954a7e873f83",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "1b984558-be99-48ff-8e06-737dce9f823b"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "d6bcd3db-31a7-4676-9c35-10d5a983c1b2"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-10",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "68d7ed90-884a-4337-b914-6d806343116d",
+          "attemptId": "1e42bbcd-89f9-4a64-9bfe-e223f4205f3b",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "7775eb8c-def0-4c77-ac08-68ec61cbaaa2"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "9e285010-55d8-47c1-a11f-69b05b672ccc"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-11",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "beec5d53-a8cd-4c29-97e0-8446f9d39faf",
+          "attemptId": "65906d3d-1d3a-40eb-8cca-f8a469d83cfe",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "c07adac2-6eb1-4345-86c1-fe2a4e4bb4d3"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "799865eb-07f2-4928-a81c-0100900e5d72"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-12",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "b97ed8b1-5a22-4932-a058-3b86d0243b83",
+          "attemptId": "7311b7ee-2032-4804-a883-8e414322b91f",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "95b32026-067d-4db1-adf9-a6225154f6d5"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "1100d06d-6892-48d3-bd97-b4c11a6acbe0"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-13",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "c09e8a6e-1726-47f7-a4bd-e14bacdd7788",
+          "attemptId": "df6ac645-b04b-4b82-bebe-e920c7bab73e",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "1c0638d8-cfe2-40bd-b9d7-22a3a4302ef0"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "39708f41-2c4f-441b-a885-e98243a70a84"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-14",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "d9323dcf-e4a0-49e8-bbc4-e6aa50a5d914",
+          "attemptId": "1deaad89-064d-4f48-95d2-9c0a5307ba3e",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "8cc32d3a-b64a-47d1-a301-7dbc9c4327cb"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "cca7262c-c920-4b4e-8b93-0d34bfce20dc"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-15",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "9855b996-ad6a-4be9-960a-8c9d14ffdb39",
+          "attemptId": "f7e23b24-401d-46ef-82c5-6490cd7c89ca",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "423eb61e-e824-4e01-a642-04bf39a67c6d"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "9bce5ada-0a17-4c85-886d-19cd80f8a4fc"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-16",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "c0a87ce7-85b1-437b-9a21-8ec4beee7c91",
+          "attemptId": "be29d44d-2fb8-42f3-9b85-5d0eddea77e6",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "c5e10e7f-15cd-4e10-b3f0-92565561e4c4"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "c8861ae0-60f8-4ba5-b7ef-2cb66fafcaad"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-17",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "ad8ea1a4-8754-4ab2-9dbc-9a1f2b8e6e26",
+          "attemptId": "360dea88-4d47-4de9-8ef2-36ec7610794f",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "7ab6de58-d656-4317-857c-973dd368fa33"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "3f628d5b-a88d-4fc8-b184-d77f7e9db6b4"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-18",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "ddc320d2-e438-43e8-ac71-740775d22b98",
+          "attemptId": "5782085b-5d62-4732-aff1-7a701bc0a0d9",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "875094c8-a279-446b-8481-40bd94d4a1b2"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "4ddde3cb-5590-4d24-a0ce-3109c7cb6de0"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-19",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "3c455c3c-48a1-464e-b6b9-725be8f6318c",
+          "attemptId": "6806f3fc-df2e-4034-882f-5dcef4ca800c",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "f2b82386-1a18-4f33-9f2a-22b4b13f4b75"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "6695de15-f9a9-4f2b-a639-2fd6616a5468"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-20",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "5fde8634-82b5-4ae3-9b5e-046310c9d0b5",
+          "attemptId": "f628a540-96fe-4cd5-8566-aeaf03b19593",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "3bb02a7f-d539-46f8-96de-1116a7cf5e8e"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "7d097d24-5dd9-4d09-a79e-f9010a6ad9e3"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-21",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "40c066d1-2518-4335-97ae-8f175a9b040e",
+          "attemptId": "12de9d5b-597e-431d-92e9-987df5d5f7a9",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "baadf570-669f-42ec-aaab-d0a3a8bf1826"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "ebdb8382-2ba0-4679-93a1-75b107a59259"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-22",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "ed03e921-90a3-429c-aa09-aa14bd93659a",
+          "attemptId": "2905d9b6-c9ae-4ac2-bfca-886d6ca0d598",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "5f2e1e73-7ae9-4d29-b03a-038bc0f08de6"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "cadbefef-1640-46ee-9954-ff5f8a76858f"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-23",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "3a31dade-2b86-40fb-9915-46d6c64832cc",
+          "attemptId": "e1bfcf89-0603-4d5d-98f7-1d3431a6f97b",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "b6d2e326-ba5f-4977-ae5c-c6dc03d4a9b2"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "aab5576c-2726-40b2-acfb-54489284dca5"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-24",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "ac7abead-a9d7-4e9b-b6df-08bd2dd8c5a7",
+          "attemptId": "838e3871-ee1a-42ce-a0ae-cb525ccf394b",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "4f037769-a147-420c-b498-764b068f946f"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "c6fd5fbf-ce84-483a-9a07-e62d64265f6e"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-25",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "95668f3d-0718-4601-9506-a5c9bcd3a205",
+          "attemptId": "eeac0e53-ef49-41c2-8e2d-4c6088cc85da",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "fb29ce8a-0b00-4ed2-b7dd-5a078d509ad5"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "3f9a60e7-b541-41ce-b72e-ee53f8e83fd6"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-26",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "5aac9418-45a8-4e96-8e83-0ec0bd9e6b07",
+          "attemptId": "39df81ae-e18d-45ff-8021-e690d6246f9d",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "ea768c7d-c307-4136-8786-1b563048dd4e"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "255032c1-d222-4619-a681-708b6922f88f"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-27",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "7699f1b6-934a-4eb8-bc41-f6e09305873f",
+          "attemptId": "78dab3ea-e9b1-4267-b51e-c823d0888f6f",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "dd722982-5159-441b-99fd-7273e74bb459"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "53eb0592-e154-4e20-9008-4f493343450d"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-28",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "0844f8f0-a4d6-4596-994a-c8ac2e2cac44",
+          "attemptId": "ab4b7e64-bb79-4dce-8e12-63cca2ae6255",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "79014971-3050-44c1-86a5-5117535943a2"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "04e0ebd0-fcb4-49a0-8687-7d6d273e23a9"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-29",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "994998d3-28b7-43b9-b1b1-292a89a7a3a1",
+          "attemptId": "57a468cf-7e22-4666-9a9c-39cb838b9345",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "f4d8da06-0457-4f10-89e1-ae9224785c20"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "06cf2b0e-1038-4d33-b218-cf65bb71a005"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-30",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "e6da4dad-b706-4434-b882-904e822214d7",
+          "attemptId": "66c0a08d-d3aa-453c-9b1c-d3afd4b9c11d",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "af02e63d-223f-4191-8042-9e624a2d96d1"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "13cbdb36-2e97-4c3c-9695-f4fc25eadfb8"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-31",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "f8fb8ba7-44aa-4fca-83cb-b195a318b9de",
+          "attemptId": "ebb44c1b-ed9a-4aba-a893-006c459cd6f7",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "25c961e6-fc8d-4680-9f4b-8bf037a99847"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "080d7f01-5816-4d69-87fe-decd8ffde45b"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-fence-32",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "jobId": "e9529fe5-6d5e-4ff5-966e-fd3ae7176b85",
+          "attemptId": "4e3a2c8d-048d-4cc3-99f5-a8d91762c661",
+          "artifact": "asset.import",
+          "lane": "heavy",
+          "state": "queued",
+          "reason": null,
+          "generation": 1,
+          "errorCode": null,
+          "inputSha256": "73188acccd58c900be59e7003a233d40def6ba2b3a220b1f1616d6152750f76b",
+          "target": {
+            "kind": "import",
+            "importId": "beede917-e596-407f-9017-291a622fb6d9"
+          },
+          "retryable": false,
+          "errorDetails": null,
+          "published": null
+        },
+        "id": "fbe58396-0b08-4428-8f95-8fc45593c3e3"
+      }
+    },
+    {
+      "request": {
+        "operation": "asset.import",
+        "params": {
+          "requestId": "queue-full",
+          "path": "/tmp/yap-camera-corpus-F4QhuE/filler.mov"
+        },
+        "transport": "cli",
+        "error": true
+      },
+      "response": {
+        "ok": false,
+        "error": {
+          "code": "LIMIT_EXCEEDED",
+          "message": "Too much work is already waiting; retry once the queue drains",
+          "retryable": true,
+          "details": {
+            "queued": 32
+          }
+        },
+        "id": "c91c8fee-603e-492b-9762-48d4a2a3b022"
+      }
+    },
+    {
+      "request": {
+        "operation": "capture.start",
+        "params": {
+          "requestId": "pre-toggle-corpus-a",
+          "source": {
+            "kind": "display",
+            "displayId": 1
+          },
+          "cameraDeviceId": "fixture-camera",
+          "microphone": true
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "recordingId": "ff81550f-b614-47e0-a5f9-a8fce74734a4",
+          "sourceId": "59cef644-cad9-419a-8b9e-ae17114f3c94",
+          "publication": {
+            "generation": "E32B35C5-0564-44E7-93D1-FFE9C1E6C1D2",
+            "sourceId": "59cef644-cad9-419a-8b9e-ae17114f3c94",
+            "inputsClosed": false,
+            "primary": null,
+            "camera": null
+          },
+          "creationSequence": 1,
+          "createdAt": "2026-10-13T00:44:13.848Z",
+          "state": "recording",
+          "lifecycleSequence": 17,
+          "interruptionReason": null,
+          "interruptionMessage": null,
+          "finalizationError": null,
+          "sourceDurationUs": null,
+          "camera": {
+            "sourceId": "16cfb762-816a-40d7-8dab-de259951e986",
+            "deviceId": "fixture-camera"
+          },
+          "sourceAdmissions": []
+        },
+        "id": "be929507-8f3b-4d2b-9d32-4bc6636d245a"
+      }
+    },
+    {
+      "request": {
+        "operation": "capture.pause",
+        "params": {
+          "recordingId": "ff81550f-b614-47e0-a5f9-a8fce74734a4"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "recordingId": "ff81550f-b614-47e0-a5f9-a8fce74734a4",
+          "sourceId": "59cef644-cad9-419a-8b9e-ae17114f3c94",
+          "publication": {
+            "generation": "E32B35C5-0564-44E7-93D1-FFE9C1E6C1D2",
+            "sourceId": "59cef644-cad9-419a-8b9e-ae17114f3c94",
+            "inputsClosed": false,
+            "primary": null,
+            "camera": null
+          },
+          "creationSequence": 1,
+          "createdAt": "2026-10-13T00:44:13.848Z",
+          "state": "paused",
+          "lifecycleSequence": 19,
+          "interruptionReason": null,
+          "interruptionMessage": null,
+          "finalizationError": null,
+          "sourceDurationUs": null,
+          "camera": {
+            "sourceId": "16cfb762-816a-40d7-8dab-de259951e986",
+            "deviceId": "fixture-camera"
+          },
+          "sourceAdmissions": []
+        },
+        "id": "93bbd1dd-74f8-4656-83cb-a3ef9300f3e2"
+      }
+    },
+    {
+      "request": {
+        "operation": "capture.resume",
+        "params": {
+          "recordingId": "ff81550f-b614-47e0-a5f9-a8fce74734a4"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "recordingId": "ff81550f-b614-47e0-a5f9-a8fce74734a4",
+          "sourceId": "59cef644-cad9-419a-8b9e-ae17114f3c94",
+          "publication": {
+            "generation": "E32B35C5-0564-44E7-93D1-FFE9C1E6C1D2",
+            "sourceId": "59cef644-cad9-419a-8b9e-ae17114f3c94",
+            "inputsClosed": false,
+            "primary": null,
+            "camera": null
+          },
+          "creationSequence": 1,
+          "createdAt": "2026-10-13T00:44:13.848Z",
+          "state": "recording",
+          "lifecycleSequence": 21,
+          "interruptionReason": null,
+          "interruptionMessage": null,
+          "finalizationError": null,
+          "sourceDurationUs": null,
+          "camera": {
+            "sourceId": "16cfb762-816a-40d7-8dab-de259951e986",
+            "deviceId": "fixture-camera"
+          },
+          "sourceAdmissions": []
+        },
+        "id": "6199cd42-079b-439a-b649-c89a26b74b68"
+      }
+    },
+    {
+      "request": {
+        "operation": "capture.stop",
+        "params": {
+          "recordingId": "ff81550f-b614-47e0-a5f9-a8fce74734a4"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "recordingId": "ff81550f-b614-47e0-a5f9-a8fce74734a4",
+          "sourceId": "59cef644-cad9-419a-8b9e-ae17114f3c94",
+          "publication": {
+            "generation": "E32B35C5-0564-44E7-93D1-FFE9C1E6C1D2",
+            "sourceId": "59cef644-cad9-419a-8b9e-ae17114f3c94",
+            "inputsClosed": false,
+            "primary": null,
+            "camera": null
+          },
+          "creationSequence": 1,
+          "createdAt": "2026-10-13T00:44:13.848Z",
+          "state": "finalizing",
+          "lifecycleSequence": 22,
+          "interruptionReason": null,
+          "interruptionMessage": null,
+          "finalizationError": null,
+          "sourceDurationUs": null,
+          "camera": {
+            "sourceId": "16cfb762-816a-40d7-8dab-de259951e986",
+            "deviceId": "fixture-camera"
+          },
+          "sourceAdmissions": []
+        },
+        "id": "a07df59c-53d9-45b3-8deb-0fe90dfd986a"
+      }
+    },
+    {
+      "request": {
+        "operation": "recording.get",
+        "params": {
+          "recordingId": "ff81550f-b614-47e0-a5f9-a8fce74734a4"
+        },
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "recordingId": "ff81550f-b614-47e0-a5f9-a8fce74734a4",
+          "sourceId": "59cef644-cad9-419a-8b9e-ae17114f3c94",
+          "publication": {
+            "generation": "E32B35C5-0564-44E7-93D1-FFE9C1E6C1D2",
+            "sourceId": "59cef644-cad9-419a-8b9e-ae17114f3c94",
+            "inputsClosed": true,
+            "primary": {
+              "state": "published",
+              "source": {
+                "kind": "primary",
+                "sourceId": "59cef644-cad9-419a-8b9e-ae17114f3c94",
+                "sourceDurationUs": 3481580,
+                "originHostUs": 253844756818,
+                "journal": {
+                  "file": "source.journal.jsonl",
+                  "bytes": 4890,
+                  "sha256": "64bec808fa069656e1a7263f0299f4d5de6ab557d3d6398d2b9f3d5cdb8c83fc",
+                  "lastSequence": 25,
+                  "layout": 2
+                },
+                "members": {
+                  "video.mov": {
+                    "bytes": "8316",
+                    "sha256": "3b73806a4a71f31781adbf0c117ca0827533bb6637464030aa7e6294550d1fee"
+                  },
+                  "narration.mov": {
+                    "bytes": "384697",
+                    "sha256": "29631aeedd7312bb01bb550f1eb8bb64e3882105eb4dcbb051fa920a81f525f7"
+                  },
+                  "narration.publication.json": {
+                    "bytes": "673",
+                    "sha256": "c11acac3c0ff2322ec42a4aef19bf19ef2f068afd766c17e3ea84df956211229"
+                  }
+                }
+              }
+            },
+            "camera": {
+              "state": "published",
+              "source": {
+                "kind": "camera",
+                "sourceId": "16cfb762-816a-40d7-8dab-de259951e986",
+                "sourceDurationUs": 933333,
+                "originHostUs": 253844756818,
+                "binding": {
+                  "recordingId": "ff81550f-b614-47e0-a5f9-a8fce74734a4",
+                  "sourceId": "16cfb762-816a-40d7-8dab-de259951e986",
+                  "deviceId": "fixture-camera"
+                },
+                "journal": {
+                  "file": "capture.journal.jsonl",
+                  "bytes": 1384,
+                  "sha256": "59a993e40a6cce0bba327c2a2a61a68a2165c7833b4dd9ca36caac6a51131deb",
+                  "lastSequence": 6,
+                  "layout": 1
+                },
+                "members": {
+                  "video.mov": {
+                    "bytes": "6797",
+                    "sha256": "1318eedc403758f594a5accd5fb1a2669ef82287ce6cd6c463c472c377675ad6"
+                  },
+                  "camera.publication.json": {
+                    "bytes": "1018",
+                    "sha256": "662edd976b994632a7a8ef322f45fdb4a912a1b7c528ff061cdcc61f9d511ac3"
+                  },
+                  "camera.mapping.jsonl": {
+                    "bytes": "9163",
+                    "sha256": "fa3941a64c2572b7029ea946637d28f97c7ad25375494682c2ef86bd996718e6"
+                  }
+                }
+              }
+            }
+          },
+          "creationSequence": 1,
+          "createdAt": "2026-10-13T00:44:13.848Z",
+          "state": "complete",
+          "lifecycleSequence": 27,
+          "interruptionReason": null,
+          "interruptionMessage": null,
+          "finalizationError": null,
+          "sourceDurationUs": 3481580,
+          "camera": {
+            "sourceId": "16cfb762-816a-40d7-8dab-de259951e986",
+            "deviceId": "fixture-camera"
+          },
+          "sourceAdmissions": [
+            {
+              "kind": "primary",
+              "sourceId": "59cef644-cad9-419a-8b9e-ae17114f3c94",
+              "publication": {
+                "state": "published",
+                "source": {
+                  "kind": "primary",
+                  "sourceId": "59cef644-cad9-419a-8b9e-ae17114f3c94",
+                  "sourceDurationUs": 3481580,
+                  "originHostUs": 253844756818,
+                  "journal": {
+                    "file": "source.journal.jsonl",
+                    "bytes": 4890,
+                    "sha256": "64bec808fa069656e1a7263f0299f4d5de6ab557d3d6398d2b9f3d5cdb8c83fc",
+                    "lastSequence": 25,
+                    "layout": 2
+                  },
+                  "members": {
+                    "video.mov": {
+                      "bytes": "8316",
+                      "sha256": "3b73806a4a71f31781adbf0c117ca0827533bb6637464030aa7e6294550d1fee"
+                    },
+                    "narration.mov": {
+                      "bytes": "384697",
+                      "sha256": "29631aeedd7312bb01bb550f1eb8bb64e3882105eb4dcbb051fa920a81f525f7"
+                    },
+                    "narration.publication.json": {
+                      "bytes": "673",
+                      "sha256": "c11acac3c0ff2322ec42a4aef19bf19ef2f068afd766c17e3ea84df956211229"
+                    }
+                  }
+                }
+              },
+              "acquisitionId": null,
+              "job": null,
+              "admissionError": null
+            },
+            {
+              "kind": "camera",
+              "sourceId": "16cfb762-816a-40d7-8dab-de259951e986",
+              "publication": {
+                "state": "published",
+                "source": {
+                  "kind": "camera",
+                  "sourceId": "16cfb762-816a-40d7-8dab-de259951e986",
+                  "sourceDurationUs": 933333,
+                  "originHostUs": 253844756818,
+                  "binding": {
+                    "recordingId": "ff81550f-b614-47e0-a5f9-a8fce74734a4",
+                    "sourceId": "16cfb762-816a-40d7-8dab-de259951e986",
+                    "deviceId": "fixture-camera"
+                  },
+                  "journal": {
+                    "file": "capture.journal.jsonl",
+                    "bytes": 1384,
+                    "sha256": "59a993e40a6cce0bba327c2a2a61a68a2165c7833b4dd9ca36caac6a51131deb",
+                    "lastSequence": 6,
+                    "layout": 1
+                  },
+                  "members": {
+                    "video.mov": {
+                      "bytes": "6797",
+                      "sha256": "1318eedc403758f594a5accd5fb1a2669ef82287ce6cd6c463c472c377675ad6"
+                    },
+                    "camera.publication.json": {
+                      "bytes": "1018",
+                      "sha256": "662edd976b994632a7a8ef322f45fdb4a912a1b7c528ff061cdcc61f9d511ac3"
+                    },
+                    "camera.mapping.jsonl": {
+                      "bytes": "9163",
+                      "sha256": "fa3941a64c2572b7029ea946637d28f97c7ad25375494682c2ef86bd996718e6"
+                    }
+                  }
+                }
+              },
+              "acquisitionId": null,
+              "job": null,
+              "admissionError": null
+            }
+          ]
+        },
+        "id": "f6810820-0b2e-46bd-99a0-0b4304e9cc57"
+      }
+    }
+  ],
+  "fixture": [
+    {
+      "operation": "configure",
+      "params": {
+        "productionCamera": true
+      },
+      "reply": {
+        "id": "35a67da4-3009-4b15-9066-2ec4b842ac03",
+        "ok": true
+      }
+    },
+    {
+      "operation": "inspect",
+      "params": {},
+      "reply": {
+        "cameraStarts": 1,
+        "cameraStops": 0,
+        "closures": 0,
+        "id": "97604308-2ec2-475c-a535-7f5f2c99c3eb",
+        "inputBoundary": "CameraCaptureInput",
+        "isCapturing": true,
+        "ok": true,
+        "requests": [
+          {
+            "camera": {
+              "binding": {
+                "deviceId": "fixture-camera",
+                "recordingId": "ff81550f-b614-47e0-a5f9-a8fce74734a4",
+                "sourceId": "16cfb762-816a-40d7-8dab-de259951e986"
+              },
+              "outputDirectory": "/tmp/yap-camera-corpus-F4QhuE/home/library/recordings/ff81550f-b614-47e0-a5f9-a8fce74734a4/camera"
+            },
+            "microphone": true,
+            "outputDirectory": "/tmp/yap-camera-corpus-F4QhuE/home/library/recordings/ff81550f-b614-47e0-a5f9-a8fce74734a4/source",
+            "source": {
+              "displayID": 1,
+              "kind": "display"
+            },
+            "sourceId": "59cef644-cad9-419a-8b9e-ae17114f3c94",
+            "systemAudio": false
+          }
+        ],
+        "stops": 0
+      }
+    },
+    {
+      "operation": "close",
+      "params": {},
+      "reply": {
+        "id": "f84ccae2-524d-49f1-aa5f-3d9a634f0968",
+        "ok": true
+      }
+    }
+  ],
+  "inputs": {
+    "executable": {
+      "path": "/tmp/yap-cs01/controller-build/controller-journey",
+      "sha256": "0a000324acf9710d00f289989580ba25fe66cbb97d8efc484fd98a56670e3ae3"
+    },
+    "native": {
+      "path": "/Users/server/.t3/worktrees/screen-recorder/t3code-5a9a2c95/helpers/mac/.build/debug/yap-native",
+      "sha256": "0dc7c95af6dc786e53e423b2892da10bdf59e8cdafd156af0dff15076e3d64d2"
+    },
+    "video": {
+      "path": "/tmp/yap-cs01/inputs-project/input.mov",
+      "sha256": "c59fb34b259f89d43bf525c707e5a0b898587955305c86b68b22f1f607b3c269"
+    },
+    "audio": {
+      "path": "/tmp/yap-cs01/inputs-project/audio-input/narration.packed.mov",
+      "sha256": "a1d96efa7a2366e2657a307e7bdedc3d910220e6f790a3559576684245fadfa2"
+    }
+  },
+  "take": {
+    "recordingId": "ff81550f-b614-47e0-a5f9-a8fce74734a4",
+    "sourceId": "59cef644-cad9-419a-8b9e-ae17114f3c94",
+    "publication": {
+      "generation": "E32B35C5-0564-44E7-93D1-FFE9C1E6C1D2",
+      "sourceId": "59cef644-cad9-419a-8b9e-ae17114f3c94",
+      "inputsClosed": false,
+      "primary": null,
+      "camera": null
+    },
+    "creationSequence": 1,
+    "createdAt": "2026-10-13T00:44:13.848Z",
+    "state": "recording",
+    "lifecycleSequence": 17,
+    "interruptionReason": null,
+    "interruptionMessage": null,
+    "finalizationError": null,
+    "sourceDurationUs": null,
+    "camera": {
+      "sourceId": "16cfb762-816a-40d7-8dab-de259951e986",
+      "deviceId": "fixture-camera"
+    },
+    "sourceAdmissions": []
+  },
+  "atFence": {
+    "fillers": [
+      "add84735-3179-430f-b256-72f8e467679c",
+      "170881e9-d03b-4932-9b2a-cefdd064519c",
+      "cff12e38-360e-4a59-adc1-00f3da089508",
+      "846121c2-b609-4b28-b440-63452b7161b9",
+      "8147aa44-40ac-477e-b0c0-e6e282bbd868",
+      "8ec58b6d-c3f4-408c-a303-9bd26d0add27",
+      "7480e72b-bb7c-4b83-abfd-0e1e90c3a1f8",
+      "6d8f0eeb-68eb-4c4f-9f69-2411c5b12ad7",
+      "5a764faa-7e7c-41fc-8df7-f29c042e785e",
+      "fc906be7-0978-4cc4-99d4-2a78d230ef74",
+      "68d7ed90-884a-4337-b914-6d806343116d",
+      "beec5d53-a8cd-4c29-97e0-8446f9d39faf",
+      "b97ed8b1-5a22-4932-a058-3b86d0243b83",
+      "c09e8a6e-1726-47f7-a4bd-e14bacdd7788",
+      "d9323dcf-e4a0-49e8-bbc4-e6aa50a5d914",
+      "9855b996-ad6a-4be9-960a-8c9d14ffdb39",
+      "c0a87ce7-85b1-437b-9a21-8ec4beee7c91",
+      "ad8ea1a4-8754-4ab2-9dbc-9a1f2b8e6e26",
+      "ddc320d2-e438-43e8-ac71-740775d22b98",
+      "3c455c3c-48a1-464e-b6b9-725be8f6318c",
+      "5fde8634-82b5-4ae3-9b5e-046310c9d0b5",
+      "40c066d1-2518-4335-97ae-8f175a9b040e",
+      "ed03e921-90a3-429c-aa09-aa14bd93659a",
+      "3a31dade-2b86-40fb-9915-46d6c64832cc",
+      "ac7abead-a9d7-4e9b-b6df-08bd2dd8c5a7",
+      "95668f3d-0718-4601-9506-a5c9bcd3a205",
+      "5aac9418-45a8-4e96-8e83-0ec0bd9e6b07",
+      "7699f1b6-934a-4eb8-bc41-f6e09305873f",
+      "0844f8f0-a4d6-4596-994a-c8ac2e2cac44",
+      "994998d3-28b7-43b9-b1b1-292a89a7a3a1",
+      "e6da4dad-b706-4434-b882-904e822214d7",
+      "f8fb8ba7-44aa-4fca-83cb-b195a318b9de",
+      "e9529fe5-6d5e-4ff5-966e-fd3ae7176b85"
+    ],
+    "heldOperation": "media.probe",
+    "recording": {
+      "recordingId": "ff81550f-b614-47e0-a5f9-a8fce74734a4",
+      "sourceId": "59cef644-cad9-419a-8b9e-ae17114f3c94",
+      "publication": {
+        "generation": "E32B35C5-0564-44E7-93D1-FFE9C1E6C1D2",
+        "sourceId": "59cef644-cad9-419a-8b9e-ae17114f3c94",
+        "inputsClosed": true,
+        "primary": {
+          "state": "published",
+          "source": {
+            "kind": "primary",
+            "sourceId": "59cef644-cad9-419a-8b9e-ae17114f3c94",
+            "sourceDurationUs": 3481580,
+            "originHostUs": 253844756818,
+            "journal": {
+              "file": "source.journal.jsonl",
+              "bytes": 4890,
+              "sha256": "64bec808fa069656e1a7263f0299f4d5de6ab557d3d6398d2b9f3d5cdb8c83fc",
+              "lastSequence": 25,
+              "layout": 2
+            },
+            "members": {
+              "video.mov": {
+                "bytes": "8316",
+                "sha256": "3b73806a4a71f31781adbf0c117ca0827533bb6637464030aa7e6294550d1fee"
+              },
+              "narration.mov": {
+                "bytes": "384697",
+                "sha256": "29631aeedd7312bb01bb550f1eb8bb64e3882105eb4dcbb051fa920a81f525f7"
+              },
+              "narration.publication.json": {
+                "bytes": "673",
+                "sha256": "c11acac3c0ff2322ec42a4aef19bf19ef2f068afd766c17e3ea84df956211229"
+              }
+            }
+          }
+        },
+        "camera": {
+          "state": "published",
+          "source": {
+            "kind": "camera",
+            "sourceId": "16cfb762-816a-40d7-8dab-de259951e986",
+            "sourceDurationUs": 933333,
+            "originHostUs": 253844756818,
+            "binding": {
+              "recordingId": "ff81550f-b614-47e0-a5f9-a8fce74734a4",
+              "sourceId": "16cfb762-816a-40d7-8dab-de259951e986",
+              "deviceId": "fixture-camera"
+            },
+            "journal": {
+              "file": "capture.journal.jsonl",
+              "bytes": 1384,
+              "sha256": "59a993e40a6cce0bba327c2a2a61a68a2165c7833b4dd9ca36caac6a51131deb",
+              "lastSequence": 6,
+              "layout": 1
+            },
+            "members": {
+              "video.mov": {
+                "bytes": "6797",
+                "sha256": "1318eedc403758f594a5accd5fb1a2669ef82287ce6cd6c463c472c377675ad6"
+              },
+              "camera.publication.json": {
+                "bytes": "1018",
+                "sha256": "662edd976b994632a7a8ef322f45fdb4a912a1b7c528ff061cdcc61f9d511ac3"
+              },
+              "camera.mapping.jsonl": {
+                "bytes": "9163",
+                "sha256": "fa3941a64c2572b7029ea946637d28f97c7ad25375494682c2ef86bd996718e6"
+              }
+            }
+          }
+        }
+      },
+      "creationSequence": 1,
+      "createdAt": "2026-10-13T00:44:13.848Z",
+      "state": "complete",
+      "lifecycleSequence": 27,
+      "interruptionReason": null,
+      "interruptionMessage": null,
+      "finalizationError": null,
+      "sourceDurationUs": 3481580,
+      "camera": {
+        "sourceId": "16cfb762-816a-40d7-8dab-de259951e986",
+        "deviceId": "fixture-camera"
+      },
+      "sourceAdmissions": [
+        {
+          "kind": "primary",
+          "sourceId": "59cef644-cad9-419a-8b9e-ae17114f3c94",
+          "publication": {
+            "state": "published",
+            "source": {
+              "kind": "primary",
+              "sourceId": "59cef644-cad9-419a-8b9e-ae17114f3c94",
+              "sourceDurationUs": 3481580,
+              "originHostUs": 253844756818,
+              "journal": {
+                "file": "source.journal.jsonl",
+                "bytes": 4890,
+                "sha256": "64bec808fa069656e1a7263f0299f4d5de6ab557d3d6398d2b9f3d5cdb8c83fc",
+                "lastSequence": 25,
+                "layout": 2
+              },
+              "members": {
+                "video.mov": {
+                  "bytes": "8316",
+                  "sha256": "3b73806a4a71f31781adbf0c117ca0827533bb6637464030aa7e6294550d1fee"
+                },
+                "narration.mov": {
+                  "bytes": "384697",
+                  "sha256": "29631aeedd7312bb01bb550f1eb8bb64e3882105eb4dcbb051fa920a81f525f7"
+                },
+                "narration.publication.json": {
+                  "bytes": "673",
+                  "sha256": "c11acac3c0ff2322ec42a4aef19bf19ef2f068afd766c17e3ea84df956211229"
+                }
+              }
+            }
+          },
+          "acquisitionId": null,
+          "job": null,
+          "admissionError": null
+        },
+        {
+          "kind": "camera",
+          "sourceId": "16cfb762-816a-40d7-8dab-de259951e986",
+          "publication": {
+            "state": "published",
+            "source": {
+              "kind": "camera",
+              "sourceId": "16cfb762-816a-40d7-8dab-de259951e986",
+              "sourceDurationUs": 933333,
+              "originHostUs": 253844756818,
+              "binding": {
+                "recordingId": "ff81550f-b614-47e0-a5f9-a8fce74734a4",
+                "sourceId": "16cfb762-816a-40d7-8dab-de259951e986",
+                "deviceId": "fixture-camera"
+              },
+              "journal": {
+                "file": "capture.journal.jsonl",
+                "bytes": 1384,
+                "sha256": "59a993e40a6cce0bba327c2a2a61a68a2165c7833b4dd9ca36caac6a51131deb",
+                "lastSequence": 6,
+                "layout": 1
+              },
+              "members": {
+                "video.mov": {
+                  "bytes": "6797",
+                  "sha256": "1318eedc403758f594a5accd5fb1a2669ef82287ce6cd6c463c472c377675ad6"
+                },
+                "camera.publication.json": {
+                  "bytes": "1018",
+                  "sha256": "662edd976b994632a7a8ef322f45fdb4a912a1b7c528ff061cdcc61f9d511ac3"
+                },
+                "camera.mapping.jsonl": {
+                  "bytes": "9163",
+                  "sha256": "fa3941a64c2572b7029ea946637d28f97c7ad25375494682c2ef86bd996718e6"
+                }
+              }
+            }
+          },
+          "acquisitionId": null,
+          "job": null,
+          "admissionError": null
+        }
+      ]
+    }
+  }
+}

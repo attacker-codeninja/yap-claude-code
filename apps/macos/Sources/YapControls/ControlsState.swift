@@ -61,15 +61,33 @@ public struct ControlsState: Equatable, Sendable {
     }
 
     public struct DeviceStatus: Equatable, Sendable {
-        public init(state: DeviceState, recordingId: String?, elapsedUs: Int64?) {
+        public init(state: DeviceState, recordingId: String?, elapsedUs: Int64?, camera: CameraStatus? = nil) {
             self.state = state
             self.recordingId = recordingId
             self.elapsedUs = elapsedUs
+            self.camera = camera
         }
         public let state: DeviceState
         public let recordingId: String?
         /// The running take's playback time, as its own capture clock measures it.
         public let elapsedUs: Int64?
+        /// The companion camera the running take reserved, and whether it is on now. Nil when the
+        /// take reserved none (no access, no camera, or a camera-only take).
+        public let camera: CameraStatus?
+    }
+
+    /// A companion camera's state, as `capture.start` asks for it and `capture.status` reports it.
+    public enum CameraSwitch: String, Codable, Equatable, Sendable {
+        case on, off
+    }
+
+    public struct CameraStatus: Decodable, Equatable, Sendable {
+        public init(deviceId: String, state: CameraSwitch) {
+            self.deviceId = deviceId
+            self.state = state
+        }
+        public let deviceId: String
+        public let state: CameraSwitch
     }
 
     public struct FinalizationError: Codable, Equatable, Sendable {
@@ -125,6 +143,12 @@ public struct ControlsState: Equatable, Sendable {
         public let id: Int
         public let title: String
         public let application: String
+        /// What the chooser calls this window: its app, and its title when it has one.
+        public var label: String {
+            let named = title.trimmingCharacters(in: .whitespaces)
+            if application.isEmpty { return named }
+            return named.isEmpty ? application : "\(application) — \(named)"
+        }
     }
 
     public struct Microphone: Equatable, Sendable {
@@ -204,7 +228,12 @@ public struct ControlsState: Equatable, Sendable {
         public var source: SelectedSource?
         public var microphone: MicrophoneChoice = .systemDefault
         public var systemAudio = false
+        /// The camera a person picked: a camera-only take's source, or a screen take's companion.
+        /// Nil follows the system default.
         public var cameraDeviceId: String?
+        /// Whether a screen take's companion camera starts on. Off still reserves the camera, so it
+        /// can be turned on during the take.
+        public var cameraOn = false
         /// The microphone this person chose, while it is unplugged. Takes use the system default
         /// meanwhile, but the choice is theirs and is not thrown away — nor written over their
         /// saved preference — by the machine they happen to be recording on today.
@@ -295,19 +324,26 @@ extension ControlsState.CaptureSelection {
     /// selection. The protocol owns both audio defaults, so this always states both explicitly, and
     /// the microphone is on unless a person turned it off.
     public struct Start: Equatable, Sendable, Codable {
-        public init(source: Source, microphone: Bool, microphoneDeviceId: String?, systemAudio: Bool, cameraDeviceId: String? = nil) {
+        public init(
+            source: Source, microphone: Bool, microphoneDeviceId: String?, systemAudio: Bool,
+            cameraDeviceId: String? = nil, cameraAtStart: ControlsState.CameraSwitch? = nil
+        ) {
             self.source = source
             self.microphone = microphone
             self.microphoneDeviceId = microphoneDeviceId
             self.systemAudio = systemAudio
             self.cameraDeviceId = cameraDeviceId
+            self.cameraAtStart = cameraAtStart
         }
 
         public let source: Source
         public let microphone: Bool
         public let microphoneDeviceId: String?
         public let systemAudio: Bool
+        /// A screen take's reserved companion camera.
         public let cameraDeviceId: String?
+        /// Whether that camera starts on; absent means on.
+        public let cameraAtStart: ControlsState.CameraSwitch?
 
         public enum Source: Equatable, Sendable, Codable {
             case display(id: Int)
@@ -362,32 +398,68 @@ extension ControlsState.CaptureSelection {
         }
     }
 
-    /// Nil until a source is selected.
-    public func start() -> Start? {
-        guard let source else { return nil }
-        let companion = source == .camera ? nil : cameraDeviceId
-        let chosen: Start.Source
+}
+
+extension ControlsState {
+    /// What a start of the current selection asks for; nil until a source is selected.
+    ///
+    /// A screen take reserves a companion camera whenever camera access is granted: the picked
+    /// camera, or the system default. It starts on or off as the switch says, and can be turned
+    /// on later either way. Without access nothing is reserved, unless the switch is on: a camera
+    /// a person asked for is still asked for, so the refusal names the missing permission.
+    public func start() -> CaptureSelection.Start? {
+        guard let source = selection.source else { return nil }
+        let chosen: CaptureSelection.Start.Source
         switch source {
         case .display(let display): chosen = .display(id: display.id)
         case .window(let window): chosen = .window(id: window.id)
         case .camera:
-            guard let deviceId = cameraDeviceId, !deviceId.isEmpty else { return nil }
+            guard let deviceId = selection.cameraDeviceId, !deviceId.isEmpty else { return nil }
             chosen = .camera(deviceId: deviceId)
         case .region(let region):
             chosen = .region(displayId: region.displayId, x: region.x, y: region.y,
                 width: region.width, height: region.height)
         }
-        switch microphone {
-        case .off:
-            return Start(
-                source: chosen, microphone: false, microphoneDeviceId: nil, systemAudio: systemAudio, cameraDeviceId: companion)
-        case .systemDefault:
-            return Start(
-                source: chosen, microphone: true, microphoneDeviceId: nil, systemAudio: systemAudio, cameraDeviceId: companion)
-        case .device(let id, _):
-            return Start(
-                source: chosen, microphone: true, microphoneDeviceId: id, systemAudio: systemAudio, cameraDeviceId: companion)
+        let reserves = source != .camera && (permissions?.camera == .granted || selection.cameraOn)
+        let companion = reserves ? selection.cameraDeviceId ?? defaultCamera : nil
+        let cameraAtStart: CameraSwitch? = companion == nil ? nil : selection.cameraOn ? .on : .off
+        let microphoneDeviceId: String?
+        if case .device(let id, _) = selection.microphone { microphoneDeviceId = id } else { microphoneDeviceId = nil }
+        return .init(
+            source: chosen, microphone: selection.microphone != .off, microphoneDeviceId: microphoneDeviceId,
+            systemAudio: selection.systemAudio, cameraDeviceId: companion, cameraAtStart: cameraAtStart)
+    }
+
+    /// The camera the system prefers, or the first listed.
+    private var defaultCamera: String? {
+        (sources.cameras.first(where: \.isDefault) ?? sources.cameras.first)?.id
+    }
+
+    /// The request a live toggle sends, `capture.setCamera`'s parameters.
+    public struct SetCamera: Encodable, Equatable, Sendable {
+        public init(recordingId: String, on: Bool) {
+            self.recordingId = recordingId
+            self.on = on
         }
+        public let recordingId: String
+        public let on: Bool
+    }
+
+    /// Turns the camera on or off, from the menu's switch or the floating controls alike. Before
+    /// a take this is the start switch, and the picked camera stays picked. During a take that
+    /// reserved a camera it is a request for the service, returned for the caller to send.
+    public mutating func setCamera(_ on: Bool) -> SetCamera? {
+        if isLive {
+            guard device?.camera != nil, let recordingId = device?.recordingId else {
+                failure = "This take has no camera to turn on or off."
+                return nil
+            }
+            return .init(recordingId: recordingId, on: on)
+        }
+        guard !counting, selection.source != .camera else { return nil }
+        selection.cameraOn = on
+        selectDefaultCameraIfNeeded(enabled: on)
+        return nil
     }
 }
 
@@ -415,6 +487,7 @@ extension ControlsState.CaptureSelection {
         systemAudio = active.systemAudio
         if case .camera(let deviceId) = active.source { cameraDeviceId = deviceId }
         else { cameraDeviceId = active.cameraDeviceId }
+        cameraOn = active.cameraDeviceId != nil && active.cameraAtStart != .off
     }
 }
 
@@ -509,7 +582,7 @@ extension ControlsState {
     /// A start whose answer has not arrived is asked for again under its own request ID, so the
     /// service resolves the take it already allocated instead of allocating another.
     public mutating func beginStart(newRequestId: String) -> StartRequest? {
-        guard let start = selection.start() else {
+        guard let start = self.start() else {
             failure = "Choose a source before recording."
             return nil
         }

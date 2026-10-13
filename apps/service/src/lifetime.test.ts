@@ -227,6 +227,7 @@ it("keeps waiting admission open and wakes when an unrelated native control call
           sourceId: null,
           elapsedUs: null,
           selection: null,
+          camera: null,
           permissions: { screen: true, microphone: "authorized", camera: "not_determined" },
         },
       },
@@ -331,6 +332,7 @@ it("startup reconciliation is a blocker while its existing native observation is
           sourceId: null,
           elapsedUs: null,
           selection: null,
+          camera: null,
           permissions: { screen: true, microphone: "authorized", camera: "not_determined" },
         },
       },
@@ -458,6 +460,7 @@ it("starts the canonical fresh composition without interpreting retained recordi
     sourceId: null,
     elapsedUs: null,
     selection: null,
+    camera: null,
     permissions: { screen: true, microphone: "authorized", camera: "not_determined" },
   };
   if (nativeCall?.event !== "call") throw new Error("Missing capture status peer request");

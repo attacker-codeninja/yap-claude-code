@@ -210,7 +210,7 @@ final class PrerecordedCaptureInput: CaptureInputSession {
             do { try beforeCameraClose?() } catch { preconditionFailure("Fixture setup failed: \(error)") }
             let closed = await probe.companion!.close(clock: clock, failure: failure ?? companionFailure, observations: probe.observationURL!)
             do { try afterCameraClose?() } catch { preconditionFailure("Fixture setup failed: \(error)") }
-            return CaptureInputClosure(camera: closed)
+            return CaptureInputClosure(camera: .closed(closed))
         }
         return CaptureInputClosure(failure: companionFailure)
     }

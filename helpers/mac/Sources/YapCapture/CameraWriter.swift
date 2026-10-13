@@ -2,6 +2,27 @@
 import Foundation
 import Darwin
 
+/// What decoding and passthrough export depend on in a camera picture's format. A camera opened
+/// again mid-take may describe the same format with a description that is not byte-equal, so a
+/// take accepts any picture whose format is compatible with its first: same dimensions, pixel
+/// format and colour tags.
+struct CameraFormat: Equatable {
+    let width: Int32
+    let height: Int32
+    let pixelFormat: FourCharCode
+    let colour: [String?]
+
+    init(_ description: CMFormatDescription) {
+        let size = CMVideoFormatDescriptionGetDimensions(description)
+        width = size.width; height = size.height
+        pixelFormat = CMFormatDescriptionGetMediaSubType(description)
+        colour = [kCMFormatDescriptionExtension_ColorPrimaries, kCMFormatDescriptionExtension_TransferFunction,
+            kCMFormatDescriptionExtension_YCbCrMatrix].map {
+            CMFormatDescriptionGetExtension(description, extensionKey: $0) as? String
+        }
+    }
+}
+
 /// Video-only companion to CaptureWriter; never writes or publishes audio.
 package final class CameraWriter {
     private let directory: URL
@@ -18,11 +39,25 @@ package final class CameraWriter {
     private var omitted = 0
     private var width = 0
     private var height = 0
-    private var format: CMFormatDescription?
+    private var format: CameraFormat?
     private var recordedPauseCount = 0
     private var journalOpenPauseHostUs: Int64?
     private var origin: Int64?
     private var verification: CameraMedia.Verification?
+    // Acquisition window: a picture is recorded only if its whole host interval lies inside it.
+    // An open start means the camera has been on since the take began.
+    private var onAt: CMTime?
+    private var offAt: CMTime?
+    private var run = 0
+    private var runFrames = 0
+    /// Counts acquisition windows, so a picture can be traced to the turn-on that opened its window.
+    private var window = 0
+    /// The window whose picture established the take's format.
+    private var formatWindow = 0
+    /// Called on the writer queue when a picture incompatible with the take's format arrives in a
+    /// window opened by a later turn-on. The writer has already closed the window and refused the
+    /// picture; the camera's owner turns the camera off.
+    package var runEnded: (@Sendable (CaptureFailure) -> Void)?
 
     package init(directory: URL, framesPerSecond: Int, binding: CameraCaptureBinding? = nil) throws {
         try binding?.validate()
@@ -38,11 +73,43 @@ package final class CameraWriter {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
         }
     }
+    // The acquisition window has two mutators and no other: call them on the capture writer queue.
+
+    /// Opens acquisition at a host instant. Turning on after a run that recorded a frame starts the
+    /// next run.
+    package func startAcquiring(atHostUs hostUs: Int64) {
+        guard offAt != nil else { return }
+        if runFrames > 0 {
+            run += 1; runFrames = 0
+            // The live continuation proves one contiguous run; later runs publish by full scan.
+            verification?.abandon()
+        }
+        window += 1
+        onAt = CMTime(value: hostUs, timescale: 1_000_000); offAt = nil
+    }
+    /// Closes acquisition at a host instant.
+    package func stopAcquiring(atHostUs hostUs: Int64) {
+        if offAt == nil { offAt = CMTime(value: hostUs, timescale: 1_000_000) }
+    }
+    /// No picture has been accepted, so nothing has been written.
+    package var isEmpty: Bool { writer == nil }
+    /// Whether the acquisition window is open.
+    package var isAcquiring: Bool { offAt == nil }
+    /// Whether a camera producing pictures of this size can continue this take.
+    package func admits(width: Int, height: Int) -> Bool {
+        format.map { Int($0.width) == width && Int($0.height) == height } ?? true
+    }
     package func append(_ sample: CMSampleBuffer, state: CaptureWriter.IngressState) throws -> (receipt: CaptureWriter.IngressReceipt, frame: CameraFrameMapping?) {
         guard state.accepting else { return (.init(disposition: "sealed-or-failed", sourceUs: nil), nil) }
         let host = CMTimeConvertScale(sample.presentationTimeStamp, timescale: 1_000_000, method: .roundHalfAwayFromZero).value
         let duration = sample.duration.isNumeric && sample.duration > .zero
             ? sample.duration : CMTime(value: 1, timescale: Int32(framesPerSecond))
+        // The take clock's overlap rule: a stale picture from before the turn-on, or one still
+        // showing at the turn-off, was not acquired while the camera was on.
+        if let onAt, sample.presentationTimeStamp < onAt { return (.init(disposition: "camera-off", sourceUs: nil), nil) }
+        if let offAt, CMTimeAdd(sample.presentationTimeStamp, duration) > offAt {
+            return (.init(disposition: "camera-off", sourceUs: nil), nil)
+        }
         let durationUs = CMTimeConvertScale(duration, timescale: 1_000_000, method: .roundHalfAwayFromZero).value
         // A new independent origin rounds downward so exact fractional PTS never precedes it.
         let candidateOrigin = origin ?? state.clock.originUs ?? CMTimeConvertScale(
@@ -55,11 +122,21 @@ package final class CameraWriter {
             let description = sample.formatDescription else {
             throw CaptureFailure("INVALID_CAMERA_FRAME", "Camera callback lacks usable video.")
         }
-        if let format, !CMFormatDescriptionEqual(format, otherFormatDescription: description) {
-            throw CaptureFailure("CAMERA_FORMAT_CHANGED", "Selected camera format changed during the take.")
+        if let format, format != CameraFormat(description) {
+            // Mixed colour tags in one track would play with the wrong colour, so the picture is
+            // never recorded. A session opened by a later turn-on ends its own run; the session
+            // that established the format changing mid-run still fails the take.
+            guard window != formatWindow else {
+                throw CaptureFailure("CAMERA_FORMAT_CHANGED", "Selected camera format changed during the take.")
+            }
+            stopAcquiring(atHostUs: host)
+            runEnded?(CaptureFailure("CAMERA_FORMAT_CHANGED",
+                "The camera turned on again delivers a picture format incompatible with earlier in this take."))
+            return (.init(disposition: "camera-off", sourceUs: nil), nil)
         }
         if writer == nil {
-            format = description
+            format = CameraFormat(description)
+            formatWindow = window
             let size = CMVideoFormatDescriptionGetDimensions(description)
             width = Int(size.width); height = Int(size.height)
             let journal = try CaptureJournal(directory: directory.path,
@@ -94,6 +171,11 @@ package final class CameraWriter {
             omitted += 1; return (.init(disposition: "duplicate-or-reordered", sourceUs: nil), nil)
         }
         let retimed = try CaptureClockIngress.retime(sample, to: sourceTime, duration: duration)
+        if runFrames == 0 {
+            // Each run decodes on its own, so a passthrough edit of it copies nothing from before a gap.
+            CMSetAttachment(retimed, key: kCMSampleBufferAttachmentKey_ForceKeyFrame, value: kCFBooleanTrue,
+                attachmentMode: kCMAttachmentMode_ShouldNotPropagate)
+        }
         guard input.append(retimed) else { throw writer?.error ?? CaptureFailure("WRITE_FAILED", "Camera append failed.") }
         if origin == nil {
             origin = candidateOrigin
@@ -105,7 +187,9 @@ package final class CameraWriter {
             try journal?.recordTrackStarted(role: "video", file: "video.mov", firstSourceUs: source,
                 sampleRate: nil, channelCount: nil)
         }
-        let frame = CameraFrameMapping(ordinal: frames, start: CaptureRationalTime(sourceTime), nominalEnd: CaptureRationalTime(CMTimeAdd(sourceTime, duration)))
+        let frame = CameraFrameMapping(ordinal: frames, start: CaptureRationalTime(sourceTime),
+            nominalEnd: CaptureRationalTime(CMTimeAdd(sourceTime, duration)), run: run)
+        runFrames += 1
         lastAcceptedTime = sourceTime
         end = CMTimeConvertScale(frame.nominalEnd.time, timescale: 1_000_000, method: .roundHalfAwayFromZero).value
         frames += 1

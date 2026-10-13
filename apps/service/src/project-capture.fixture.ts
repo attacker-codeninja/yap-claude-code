@@ -14,6 +14,8 @@ export async function captureFixture(
   home?: string,
   worker?: MediaWorker,
   silentOperation?: string,
+  /** The control channel's default per-call deadline; production uses the protocol's. */
+  controlTimeoutMs?: number,
 ) {
   if (!home) {
     home = await mkdtemp("/tmp/project-capture-");
@@ -27,8 +29,11 @@ export async function captureFixture(
   const nativeCalls: string[] = [];
   const nativeRequests: { operation: string; params: Record<string, unknown> }[] = [];
   const unanswered = new Map<string, string>();
+  /** Native's own refusal for the next call of an operation. */
+  const refusals = new Map<string, { code: string; message: string }>();
   let take: { recordingId: string; sourceId: string } | undefined;
   let selection: Record<string, unknown> | null = null;
+  let camera: { deviceId: string; state: "on" | "off" } | null = null;
   let deviceState = "idle";
   let sequence = 0;
   const publications = new Map<string, unknown>();
@@ -119,29 +124,55 @@ export async function captureFixture(
           microphone: params.microphone,
           systemAudio: params.systemAudio,
           ...(params.cameraDeviceId === undefined ? {} : { cameraDeviceId: params.cameraDeviceId }),
+          ...(params.cameraAtStart === undefined ? {} : { cameraAtStart: params.cameraAtStart }),
         };
+        camera =
+          params.cameraDeviceId === undefined
+            ? null
+            : {
+                deviceId: String(params.cameraDeviceId),
+                state: params.cameraAtStart === "off" ? "off" : "on",
+              };
         sequence = 0;
       }
+      const refusal = refusals.get(operation);
+      if (refusal) {
+        refusals.delete(operation);
+        input.write(
+          JSON.stringify({
+            event: "result",
+            response: {
+              id: message.request.id,
+              ok: false,
+              error: { ...refusal, retryable: false, details: {} },
+            },
+          }) + "\n",
+        );
+        continue;
+      }
+      if (operation === "capture.setCamera" && camera) camera.state = params.on ? "on" : "off";
+      const device = ["capture.status", "capture.setCamera"].includes(operation);
       const state = ["capture.stop", "capture.cancel"].includes(operation)
         ? "finalizing"
         : operation === "capture.pause"
           ? "paused"
           : "recording";
-      const data =
-        operation === "capture.status"
-          ? {
-              state: deviceState,
-              recordingId: take?.recordingId ?? null,
-              sourceId: take?.sourceId ?? null,
-              elapsedUs: take ? 0 : null,
-              selection,
-              permissions: { screen: true, microphone: "authorized", camera: "not_determined" },
-            }
-          : { ...take, sequence: ++sequence, state };
-      if (operation !== "capture.status") deviceState = state;
+      const data = device
+        ? {
+            state: deviceState,
+            recordingId: take?.recordingId ?? null,
+            sourceId: take?.sourceId ?? null,
+            elapsedUs: take ? 0 : null,
+            selection,
+            camera: camera && { ...camera },
+            permissions: { screen: true, microphone: "authorized", camera: "not_determined" },
+          }
+        : { ...take, sequence: ++sequence, state };
+      if (!device) deviceState = state;
       if (operation === "capture.cancel") {
         take = undefined;
         selection = null;
+        camera = null;
         deviceState = "idle";
       }
       if (operation === silentOperation) {
@@ -162,7 +193,11 @@ export async function captureFixture(
   });
   const service = await startProjectService({
     home,
-    control: { input, output },
+    control: {
+      input,
+      output,
+      ...(controlTimeoutMs === undefined ? {} : { timeoutMs: controlTimeoutMs }),
+    },
     worker: async (operation, params, options) => {
       if (operation === "storage.clearRenderWorkspace")
         return { ok: true, data: { removed: true } };
@@ -178,6 +213,9 @@ export async function captureFixture(
     input,
     nativeCalls,
     nativeRequests,
+    refuseNext(operation: string, code: string, message = code) {
+      refusals.set(operation, { code, message });
+    },
     async reply(operation: string, data: unknown) {
       const id = unanswered.get(operation);
       if (!id) throw new Error(`No unanswered controller request: ${operation}`);
@@ -200,6 +238,7 @@ export async function captureFixture(
         ) {
           take = undefined;
           selection = null;
+          camera = null;
           deviceState = "idle";
         }
         const id = randomUUID();

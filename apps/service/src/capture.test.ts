@@ -42,6 +42,7 @@ it(
               sourceId: null,
               elapsedUs: null,
               selection: null,
+              camera: null,
               permissions: { screen: true, microphone: "authorized", camera: "not_determined" },
             },
           };
@@ -265,6 +266,7 @@ function capturingPeer(
 ): NativePeer {
   let take: { recordingId: string; sourceId: string } | undefined;
   let selection: ReturnType<typeof captureSelectionSchema.parse> | null = null;
+  let cameraOn = false;
   let sequence = 1;
   const report = (state: string, extra: Record<string, unknown> = {}) => ({
     ok: true as const,
@@ -283,6 +285,7 @@ function capturingPeer(
           },
         };
       selection = captureSelectionSchema.parse(params);
+      cameraOn = selection.cameraAtStart !== "off";
       take = {
         recordingId: params.recordingId as string,
         sourceId: params.sourceId as string,
@@ -309,7 +312,9 @@ function capturingPeer(
     }
     if (operation === "capture.pause") return report("paused");
     if (operation === "capture.resume") return report("recording");
-    if (operation === "capture.status")
+    if (operation === "capture.setCamera" && take && selection?.cameraDeviceId)
+      cameraOn = params.on === true;
+    if (operation === "capture.status" || operation === "capture.setCamera")
       return {
         ok: true,
         data: {
@@ -318,6 +323,10 @@ function capturingPeer(
           sourceId: take?.sourceId ?? null,
           elapsedUs: take ? 1_500_000 : null,
           selection: take ? selection : null,
+          camera:
+            take && selection?.cameraDeviceId
+              ? { deviceId: selection.cameraDeviceId, state: cameraOn ? "on" : "off" }
+              : null,
           permissions: { screen: true, microphone: "authorized", camera: "not_determined" },
         },
       };
@@ -883,6 +892,7 @@ function heldStartPeer(): NativePeer {
           sourceId: held?.sourceId ?? null,
           elapsedUs: held ? 0 : null,
           selection: null,
+          camera: null,
           permissions: { screen: true, microphone: "authorized", camera: "not_determined" },
         },
       };
@@ -1018,6 +1028,30 @@ it("allocates one primary camera and refuses a replay that changes its selected 
     data: { recordingId },
   });
   expect(reopened.asked).not.toContain("capture.start");
+});
+
+it("replays a companion camera take only with the same start state, absent meaning on", async () => {
+  const service = await startService(await temporaryHome(), capturingPeer());
+  const request = {
+    requestId: "camera-start-state",
+    source: fixtureSource,
+    cameraDeviceId: "camera-a",
+  };
+  const started = await service.call("capture.start", request);
+  expect(started).toMatchObject({ ok: true, data: { state: "recording" } });
+  expect(await service.call("capture.status")).toMatchObject({
+    ok: true,
+    data: { device: { camera: { deviceId: "camera-a", state: "on" } } },
+  });
+  expect(await service.call("capture.start", { ...request, cameraAtStart: "on" })).toMatchObject({
+    ok: true,
+    data: started.ok ? started.data : {},
+  });
+  expect(await service.call("capture.start", { ...request, cameraAtStart: "off" })).toMatchObject({
+    ok: false,
+    error: { code: "REQUEST_CONFLICT" },
+  });
+  expect(service.asked.filter((operation) => operation === "capture.start")).toHaveLength(1);
 });
 
 it("refuses pause and resume on a settled take while every other repeat stays idempotent", async () => {

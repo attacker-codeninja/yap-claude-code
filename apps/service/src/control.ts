@@ -17,8 +17,15 @@ import {
 } from "@yap/protocol";
 
 export type ControlChannel = {
-  /** Asks the app's native side for one operation, bounded and correlated like its own calls. */
-  call(operation: string, params: Record<string, unknown>): Promise<OperationResult>;
+  /**
+   * Asks the app's native side for one operation, bounded and correlated like its own calls. An
+   * operation whose native work outlasts the channel's ordinary deadline states its own.
+   */
+  call(
+    operation: string,
+    params: Record<string, unknown>,
+    options?: { timeoutMs?: number },
+  ): Promise<OperationResult>;
   emit(message: ControlMessage): void;
   readonly updateBlocked: boolean;
   /** Settles every waiting call and stops reading. The caller owns what happens next. */
@@ -204,7 +211,7 @@ export function openControl(options: {
     get updateBlocked() {
       return productInbound > 0 || pending.size > 0 || writes > 0;
     },
-    call: (operation, params) =>
+    call: (operation, params, callOptions) =>
       new Promise<OperationResult>((resolve) => {
         if (ended) {
           resolve(operationError("SERVICE_STOPPED", "The control channel is closed", true));
@@ -218,7 +225,7 @@ export function openControl(options: {
         const id = `service-${outbound}`;
         const timer = setTimeout(
           () => settle(id, operationError("TIMEOUT", `${operation} did not answer in time`, true)),
-          timeoutMs,
+          callOptions?.timeoutMs ?? timeoutMs,
         );
         pending.set(id, (result) => {
           clearTimeout(timer);

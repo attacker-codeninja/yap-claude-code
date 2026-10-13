@@ -142,15 +142,33 @@ package enum MediaRecovery {
             guard errno == ENOENT else { throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno)) }
         }
         try check()
-        guard try Descriptors.isEmpty(fd, failing: { action in
+        var members: [String] = []
+        try DirectoryContents.forEachName(in: fd, failing: { action in
             NativeFailure("JOURNAL_UNAVAILABLE", "\(action): \(String(cString: strerror(errno))).", retryable: true)
-        }) else { throw CaptureFailure("JOURNAL_UNAVAILABLE", "Source members remain without a capture journal.") }
+        }) { name in members.append(String(cString: name)); return members.count < 2 }
+        // A companion camera writes its journal with its first picture, so a camera that never
+        // delivered one (never turned on, or lost before its first picture) leaves only its mapping.
+        let unavailable: CaptureFailure
+        if members.isEmpty {
+            unavailable = CaptureFailure("NO_SOURCE_MEDIA", "Allocated source directory contains no retained members.")
+        } else if authority.kind == .camera, members == [CameraMedia.mappingFile], try isRegularFile(fd, CameraMedia.mappingFile) {
+            unavailable = CaptureFailure("NO_CAMERA", "The reserved camera recorded no picture.")
+        } else {
+            throw CaptureFailure("JOURNAL_UNAVAILABLE", "Source members remain without a capture journal.")
+        }
         try Task.checkCancellation()
         try check()
         return RecoveredCapture(durationUs: 0, tracks: [], journal: nil,
             journalFailure: CaptureFailure("JOURNAL_MISSING", "Empty allocation has no capture journal."),
-            inputsClosed: true, sourcePublication: .unavailable(CaptureFailure(
-                "NO_SOURCE_MEDIA", "Allocated source directory contains no retained members.")))
+            inputsClosed: true, sourcePublication: .unavailable(unavailable))
+    }
+
+    private static func isRegularFile(_ directory: Int32, _ name: String) throws -> Bool {
+        var member = stat()
+        guard fstatat(directory, name, &member, AT_SYMLINK_NOFOLLOW) == 0 else {
+            throw NativeFailure("JOURNAL_UNAVAILABLE", "Inspect \(name): \(String(cString: strerror(errno))).", retryable: true)
+        }
+        return member.st_mode & S_IFMT == S_IFREG
     }
 
     private static func recoverMedia(directory: String, leased: CaptureJournalLease? = nil) async throws -> RecoveredCapture {
@@ -242,13 +260,13 @@ package enum MediaRecovery {
         let journal = try CaptureJournal.readEvidence(directory: directory, maximumBytes: 268_435_456,
             retainTiming: false, geometry: { _ in }, samples: { _ in }, displaySpace: { _ in },
             descriptor: lease.descriptor, layout: 1)
-        let span = try verified.identity.support.roundedSpan()
-        let track = RecoveredTrack(role: "video", file: "video.mov", intervals: [span],
+        let intervals = try verified.identity.availability.intervals.map { try $0.roundedSpan() }
+        let track = RecoveredTrack(role: "video", file: "video.mov", intervals: intervals,
             decodedSamples: nil, representedFrames: JournalInteger(wrappedValue: Int64(verified.identity.representedFrames)),
             decodeReachedEnd: true, acquisitionVerified: true,
             failure: verified.diagnostics.isEmpty ? nil : CaptureFailure("PARTIAL_CAMERA", verified.diagnostics.joined(separator: ", ")))
         try lease.check()
-        return RecoveredCapture(durationUs: span.endUs, tracks: [track], journal: journal,
+        return RecoveredCapture(durationUs: intervals[intervals.count - 1].endUs, tracks: [track], journal: journal,
             journalFailure: journal.invalidAtSequence == nil ? nil : CaptureFailure("INVALID_JOURNAL", "Recovery used only the validated journal prefix."))
     }
 

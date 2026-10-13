@@ -45,7 +45,34 @@ func runNativeCaptureInputTests() async throws {
     try await discardedCapture.start(request("discarded"))
     await discardedCapture.discard()
     precondition(discarded.stops == 1 && discarded.discards == 1 && discarded.finalizations == 0)
+    try await verifyNoCompanionCamera(root: root, source: source)
     print("PASS actual NativeCapture closes prerecorded writer, tears down partial input, ignores stale generation, and acquires no live cursor")
+}
+
+/// Only a screen take with a reserved companion camera has a camera switch: a screen-only take
+/// and a camera-only take refuse the toggle and report no companion camera.
+@MainActor
+private func verifyNoCompanionCamera(root: URL, source: URL) async throws {
+    let screen = PrerecordedCaptureInput(source: source)
+    let screenOnly = NativeCapture(prepareInput: { _, _ in screen })
+    try await screenOnly.start(CaptureRequest(source: CaptureSource(kind: "offline-prerecorded"),
+        outputDirectory: root.appendingPathComponent("screen-only").path, microphone: false, systemAudio: false))
+    let device = FixtureCameraDevice("primary-camera", session: FixtureCameraSession(source: source, origin: { CaptureHostTime.nowUs() }))
+    var preparation = CaptureInputPreparation()
+    preparation.cameraAuthorized = { true }
+    preparation.cameras = { [device] }
+    let cameraOnly = NativeCapture(prepareInput: { [preparation] request, check in
+        try await preparation.prepare(request, checkInterruption: check)
+    })
+    try await cameraOnly.start(CaptureRequest(source: CaptureSource(kind: "camera", deviceID: "primary-camera"),
+        outputDirectory: root.appendingPathComponent("camera-only").path, microphone: false, systemAudio: false))
+    for capture in [screenOnly, cameraOnly] {
+        precondition(capture.deviceState == "recording" && capture.companionCamera == nil)
+        do { try await capture.setCamera(on: false); preconditionFailure("A take without a companion camera cannot toggle one") }
+        catch let error as CaptureFailure { precondition(error.code == "CAMERA_NOT_RESERVED") }
+        await capture.discard()
+    }
+    print("PASS screen-only and camera-only takes have no companion camera switch")
 }
 
 

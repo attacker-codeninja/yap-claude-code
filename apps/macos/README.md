@@ -15,6 +15,15 @@ and do not activate the app over the source being recorded. Opening the capture
 panel from the menu bar activates its window, so its native glass and controls
 are ready before the first content click.
 
+The floating take controls show a recording camera's live picture. Minimizing it
+only hides the picture; the camera keeps recording. Settings and the floating
+controls share that one preference.
+A screen take reserves a camera whenever camera access is granted, so the camera can be
+turned on and off during the take; the menu's switch only decides how it starts. The menu's
+switch and the floating controls' camera button send one action, which during a take is the
+same `capture.setCamera` the CLI calls. Native's live report, never the start selection, says
+whether the camera is on, and a camera that is off shows no picture, not even its last one.
+
 Capture status describes current work, so an idle device does not establish how its
 last take ended. Controls retain the started take's identity and resolve its
 persisted outcome after it leaves status. A new interruption reveals the controls
@@ -160,6 +169,13 @@ key-window focus. Status stays outside the scrolling controls.
 The native popover frame owns the backdrop and arrow together; content adds no
 outer panel or stroke. Library has one entry point in the capture header, and its
 canonical controls action stays the same regardless of that placement.
+The source chooser shows a picture of each display or window, taken only while the panel is open
+and once per opening, so a closed panel captures nothing. A display's picture uses the same
+[exclusion](../../helpers/mac/Sources/YapCapture/CaptureExclusion.swift) as a take of it, so it
+shows what would be recorded rather than Yap's own panel. The window list, in the chooser and in
+`capture.sources` alike, holds only the windows a person works in; the
+[window rule](Sources/YapControls/WindowSource.swift) owns what that means, and takes Yap's own
+windows from the same exclusion.
 When a recording is available, the popover appends the latest library item below its transport
 actions and routes Play and Copy agent prompt through the same controls actions as Library.
 

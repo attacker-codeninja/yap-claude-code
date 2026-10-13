@@ -109,6 +109,7 @@ function renderPage(siteUrl) {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Caveat:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <link rel="stylesheet" href="/style.css">
+<script defer src="/_vercel/insights/script.js"></script>
 <script type="application/ld+json">${JSON.stringify(structuredData)}</script>
 <script>document.documentElement.dataset.mode = /[?&#]agent\\b/.test(location.href) || localStorage.getItem("yap-mode") === "agent" ? "agent" : "human";</script>
 </head>

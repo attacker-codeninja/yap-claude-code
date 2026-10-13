@@ -82,9 +82,9 @@ func runSelectionTests() {
     }
     var cameraState = ControlsState()
     cameraState.selection.apply(cameraStart, catalog: cameraState.sources)
-    precondition(cameraState.selection.start() == cameraStart,
+    precondition(cameraState.start() == cameraStart,
                  "An external primary camera retains its exact device identity for restart")
-    let cameraRestart = try! JSONSerialization.jsonObject(with: JSONEncoder().encode(cameraState.selection.start()!)) as! [String: Any]
+    let cameraRestart = try! JSONSerialization.jsonObject(with: JSONEncoder().encode(cameraState.start()!)) as! [String: Any]
     precondition(cameraRestart["cameraDeviceId"] == nil,
                  "A primary camera never emits a companion camera selection")
     precondition(cameraState.beginStart(newRequestId: "missing-camera") == nil,
@@ -104,13 +104,13 @@ func runSelectionTests() {
     precondition(cameraState.beginStart(newRequestId: "disconnected-fresh") == nil,
                  "After resolving the old allocation a disconnected camera cannot start a new take")
     var state = ControlsState()
-    precondition(state.selection.start() == nil, "Nothing starts until a person chooses a source")
+    precondition(state.start() == nil, "Nothing starts until a person chooses a source")
     precondition(
         state.selection.microphone == .systemDefault && state.selection.systemAudio == false,
         "These takes are narrated: the microphone starts on and the machine's own sound off")
 
     state = ready(source: .window(window))
-    guard let narrated = state.selection.start() else { preconditionFailure("A chosen source starts") }
+    guard let narrated = state.start() else { preconditionFailure("A chosen source starts") }
     precondition(
         narrated == .init(source: .window(id: 88), microphone: true, microphoneDeviceId: nil, systemAudio: false),
         "A default start records the chosen window with narration and no system audio")
@@ -118,13 +118,13 @@ func runSelectionTests() {
     state.selection.microphone = .device(id: headset.id, name: headset.name)
     state.selection.systemAudio = true
     precondition(
-        state.selection.start()
+        state.start()
             == .init(source: .window(id: 88), microphone: true, microphoneDeviceId: "mic-headset", systemAudio: true),
         "A named input and system audio are both carried explicitly")
 
     state.selection.microphone = .off
     precondition(
-        state.selection.start()
+        state.start()
             == .init(source: .window(id: 88), microphone: false, microphoneDeviceId: nil, systemAudio: true),
         "Turning narration off refuses the microphone and keeps no device behind it")
 
@@ -132,20 +132,15 @@ func runSelectionTests() {
         ControlsState.Region(
             displayId: 3, displayName: "Studio Display", x: 40, y: 120, width: 800, height: 600))
     precondition(
-        state.selection.start()?.source == .region(displayId: 3, x: 40, y: 120, width: 800, height: 600),
+        state.start()?.source == .region(displayId: 3, x: 40, y: 120, width: 800, height: 600),
         "A region start carries the display-local rectangle it was selected as")
     let active = try! JSONDecoder().decode(ControlsState.CaptureSelection.Start.self, from: Data(
         #"{"source":{"kind":"window","windowId":88},"microphone":false,"systemAudio":true,"cameraDeviceId":"selected-camera"}"#.utf8))
     state.selection.apply(active, catalog: state.sources)
-    precondition(state.selection.start() == active,
-                 "An external take replaces the selected source and both audio choices for restart")
-    let restart = try! JSONSerialization.jsonObject(with: JSONEncoder().encode(state.selection.start()!)) as! [String: Any]
-    precondition(restart["cameraDeviceId"] as? String == "selected-camera",
-                 "Reconstructed requests retain the external caller's camera, without choosing a fallback")
-    let unavailable = try! JSONDecoder().decode(LibraryState.SourceAdmission.self, from: Data(
-        #"{"kind":"camera","sourceId":"camera-source","acquisitionId":null,"job":null,"admissionError":null,"publication":{"state":"unavailable","error":{"code":"NO_CAMERA","message":"No usable camera pictures"}}}"#.utf8))
-    precondition(unavailable.title == "camera publication unavailable — NO_CAMERA: No usable camera pictures",
-                 "A terminal camera failure cannot be presented as waiting for admission")
+    // An absent start state means "on", so the restart states it rather than changing it.
+    precondition(state.start() == .init(source: active.source, microphone: false, microphoneDeviceId: nil,
+                                        systemAudio: true, cameraDeviceId: "selected-camera", cameraAtStart: .on),
+                 "An external take replaces the selected source, both audio choices and its camera for restart")
     precondition(CapturePresentation.sourceTitle(for: state) == "Safari — Pricing",
                  "An external window resolves its catalog label")
     let checkout = ControlsState.Window(id: 88, title: "Checkout", application: "Safari")
@@ -153,14 +148,14 @@ func runSelectionTests() {
     precondition(state.failure == nil, "A title change is not a closed window")
     precondition(CapturePresentation.sourceTitle(for: state) == "Safari — Checkout",
                  "A retained selection shows the refreshed title")
-    precondition(state.selection.start()?.source == .window(id: 88),
+    precondition(state.start()?.source == .window(id: 88),
                  "Renaming a window preserves its capture identity")
     state.observeSources(.init(displays: [display], windows: [], microphones: []))
     precondition(state.failure != nil && state.selection.source == nil,
                  "A missing window is visibly deselected")
     state.failure = nil
     state.observeSources(.init(displays: [display], windows: [], microphones: []))
-    precondition(state.selection.start() == nil,
+    precondition(state.start() == nil,
                  "A source that disappeared is never replaced by a display nobody chose")
 
     var fresh = ControlsState()
@@ -175,6 +170,88 @@ func runSelectionTests() {
             && failing.failure == "TIMEOUT: capture.sources did not answer in time",
         "A catalog read that failed keeps the selection and states its own failure")
     print("PASS a selection becomes exactly the take it describes")
+}
+
+/// A screen take reserves a camera whenever camera access is granted, so it can be turned on
+/// mid-take; the start switch only decides whether it starts on.
+func runCameraReservationTests() {
+    let external = ControlsState.Camera(id: "external", name: "External")
+    let builtIn = ControlsState.Camera(id: "built-in", name: "FaceTime HD Camera", isDefault: true)
+    func screen(access: ControlsState.Access) -> ControlsState {
+        var state = ready(source: .window(window))
+        state.sources.cameras = [external, builtIn]
+        state.permissions = .init(screen: .granted, microphone: .granted, camera: access)
+        return state
+    }
+    func json(_ start: ControlsState.CaptureSelection.Start?) -> [String: Any] {
+        try! JSONSerialization.jsonObject(with: JSONEncoder().encode(start!)) as! [String: Any]
+    }
+
+    var state = screen(access: .granted)
+    precondition(!state.selection.cameraOn, "A fresh launch starts with the camera switch off")
+    let reserved = json(state.start())
+    precondition(reserved["cameraDeviceId"] as? String == "built-in" && reserved["cameraAtStart"] as? String == "off",
+                 "With access, a take reserves the system default camera, off, even with the switch off: \(reserved)")
+
+    precondition(state.setCamera(true) == nil, "Before a take the switch is a selection; nothing is sent")
+    let on = json(state.start())
+    precondition(on["cameraDeviceId"] as? String == "built-in" && on["cameraAtStart"] as? String == "on",
+                 "The switch on starts the reserved camera on: \(on)")
+
+    _ = state.setCamera(false)
+    state.selection.cameraDeviceId = external.id
+    let picked = json(state.start())
+    precondition(picked["cameraDeviceId"] as? String == "external" && picked["cameraAtStart"] as? String == "off",
+                 "Switching off keeps the picked camera, which is the one reserved: \(picked)")
+
+    for access in [ControlsState.Access.undetermined, .denied] {
+        let unauthorized = json(screen(access: access).start())
+        precondition(unauthorized["cameraDeviceId"] == nil && unauthorized["cameraAtStart"] == nil,
+                     "Without camera access (\(access)) a take reserves nothing: \(unauthorized)")
+    }
+    var asked = screen(access: .denied)
+    _ = asked.setCamera(true)
+    let refused = json(asked.start())
+    precondition(refused["cameraDeviceId"] as? String == "built-in" && refused["cameraAtStart"] as? String == "on",
+                 "A camera switched on is still asked for, so a missing permission is refused out loud, not dropped: \(refused)")
+
+    var noCamera = screen(access: .granted)
+    noCamera.sources.cameras = []
+    let alone = json(noCamera.start())
+    precondition(alone["cameraDeviceId"] == nil && alone["cameraAtStart"] == nil, "With no camera there is nothing to reserve")
+
+    var primary = screen(access: .granted)
+    primary.selection.source = .camera
+    primary.selection.cameraDeviceId = external.id
+    let cameraOnly = json(primary.start())
+    precondition(cameraOnly["cameraDeviceId"] == nil && cameraOnly["cameraAtStart"] == nil,
+                 "A camera-only take has no companion to reserve or switch: \(cameraOnly)")
+    precondition(primary.setCamera(false) == nil && primary.start()?.source == ControlsState.CaptureSelection.Start.Source.camera(deviceId: "external"),
+                 "The camera switch cannot turn a camera-only take's source off")
+
+    // A take started elsewhere with its camera reserved and off restarts the same way.
+    let elsewhere = try! JSONDecoder().decode(ControlsState.CaptureSelection.Start.self, from: Data(
+        #"{"source":{"kind":"window","windowId":88},"microphone":false,"systemAudio":false,"cameraDeviceId":"external","cameraAtStart":"off"}"#.utf8))
+    var restarted = screen(access: .granted)
+    restarted.selection.apply(elsewhere, catalog: restarted.sources)
+    precondition(restarted.start() == elsewhere && !restarted.selection.cameraOn,
+                 "A live take's reserved-off camera is what its restart asks for")
+
+    // During a take the same action is a request to the service for the reserved camera.
+    var live = screen(access: .granted)
+    live.device = .init(state: .recording, recordingId: "take-1", elapsedUs: 1_000_000,
+                        camera: .init(deviceId: "built-in", state: .off))
+    precondition(live.setCamera(true) == ControlsState.SetCamera(recordingId: "take-1", on: true),
+                 "A live toggle asks the service to turn the take's camera on")
+    precondition(!live.selection.cameraOn, "A live toggle leaves the next take's start switch alone")
+    live.device = .init(state: .paused, recordingId: "take-1", elapsedUs: 1_000_000,
+                        camera: .init(deviceId: "built-in", state: .on))
+    precondition(live.setCamera(false) == ControlsState.SetCamera(recordingId: "take-1", on: false),
+                 "A paused take's camera can be turned off too")
+    live.device = .init(state: .recording, recordingId: "take-2", elapsedUs: 1_000_000)
+    precondition(live.setCamera(true) == nil && live.failure != nil,
+                 "A take that reserved no camera has none to turn on, and says so")
+    print("PASS a screen take reserves its camera with access and switches it with one action")
 }
 
 func runStartRequestTests() {

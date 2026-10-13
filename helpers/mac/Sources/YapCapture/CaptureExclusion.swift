@@ -1,4 +1,5 @@
 import Foundation
+@preconcurrency import ScreenCaptureKit
 
 /**
  What a display or region take leaves out of the content it records.
@@ -22,5 +23,21 @@ public enum CaptureExclusion {
     ) -> [Application] {
         guard let own, !own.isEmpty else { return [] }
         return applications.filter { identity($0) == own }
+    }
+
+    /**
+     A whole display, minus this application's own windows: what a take of that display records,
+     and what the source chooser's picture of it shows.
+
+     Shareable content only names applications that have something on screen, so an app showing
+     nothing has nothing here to exclude; the panels a take floats over the screen keep themselves
+     out of every capture instead.
+     */
+    public static func displayFilter(_ display: SCDisplay, in content: SCShareableContent) -> SCContentFilter {
+        let own = ownApplications(
+            among: content.applications, bundleIdentifier: Bundle.main.bundleIdentifier,
+            identity: \.bundleIdentifier)
+        guard !own.isEmpty else { return SCContentFilter(display: display, excludingWindows: []) }
+        return SCContentFilter(display: display, excludingApplications: own, exceptingWindows: [])
     }
 }

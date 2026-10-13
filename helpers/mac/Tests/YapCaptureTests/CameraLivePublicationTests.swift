@@ -231,7 +231,7 @@ private func runCameraLivePublicationTest(output: String, firstCameraAfterPrimar
         let lease = try CaptureJournalLease(directory: camera.path)
         defer { lease.release() }
         let verified = try await CameraMedia.readPublished(lease: lease, canonical: camera.appendingPathComponent("video.mov"))
-        precondition(verified.identity.support == receipt.support
+        precondition(verified.identity.availability.support == receipt.support
             && verified.identity.representedFrames == receipt.representedFrames && verified.diagnostics.isEmpty)
         print("PASS active private camera work and exact final publication through NativeCapture")
     } catch {

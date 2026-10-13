@@ -22,6 +22,7 @@ import {
   captureReportSchema,
   captureSourcesSchema,
   nativeStartSchema,
+  operationWaitMs,
   type CaptureReport,
   type CaptureSelection,
   type OperationResult,
@@ -212,6 +213,35 @@ export class CaptureService {
 
   resume(recordingId: string): Promise<Recording> {
     return this.serialize(() => this.transition(recordingId, "capture.resume"));
+  }
+
+  /**
+   * Turns a live take's reserved companion camera on or off. This is not a lifecycle transition:
+   * nothing is stored, and native answers with its device state, which carries the camera's.
+   */
+  setCamera(recordingId: string, on: boolean) {
+    return this.serialize(async () => {
+      const recording = this.store.get(recordingId);
+      if (recording.state !== "recording" && recording.state !== "paused")
+        throw new CatalogError(
+          "INVALID_STATE",
+          `A ${recording.state} take cannot turn its camera ${on ? "on" : "off"}`,
+          { state: recording.state },
+        );
+      if (recording.camera === null)
+        throw new CatalogError("CAMERA_NOT_RESERVED", "This take reserved no companion camera", {
+          recordingId,
+        });
+      // Turning on opens the camera cold, so native gets the operation's whole public budget.
+      const answer = await this.native(
+        "capture.setCamera",
+        { recordingId, on },
+        { timeoutMs: operationWaitMs("capture.setCamera") },
+      );
+      if (!answer.ok) throw fromNative(answer);
+      const device = captureDeviceSchema.parse(answer.data);
+      return { device, recording: this.store.get(recordingId) };
+    });
   }
 
   stop(recordingId: string): Promise<Recording> {
@@ -814,6 +844,8 @@ function allocationArguments(
     selection.systemAudio,
     selection.microphoneDeviceId ?? null,
     selection.cameraDeviceId ?? null,
+    // Absent means "on", so only a different start state is a different take.
+    selection.cameraDeviceId === undefined ? null : (selection.cameraAtStart ?? "on"),
   ]);
 }
 

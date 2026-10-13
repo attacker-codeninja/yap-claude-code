@@ -232,10 +232,13 @@ final class LibraryController {
         }
     }
 
+    /// A source whose publication is unavailable (a camera never turned on, say) has nothing to
+    /// admit, so it is settled rather than awaited.
     private static func pendingAdmission(_ take: ControlsState.RecentTake) -> Bool {
         guard take.sourceAdmissions != nil else { return false }
         return take.state == "finalizing" || take.sourceAdmissions!.contains {
-            $0.admissionError == nil && ($0.acquisitionId == nil || $0.job == nil)
+            $0.admissionError == nil && $0.publication?.state != .unavailable
+                && ($0.acquisitionId == nil || $0.job == nil)
         }
     }
     private static func pending(_ take: ControlsState.RecentTake) -> Bool {

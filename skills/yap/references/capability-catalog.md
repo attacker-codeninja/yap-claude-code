@@ -77,8 +77,11 @@ tools.
 
 `capture.sources`, `capture.start`, `capture.status`, `capture.pause`,
 `capture.resume`, `capture.stop`, `capture.cancel`, and `capture.restart`
-control explicit screen/audio/camera acquisition. `recording.*` operations
-remain the owner of retained recording discovery and cleanup.
+control explicit screen/audio/camera acquisition. `capture.setCamera` turns a
+live screen take's companion camera on or off, any number of times, without
+changing the take's lifecycle; the off time is a gap in the camera source.
+`recording.*` operations remain the owner of retained recording discovery and
+cleanup.
 
 ## App updates, the yap command and skill lifecycle
 

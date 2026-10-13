@@ -3,7 +3,7 @@ import { setImmediate } from "node:timers/promises";
 import type { CaptureStore } from "./capture-store.js";
 import { CatalogError, type Catalog } from "./catalog.js";
 import { SourceEvidenceReader, type RecordQuery, type EvidenceIndex } from "./evidence-read.js";
-import { selectionRangeSchema, type SelectionRange } from "@yap/composition";
+import { compare, fromTime, selectionRangeSchema, type SelectionRange } from "@yap/composition";
 
 export type EvidenceOwner =
   | Readonly<{ kind: "recording"; recordingId: string }>
@@ -34,12 +34,40 @@ export type SourcePublicationProof = Readonly<{
   canonical: SourceFileProof;
   receipt: SourceFileProof;
 }>;
+/** `support` is the outer span; `gaps` (omitted when empty) are the off times strictly inside it. */
 export type CameraPublicationProof = SourcePublicationProof &
   Readonly<{
     mapping: SourceFileProof;
     support: SelectionRange;
+    gaps?: readonly SelectionRange[];
     representedFrames: number;
   }>;
+// A take turns its camera on at most 500 times (the 501st is refused, CAMERA_TOGGLE_LIMIT); each
+// turn-on starts at most one run, so at most 499 gaps.
+const maxCameraGaps = 499;
+/** The only TypeScript reading of camera availability: support minus gaps, as a fresh list. */
+export function cameraProofIntervals(proof: CameraPublicationProof): SelectionRange[] {
+  const intervals: SelectionRange[] = [];
+  let startUs = proof.support.startUs;
+  for (const gap of proof.gaps ?? []) {
+    intervals.push({ startUs, endUs: gap.startUs });
+    startUs = gap.endUs;
+  }
+  intervals.push({ startUs, endUs: proof.support.endUs });
+  return intervals;
+}
+function validCameraGaps(support: SelectionRange, gaps: unknown): boolean {
+  if (gaps === undefined) return true;
+  if (!Array.isArray(gaps) || gaps.length === 0 || gaps.length > maxCameraGaps) return false;
+  let previousEnd = support.startUs;
+  for (const gap of gaps) {
+    const parsed = selectionRangeSchema.safeParse(gap);
+    if (!parsed.success || compare(fromTime(previousEnd), fromTime(parsed.data.startUs)) >= 0)
+      return false;
+    previousEnd = parsed.data.endUs;
+  }
+  return compare(fromTime(previousEnd), fromTime(support.endUs)) < 0;
+}
 export type SourceEvidenceReceipt = Readonly<{
   normalizationVersion?: 2;
   file: string;
@@ -252,6 +280,8 @@ export function validateSourceReceipt(value: unknown, sourceId: string): SourceE
           !selectionRangeSchema.safeParse(identity.support).success)
       )
         invalid("Invalid verified camera support");
+      if (role === "video" && !validCameraGaps(identity.support as SelectionRange, identity.gaps))
+        invalid("Invalid verified camera gaps");
     }
   } else if (header.schemaVersion === 2) invalid("Packed evidence requires verified publications");
   const camera = header.source != null && object(header.source).kind === "camera";

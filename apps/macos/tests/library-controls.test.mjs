@@ -177,6 +177,26 @@ import YapControls
         for _ in 0..<10 { progress.tick(); await Task.yield() }
         precondition(source.count("job.get") == 1 && !source.calls.contains { ["job.retry", "acquisition.import", "processing.status", "index.get"].contains($0.0) })
 
+        // A camera that was never turned on publishes nothing to admit. The take is complete and
+        // settled: no admission is awaited and the recording reads Ready, not as a failure.
+        let neverOn = Script()
+        neverOn.job["state"] = "ready"
+        neverOn.recording["sourceAdmissions"] = [
+            ["kind": "primary", "sourceId": "source-one", "acquisitionId": "acq-one", "job": neverOn.job, "admissionError": NSNull(), "publication": ["state": "published", "error": NSNull()]],
+            ["kind": "camera", "sourceId": "camera-one", "acquisitionId": NSNull(), "job": NSNull(), "admissionError": NSNull(), "publication": ["state": "unavailable", "error": ["code": "CAMERA_NOT_TURNED_ON", "message": "The camera was never turned on"]]],
+        ]
+        let settled = LibraryController(call: { op, params throws(ServiceFailure) in try await neverOn.call(op, params) }, changed: {}, closePreview: { _ in }, forgetExports: { _ in }, deleted: {}, preview: { _ in }, export: { _, _ in })
+        settled.serviceChanged(ready: true)
+        await until { settled.state.recent.count == 1 && !settled.state.projectsRefreshing }
+        for _ in 0..<10 { settled.tick(); await Task.yield() }
+        precondition(neverOn.count("recording.get") == 0 && neverOn.count("job.get") == 0,
+                     "A never-turned-on camera leaves nothing to poll: \(neverOn.calls.map(\.0))")
+        var neverOnState = ControlsState(); neverOnState.service = .ready; neverOnState.library = settled.state
+        let neverOnRow = LibraryPresentation.recordings(for: neverOnState).items[0]
+        precondition(neverOnRow.status == "Ready" && neverOnRow.details == ["Microphone audio"],
+                     "A never-turned-on camera is not an error row: \(neverOnRow.status) \(neverOnRow.details)")
+        settled.serviceChanged(ready: false)
+
         // A delayed job answer for the old row cannot clear the next row's source job failure.
         let overlapping = Script()
         overlapping.recording["sourceAdmissions"] = [["kind": "primary", "sourceId": "source-one", "acquisitionId": "acq-one", "job": overlapping.job, "admissionError": NSNull()]]

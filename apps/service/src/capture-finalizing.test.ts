@@ -14,6 +14,7 @@ const idleNative: OperationResult = {
     sourceId: null,
     elapsedUs: null,
     selection: null,
+    camera: null,
     permissions: { screen: true, microphone: "authorized", camera: "not_determined" },
   },
 };
@@ -111,6 +112,7 @@ test("finalizing acknowledgment releases control order while cancellation waits 
             sourceId: recording.sourceId,
             elapsedUs: 1,
             selection: null,
+            camera: null,
             permissions: { screen: true, microphone: "authorized", camera: "not_determined" },
           },
         };
@@ -298,6 +300,7 @@ test("absent-native recovery acknowledges finalizing before media finishes and r
               sourceId: null,
               elapsedUs: null,
               selection: null,
+              camera: null,
               permissions: { screen: true, microphone: "authorized", camera: "not_determined" },
             },
           }
@@ -376,6 +379,7 @@ test.each(["recording", "finalizing", "idle"] as const)(
             sourceId: take.sourceId,
             elapsedUs: 10,
             selection: null,
+            camera: null,
             permissions: { screen: true, microphone: "authorized", camera: "not_determined" },
           },
         };

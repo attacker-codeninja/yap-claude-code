@@ -7,7 +7,6 @@ enum CaptureViewIntent: Equatable {
     case controls(ControlsAction)
     case chooseSource(CaptureViewInput.Source)
     case camera(String?)
-    case cameraEnabled(Bool)
     case countdown(Bool)
     case openLibrary
 }
@@ -18,6 +17,12 @@ struct CaptureViewInput: Equatable {
     struct Choice: Equatable {
         let title: String
         let intent: CaptureViewIntent
+        /// Compared by identity, so a picture that arrives after the menu is drawn redraws it.
+        let preview: NSImage?
+
+        init(title: String, intent: CaptureViewIntent, preview: NSImage? = nil) {
+            self.title = title; self.intent = intent; self.preview = preview
+        }
     }
     struct LastRecording: Equatable {
         let recordingId: String
@@ -30,7 +35,7 @@ struct CaptureViewInput: Equatable {
     let sourceChoices: [Choice]
     let cameraChoices: [Choice]
     let selectedCamera: Int
-    let cameraOn: Bool
+    var cameraOn: Bool
     let microphoneChoices: [Choice]
     let selectedMicrophone: Int
     let microphoneOn: Bool
@@ -46,6 +51,9 @@ struct CaptureViewInput: Equatable {
     var startTitle: String = "Start Recording"
     var startShortcut: String? = nil
     var lastRecording: LastRecording? = nil
+    /// The running take reserved a camera, so its switch turns that camera on and off while the
+    /// other inputs stay fixed.
+    var liveCamera = false
 }
 
 /// The production capture surface. Its caller supplies a fresh value after any accepted action.
@@ -132,8 +140,7 @@ final class CaptureView: NSView {
     private func button(_ title: String, id: String, frame: NSRect, intent: CaptureViewIntent?,
                         kind: CaptureButton.Kind = .plain, symbol: String? = nil, enabled: Bool = true,
                         host: NSView? = nil) {
-        usedControls.insert(id)
-        let button = controls[id] as? CaptureButton ?? CaptureButton(title: title, kind: kind, symbol: symbol)
+        let button = reuse(id) { CaptureButton(title: title, kind: kind, symbol: symbol) }
         button.configure(title: title, kind: kind, symbol: symbol)
         button.frame = frame
         button.isEnabled = enabled && intent != nil
@@ -149,8 +156,7 @@ final class CaptureView: NSView {
     }
 
     private func toggle(_ title: String, id: String, frame: NSRect, intent: CaptureViewIntent?, on: Bool, enabled: Bool) {
-        usedControls.insert(id)
-        let toggle = controls[id] as? NSSwitch ?? NSSwitch()
+        let toggle = reuse(id) { NSSwitch() }
         toggle.controlSize = .small
         toggle.sizeToFit()
         let nativeSize = toggle.frame.size
@@ -170,8 +176,18 @@ final class CaptureView: NSView {
     }
 
     private func popup(_ values: [CaptureViewInput.Choice], selected: Int, id: String, frame: NSRect) {
-        usedControls.insert(id)
-        let popup = controls[id] as? CapturePopup ?? CapturePopup(frame: frame, pullsDown: false)
+        if id == "source.device" && values.contains(where: { $0.preview != nil }) {
+            let picker = reuse(id) { SourcePickerButton() }
+            picker.frame = frame
+            picker.configure(values: values, selected: selected) { [weak self] intent in self?.perform(intent) }
+            picker.isEnabled = input.inputsEnabled && input.screenSourcesEnabled
+            picker.identifier = .init(id)
+            picker.setAccessibilityLabel("Capture source")
+            if picker.superview !== document { document.addSubview(picker, positioned: .above, relativeTo: nil) }
+            controls[id] = picker
+            return
+        }
+        let popup = reuse(id) { CapturePopup(frame: frame, pullsDown: false) }
         popup.frame = frame
         popup.isBordered = false
         popup.font = .systemFont(ofSize: 12, weight: .regular)
@@ -191,6 +207,22 @@ final class CaptureView: NSView {
         if popup.superview !== document { document.addSubview(popup, positioned: .above, relativeTo: nil) }
         controls[id] = popup
         choices[ObjectIdentifier(popup)] = values
+    }
+
+    /// The control already shown for `id`, kept so focus and identity survive a rebuild. A control
+    /// of another kind (the source field becomes a picture chooser once pictures arrive) leaves.
+    private func reuse<Control: NSControl>(_ id: String, make: () -> Control) -> Control {
+        usedControls.insert(id)
+        if let existing = controls[id] as? Control { return existing }
+        if let other = controls[id] { forget(other, id: id) }
+        return make()
+    }
+
+    private func forget(_ control: NSControl, id: String) {
+        control.removeFromSuperview()
+        intents.removeValue(forKey: ObjectIdentifier(control))
+        choices.removeValue(forKey: ObjectIdentifier(control))
+        controls.removeValue(forKey: id)
     }
 
     private func icon(_ name: String, frame: NSRect, color: NSColor = NSColor.labelColor.withAlphaComponent(0.65)) {
@@ -236,7 +268,7 @@ final class CaptureView: NSView {
         let microphoneIntent: CaptureViewIntent? = input.microphoneOn ? .controls(.disableMicrophone)
             : input.microphoneChoices.indices.contains(input.selectedMicrophone) ? input.microphoneChoices[input.selectedMicrophone].intent : nil
         let rows: [(String, String, String?, Bool, CaptureViewIntent?)] = [
-            ("camera", "video", input.selectedSource == .cameraOnly ? "Camera is the recording source" : nil, input.cameraOn, .cameraEnabled(!input.cameraOn)),
+            ("camera", "video", input.selectedSource == .cameraOnly ? "Camera is the recording source" : nil, input.cameraOn, .controls(.setCamera(!input.cameraOn))),
             ("microphone", "mic", nil, input.microphoneOn, microphoneIntent),
             ("systemAudio", "speaker.wave.2", "Everything your Mac plays", input.systemAudio, .controls(.toggleSystemAudio)),
             ("countdown", "stopwatch", nil, input.countdown, .countdown(!input.countdown)),
@@ -257,7 +289,7 @@ final class CaptureView: NSView {
             if id == "camera", CapturePresentation.cameraIsRequired(cameraOnly: input.selectedSource == .cameraOnly, selectedCameraIndex: input.selectedCamera) {
                 label("Required", NSRect(x: 280, y: centerY - 8, width: 56, height: 16), size: 10, weight: .medium, color: .systemBlue)
             } else {
-                toggle(id == "systemAudio" ? "System audio" : id.capitalized, id: "\(id).toggle", frame: NSRect(x: 296, y: centerY - 9, width: 38, height: 18), intent: intent, on: on, enabled: input.inputsEnabled)
+                toggle(id == "systemAudio" ? "System audio" : id.capitalized, id: "\(id).toggle", frame: NSRect(x: 296, y: centerY - 9, width: 38, height: 18), intent: intent, on: on, enabled: input.inputsEnabled || (id == "camera" && input.liveCamera))
             }
             y += rowHeight
         }
@@ -336,12 +368,7 @@ final class CaptureView: NSView {
         footer.addSubview(statusDot)
         label(input.status, NSRect(x: 28, y: 35, width: 247, height: 16), size: 11, color: .secondaryLabelColor, host: footer)
         button("Quit", id: "app.quit", frame: NSRect(x: 295, y: 32, width: 37, height: 22), intent: .controls(.quit), host: footer)
-        for (id, control) in controls where !usedControls.contains(id) {
-            control.removeFromSuperview()
-            intents.removeValue(forKey: ObjectIdentifier(control))
-            choices.removeValue(forKey: ObjectIdentifier(control))
-        }
-        controls = controls.filter { usedControls.contains($0.key) }
+        for (id, control) in controls where !usedControls.contains(id) { forget(control, id: id) }
         contentHeight = footerY + Self.footerHeight + 2
         document.frame = NSRect(x: 0, y: 0, width: Self.preferredWidth,
                                 height: max(1, footerY))
@@ -359,6 +386,114 @@ final class CaptureView: NSView {
     }
 }
 
+/// The source field: the chosen display or window by picture and name, opening a chooser of a
+/// card per source so each is recognizable before it is picked.
+final class SourcePickerButton: NSButton {
+    private var values: [CaptureViewInput.Choice] = []
+    private(set) var selected = -1
+    private var chooser: NSPopover?
+    private var perform: ((CaptureViewIntent) -> Void)?
+    override class var cellClass: AnyClass? {
+        get { CaptureButtonCell.self }
+        set {}
+    }
+
+    func configure(values: [CaptureViewInput.Choice], selected: Int,
+                   choose perform: @escaping (CaptureViewIntent) -> Void) {
+        self.values = values; self.selected = selected; self.perform = perform
+        title = values.indices.contains(selected) ? values[selected].title : (values.first?.title ?? "Choose source")
+        alignment = .left; font = .systemFont(ofSize: 12); isBordered = false
+        image = nil
+        target = self; action = #selector(openChooser)
+        needsDisplay = true
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        captureRaisedColor().setFill()
+        NSBezierPath(roundedRect: bounds, xRadius: 7, yRadius: 7).fill()
+        let value = values.indices.contains(selected) ? values[selected] : nil
+        let text = value?.title ?? title
+        let attributes: [NSAttributedString.Key: Any] = [.font: font ?? NSFont.systemFont(ofSize: 12), .foregroundColor: isEnabled ? NSColor.labelColor : NSColor.secondaryLabelColor]
+        let imageRect = NSRect(x: 6, y: 4, width: 32, height: max(1, bounds.height - 8))
+        if let preview = value?.preview { drawSourcePicture(preview, in: imageRect, cornerRadius: 2) }
+        (text as NSString).draw(at: NSPoint(x: value?.preview == nil ? 8 : 45, y: (bounds.height - 14) / 2), withAttributes: attributes)
+        if let chevron = captureSymbol("chevron.down", color: .secondaryLabelColor) { chevron.draw(in: NSRect(x: bounds.width - 16, y: bounds.midY - 3, width: 8, height: 6)) }
+        if isHighlighted {
+            capturePressedColor().setFill()
+            NSBezierPath(roundedRect: bounds, xRadius: 7, yRadius: 7).fill()
+        }
+    }
+
+    @objc private func openChooser() {
+        guard !values.isEmpty else { return }
+        let controller = NSViewController(); controller.view = chooserView()
+        let popover = NSPopover(); popover.contentViewController = controller; popover.behavior = .transient; popover.animates = true
+        popover.appearance = NSAppearance(named: .darkAqua)
+        chooser = popover; popover.show(relativeTo: bounds, of: self, preferredEdge: .maxY)
+    }
+
+    /// The cards the chooser shows, one per source, on the menu's dark surface. Past four and a half
+    /// rows they scroll, opened at the chosen source.
+    func chooserView() -> NSView {
+        let columns = 2, width: CGFloat = 173, height: CGFloat = 132, gap: CGFloat = 8
+        let rows = (values.count + columns - 1) / columns
+        let content = SourceChooserView(frame: NSRect(x: 0, y: 0, width: gap + CGFloat(columns) * (width + gap),
+                                                      height: gap + CGFloat(max(1, rows)) * (height + gap)))
+        content.appearance = NSAppearance(named: .darkAqua)
+        for (index, value) in values.enumerated() {
+            let card = CaptureButton(title: value.title, kind: .source(picture: value.preview, selected: index == selected), symbol: nil)
+            card.tag = index; card.identifier = .init("source.card.\(index)"); card.toolTip = value.title
+            card.target = self; card.action = #selector(selectCard(_:))
+            card.frame = NSRect(x: gap + CGFloat(index % columns) * (width + gap),
+                                y: gap + CGFloat(index / columns) * (height + gap), width: width, height: height)
+            content.addSubview(card)
+        }
+        let visible = gap + 4.5 * (height + gap)
+        guard content.frame.height > visible else { return content }
+        let scroller = NSScrollView(frame: NSRect(x: 0, y: 0, width: content.frame.width, height: visible))
+        scroller.appearance = content.appearance
+        scroller.drawsBackground = false
+        scroller.hasVerticalScroller = true
+        scroller.scrollerStyle = .overlay
+        scroller.documentView = content
+        if values.indices.contains(selected) {
+            content.scrollToVisible(content.subviews[selected].frame.insetBy(dx: 0, dy: -gap))
+        }
+        return scroller
+    }
+
+    @objc private func selectCard(_ sender: NSButton) { choose(at: sender.tag) }
+
+    /// Chooses the source at `index`, as clicking its card does.
+    func choose(at index: Int) {
+        guard values.indices.contains(index) else { return }
+        chooser?.close(); chooser = nil; perform?(values[index].intent)
+    }
+}
+
+@MainActor
+private final class SourceChooserView: NSView {
+    override var isFlipped: Bool { true }
+}
+
+/// The largest rect of `size`'s shape centred in `box`; nil for an image with no size.
+private func aspectFit(_ size: NSSize, in box: NSRect) -> NSRect? {
+    guard size.width > 0, size.height > 0 else { return nil }
+    let scale = min(box.width / size.width, box.height / size.height)
+    return NSRect(x: box.midX - size.width * scale / 2, y: box.midY - size.height * scale / 2,
+                  width: size.width * scale, height: size.height * scale)
+}
+
+/// Draws a source's picture whole inside `box`, centred, at its own shape.
+private func drawSourcePicture(_ image: NSImage, in box: NSRect, cornerRadius: CGFloat) {
+    guard let fitted = aspectFit(image.size, in: box) else { return }
+    NSGraphicsContext.saveGraphicsState()
+    NSBezierPath(roundedRect: fitted, xRadius: cornerRadius, yRadius: cornerRadius).addClip()
+    image.draw(in: fitted, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true,
+               hints: [.interpolation: NSImageInterpolation.high])
+    NSGraphicsContext.restoreGraphicsState()
+}
+
 @MainActor
 private final class CaptureDocument: NSView {
     override var isFlipped: Bool { true }
@@ -367,10 +502,15 @@ private final class CaptureDocument: NSView {
 /// Native momentary buttons draw the frozen geometry; they never mutate their supplied selection.
 @MainActor
 private final class CaptureButton: NSButton {
-    enum Kind { case plain, tile(selected: Bool), primary(shortcut: String?), permission(role: String), secondary }
+    /// A `source` is a chooser card: the source's picture drawn whole at its own shape, its name beneath.
+    enum Kind { case plain, tile(selected: Bool), source(picture: NSImage?, selected: Bool), primary(shortcut: String?), permission(role: String), secondary }
     private var kind: Kind
     private var symbol: String?
     override var isFlipped: Bool { true }
+    override class var cellClass: AnyClass? {
+        get { CaptureButtonCell.self }
+        set {}
+    }
     init(title: String, kind: Kind, symbol: String?) {
         self.kind = kind
         self.symbol = symbol
@@ -388,7 +528,7 @@ private final class CaptureButton: NSButton {
         needsDisplay = true
         setAccessibilityElement(true)
         switch kind {
-        case .tile(let selected):
+        case .tile(let selected), .source(_, let selected):
             setAccessibilityRole(.radioButton)
             setAccessibilityValue(NSNumber(value: selected))
         default: setAccessibilityRole(.button)
@@ -405,15 +545,11 @@ private final class CaptureButton: NSButton {
         }
         func image(_ frame: NSRect, color: NSColor, name: String? = nil) {
             guard let symbol = name ?? symbol else { return }
-            guard let image = captureSymbol(symbol, color: color), image.size.width > 0, image.size.height > 0 else { return }
-            let scale = min(frame.width / image.size.width, frame.height / image.size.height)
-            let size = NSSize(width: image.size.width * scale, height: image.size.height * scale)
-            let fitted = NSRect(x: frame.midX - size.width / 2, y: frame.midY - size.height / 2, width: size.width, height: size.height)
+            guard let image = captureSymbol(symbol, color: color), let fitted = aspectFit(image.size, in: frame) else { return }
             image.draw(in: fitted, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: [.interpolation: NSImageInterpolation.high])
         }
-        switch kind {
-        case .tile(let selected):
-            let selectionColor = isEnabled ? blue : muted
+        let selectionColor = isEnabled ? blue : muted
+        func tile(selected: Bool) {
             let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.75, dy: 0.75), xRadius: 9, yRadius: 9)
             (selected ? selectionColor.withAlphaComponent(0.12) : captureRaisedColor()).setFill()
             path.fill()
@@ -422,8 +558,26 @@ private final class CaptureButton: NSButton {
                 path.lineWidth = 1
                 path.stroke()
             }
+        }
+        switch kind {
+        case .tile(let selected):
+            tile(selected: selected)
             image(NSRect(x: (bounds.width - 18) / 2, y: 11, width: 18, height: 18), color: selected ? selectionColor : muted)
             text(title, y: 37, size: 11, weight: .medium, color: isEnabled ? .labelColor : muted)
+        case .source(let picture, let selected):
+            tile(selected: selected)
+            let well = NSRect(x: 8, y: 8, width: bounds.width - 16, height: bounds.height - 40)
+            NSColor.black.withAlphaComponent(0.28).setFill()
+            NSBezierPath(roundedRect: well, xRadius: 5, yRadius: 5).fill()
+            if let picture { drawSourcePicture(picture, in: well.insetBy(dx: 2, dy: 2), cornerRadius: 4) }
+            else { image(NSRect(x: well.midX - 18, y: well.midY - 15, width: 36, height: 30), color: muted, name: "macwindow") }
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.alignment = .center
+            paragraph.lineBreakMode = .byTruncatingTail
+            (title as NSString).draw(
+                in: NSRect(x: 8, y: bounds.height - 27, width: bounds.width - 16, height: 16),
+                withAttributes: [.font: NSFont.systemFont(ofSize: 11, weight: selected ? .semibold : .regular),
+                                 .foregroundColor: NSColor.labelColor, .paragraphStyle: paragraph])
         case .primary(let binding):
             (isEnabled ? blue : blue.withAlphaComponent(0.16)).setFill()
             let foreground = isEnabled ? NSColor.white : captureDisabledBlue()
@@ -448,6 +602,19 @@ private final class CaptureButton: NSButton {
             if symbol != nil { image(bounds.insetBy(dx: 6, dy: 6), color: muted) }
             else { text(title, y: (bounds.height - NSFont.systemFont(ofSize: 11).boundingRectForFont.height) / 2, size: 11, weight: .regular, color: muted) }
         }
+        if isHighlighted {
+            let radius: CGFloat = switch kind { case .tile, .source: 9; case .primary: 10; default: 7 }
+            capturePressedColor().setFill()
+            NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).fill()
+        }
+    }
+}
+
+/// Click tracking toggles the cell's highlight; the button draws itself, so it must repaint.
+@MainActor
+private final class CaptureButtonCell: NSButtonCell {
+    override var isHighlighted: Bool {
+        didSet { if isHighlighted != oldValue { controlView?.needsDisplay = true } }
     }
 }
 
@@ -491,6 +658,14 @@ private func captureRaisedColor() -> NSColor {
         appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             ? NSColor.white.withAlphaComponent(0.065)
             : NSColor.black.withAlphaComponent(0.045)
+    }
+}
+
+private func capturePressedColor() -> NSColor {
+    NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor.white.withAlphaComponent(0.12)
+            : NSColor.black.withAlphaComponent(0.10)
     }
 }
 

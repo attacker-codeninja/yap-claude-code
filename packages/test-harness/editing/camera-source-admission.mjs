@@ -1,14 +1,27 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { chmod, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  access,
+  chmod,
+  cp,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { JourneyService, hash, poll } from "./source-evidence-fixture.mjs";
 
 // Native fixtures come from CameraWriter/CameraMedia; no physical input or model operation.
-const [sourceArg, outputArg] = process.argv.slice(2);
-assert.ok(sourceArg && outputArg && process.env.YAP_NATIVE);
+// <source> is YAP_CAMERA_SOURCE_ADMISSION_OUTPUT, <availability> YAP_CAMERA_AVAILABILITY_OUTPUT.
+const [sourceArg, outputArg, availabilityArg] = process.argv.slice(2);
+assert.ok(sourceArg && outputArg && availabilityArg && process.env.YAP_NATIVE);
 const source = resolve(sourceArg),
-  out = resolve(outputArg);
+  out = resolve(outputArg),
+  availability = resolve(availabilityArg);
 await mkdir(out, { recursive: true });
 const home = await mkdtemp("/tmp/yap-camera-admission-");
 const destination = await mkdtemp("/tmp/yap-camera-relocation-");
@@ -86,6 +99,56 @@ try {
     ordinaryAssetImport: true,
   };
 
+  // Gapped takes: the probe of each canonical movie, rounded to microseconds by the service,
+  // must give exactly the receipt's intervals (support minus gaps) from the asset origin.
+  report.checks.gapped = {};
+  for (const name of (await readdir(availability)).sort()) {
+    const directory = join(availability, name);
+    const published = await access(join(directory, "camera.publication.json")).then(
+      () => true,
+      () => false,
+    );
+    if (!published) continue;
+    const receipt = JSON.parse(await readFile(join(directory, "camera.publication.json"), "utf8"));
+    const copy = join(home, `available-${name}`);
+    await cp(directory, copy, { recursive: true });
+    const { acquisition } = await importSource(copy, `available-${name}`);
+    const [video] = acquisition.bindings;
+    const proof = acquisition.evidence.receipt.publications.video;
+    const bounds = [receipt.support.startUs];
+    for (const gap of receipt.gaps ?? []) bounds.push(gap.startUs, gap.endUs);
+    bounds.push(receipt.support.endUs);
+    const intervals = [];
+    for (let index = 0; index < bounds.length; index += 2)
+      intervals.push({
+        startUs: bounds[index] - receipt.support.startUs,
+        endUs: bounds[index + 1] - receipt.support.startUs,
+      });
+    assert.deepEqual(video.available, intervals, name);
+    assert.deepEqual(proof.gaps, receipt.gaps, name);
+    report.checks.gapped[name] = { support: receipt.support, gaps: receipt.gaps?.length ?? 0 };
+    if (name === "on-off-on")
+      assert.deepEqual(video.available, [
+        { startUs: 0, endUs: 150000 },
+        { startUs: 500000, endUs: 600000 },
+      ]);
+    if (name === "many-gaps") {
+      // The largest receipt a take can make: 500 turn-ons (CAMERA_TOGGLE_LIMIT), 499 gaps.
+      assert.equal(receipt.gaps.length, 499);
+      const receiptBytes = (await stat(join(directory, "camera.publication.json"))).size;
+      const normalizedBytes = Buffer.byteLength(JSON.stringify(acquisition.evidence.receipt));
+      assert.ok(receiptBytes <= 65536, `camera.publication.json is ${receiptBytes} bytes`);
+      assert.ok(normalizedBytes <= 32768, `normalized receipt is ${normalizedBytes} bytes`);
+      report.checks.gapped[name].bytes = {
+        receipt: receiptBytes,
+        receiptLimit: 65536,
+        normalized: normalizedBytes,
+        normalizedLimit: 32768,
+      };
+    }
+  }
+  assert.ok(report.checks.gapped["on-off-on"] && report.checks.gapped["many-gaps"]);
+
   for (const mode of [
     "missing-receipt",
     "missing-mapping",
@@ -133,7 +196,7 @@ try {
       if (mode === "wrong-binding") rows[0].data.cameraBinding.deviceId = "another-device";
       if (mode === "wrong-origin") rows.find((row) => row.event === "origin").data.hostUs += 1;
       if (mode === "wrong-pause")
-        rows.find((row) => row.event === "pausePlaced").data.elapsedPauseUs += 1;
+        rows.find((row) => row.event === "pauseEnded").data.pause.elapsedPauseUs += 1;
       await writeFile(file, rows.map(JSON.stringify).join("\n") + "\n");
     }
     const pending = await service.call("acquisition.import", { path, requestId: mode });

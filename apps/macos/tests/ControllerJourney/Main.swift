@@ -72,9 +72,10 @@ struct ControllerJourney {
                     emit(["id": id, "ok": true, "isCapturing": controller.isCapturing,
                         "stops": inputs.current?.stops ?? 0,
                         "closures": inputs.current?.finalizations ?? 0,
-                        "cameraStarts": inputs.cameraSession?.starts ?? 0,
-                        "cameraStops": inputs.cameraSession?.stops ?? 0,
-                        "inputBoundary": inputs.cameraSession == nil ? "PrerecordedCaptureInput" : "CameraCaptureInput",
+                        "cameraOpens": inputs.cameraDevice?.opens ?? 0,
+                        "cameraStarts": inputs.cameraDevice?.sessions.reduce(0) { $0 + $1.starts } ?? 0,
+                        "cameraStops": inputs.cameraDevice?.sessions.reduce(0) { $0 + $1.stops } ?? 0,
+                        "inputBoundary": inputs.cameraDevice == nil ? "PrerecordedCaptureInput" : "CameraCaptureInput",
                         "requests": inputs.requests])
                 case "close":
                     inputs.releasePreparation.release()
@@ -102,7 +103,7 @@ final class JourneyInputs {
     let audio: String?
     var configuration: [String: Any] = [:]
     var current: PrerecordedCaptureInput?
-    var cameraSession: FixtureCameraSession?
+    var cameraDevice: FixtureCameraDevice?
     var requests: [[String: Any]] = []
     var heldDirectories: [String] = []
     let releasePreparation = InputGate()
@@ -132,13 +133,22 @@ final class JourneyInputs {
             let directory = URL(fileURLWithPath: request.outputDirectory).deletingLastPathComponent()
             precondition(directory.appendingPathComponent("camera").path == camera.outputDirectory)
             if configuration["productionCamera"] as? Bool == true {
-                let session = FixtureCameraSession(source: URL(fileURLWithPath: video), origin: { input.fixtureOrigin! })
-                cameraSession = session
+                let video = URL(fileURLWithPath: video)
+                // A camera opened mid-take stamps its pictures from the moment it opens.
+                func session(now: Bool) -> FixtureCameraSession {
+                    let session = FixtureCameraSession(source: video, origin: { input.fixtureOrigin! })
+                    session.startsAtNow = now
+                    return session
+                }
+                let device = FixtureCameraDevice(camera.binding.deviceId, session: session(now: !camera.startsOn))
+                device.reopen = { session(now: true) }
+                cameraDevice = device
                 current = input
                 let cameraDirectory = URL(fileURLWithPath: camera.outputDirectory)
-                return CameraCaptureInput(primary: input, camera: session,
+                return try await prepareFixtureCompanion(request, screen: input, device: device,
                     selection: .init(id: camera.binding.deviceId, directory: cameraDirectory,
-                        observations: cameraDirectory.appendingPathComponent(CameraMedia.mappingFile), binding: camera.binding))
+                        observations: cameraDirectory.appendingPathComponent(CameraMedia.mappingFile),
+                        binding: camera.binding, startsOn: camera.startsOn))
             }
             input.probeDirectory = directory
             input.cameraBinding = camera.binding

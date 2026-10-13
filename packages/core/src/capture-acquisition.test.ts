@@ -619,3 +619,152 @@ test("a busy donor lease preserves frozen capture identity for explicit retry", 
     published: { output: { acquisitionId: job.target.acquisitionId } },
   });
 });
+
+/** A published companion camera whose native proof has one off gap (source 150..250 of 100..400). */
+async function cameraTake(f: Awaited<ReturnType<typeof fixture>>) {
+  const hash = (value: string) => createHash("sha256").update(value).digest("hex");
+  const identity = (value: string) => ({
+    bytes: String(Buffer.byteLength(value)),
+    sha256: hash(value),
+  });
+  const recording = f.captures.allocate({
+    requestId: "camera-take",
+    arguments: "camera-a",
+    cameraDeviceId: "camera-a",
+  }).recording;
+  const camera = recording.camera!;
+  const binding = { recordingId: recording.recordingId, ...camera };
+  const donor = join(f.root, "recordings", recording.recordingId, "camera");
+  await mkdir(donor, { recursive: true, mode: 0o700 });
+  const bodies = {
+    "capture.journal.jsonl": JSON.stringify({
+      sessionID: camera.sourceId,
+      schemaVersion: 1,
+      source: { kind: "camera" },
+      cameraBinding: binding,
+    }),
+    "video.mov": "video",
+    "camera.publication.json": "camera receipt",
+    "camera.mapping.jsonl": "camera mapping\n",
+  };
+  for (const [name, body] of Object.entries(bodies)) await writeFile(join(donor, name), body);
+  const journal = bodies["capture.journal.jsonl"];
+  const source = {
+    kind: "camera" as const,
+    sourceId: camera.sourceId,
+    sourceDurationUs: 400,
+    originHostUs: 0,
+    binding,
+    journal: {
+      file: "capture.journal.jsonl" as const,
+      bytes: Buffer.byteLength(journal),
+      sha256: hash(journal),
+      lastSequence: 2,
+      layout: 1 as const,
+    },
+    members: {
+      "video.mov": identity(bodies["video.mov"]),
+      "camera.publication.json": identity(bodies["camera.publication.json"]),
+      "camera.mapping.jsonl": identity(bodies["camera.mapping.jsonl"]),
+    },
+  };
+  await writeFile(join(donor, "source.publication.json"), JSON.stringify(source));
+  f.captures.ingestLifecycle(recording.recordingId, {
+    sourceId: recording.sourceId,
+    sequence: 1,
+    state: "finalizing",
+    publication: {
+      generation: "camera-take",
+      sourceId: recording.sourceId,
+      inputsClosed: true,
+      primary: { state: "unavailable", error: { code: "NO_VIDEO", message: "Fixture" } },
+      camera: { state: "published", source },
+    },
+  });
+  const ordinary = f.native.exportSource;
+  f.native.exportSource = async (...args) => ({
+    ...(await ordinary(...args)),
+    publications: {
+      video: {
+        canonical: source.members["video.mov"],
+        receipt: source.members["camera.publication.json"],
+        mapping: source.members["camera.mapping.jsonl"],
+        support: { startUs: 100, endUs: 400 },
+        gaps: [{ startUs: 150, endUs: 250 }],
+        representedFrames: 6,
+      },
+    },
+  });
+  const job = f.queue.submit(() => {
+    const intent = f.acquisitions.admitCapture(
+      f.captures,
+      recording.recordingId,
+      donor,
+      camera.sourceId,
+    );
+    return {
+      target: { kind: "acquisition", acquisitionId: intent.acquisitionId },
+      artifact: "acquisition.import",
+      lane: "heavy",
+      input: "capture",
+    };
+  });
+  if (job.target.kind !== "acquisition") throw new Error("Wrong domain");
+  return { jobId: job.jobId, acquisitionId: job.target.acquisitionId };
+}
+const cameraProbe =
+  (segments: { startUs: number; endUs: number; empty: boolean }[]) => async () => ({
+    originUs: 100,
+    streams: [
+      {
+        id: "track:1",
+        kind: "video",
+        codec: "fixture",
+        width: 16,
+        height: 16,
+        orientedWidth: 16,
+        orientedHeight: 16,
+        decodable: true,
+        startUs: 0,
+        endUs: 300,
+        segments,
+      },
+    ],
+  });
+
+test("a captured camera with off time publishes its gap as unavailable acquisition support", async () => {
+  const f = await fixture();
+  const take = await cameraTake(f);
+  f.native.probe = cameraProbe([
+    { startUs: 0, endUs: 50, empty: false },
+    { startUs: 50, endUs: 150, empty: true },
+    { startUs: 150, endUs: 300, empty: false },
+  ]);
+  f.queue.start();
+  await f.queue.idle();
+  expect(f.queue.inspect(take.jobId)).toMatchObject({ state: "ready" });
+  expect(f.acquisitions.get(take.acquisitionId).bindings).toMatchObject([
+    {
+      sourceRoles: ["video"],
+      available: [
+        { startUs: 0, endUs: 50 },
+        { startUs: 150, endUs: 300 },
+      ],
+      supportBasis: "physical",
+    },
+  ]);
+});
+
+test("a captured camera movie holding a picture across its off time is refused", async () => {
+  const f = await fixture();
+  const take = await cameraTake(f);
+  f.native.probe = cameraProbe([{ startUs: 0, endUs: 300, empty: false }]);
+  f.queue.start();
+  await f.queue.idle();
+  expect(f.queue.inspect(take.jobId)).toMatchObject({
+    state: "failed",
+    errorCode: "INVALID_EVIDENCE",
+    retryable: false,
+  });
+  expect(() => f.acquisitions.get(take.acquisitionId)).toThrow();
+});

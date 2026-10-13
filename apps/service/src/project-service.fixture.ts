@@ -94,6 +94,8 @@ export async function projectServiceFixture(
     autoPrepareModels: false,
     home,
     worker: probeFileFixture(home, worker),
+    // The fake worker is the whole native side; a YAP_NATIVE in the caller's environment is not it.
+    nativeExecutable: undefined,
   });
   cleanups.push(() => service.close());
   async function call(operation: string, params: Record<string, unknown>) {

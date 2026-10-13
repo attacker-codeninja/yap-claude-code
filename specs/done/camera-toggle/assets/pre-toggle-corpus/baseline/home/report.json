@@ -1,0 +1,76 @@
+{
+  "scope": "Existing library under the tested service on an APFS clone: recordings, source admission, camera availability, receipts, frames and project rendering; originals read-only",
+  "passed": true,
+  "library": "/Users/server/.yap",
+  "nativeSha256": "0dc7c95af6dc786e53e423b2892da10bdf59e8cdafd156af0dff15076e3d64d2",
+  "harnessSha256": "5cc8c657f46ab6a7d439dbf4585949b6736f87c964a22fd10a9d90543de78247",
+  "trace": [
+    {
+      "operation": "recording.list",
+      "transport": "cli",
+      "ok": true
+    },
+    {
+      "operation": "project.list",
+      "transport": "cli",
+      "ok": true
+    }
+  ],
+  "exchanges": [
+    {
+      "request": {
+        "operation": "recording.list",
+        "params": {},
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "recordings": [],
+          "nextCursor": null
+        },
+        "id": "3072ae6e-f6fd-4fef-adae-7bc014c36751"
+      }
+    },
+    {
+      "request": {
+        "operation": "project.list",
+        "params": {},
+        "transport": "cli",
+        "error": false
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "projects": [],
+          "nextCursor": null
+        },
+        "id": "b18e2869-a92f-458c-a284-48c292bf1a15"
+      }
+    }
+  ],
+  "checks": {
+    "atOpen": {
+      "recordings": [],
+      "projects": 0,
+      "admittedAcquisitions": [],
+      "recordingDirectories": []
+    },
+    "recordings": [],
+    "projects": [],
+    "counts": {
+      "recordings": 0,
+      "exercisedRecordings": 0,
+      "cameraRecordings": 0,
+      "projects": 0,
+      "projectsRenderingCamera": 0
+    }
+  },
+  "originals": {
+    "members": 61225,
+    "digestBefore": "d33fbd0cdc0a87f944a7b3b5a1f4e5dfb98037d91de8ccd4938d8d0b17b5b696",
+    "digestAfter": "d33fbd0cdc0a87f944a7b3b5a1f4e5dfb98037d91de8ccd4938d8d0b17b5b696",
+    "unchanged": true
+  }
+}

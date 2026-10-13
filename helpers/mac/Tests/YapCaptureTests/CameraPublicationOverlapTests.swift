@@ -46,7 +46,7 @@ func runCameraPublicationClippedSupportTest() async throws {
     precondition(receipt.firstUs == 0 && receipt.endUs == 91211 && receipt.pictureTimeScale == 15360)
     precondition(receipt.binding?.sourceId == "fixture-camera" && receipt.originHostUs == 1_000_000)
     let verified = try await CameraMedia.readPublished(lease: journal.lease, canonical: directory.appendingPathComponent("video.mov"))
-    precondition(verified.identity.support == receipt.support && verified.identity.representedFrames == 3)
+    precondition(verified.identity.availability.support == receipt.support && verified.identity.representedFrames == 3)
     print("PASS exact fractional terminal clipping preserves all three picture digests and bound camera proof")
 }
 
@@ -69,7 +69,7 @@ func runCameraPublicationPrefixTests() async throws {
             precondition(receipt.pictureSHA256 == "a25957a308051415c014091d3859d675729f6d437d1a5982b07bc76007868094")
         }
         let verified = try await CameraMedia.readPublished(lease: journal.lease, canonical: directory.appendingPathComponent("video.mov"))
-        precondition(verified.identity.support == receipt.support && verified.diagnostics == receipt.diagnostics)
+        precondition(verified.identity.availability.support == receipt.support && verified.diagnostics == receipt.diagnostics)
         print("PASS camera \(mode) retains physical prefix/support and exact diagnostics")
     }
 }
@@ -99,7 +99,7 @@ func runCameraPublicationDecisionTests() throws {
     let badCandidate: Result<Int, any Error> = .failure(candidateFailure)
     let goodRaw: Result<Int, any Error> = .success(3)
     let goodCandidate: Result<Int, any Error> = .success(3)
-    let support = ExactRange(startUs: 0, endUs: 100_000)
+    let support = try CameraAvailability(intervals: [ExactRange(startUs: 0, endUs: 100_000)])
     do {
         _ = try CameraMedia.acceptScans(raw: badRaw, canonical: badCandidate,
             complete: { _ in true }, verify: { _, _ in support })
@@ -107,7 +107,7 @@ func runCameraPublicationDecisionTests() throws {
     } catch let failure as Failure { precondition(failure == rawFailure) }
     let prefix = try CameraMedia.acceptScans(raw: goodRaw, canonical: badCandidate,
         complete: { _ in false }, verify: { _, _ in preconditionFailure("Prefix cannot validate speculative canonical") })
-    precondition(prefix.raw == 3 && prefix.support == nil)
+    precondition(prefix.raw == 3 && prefix.availability == nil)
     do {
         _ = try CameraMedia.acceptScans(raw: goodRaw, canonical: badCandidate,
             complete: { _ in true }, verify: { _, _ in support })
@@ -118,7 +118,7 @@ func runCameraPublicationDecisionTests() throws {
             precondition(raw == canonical)
             return support
         })
-    precondition(accepted.raw == 3 && accepted.support == support)
+    precondition(accepted.raw == 3 && accepted.availability == support)
     let canceled: Result<Int, any Error> = .failure(CancellationError())
     do {
         _ = try CameraMedia.acceptScans(raw: canceled, canonical: badCandidate,

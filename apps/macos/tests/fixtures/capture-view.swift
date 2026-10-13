@@ -34,6 +34,19 @@ import YapControls
         (recent.control(identifier: "recording.copyPrompt.fixture-recording") as! NSButton).performClick(nil)
         precondition(recorded.last == .controls(.copyRecordingPrompt("fixture-recording")),
                      "The capture menu dispatches the same prompt action as Library")
+        func pixels(_ button: NSButton) -> Data {
+            let bitmap = button.bitmapImageRepForCachingDisplay(in: button.bounds)!
+            button.cacheDisplay(in: button.bounds, to: bitmap)
+            return bitmap.tiffRepresentation!
+        }
+        for id in ["recording.play.fixture-recording", "recording.copyPrompt.fixture-recording"] {
+            let button = recent.control(identifier: id) as! NSButton
+            let resting = pixels(button)
+            button.cell!.highlight(true, withFrame: button.bounds, in: button)
+            precondition(pixels(button) != resting, "A pressed recording action must look pressed: \(id)")
+            button.cell!.highlight(false, withFrame: button.bounds, in: button)
+            precondition(pixels(button) == resting, "A released recording action returns to rest: \(id)")
+        }
         recorded.removeAll()
         let rowIcons = view.scrollView.documentView!.subviews.compactMap { $0 as? NSImageView }.filter { $0.frame.width == 16 }
         for icon in rowIcons {
@@ -91,8 +104,116 @@ import YapControls
         window.orderOut(nil)
         window.close()
         let selectedSource = CaptureView(appIcon: appIcon, input: fixture(secondSource: true)) { recorded.append($0) }
-        let sourcePopup = selectedSource.control(identifier: "source.device") as! NSPopUpButton
-        precondition(sourcePopup.titleOfSelectedItem == "Studio Display", "Rebuilding preserves the owner-selected source device")
+        let sourcePopup = selectedSource.control(identifier: "source.device") as! SourcePickerButton
+        precondition(sourcePopup.title == "Studio Display", "Rebuilding preserves the owner-selected source device")
+        let restingSource = pixels(sourcePopup)
+        sourcePopup.cell!.highlight(true, withFrame: sourcePopup.bounds, in: sourcePopup)
+        precondition(pixels(sourcePopup) != restingSource, "A pressed source chooser must look pressed")
+        sourcePopup.cell!.highlight(false, withFrame: sourcePopup.bounds, in: sourcePopup)
+        precondition(pixels(sourcePopup) == restingSource, "A released source chooser returns to rest")
+        sourcePopup.choose(at: 0)
+        precondition(recorded.last == .controls(.selectDisplay(1)), "Choosing a source card sends that source's intent")
+        // The chooser draws each source's picture whole, at its own shape, with its title, on the
+        // menu's dark surface. A portrait window is red so its drawn shape can be measured.
+        let portrait = NSImage(size: NSSize(width: 60, height: 160), flipped: false) { rect in
+            NSColor(srgbRed: 1, green: 0, blue: 0, alpha: 1).setFill(); rect.fill(); return true
+        }
+        func redBox(_ bitmap: NSBitmapImageRep) -> NSRect? {
+            var box: NSRect?
+            for y in 0..<bitmap.pixelsHigh { for x in 0..<bitmap.pixelsWide {
+                guard let c = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB),
+                      c.redComponent > 0.85, c.greenComponent < 0.2, c.blueComponent < 0.2 else { continue }
+                box = box.map { $0.union(NSRect(x: x, y: y, width: 1, height: 1)) } ?? NSRect(x: x, y: y, width: 1, height: 1)
+            } }
+            return box
+        }
+        // Drawn over the dark material a dark popover puts behind its content, so a chooser that
+        // paints its own light sheet shows up as one.
+        func render(_ view: NSView) -> NSBitmapImageRep {
+            let stage = NSView(frame: NSRect(origin: .zero, size: view.frame.size))
+            stage.wantsLayer = true
+            stage.layer?.backgroundColor = NSColor(white: 0.16, alpha: 1).cgColor
+            view.frame.origin = .zero
+            stage.addSubview(view)
+            let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: view.frame.width, height: view.frame.height),
+                                  styleMask: .borderless, backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            window.appearance = NSAppearance(named: .darkAqua)
+            window.contentView = stage
+            window.orderBack(nil)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+            let bitmap = stage.bitmapImageRepForCachingDisplay(in: stage.bounds)!
+            stage.cacheDisplay(in: stage.bounds, to: bitmap)
+            window.orderOut(nil)
+            view.removeFromSuperview()
+            return bitmap
+        }
+        let chooserSources: [CaptureViewInput.Choice] = [
+            .init(title: "Notes — Portrait window", intent: .controls(.selectWindow(7)), preview: portrait),
+            .init(title: "Studio Display", intent: .controls(.selectDisplay(2)), preview: fixture().sourceChoices[0].preview),
+            .init(title: "Untitled window", intent: .controls(.selectWindow(8))),
+        ]
+        sourcePopup.configure(values: chooserSources, selected: 0) { recorded.append($0) }
+        let chooser = sourcePopup.chooserView()
+        precondition(chooser.appearance?.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua,
+                     "The source chooser uses the menu's dark appearance")
+        let drawn = render(chooser)
+        try! drawn.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: "\(CommandLine.arguments[1])/source-chooser.png"))
+        var luminance: CGFloat = 0
+        for y in stride(from: 0, to: drawn.pixelsHigh, by: 4) { for x in stride(from: 0, to: drawn.pixelsWide, by: 4) {
+            let c = drawn.colorAt(x: x, y: y)!.usingColorSpace(.sRGB)!
+            luminance += 0.2126 * c.redComponent + 0.7152 * c.greenComponent + 0.0722 * c.blueComponent
+        } }
+        luminance /= CGFloat((drawn.pixelsHigh / 4 + 1) * (drawn.pixelsWide / 4 + 1))
+        precondition(luminance < 0.35, "The source chooser is dark like the menu, not a light sheet: \(luminance)")
+        guard let card = redBox(drawn) else { preconditionFailure("The portrait source's picture must be drawn") }
+        precondition(card.height >= 40 && abs(card.width / card.height - 60.0 / 160.0) < 0.08,
+                     "A source picture keeps its shape: \(card.size)")
+        let cards = chooser.subviews.compactMap { $0 as? NSButton }
+        precondition(cards.map(\.title) == chooserSources.map(\.title), "Every source card carries its title")
+        for card in cards {
+            let lower = card.convert(NSRect(x: 0, y: card.bounds.height - 24, width: card.bounds.width, height: 20), to: chooser)
+            var bright = 0
+            let scale = CGFloat(drawn.pixelsWide) / chooser.bounds.width
+            for y in Int(lower.minY * scale)..<Int(lower.maxY * scale) { for x in Int(lower.minX * scale)..<Int(lower.maxX * scale) {
+                let row = chooser.isFlipped ? y : drawn.pixelsHigh - 1 - y
+                if let c = drawn.colorAt(x: x, y: row)?.usingColorSpace(.sRGB), c.redComponent > 0.75, c.greenComponent > 0.75, c.blueComponent > 0.75 { bright += 1 }
+            } }
+            precondition(bright > 20, "Source card \(card.title) shows its title: \(bright) light pixels")
+        }
+        // Many windows scroll inside a chooser no taller than four and a half rows, opened at the
+        // chosen one; a long name is shortened on its card rather than spilling over.
+        let many: [CaptureViewInput.Choice] = (0..<12).map {
+            .init(title: $0 == 11 ? "Google Chrome — A very long document title that cannot fit on one card at all" : "Window \($0)",
+                  intent: .controls(.selectWindow($0)), preview: portrait)
+        }
+        sourcePopup.configure(values: many, selected: 11) { recorded.append($0) }
+        guard let scroller = sourcePopup.chooserView() as? NSScrollView, let cardsView = scroller.documentView else {
+            preconditionFailure("A long source list scrolls")
+        }
+        precondition(scroller.frame.height <= 4.5 * 140 + 8, "The chooser stays a bounded height: \(scroller.frame.height)")
+        precondition(cardsView.subviews.count == 12, "Every source is in the scrolling chooser")
+        let longCard = cardsView.subviews.last!
+        precondition(scroller.contentView.documentVisibleRect.contains(longCard.frame), "The chooser opens showing the chosen source")
+        let longDrawn = render(scroller)
+        try! longDrawn.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: "\(CommandLine.arguments[1])/source-chooser-many.png"))
+        sourcePopup.configure(values: chooserSources, selected: 0) { recorded.append($0) }
+        let field = render({ sourcePopup.frame = NSRect(x: 0, y: 0, width: 306, height: 28); return sourcePopup }())
+        guard let thumb = redBox(field) else { preconditionFailure("The source field shows the chosen source's picture") }
+        precondition(abs(thumb.width / thumb.height - 60.0 / 160.0) < 0.15, "The field's thumbnail keeps its shape: \(thumb.size)")
+        // Source pictures arrive after the menu is drawn. The chooser shows them when they do, and
+        // the field it replaces leaves instead of staying behind it.
+        func sourceFields(_ capture: CaptureView) -> Int {
+            capture.scrollView.documentView!.subviews.filter { $0.identifier?.rawValue == "source.device" }.count
+        }
+        let arriving = CaptureView(appIcon: appIcon, input: fixture(secondSource: true, previews: false)) { recorded.append($0) }
+        precondition(arriving.control(identifier: "source.device") is NSPopUpButton, "Sources without pictures use the menu field")
+        arriving.update(fixture(secondSource: true))
+        precondition(arriving.control(identifier: "source.device") is SourcePickerButton && sourceFields(arriving) == 1,
+                     "Pictures that arrive after the menu is drawn replace the menu field: \(sourceFields(arriving)) fields")
+        arriving.update(fixture(secondSource: true, previews: false))
+        precondition(arriving.control(identifier: "source.device") is NSPopUpButton && sourceFields(arriving) == 1,
+                     "Sources that lose their pictures return to one menu field: \(sourceFields(arriving)) fields")
         let duplicate = CaptureView(appIcon: appIcon, input: fixture(duplicateNames: true)) { recorded.append($0) }
         let duplicateCamera = duplicate.control(identifier: "camera.device") as! NSPopUpButton
         duplicateCamera.selectItem(at: duplicateCamera.numberOfItems - 1)
@@ -113,6 +234,21 @@ import YapControls
             if let toggle = control as? NSSwitch { toggle.performClick(nil) }
         }
         precondition(lockedActions.isEmpty, "Inapplicable actions cannot escape the view")
+        let idleSwitch = view.control(identifier: "camera.toggle") as! NSSwitch
+        idleSwitch.performClick(nil)
+        precondition(recorded.last == .controls(.setCamera(true)),
+                     "Before a take the camera switch sends the shared camera action: \(String(describing: recorded.last))")
+        var reserved = fixture(locked: true)
+        reserved.cameraOn = true
+        reserved.liveCamera = true
+        let live = CaptureView(appIcon: appIcon, input: reserved) { lockedActions.append($0) }
+        let liveSwitch = live.control(identifier: "camera.toggle") as! NSSwitch
+        precondition(liveSwitch.isEnabled && liveSwitch.state == .on && !live.control(identifier: "camera.device")!.isEnabled,
+                     "During a take that reserved a camera, its switch stays usable and its device stays fixed")
+        liveSwitch.performClick(nil)
+        precondition(lockedActions == [.controls(.setCamera(false))],
+                     "The live camera switch sends the same action as the floating controls: \(lockedActions)")
+        lockedActions.removeAll()
         let permissions = CaptureView(appIcon: appIcon, input: permissionFixture()) { recorded.append($0) }
         for id in ["source.display", "source.window", "source.area", "source.device"] {
             precondition(!permissions.control(identifier: id)!.isEnabled, "Screen selection must be disabled without permission: \(id)")
@@ -255,8 +391,17 @@ import YapControls
         return input
     }
 
-    @MainActor static func fixture(locked: Bool = false, cameraOnly: Bool = false, longNames: Bool = false, duplicateNames: Bool = false, microphoneOn: Bool = true, secondSource: Bool = false, startEnabled: Bool? = nil, status: String = "Ready to record", lastRecording: Bool = false) -> CaptureViewInput {
-        var input = CaptureViewInput(selectedSource: cameraOnly ? .cameraOnly : .display, selectedSourceChoice: secondSource ? 1 : 0, sourceChoices: [.init(title: longNames ? "A very long external display name for a conference studio · 5120 × 2880" : "Built-in Retina Display · 3024 × 1964", intent: .controls(.selectDisplay(1)))] + (secondSource ? [.init(title: "Studio Display", intent: .controls(.selectDisplay(2)))] : []),
+    @MainActor static func fixture(locked: Bool = false, cameraOnly: Bool = false, longNames: Bool = false, duplicateNames: Bool = false, microphoneOn: Bool = true, secondSource: Bool = false, startEnabled: Bool? = nil, status: String = "Ready to record", lastRecording: Bool = false, previews: Bool = true) -> CaptureViewInput {
+        let preview = !previews ? nil : NSImage(size: NSSize(width: 160, height: 90), flipped: false) { rect in
+            NSColor(calibratedWhite: 0.12, alpha: 1).setFill(); rect.fill()
+            NSColor(calibratedRed: 0.24, green: 0.48, blue: 0.78, alpha: 1).setFill()
+            NSBezierPath(rect: rect.insetBy(dx: 10, dy: 9)).fill()
+            NSColor.white.withAlphaComponent(0.65).setFill()
+            NSBezierPath(rect: NSRect(x: 20, y: 47, width: 54, height: 5)).fill()
+            NSBezierPath(rect: NSRect(x: 20, y: 36, width: 92, height: 4)).fill()
+            return true
+        }
+        var input = CaptureViewInput(selectedSource: cameraOnly ? .cameraOnly : .display, selectedSourceChoice: secondSource ? 1 : 0, sourceChoices: [.init(title: longNames ? "A very long external display name for a conference studio · 5120 × 2880" : "Built-in Retina Display · 3024 × 1964", intent: .controls(.selectDisplay(1)), preview: preview)] + (secondSource ? [.init(title: "Studio Display", intent: .controls(.selectDisplay(2)), preview: preview)] : []),
             cameraChoices: (cameraOnly ? [] : [.init(title: "No camera", intent: .camera(nil))]) + [.init(title: longNames ? "Conference room camera with an unusually long name" : "FaceTime HD Camera", intent: .camera("fixture-camera"))] + (duplicateNames ? [.init(title: "FaceTime HD Camera", intent: .camera("fixture-camera-second")), .init(title: "Another camera", intent: .camera("fixture-camera-third"))] : []),
             selectedCamera: cameraOnly ? 0 : longNames ? 1 : 0, cameraOn: cameraOnly || longNames,
             microphoneChoices: [.init(title: longNames ? "Conference room microphone with an unusually long name" : "MacBook Pro Microphone", intent: .controls(.selectMicrophone("fixture-mic")))],

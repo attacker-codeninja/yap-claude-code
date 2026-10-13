@@ -64,7 +64,7 @@ func runCameraSourceAdmissionTests(output: String? = nil) async throws {
     precondition(retainedMapping == observations)
     let exported = try await SourceEvidenceExport.write(directory: directory.path, output: root.appendingPathComponent("normal-evidence.jsonl").path)
     guard case .video(let proof) = exported.publications?["video"] else { preconditionFailure("Camera proof must be on ordinary video") }
-    precondition(proof.representedFrames == 3 && proof.support.startUs == ExactTime(200_000))
+    precondition(proof.representedFrames == 3 && proof.availability.support.startUs == ExactTime(200_000))
     precondition(exported.originHostUs == clock.originUs && exported.pauseEvents == 1)
 
     do {
@@ -81,7 +81,7 @@ func runCameraSourceAdmissionTests(output: String? = nil) async throws {
             try? FileManager.default.moveItem(at: saved, to: canonical)
         }
         let fdProof = try await CameraMedia.readPublished(lease: lease, canonical: URL(fileURLWithPath: "/dev/fd/\(descriptor)"))
-        precondition(fdProof.identity.canonical == proof.canonical && fdProof.identity.support == proof.support)
+        precondition(fdProof.identity.canonical == proof.canonical && fdProof.identity.availability.support == proof.availability.support)
     }
     print("PASS bound camera writer/header/result, common origin/pauses and canonical path replacement after descriptor open")
 
@@ -178,7 +178,7 @@ func runCameraSourceAdmissionTests(output: String? = nil) async throws {
     journal.lease.release()
     let fractionalExport = try await SourceEvidenceExport.write(directory: fractional.path, output: root.appendingPathComponent("fractional-evidence.jsonl").path)
     guard case .video(let verifiedPartial) = fractionalExport.publications?["video"] else { preconditionFailure("Partial prefix lacks proof") }
-    precondition(verifiedPartial.support == exact && verifiedPartial.representedFrames == 2)
+    precondition(verifiedPartial.availability.support == exact && verifiedPartial.representedFrames == 2)
     let recovered = try await MediaRecovery.recover(directory: fractional.path)
     precondition(recovered.tracks.first?.acquisitionVerified == true && recovered.tracks.first?.representedFrames?.wrappedValue == 2)
     print("PASS exact fractional native support and represented partial prefix through evidence/recovery")
@@ -199,7 +199,7 @@ func runCameraSourceAdmissionTests(output: String? = nil) async throws {
     old.removeValue(forKey: "pictureTimeScale")
     try JSONSerialization.data(withJSONObject: old).write(to: legacyReceipt)
     let oldScope = try await CameraMedia.readPublished(lease: legacyJournal.lease, canonical: legacy.appendingPathComponent("video.mov"))
-    precondition(oldScope.identity.support == exact)
+    precondition(oldScope.identity.availability.support == exact)
     try FileManager.default.removeItem(at: legacyRaw)
     do { _ = try await CameraMedia.readPublished(lease: legacyJournal.lease, canonical: legacy.appendingPathComponent("video.mov")); preconditionFailure("Absent historical native scale cannot borrow canonical scale") }
     catch let failure as CaptureFailure { precondition(failure.code == "INVALID_CAMERA_MAPPING") }
