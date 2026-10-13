@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CompositionError } from "./errors.js";
+import { boundedIssues, type Issue } from "./issues.js";
 import type { ValidatedComposition } from "./model.js";
 import { ceil, compare, divide, floor, rational, toTime } from "./rational.js";
 import type { SelectionRange } from "./schema.js";
@@ -37,7 +38,7 @@ const srtTimingLine =
 export function captionSidecar(model: ValidatedComposition, input: CaptionSidecarRequest) {
   const request = captionSidecarRequestSchema.parse(input);
   const selected = new Map(model.clips.map((clip) => [clip.clip.id, clip]));
-  const omitted: { placementId: string; reason: "no-display-support" | "empty-text" }[] = [];
+  const issues: Issue[] = [];
   const exactCues: { cue: CaptionCue; range: ValidatedComposition["clips"][number]["range"] }[] =
     [];
   for (const placementId of request.placementIds) {
@@ -54,9 +55,11 @@ export function captionSidecar(model: ValidatedComposition, input: CaptionSideca
       );
     const text = placement.clip.source.text.replace(/\r\n?/g, "\n");
     if (!placement.available.length || !text.trim()) {
-      omitted.push({
-        placementId,
-        reason: !placement.available.length ? "no-display-support" : "empty-text",
+      const reason = !placement.available.length ? "no-display-support" : "empty-text";
+      issues.push({
+        code: "caption-omitted",
+        message: `Caption ${placementId} was omitted: ${reason}`,
+        evidence: { placementId, reason },
       });
       continue;
     }
@@ -77,19 +80,25 @@ export function captionSidecar(model: ValidatedComposition, input: CaptionSideca
         { placementId },
       );
     }
+    // A timing line inside a payload splits the file into an unintended cue: malformed for SRT.
+    if (request.kind === "srt" && srtTimingLine.test(text))
+      throw new CompositionError(
+        "UNSUPPORTED_FORMAT",
+        "SRT cannot carry a timing line inside a caption; choose VTT",
+        { placementId, format: "srt", alternative: "vtt" },
+      );
+    // Markup only risks being rendered as formatting: write it and report it.
     if (
       request.kind === "srt" &&
       (/<\/?[a-z][^>\n]*>|<[ \t]+\/?[ \t]*[a-z][a-z0-9-]*(?:[ \t]+[^>\n]*)?>/i.test(text) ||
         /&(?:amp|lt|gt|quot|apos|nbsp|#[0-9]+|#x[0-9a-f]+);/i.test(text) ||
-        /\{\\[^}]*\}|\\[Nnh]/.test(text) ||
-        srtTimingLine.test(text))
-    ) {
-      throw new CompositionError(
-        "UNSUPPORTED_FORMAT",
-        "SRT cannot reliably preserve literal subtitle syntax; choose VTT",
-        { placementId, format: "srt", alternative: "vtt" },
-      );
-    }
+        /\{\\[^}]*\}|\\[Nnh]/.test(text))
+    )
+      issues.push({
+        code: "srt-literal-markup",
+        message: `Caption ${placementId} contains text an SRT reader may render as formatting`,
+        evidence: { placementId, alternative: "vtt" },
+      });
     for (const [fragment, range] of placement.available.entries()) {
       if (exactCues.length === 10000)
         throw new CompositionError("LIMIT_EXCEEDED", "Sidecar cue budget exceeded", {
@@ -117,26 +126,25 @@ export function captionSidecar(model: ValidatedComposition, input: CaptionSideca
           ? 1
           : a.cue.fragment - b.cue.fragment),
   );
-  const addedOverlaps: {
-    left: Pick<CaptionCue, "placementId" | "fragment">;
-    right: Pick<CaptionCue, "placementId" | "fragment">;
-    startMs: number;
-    endMs: number;
-  }[] = [];
+  let addedOverlaps = 0;
   for (let i = 0; i < exactCues.length; i++) {
     const left = exactCues[i]!;
     for (let j = i + 1; j < exactCues.length && exactCues[j]!.cue.startMs < left.cue.endMs; j++) {
       const right = exactCues[j]!;
       if (compare(left.range.end, right.range.start) <= 0) {
-        if (addedOverlaps.length === 10000)
+        if (addedOverlaps++ === 10000)
           throw new CompositionError("LIMIT_EXCEEDED", "Sidecar overlap report budget exceeded", {
             maximumAddedOverlaps: 10000,
           });
-        addedOverlaps.push({
-          left: { placementId: left.cue.placementId, fragment: left.cue.fragment },
-          right: { placementId: right.cue.placementId, fragment: right.cue.fragment },
-          startMs: Math.max(left.cue.startMs, right.cue.startMs),
-          endMs: Math.min(left.cue.endMs, right.cue.endMs),
+        issues.push({
+          code: "caption-overlap-added",
+          message: "Millisecond rounding made two captions overlap",
+          evidence: {
+            left: { placementId: left.cue.placementId, fragment: left.cue.fragment },
+            right: { placementId: right.cue.placementId, fragment: right.cue.fragment },
+            startMs: Math.max(left.cue.startMs, right.cue.startMs),
+            endMs: Math.min(left.cue.endMs, right.cue.endMs),
+          },
         });
       }
     }
@@ -156,12 +164,12 @@ export function captionSidecar(model: ValidatedComposition, input: CaptionSideca
     blocks.push(block);
   }
   const content = blocks.join("");
-  return {
-    kind: request.kind,
-    cues,
-    omitted,
-    addedOverlaps,
-    discardedStyling: [...new Set(cues.map((cue) => cue.placementId))],
-    content,
-  };
+  const styled = [...new Set(cues.map((cue) => cue.placementId))];
+  if (styled.length)
+    issues.push({
+      code: "caption-styling-discarded",
+      message: "Plain sidecars keep caption text but not its styling",
+      evidence: { placementIds: styled },
+    });
+  return { kind: request.kind, cues, issues: boundedIssues(issues), content };
 }

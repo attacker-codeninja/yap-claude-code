@@ -24,12 +24,6 @@
    "why": "gaps: process each run with unavailable + support-gap"
   },
   {
-   "slice": "07d",
-   "file": "packages/composition/src/caption-sidecars.ts",
-   "text": "SRT cannot reliably preserve literal subtitle syntax",
-   "why": "write SRT with srt-literal-markup"
-  },
-  {
    "slice": "07a",
    "file": "helpers/mac/Sources/YapMedia/FontFile.swift",
    "text": "FONT_SUBSTITUTED:",

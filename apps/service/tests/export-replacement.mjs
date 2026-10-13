@@ -435,3 +435,16 @@ for (const mode of ["foreign", "symlink"])
         ) + "\n",
       );
   });
+
+test("an SRT export of literal markup publishes and reports the issue in its status", async (t) => {
+  const f = await fixture(t);
+  await f.edit("<b>literal</b> words");
+  const request = f.request({ leaf: "markup.srt" });
+  const exported = await f.good("export.create", request, true);
+  assert.match(await readFile(exported.output, "utf8"), /<b>literal<\/b> words/);
+  const status = await f.good("export.status", { exportId: request.exportId }, true);
+  assert.deepEqual(
+    status.issues.map((issue) => issue.code),
+    ["srt-literal-markup", "caption-styling-discarded"],
+  );
+});

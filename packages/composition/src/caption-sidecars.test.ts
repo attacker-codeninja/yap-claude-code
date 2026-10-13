@@ -71,16 +71,23 @@ test("selected displayed captions retain corrected Unicode text and outward timi
       endMs: 3,
     },
   ]);
-  expect(srt.addedOverlaps).toEqual([
+  expect(srt.issues).toEqual([
     {
-      left: { placementId: "a", fragment: 0 },
-      right: { placementId: "b", fragment: 0 },
-      startMs: 1,
-      endMs: 2,
+      code: "caption-overlap-added",
+      message: expect.any(String),
+      evidence: {
+        left: { placementId: "a", fragment: 0 },
+        right: { placementId: "b", fragment: 0 },
+        startMs: 1,
+        endMs: 2,
+      },
+    },
+    {
+      code: "caption-styling-discarded",
+      message: expect.any(String),
+      evidence: { placementIds: ["a", "b"] },
     },
   ]);
-  expect(srt.omitted).toEqual([]);
-  expect(srt.discardedStyling).toEqual(["a", "b"]);
   const vtt = captionSidecar(composition, { ...request, kind: "vtt" });
   expect(vtt.content).toBe(
     "WEBVTT\n\n00:00:00.000 --> 00:00:00.002\nCafé &amp; x &lt; y\n二\n\n00:00:00.001 --> 00:00:00.003\nNext\n\n",
@@ -196,11 +203,13 @@ test("content and normalized anchors use exact retimed support, keep repeated ta
       },
     },
   ]);
-  expect(output.omitted).toEqual([
+  const evidence = (code: string) =>
+    output.issues.filter((issue) => issue.code === code).map((issue) => issue.evidence);
+  expect(evidence("caption-omitted")).toEqual([
     { placementId: "hole", reason: "no-display-support" },
     { placementId: "blank", reason: "empty-text" },
   ]);
-  expect(output.addedOverlaps).toContainEqual({
+  expect(evidence("caption-overlap-added")).toContainEqual({
     left: { placementId: "caption0", fragment: 0 },
     right: { placementId: "caption0", fragment: 1 },
     startMs: 0,
@@ -264,10 +273,10 @@ test("trimmed captions retain their support and genuine equal-start overlaps kee
     { placementId: "a", exact: { startUs: 1000, endUs: 4000 } },
     { placementId: "z", exact: { startUs: 1000, endUs: 3000 } },
   ]);
-  expect(output.addedOverlaps).toEqual([]);
+  expect(output.issues.filter((issue) => issue.code === "caption-overlap-added")).toEqual([]);
 });
 
-test("SRT preserves comparisons and ampersands, while literal formatting requires VTT", () => {
+test("SRT preserves comparisons and ampersands, and writes literal formatting with an issue suggesting VTT", () => {
   const ordinary = captionSidecar(model([textClip("a", "x < y, 2 < 3 > 1, R&D", 0, 1000)]), {
     kind: "srt",
     placementIds: ["a"],
@@ -281,12 +290,13 @@ test("SRT preserves comparisons and ampersands, while literal formatting require
     "\\N literal",
   ]) {
     const composition = model([textClip("a", text, 0, 1000)]);
-    expect(() => captionSidecar(composition, { kind: "srt", placementIds: ["a"] })).toThrow(
-      expect.objectContaining({
-        code: "UNSUPPORTED_FORMAT",
-        details: { placementId: "a", format: "srt", alternative: "vtt" },
-      }),
-    );
+    const srt = captionSidecar(composition, { kind: "srt", placementIds: ["a"] });
+    expect(srt.content).toContain(text);
+    expect(srt.issues).toContainEqual({
+      code: "srt-literal-markup",
+      message: expect.any(String),
+      evidence: { placementId: "a", alternative: "vtt" },
+    });
     expect(captionSidecar(composition, { kind: "vtt", placementIds: ["a"] }).cues[0]!.text).toBe(
       text,
     );
@@ -318,12 +328,14 @@ test("SRT refuses timestamp-shaped payload lines rather than inventing another c
   }
 });
 
-test("SRT refuses whitespace-prefixed tags that readers interpret as formatting", () => {
+test("SRT flags whitespace-prefixed tags that readers interpret as formatting", () => {
   for (const text of ["hello < b>bold", "hello < b >bold", 'hello < font color="red">literal']) {
     const composition = model([textClip("a", text, 0, 1000000)]);
-    expect(() => captionSidecar(composition, { kind: "srt", placementIds: ["a"] })).toThrow(
-      expect.objectContaining({ code: "UNSUPPORTED_FORMAT" }),
-    );
+    expect(
+      captionSidecar(composition, { kind: "srt", placementIds: ["a"] }).issues.map(
+        (issue) => issue.code,
+      ),
+    ).toContain("srt-literal-markup");
     expect(captionSidecar(composition, { kind: "vtt", placementIds: ["a"] }).cues[0]!.text).toBe(
       text,
     );

@@ -197,4 +197,18 @@ overridden. Each entry: the choice, why, and how confident.
   can, and imports the helper by relative path. *Confident.*
 - **07h harness consumer `dialogue-matching.mjs` only lost `peakPolicy`.**
   Syntax-checked; it's a real-media harness that isn't run here. *Unverified
-  by execution.*
+  by execution.*- **07d: an SRT timing line stays a refusal; markup publishes.** Markup,
+  entities and ASS tags only risk being rendered as formatting, so they get
+  `srt-literal-markup`. A literal timing line inside a cue makes readers split
+  the file into an unintended extra cue, which is malformed for SRT. It keeps
+  `UNSUPPORTED_FORMAT`, with its own message. *Confident.*
+- **07k: caption diagnostics ride on the export job's publication.** The
+  sidecar returns `issues` (`caption-omitted`, `caption-overlap-added`,
+  `caption-styling-discarded`, `srt-literal-markup`). The exporter returns
+  them as the job's staged issues, so export status shows them through the
+  01d path. The status snapshot no longer projects `omitted`,
+  `addedOverlaps` and `discardedStyling`. Exports committed by 0.1.33 keep
+  those fields in their stored snapshot, but status no longer shows them.
+  That's a derived view, accepted under the no-compat rule. *Confident.*
+- **07k issues appear on publication, not at admission.** The harness's
+  admission-time overlap assertion moved to the committed status. *Confident.*

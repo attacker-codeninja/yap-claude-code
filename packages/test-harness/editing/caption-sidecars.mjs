@@ -93,7 +93,6 @@ try {
   const admitted = await call("export.create", request);
   assert.equal(admitted.snapshot.revisionId, edited.revision.id);
   assert.equal(admitted.snapshot.cueCount, 2);
-  assert.equal(admitted.snapshot.addedOverlaps.length, 1);
   assert.ok(!("content" in admitted.snapshot) && !("cues" in admitted.snapshot));
   await held();
   await call("edit.apply", {
@@ -124,6 +123,10 @@ try {
     () => call("export.status", { exportId: request.exportId }),
     (value) => value.state === "committed" && !value.cleanupPending,
     "SRT publication",
+  );
+  assert.equal(
+    committed.issues.filter((issue) => issue.code === "caption-overlap-added").length,
+    1,
   );
   const srt = await readFile(committed.output);
   assert.equal(hash(srt), committed.receipt.sha256);
@@ -171,9 +174,7 @@ try {
   for (const [suffix, ids, code] of [
     ["bad", [edited.edit.labels.malformed], "INVALID_COMPOSITION"],
     ["unknown", ["unknown-placement"], "UNKNOWN_CLIP"],
-    ["literal", [edited.edit.labels.literal], "UNSUPPORTED_FORMAT"],
     ["timing", [edited.edit.labels.timing], "UNSUPPORTED_FORMAT"],
-    ["spaced-tag", [edited.edit.labels["spaced-tag"]], "UNSUPPORTED_FORMAT"],
   ]) {
     assert.equal(
       (
@@ -190,6 +191,26 @@ try {
         )
       ).code,
       code,
+    );
+  }
+  // Output by default: SRT markup is written unchanged and reported as an issue.
+  for (const label of ["literal", "spaced-tag"]) {
+    const markup = {
+      ...base,
+      exportId: randomUUID(),
+      kind: "srt",
+      leaf: `${label}.srt`,
+      placementIds: [edited.edit.labels[label]],
+    };
+    await call("export.create", markup);
+    const written = await poll(
+      () => call("export.status", { exportId: markup.exportId }),
+      (value) => value.state === "committed" && !value.cleanupPending,
+      `${label} SRT`,
+    );
+    assert.ok(
+      written.issues.some((issue) => issue.code === "srt-literal-markup"),
+      label,
     );
   }
   const literalRequest = {
@@ -255,9 +276,10 @@ try {
     (value) => value.state === "committed" && !value.cleanupPending,
     "empty SRT",
   );
-  assert.deepEqual(empty.snapshot.omitted, [
-    { placementId: edited.edit.labels.empty, reason: "empty-text" },
-  ]);
+  assert.deepEqual(
+    empty.issues.filter((issue) => issue.code === "caption-omitted").map((issue) => issue.evidence),
+    [{ placementId: edited.edit.labels.empty, reason: "empty-text" }],
+  );
   assert.equal((await readFile(empty.output)).length, 0);
   await writeFile(join(out, "taken.srt"), "foreign content", { flag: "wx" });
   const collision = { ...base, exportId: randomUUID(), kind: "srt", leaf: "taken.srt" };
@@ -281,7 +303,7 @@ try {
     "empty payload omission",
     "no overwrite and cleanup",
     "media and ASR work unavailable",
-    "SRT timestamp/whitespace-tag syntax refuses; VTT preserves literal text and original timing",
+    "SRT timestamp syntax refuses and markup publishes with an issue; VTT preserves literal text and original timing",
   );
   report.passed = true;
 } finally {

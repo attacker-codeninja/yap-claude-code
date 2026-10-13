@@ -78,6 +78,38 @@ export const issueSchema = z.discriminatedUnion("code", [
       })
       .strict(),
   ),
+  issue(
+    "caption-omitted",
+    z
+      .object({
+        placementId: z.string().min(1),
+        reason: z.enum(["no-display-support", "empty-text"]),
+      })
+      .strict(),
+  ),
+  issue(
+    "caption-overlap-added",
+    z
+      .object({
+        left: z
+          .object({ placementId: z.string().min(1), fragment: z.int().nonnegative() })
+          .strict(),
+        right: z
+          .object({ placementId: z.string().min(1), fragment: z.int().nonnegative() })
+          .strict(),
+        startMs: z.int().nonnegative(),
+        endMs: z.int().nonnegative(),
+      })
+      .strict(),
+  ),
+  issue(
+    "caption-styling-discarded",
+    z.object({ placementIds: z.array(z.string().min(1)).min(1) }).strict(),
+  ),
+  issue(
+    "srt-literal-markup",
+    z.object({ placementId: z.string().min(1), alternative: z.literal("vtt") }).strict(),
+  ),
   issue("framing-constraint-unmet", z.object({ constraint: framingConstraintSchema }).strict()),
   issue(
     "range-clamped",

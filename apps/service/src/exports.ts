@@ -23,6 +23,7 @@ import {
   type Job,
   type JobAdmission,
   type JobExecution,
+  type StagedJobResult,
   type JobQueue,
 } from "@yap/core/jobs";
 import type { ProjectStore } from "@yap/core/projects";
@@ -107,7 +108,9 @@ type PackageSnapshotSummary = {
 };
 // SQLite owns this derived immutable projection. Status reads the indexed expression,
 // leaving the complete pinned snapshot authoritative for execution and recovery.
-type CaptionSnapshotSummary = Omit<PinnedCaptionSidecar, "content" | "cues"> & { cueCount: number };
+type CaptionSnapshotSummary = Omit<PinnedCaptionSidecar, "content" | "cues" | "issues"> & {
+  cueCount: number;
+};
 const statusSnapshotSql = `CASE WHEN targetKind='project' AND kind='processed-package'
   THEN json_object('projectId',targetId,'revisionId',json_extract(snapshot,'$.revisionId'),
     'historyThroughOrdinal',json_array_length(snapshot,'$.snapshot.revisions')-1,
@@ -115,8 +118,7 @@ const statusSnapshotSql = `CASE WHEN targetKind='project' AND kind='processed-pa
     'resourceCount',json_array_length(snapshot,'$.resources'))
   WHEN kind IN ('srt','vtt') THEN json_object('projectId',targetId,'revisionId',json_extract(snapshot,'$.revisionId'),
     'kind',kind,'placementIds',json_extract(snapshot,'$.placementIds'),
-    'cueCount',json_array_length(snapshot,'$.cues'),'omitted',json_extract(snapshot,'$.omitted'),
-    'addedOverlaps',json_extract(snapshot,'$.addedOverlaps'),'discardedStyling',json_extract(snapshot,'$.discardedStyling'))
+    'cueCount',json_array_length(snapshot,'$.cues'))
   ELSE snapshot END`;
 const artifact = "export-media",
   recoveryArtifact = "export-recovery";
@@ -1081,7 +1083,19 @@ export class MediaExports {
         "Export cannot replace an original imported source",
       );
   }
-  async execute({ job, signal }: JobExecution): Promise<string> {
+  /** Caption intents publish the sidecar's issues with the export, so export status reports them. */
+  async execute(execution: JobExecution): Promise<string | StagedJobResult> {
+    const result = await this.executeExport(execution);
+    if (execution.job.artifact !== artifact) return result;
+    const snapshot = this.require(execution.job.input).snapshot;
+    const issues =
+      "placementIds" in snapshot ? ((snapshot as PinnedCaptionSidecar).issues ?? []) : [];
+    return issues.length
+      ? { result, issues, publish: () => undefined, close: async () => {} }
+      : result;
+  }
+
+  private async executeExport({ job, signal }: JobExecution): Promise<string> {
     if (job.artifact === recoveryArtifact) return this.reconcile({ job, signal });
     if (job.artifact !== artifact)
       throw new CatalogError("UNSUPPORTED_JOB", "Media exporter cannot execute this job");
