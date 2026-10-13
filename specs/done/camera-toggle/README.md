@@ -11,7 +11,7 @@ recording. The capture menu's custom-drawn buttons show a pressed state while he
 
 The decisions the build made on its own, each judged against the final code, are in the
 [choices ledger](choices.md). The original build plan and its slices are in Git before this
-record (`054c6d09`..`5af2b3d9`).
+record (`63f9f25c`..`33149815`).
 
 ## Decisions made by the user
 
@@ -213,8 +213,8 @@ Tests and harnesses that pin it:
   publication counted as a pending admission.
 - **The real app cannot reserve a camera here** (it lists only native cameras), so the app-level
   proof runs through the fixture-camera controller journey, not the real-app suites.
-- **The corpus producer lives only in history.** It was removed in `d66fbf80`; run it from
-  `55b98661`, the last commit whose product code is pre-toggle. Later code cannot make the
+- **The corpus producer lives only in history.** It was removed in `ac318718`; run it from
+  `7f3326de`, the last commit whose product code is pre-toggle. Later code cannot make the
   corpus.
 - **Clock-width regression.** The card redesign cut the clock's reserved width, so a ten-hour
   clock widened the controls. The full run's `overlay-clock.test.mjs` caught it; the clock now

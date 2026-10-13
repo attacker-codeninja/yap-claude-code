@@ -27,13 +27,13 @@ No corpus was recorded with a physical camera; this Mac lists none.
 ## How it was produced
 
 Native, service, CLI and controller-journey sources are those of `a8adbab2`, unchanged through
-`054c6d09`. Builds started on `a8adbab2` with the menu pressed state and the floating-controls UI
-uncommitted; they and the spec were committed as `967b6479`, `d35c2d1b` and `054c6d09` while the
+`63f9f25c`. Builds started on `a8adbab2` with the menu pressed state and the floating-controls UI
+uncommitted; they and the spec were committed as `0bfe8c52`, `39879de7` and `63f9f25c` while the
 corpus was produced. None of those
 files is compiled into the native worker, service or controller journey. The producer
 (`camera-library-corpus.mjs`, `webcam.mjs --keep-home` and a reply hold in
-`controller-service.mjs` that can hold any operation) was removed in `d66fbf80`; run it from
-`55b98661`, the last commit whose product code is pre-toggle, using the recipe below from a
+`controller-service.mjs` that can hold any operation) was removed in `ac318718`; run it from
+`7f3326de`, the last commit whose product code is pre-toggle, using the recipe below from a
 checkout of that commit. Later code cannot make this corpus.
 
 Inputs and binaries (scratch paths, 2026-10-12):

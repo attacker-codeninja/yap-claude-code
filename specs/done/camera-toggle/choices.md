@@ -1,8 +1,8 @@
 # Choices
 
 The decisions made while building camera on/off during a take that the spec, slices or user did
-not make: the whole feature (`054c6d09..HEAD`), plus the two branch commits just before it that
-the feature builds on (`d35c2d1b` floating-controls card, `967b6479` menu pressed state). Each
+not make: the whole feature (`63f9f25c..HEAD`), plus the two branch commits just before it that
+the feature builds on (`39879de7` floating-controls card, `0bfe8c52` menu pressed state). Each
 entry is judged against the final code. Decisions the user made are in the
 [README](README.md#decisions-made-by-the-user) and appear here only where the build had to choose
 how to carry them out.
@@ -50,7 +50,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### A crashed take whose camera recorded nothing recovers as `NO_CAMERA`
 
-- **When:** `6a5407f5`.
+- **When:** `283d28ed`.
 - **The choice:** The app crashes during a take whose camera was reserved but never turned on.
   The camera's directory holds only the mapping, because the camera journal is written with the
   first picture. The next service runs recovery on that directory. Recovery publishes the camera
@@ -84,7 +84,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### A device-release failure from a turn-off or failed turn-on belongs to that toggle
 
-- **When:** `6a5407f5`; corrected in `5af2b3d9`.
+- **When:** `283d28ed`; corrected in `33149815`.
 - **The choice:** A person records for 40 minutes and turns the camera off at minute 5. Releasing
   a camera session restores the device's frame-rate settings. If that restore fails, the session
   reports `DEVICE_RESTORE_FAILED`. The camera is off either way, and the failure is answered on
@@ -122,7 +122,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### Camera fixture library A was fenced by filling the job queue
 
-- **When:** `55b98661`; the tool that made it was removed in `d66fbf80`.
+- **When:** `7f3326de`; the tool that made it was removed in `ac318718`.
 - **The choice:** The preservation gate needs a library where the camera was published by the
   old build but not yet admitted, so the new code must admit an old receipt itself. Publication
   and admission commit in the same service turn, so nothing outside can copy the library between
@@ -140,7 +140,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### Each run starts on a forced key frame
 
-- **When:** `86c164b0`.
+- **When:** `bc7bff4f`.
 - **The choice:** A take with 500 runs is published. The canonical movie is made by passthrough
   export: segments are copied without re-encoding, with an empty edit for each gap. If a run's
   first picture is a P-frame (a picture encoded as a difference from earlier ones), the export
@@ -159,7 +159,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### A crash keeps the camera's prefix up to the first missing picture
 
-- **When:** `86c164b0`; crash journey `70b19317`.
+- **When:** `bc7bff4f`; crash journey `523dfa46`.
 - **The choice:** The app crashes during the third run. The raw movie on disk holds only the
   fragments the writer had cut, and the writer cuts a fragment only when a picture arrives a
   fragment interval (1 s, then 5 s) after the last cut. Its last fragment may also hold a picture
@@ -177,7 +177,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### At most 500 turn-ons per take; 499 gaps; the original receipt bounds kept
 
-- **When:** `f18e10df` (499 gaps, bound reverted); `6a5407f5` (`CAMERA_TOGGLE_LIMIT`).
+- **When:** `8a8c607f` (499 gaps, bound reverted); `283d28ed` (`CAMERA_TOGGLE_LIMIT`).
 - **The choice:** A person toggles the camera on and off over and over. The 501st turn-on,
   counting the one at the take's start if it starts on, is refused with `CAMERA_TOGGLE_LIMIT`.
   The camera stays off and the take keeps recording. Each turn-on starts at most one run, so a
@@ -203,7 +203,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### "Compatible format" replaces exact format equality; an incompatible turn-on ends its run
 
-- **When:** `6a5407f5`; the run-ending rule added in `61103421`.
+- **When:** `283d28ed`; the run-ending rule added in `6775971c`.
 - **The choice:** A camera is turned off and on again. The new session's format description may
   describe the same format without being byte-equal to the first. The writer used to require
   `CMFormatDescriptionEqual` and would interrupt the take. Now every picture is compared on what
@@ -235,7 +235,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### A stop or discard cancels a turn-on in flight
 
-- **When:** `0a017098`.
+- **When:** `77079a69`.
 - **The choice:** A person turns the camera on and presses Finish while the camera is still
   opening. The ending waits for the session to finish starting. The turn-on then releases that
   session itself, so none is orphaned, and its `setCamera` call is refused `INVALID_STATE`. The
@@ -252,7 +252,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### `NO_CAMERA` only when the camera was on at stop and never delivered
 
-- **When:** `8e5613bf`.
+- **When:** `8a17161a`.
 - **The choice:** The companion camera tracks whether it is *meant* to be on: from a start-on, or
   from the last turn-on that succeeded, until the person turns it off. Failed and cancelled
   turn-ons don't count. At stop:
@@ -272,7 +272,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### `cameraAtStart` stays absent unless sent; the app always sends it
 
-- **When:** `1886de84` (protocol, service), `ffdd90f4` (native), `b291b7dc` (app).
+- **When:** `cf11e655` (protocol, service), `8064725e` (native), `2aa9b456` (app).
 - **The choice:** A CLI caller starts a take with `cameraDeviceId` and no `cameraAtStart`. The
   schema doesn't fill in a default. The field stays absent through `capture.start`, the native
   start and the `device.selection` that status reports back. Only replay identity and native
@@ -287,7 +287,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### Replay identity includes the start state; old replays get `REQUEST_CONFLICT`
 
-- **When:** `1886de84`.
+- **When:** `cf11e655`.
 - **The choice:** A client retries `capture.start` under the same request ID. The service
   compares the retry against the first request's identity, the list of allocation arguments.
   That list gains one element for every take: `null` without a companion camera, otherwise the
@@ -303,7 +303,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### `capture.setCamera` waits 2 native calls; the service's native call gets the same 20 s
 
-- **When:** `1886de84`, `ffdd90f4` (decided at integration, `d80c6071`).
+- **When:** `cf11e655`, `8064725e` (decided at integration, `ccf5aa36`).
 - **The choice:** A turn-on opens a camera cold, behind any control call already queued. The
   operation's public wait is `2 * nativeCall` (20 s), and the client waits that plus 5 s. The
   service's own call to native for this operation gets the same 20 s, not the channel's usual
@@ -320,7 +320,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### A camera switched on without camera access is still asked for
 
-- **When:** `b291b7dc`.
+- **When:** `2aa9b456`.
 - **The choice:** A person without camera access turns the menu's camera switch on and starts.
   Without access, a take reserves nothing (user decision). But here the person asked for the
   camera, so the app still sends it. Native refuses with `CAMERA_PERMISSION_REQUIRED`, and the
@@ -333,7 +333,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### Restart uses the take's start state, not its live state
 
-- **When:** `b291b7dc`.
+- **When:** `2aa9b456`.
 - **The choice:** A take starts with the camera off, the person turns it on, then presses
   Restart (`capture.restart`: discard and start again). Restart sends the selection native
   reported back for the take, so the new take starts with the camera **off**. Restarting with
@@ -345,7 +345,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### The preservation gate's design
 
-- **When:** `55b98661`; generalised in `d5e89b85`.
+- **When:** `7f3326de`; generalised in `907f138b`.
 - **The choice:** The gate (`camera-library-preservation.mjs`) proves that libraries made before
   this feature still work. It takes a Yap home or a fixture archive and clones only `library/`
   with `cp -c -p -R` (an APFS clone that keeps modes and times). It hashes every original member
@@ -356,7 +356,7 @@ Ranked least-confident first; the two entries the user settled come last.
   delivered frames at `maxLongEdge: 144`, a size no old run requested, so cached frames can't
   answer for the new code. Others are reported "not exercised". A retryable admission failure is
   retried once. Recording and project counts must survive, so an empty listing can't pass. Since
-  `d5e89b85` the gate requires admission to state exactly the receipt's own gaps, and
+  `907f138b` the gate requires admission to state exactly the receipt's own gaps, and
   availability to equal support minus gaps, so it also holds on a library that already has
   toggled takes.
 - **The gap:** Slice 01 listed assertions and left the method open.
@@ -367,7 +367,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### The acceptance journeys' design
 
-- **When:** `70b19317`, `0c05c279`; the app-channel harness from `ffdd90f4`.
+- **When:** `523dfa46`, `d20c4a7a`; the app-channel harness from `8064725e`.
 - **The choice:** The toggle journeys live in `camera-toggle-controls.mjs`, which drives the real
   `CaptureController`, host channel and service from the CLI and MCP with a fixture camera (a
   prerecorded clip). Slice 08 suggested `webcam.mjs --case`, the single capture-to-project
@@ -386,7 +386,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### An explicit `nativeExecutable`, even `undefined`, overrides `YAP_NATIVE`
 
-- **When:** `eaba0204`, `4fc00a1c`.
+- **When:** `366ac143`, `2b26486e`.
 - **The choice:** With `YAP_NATIVE` exported, seven service tests that supply their own fake
   worker picked up the real native binary. `startProjectService` now uses `nativeExecutable`
   whenever the key is present, even when its value is `undefined`, and reads the environment only
@@ -399,7 +399,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### A camera that starts on is opened during preparation
 
-- **When:** `6a5407f5`.
+- **When:** `283d28ed`.
 - **The choice:** Slice 05 said preparation would no longer open the camera. The build opens it
   in preparation when it starts on, and only a camera that starts off is reserved unopened. A
   camera that can't open then refuses the take before any output exists (the existing
@@ -413,7 +413,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### A picture from before a turn-off that arrives after the next turn-on is dropped
 
-- **When:** slice 02 review (`c4ac29dc`).
+- **When:** slice 02 review (`82b9ed28`).
 - **The choice:** The camera is turned off at 10.0 s and on again at 10.2 s. A picture captured at
   9.97 s is delivered late, at 10.25 s. The writer sees that it was captured before the current
   turn-on and records it as `camera-off` in the mapping instead of keeping it. Accepting it would
@@ -427,7 +427,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### Off time is a `run` number in the mapping and `gaps` in the receipt, omitted when empty
 
-- **When:** `86c164b0`; planned in `054c6d09`.
+- **When:** `bc7bff4f`; planned in `63f9f25c`.
 - **The choice:** A person turns the camera on, off, on. Mapping rows for the second run's
   pictures carry `"run": 1`. Callbacks while off are logged with disposition `camera-off`. The
   receipt keeps `support` as the outer span and adds `gaps: [{startUs, endUs}]`. Intervals are
@@ -448,7 +448,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### One byte form: `run: 0` and `gaps: []` are refused
 
-- **When:** `86c164b0`, `bc9fd253`.
+- **When:** `bc7bff4f`, `749b64ff`.
 - **The choice:** A receipt arrives with `"gaps": []`, or a mapping row with `"run": 0`. Writers
   never produce these (they omit the field), so both Swift and TypeScript readers refuse them.
   TypeScript says "Invalid verified camera gaps", beside the existing support message. Each take
@@ -462,7 +462,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### The acquisition window decides what is recorded
 
-- **When:** `86c164b0`.
+- **When:** `bc7bff4f`.
 - **The choice:** The camera is turned off at 10.0 s. A picture captured 9.95–9.98 s arrives late
   at 10.05 s and is still recorded: it was acquired while on. A picture spanning 9.99–10.02 s
   crosses the turn-off and is logged `camera-off`, as is one that starts before the turn-on. One
@@ -480,7 +480,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### Callbacks while off are not counted as omitted samples
 
-- **When:** `86c164b0`.
+- **When:** `bc7bff4f`.
 - **The choice:** A take with the camera off for 10 minutes receives thousands of camera-off
   callbacks. They stay visible as mapping rows but are not added to the track's
   `omittedSamples`, which keeps counting only clock-rule omissions. A take with one run reports
@@ -492,7 +492,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### A multi-run take drops the live verification and publishes by full scan
 
-- **When:** `86c164b0`; path choice made private in `70135730`.
+- **When:** `bc7bff4f`; path choice made private in `d1783de6`.
 - **The choice:** While a take runs, the writer keeps a live proof of one contiguous camera run
   (the "continuation"), so Stop can publish quickly. When a second run begins, the writer
   abandons that continuation at once, and publication uses the sequential scan. The slice said
@@ -507,7 +507,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### Gaps are checked against the runs inside the canonical scan
 
-- **When:** `86c164b0`.
+- **When:** `bc7bff4f`.
 - **The choice:** Publication already walks every mapped picture to check the canonical movie.
   That same walk now checks the gaps: a run's first picture must start the next interval, and
   every other picture must stay inside the current one. A run that starts with no source time
@@ -521,7 +521,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### Every screen take reserves a camera when access is granted; the device opens only while on
 
-- **When:** `b291b7dc` (app), `6a5407f5` (native). This is a user decision; the entry records how
+- **When:** `2aa9b456` (app), `283d28ed` (native). This is a user decision; the entry records how
   it was carried out.
 - **The choice:** A person with camera access starts a screen take with the camera switch off.
   The app reserves the camera they picked, or the system default (`ControlsState.start()`), and
@@ -537,7 +537,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### Turn-on order
 
-- **When:** `6a5407f5`.
+- **When:** `283d28ed`.
 - **The choice:** A turn-on runs:
   ```
   limit -> access and presence -> count it -> open acquisition window -> open session
@@ -554,7 +554,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### A camera lost while off needs no flag
 
-- **When:** `6a5407f5`.
+- **When:** `283d28ed`.
 - **The choice:** The camera is unplugged while off. Nothing happens: an off camera has no
   session, so nothing watches it. The next turn-on checks presence and refuses
   `SOURCE_UNAVAILABLE`, and the take keeps recording. Each session's loss observers are removed
@@ -567,7 +567,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### Status reports the camera through finalizing
 
-- **When:** `ffdd90f4`.
+- **When:** `8064725e`.
 - **The choice:** After Stop, while the take is finalizing, `capture.status` still reports
   `device.camera`, with state `off` once inputs stop. Native holds the reserved camera until the
   take fully ends.
@@ -578,7 +578,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### Service refusal order for `capture.setCamera`
 
-- **When:** `1886de84`.
+- **When:** `cf11e655`.
 - **The choice:** The service checks, in order: the take exists (`NOT_FOUND`); it is recording or
   paused (else `INVALID_STATE` with `details.state`); it reserved a camera (else
   `CAMERA_NOT_RESERVED`, which also covers camera-only takes). Only then does it call native.
@@ -591,7 +591,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### Minimizing the picture writes the existing `showCameraPreview` preference
 
-- **When:** `d35c2d1b`.
+- **When:** `39879de7`.
 - **The choice:** A person clicks "−" on the camera picture in the floating controls. The action
   `ControlsAction.showCameraPreview(false)` writes the existing Settings preference
   `showCameraPreview`, and the Settings window re-reads it on its next update. Restore writes
@@ -603,7 +603,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### The picture card takes the row's width at 16:9; the panel grows and shrinks from its bottom edge
 
-- **When:** `d35c2d1b`.
+- **When:** `39879de7`.
 - **The choice:** The picture was drawn square inside an oval (one capsule behind both picture
   and row). Now a custom layout (`PictureAboveRow`) lets the control row decide the width. The
   picture is a rounded card of that width at 16:9, filled and cropped from the centre, never
@@ -617,7 +617,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### Every capture-menu custom button draws a pressed tint
 
-- **When:** `967b6479`.
+- **When:** `0bfe8c52`.
 - **The choice:** The capture menu's custom-drawn buttons gave no feedback while held. The
   report named Play and Copy prompt. The fix repaints on highlight and draws a translucent tint
   over every button kind (tile, primary, permission, secondary, plain), with each kind's corner
@@ -629,7 +629,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### One camera action for the menu and the floating controls
 
-- **When:** `b291b7dc`, `697dc080`.
+- **When:** `2aa9b456`, `7b27d966`.
 - **The choice:** The menu's camera switch and the floating camera button send the same
   `ControlsAction.setCamera(Bool)`. Before a take it sets the start switch. During a take that
   reserved a camera it sends `capture.setCamera`. Switching off before a take now keeps the
@@ -647,7 +647,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### The menu's camera switch stays usable during a take
 
-- **When:** `b291b7dc` (delegated; the slice recommended it).
+- **When:** `2aa9b456` (delegated; the slice recommended it).
 - **The choice:** During a take that reserved a camera, the menu's camera switch stays enabled
   and shows native's live state, while the camera chooser and other inputs stay fixed.
 - **The gap:** Delegated.
@@ -657,7 +657,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### A refused live turn-on opens the capture panel
 
-- **When:** `b291b7dc`.
+- **When:** `2aa9b456`.
 - **The choice:** A person clicks the floating camera button and the turn-on is refused (camera
   gone, limit reached, format changed, access revoked). The failure is shown like any refused
   action, and the capture panel opens, because the floating controls have no room to explain
@@ -669,7 +669,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### The library treats an unavailable source as settled, not pending
 
-- **When:** `b291b7dc`.
+- **When:** `2aa9b456`.
 - **The choice:** The slice asked to hide a never-turned-on camera's library row. No such row
   existed: `SourceAdmission.title` had no caller, and was deleted. The real defect was that the
   library counted any source with an unavailable publication as "admission pending" and re-read
@@ -682,7 +682,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### The clock reserves the width of `00:00:00`
 
-- **When:** `df0d106e`.
+- **When:** `f675e53e`.
 - **The choice:** Slice 00 cut the clock's reserved width from 78 to 62 points, so a ten-hour
   take widened the floating controls. The clock now reserves the width of a hidden `00:00:00` in
   its own font: 4 points wider than 62 and 12 narrower than the original 78, and right for any
@@ -694,12 +694,12 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### The pre-toggle fixture libraries are committed archives; their producer lives only in history
 
-- **When:** `55b98661`; producer removed in `d66fbf80`.
+- **When:** `7f3326de`; producer removed in `ac318718`.
 - **The choice:** The two pre-change fixture libraries (A 43 KB, B 1.2 MB compressed) are
   committed as `.tar.gz` with a member manifest (type, mode, size, SHA-256). Archives keep the
   members' modes (read-only acquisition members, private directories), which git drops. The
   gate reads an archive directly. The scripts that produced them could only work against
-  pre-toggle product code, so they were deleted. The corpus README points at `55b98661`, the last
+  pre-toggle product code, so they were deleted. The corpus README points at `7f3326de`, the last
   commit whose product code is pre-toggle, to re-run them.
 - **The gap:** Slice 01 delegated storage.
 - **The reach:** The corpus can't be regenerated from the current tree, by design.
@@ -708,8 +708,8 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### KU6: the camera mapping logs camera callbacks only
 
-- **When:** `6a5407f5` (a reserved-off camera gets a mapping from the take's start); measured by
-  the never-on journey (`70b19317`), recorded in `8c98f911`; fixed in `207ade6f` after the user
+- **When:** `283d28ed` (a reserved-off camera gets a mapping from the take's start); measured by
+  the never-on journey (`523dfa46`), recorded in `7fdc1111`; fixed in `747a1639` after the user
   chose the fix.
 - **The choice:** Take a 2-hour screen take with the microphone on. The person has granted camera
   access, so the take reserves the default camera, but they never turn it on. The companion
@@ -753,7 +753,7 @@ Ranked least-confident first; the two entries the user settled come last.
 
 ### The camera button's look, and the floating controls' open polish
 
-- **When:** `b291b7dc` (camera button); `d35c2d1b` (slice 00 card, minimize and restore).
+- **When:** `2aa9b456` (camera button); `39879de7` (slice 00 card, minimize and restore).
 - **The choice:** During a take with a reserved camera, the floating controls (the small panel
   with the clock, pause, finish and cancel) gain a camera button after pause/finish, behind a
   separator. On: the system's "engaged" chip behind a filled camera (`video.fill`). Off: a

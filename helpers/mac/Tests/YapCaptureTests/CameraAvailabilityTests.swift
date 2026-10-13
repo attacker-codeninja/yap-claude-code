@@ -46,7 +46,7 @@ private func runLimit() throws {
 /// Receipt and mapping key sets of a camera take published by release 0.1.33, before cameras
 /// could be turned off: the receipt and mapping in corpus A
 /// (specs/done/camera-toggle/assets/pre-toggle-corpus/a.tar.gz) and those `YAP_CAMERA_CLOCK_OUTPUT`
-/// wrote at commit 054c6d09. A camera never turned off must still publish exactly these.
+/// wrote at commit 63f9f25c. A camera never turned off must still publish exactly these.
 private let release0133ReceiptKeys: Set<String> = ["binding", "candidate", "canonical", "closed", "diagnostics",
     "endUs", "firstUs", "journal", "observations", "originHostUs", "pictureSHA256", "pictureTimeScale",
     "presentation", "raw", "representedFrames", "support"]
