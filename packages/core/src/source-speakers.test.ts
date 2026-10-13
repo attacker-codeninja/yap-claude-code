@@ -87,6 +87,25 @@ test("speaker source admission refuses physical and acquisition gaps inside the 
   );
 });
 
+test("a support refusal names the supported runs so the caller can select one", async () => {
+  const physical = await fixture([
+    { startUs: 0, endUs: 10_000_000 },
+    { startUs: 10_000_001, endUs: 40_000_000 },
+  ]);
+  expect(() => selectSpeakerSource(physical.assets, physical.acquisitions, physical.input)).toThrow(
+    expect.objectContaining({
+      code: "UNAVAILABLE_SUPPORT",
+      details: {
+        range: { startUs: 1_000_000, endUs: 31_000_000 },
+        available: [
+          { startUs: 1_000_000, endUs: 10_000_000 },
+          { startUs: 10_000_001, endUs: 31_000_000 },
+        ],
+      },
+    }),
+  );
+});
+
 test("speaker admission retains the selected channel, exact source clock and complete support pin", async () => {
   const f = await fixture();
   const input = {

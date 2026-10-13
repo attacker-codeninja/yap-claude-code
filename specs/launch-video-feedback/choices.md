@@ -265,7 +265,7 @@ overridden. Each entry: the choice, why, and how confident.
   shifting alignment timing by concatenating runs or aligning each run
   separately. That's a design decision for the providers, not a gate flip. The
   owner chose per-run consumers; see "Slice 07b (support gaps)" below for why
-  it was measured and not shipped. *Still open.*
+  it was measured and not shipped, and how it was resolved.
 
 ## Slice 05
 
@@ -558,8 +558,22 @@ overridden. Each entry: the choice, why, and how confident.
     code stays in `pendingConversion`. Two more `UNAVAILABLE_SUPPORT` sites
     share the code: integrated loudness over a hole (`acoustic-inspection.ts`)
     and rendered speech (`rendered-speech.ts`). Neither is in the audit, but
-    the one general rule reaches them too. *Open; needs the owner's call on
-    alignment and on the speaker cost.*
+    the one general rule reaches them too.
+- **Resolution: `UNAVAILABLE_SUPPORT` stays a refusal, and names the supported
+  runs.** Decided as the product's user on the measurements above. All four
+  sites (source-channel admission for alignment and the speaker model,
+  integrated loudness, rendered speech) are class A, missing prerequisite:
+  each consumer's input contract is one contiguous span, and splitting the
+  caller's text or measurement across a hole is the caller's call. What keeps
+  this cheap is the details: the source-channel refusal now returns `range`
+  and its `available` runs (integrated loudness already did; rendered speech
+  names its `unavailable` ranges), so the caller narrows to one run in one
+  step. Like this: "your 30 s window has a hole at 10 s; here are the two
+  pieces either side of it." Alternatives: per-run speaker observation
+  (several hundred lines of new generation and adoption machinery) and
+  per-run alignment (unsound). *Confident for alignment; moderately confident
+  for the speaker model, revisit if gapped captures become common.*
+
 ## Slice 07a
 
 - **A missing glyph is CoreText's last-resort face, not only glyph 0.** With

@@ -187,12 +187,17 @@ export function selectSourceChannelRange(
     endFrame = multiply(end, rational(16000n, 1000000n));
   if (startFrame.denominator !== 1n || endFrame.denominator !== 1n)
     throw new CatalogError("INVALID_PARAMS", "Selected observations must use the 16k sample grid");
-  const covered = sourceAvailability(selected.track.available, [sourceRange]).reduce(
+  const available = sourceAvailability(selected.track.available, [sourceRange]);
+  const covered = available.reduce(
     (sum, r) => add(sum, subtract(fromTime(r.endUs), fromTime(r.startUs))),
     rational(0n),
   );
+  // A contiguous span is the model's input contract; the supported runs let the caller pick one.
   if (compare(covered, subtract(end, start)) !== 0)
-    throw new CatalogError("UNAVAILABLE_SUPPORT", "Observations require complete selected support");
+    throw new CatalogError("UNAVAILABLE_SUPPORT", "Observations require complete selected support", {
+      range: sourceRange,
+      available,
+    });
   return {
     ...selected,
     sourceRange,

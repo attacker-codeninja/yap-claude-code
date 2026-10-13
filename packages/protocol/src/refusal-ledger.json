@@ -1,8 +1,6 @@
 {
  "rules": "Owned by packages/protocol/src/refusal-ledger.test.ts; see specs/launch-video-feedback/slices/01-issues-contract.md. codes: every UPPER_SNAKE string literal in product source, with a category and per-file counts. Refusal categories: malformed, ambiguous, conflict, resource-bound, missing-prerequisite, destructive, execution-failure. issue-code: already an output diagnostic (migrates to issues). not-a-refusal: another constant. pending-conversion: a quality gate the spec converts; its slice removes it. pendingSites: quality gates hiding behind generic codes, keyed by message text. refusedStatus: files using a 'refused' status literal. messageCodes: UPPER_SNAKE codes embedded in messages.",
- "pendingConversion": {
-  "UNAVAILABLE_SUPPORT": "04"
- },
+ "pendingConversion": {},
  "pendingSites": [],
  "refusedStatus": {
   "allowed": {
@@ -1902,7 +1900,7 @@
    }
   },
   "UNAVAILABLE_SUPPORT": {
-   "category": "pending-conversion",
+   "category": "missing-prerequisite",
    "files": {
     "helpers/mac/Sources/YapAudio/SourceChannelPCM.swift": 1,
     "packages/core/src/acoustic-inspection.ts": 1,
