@@ -81,7 +81,15 @@ test("only a clear native family with agreeing held FFprobe declarations qualifi
   );
   expect(() =>
     qualifyHdrInterpretation(facts, { ...color, transferFunction: "arib-std-b67" }),
-  ).toThrowError(expect.objectContaining({ code: "UNSUPPORTED_MEDIA" }));
+  ).toThrowError(
+    expect.objectContaining({
+      code: "UNSUPPORTED_MEDIA",
+      details: expect.objectContaining({
+        ffmpeg: expect.objectContaining({ transferFunction: "arib-std-b67" }),
+        container: facts.video.colorFormats,
+      }),
+    }),
+  );
   expect(() =>
     qualifyHdrInterpretation(
       {

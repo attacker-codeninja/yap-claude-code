@@ -225,3 +225,7 @@ overridden. Each entry: the choice, why, and how confident.
   allow-listed in the ledger with reasons. `failedGates` stays the gate
   results inside the verdict. *Moderately confident: revisit if a consumer
   reads these as operation refusals.*
+- **07e HDR stays a refusal, with what it saw.** Both HDR qualification
+  refusals carry their evidence in `details`: the container declarations and
+  FFmpeg's reading, or the codec and inspection facts. The caller can see
+  which declarations disagree. *Confident.*

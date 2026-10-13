@@ -45,7 +45,19 @@ export function qualifyHdrInterpretation(
     inspection.refusals.length ||
     inspection.packetCount < video.samples.count
   )
-    throw new CatalogError("UNSUPPORTED_MEDIA", "HDR compressed interpretation is unqualified");
+    throw new CatalogError("UNSUPPORTED_MEDIA", "HDR compressed interpretation is unqualified", {
+      codec: video.codec,
+      hasAlpha: video.hasAlpha,
+      codecAtomNames: video.codecAtomNames,
+      inspection: inspection
+        ? {
+            status: inspection.status,
+            refusals: inspection.refusals,
+            packetCount: inspection.packetCount,
+            sampleCount: video.samples.count,
+          }
+        : null,
+    });
   const declarations = facts.video.colorFormats;
   const native = declarations[0];
   const transfer = native?.transferFunction;
@@ -67,9 +79,11 @@ export function qualifyHdrInterpretation(
     color.range !== "tv" ||
     color.pixelFormat !== "yuv420p10le"
   )
+    // Ambiguous colour is a refusal: an output would be silently wrong. Name what was seen.
     throw new CatalogError(
       "UNSUPPORTED_MEDIA",
       "HDR source declarations are unqualified or disagree",
+      { container: declarations, ffmpeg: color },
     );
   return { family };
 }
