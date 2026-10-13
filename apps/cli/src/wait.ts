@@ -49,8 +49,8 @@ const reads = new Map([
   ["transcript.search", "transcript.search"],
   ["transcript.prepare", "transcript.get"],
   ["transcript.review", "transcript.review"],
-  ["transcript.render.prepare", "transcript.render.prepare"],
-  ["transcript.render.retry", "transcript.render.prepare"],
+  ["transcript.render.prepare", "transcript.render.get"],
+  ["transcript.render.retry", "transcript.render.get"],
   ["transcript.render.get", "transcript.render.get"],
   ["export.create", "export.status"],
   ["export.retry", "export.status"],
@@ -187,6 +187,9 @@ export async function waitForWork(options: {
     const retainedGeneration = record(record(pins.published).output).generation;
     if (typeof retainedGeneration === "string") params.generation = retainedGeneration;
   }
+  // Rendered recognition reads its words pinned to the generation the preparation published.
+  const renderPreparation = read === "transcript.render.get" && read !== request.operation;
+  if (renderPreparation) params = { projectId: params.projectId, revisionId: params.revisionId };
   if (request.operation === "export.create" && typeof pins.exportId === "string")
     params = { exportId: pins.exportId };
   if (request.operation === "capture.stop" && typeof pins.recordingId === "string")
@@ -250,7 +253,11 @@ export async function waitForWork(options: {
     latest = result;
   };
   try {
-    if (read && !operationSchema.safeParse({ operation: read, params }).success)
+    if (
+      read &&
+      !renderPreparation &&
+      !operationSchema.safeParse({ operation: read, params }).success
+    )
       throw new ArtifactDeliveryError(
         "INVALID_RESPONSE",
         "Acknowledgement cannot pin the advertised read",
@@ -263,6 +270,15 @@ export async function waitForWork(options: {
       if (!latest.ok)
         return interrupted(latest) ? metadata("interrupted", latest.error) : metadata("settled");
       const data = record(latest.data);
+      const renderedGeneration = record(record(data.published).output).generation;
+      if (renderPreparation && data.page === undefined && typeof renderedGeneration === "string") {
+        params.generation = renderedGeneration;
+        const next = await call(read!, params);
+        if (!next.ok && interrupted(next))
+          return expired() ? metadata("timed_out") : metadata("interrupted", next.error);
+        await update(next);
+        continue;
+      }
       const work = workStatus(data);
       // Package admissions expose a context-job ID that public job.get cannot inspect.
       const jobId = read === "package.status" ? undefined : work.jobId;
@@ -376,7 +392,7 @@ export async function waitForWork(options: {
             latest = inspected;
             return metadata("settled");
           }
-          if (sourcePreparation) params.generation = job.attemptId;
+          if (sourcePreparation || renderPreparation) params.generation = job.attemptId;
           await delay(100, undefined, { signal });
           const next = await call(read, params);
           if (!next.ok && interrupted(next))

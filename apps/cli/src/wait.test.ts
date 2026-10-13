@@ -383,7 +383,7 @@ test("bounded transcript preparation waits for its admitted generation without r
   expect(f.calls[2]!.params).toEqual({ ...selection, generation });
 });
 
-test("rendered recognition waits on the project attempt with its complete pinned selection", async () => {
+test("rendered recognition waits on the project attempt and reads its words pinned to the published generation", async () => {
   const params = {
     projectId: "p",
     revisionId: "r",
@@ -392,7 +392,7 @@ test("rendered recognition waits on the project attempt with its complete pinned
     rendition: { sampleRate: 16000, channels: 1 },
   };
   const generation = "c6df7efc-a023-4c40-aa08-3b8b1c0b1b90";
-  let preparations = 0;
+  const word = { type: "word", text: "hello", projectRange: { startUs: 1000000, endUs: 1200000 } };
   const f = await fixture((request) => {
     if (request.operation === "job.get")
       return {
@@ -403,22 +403,71 @@ test("rendered recognition waits on the project attempt with its complete pinned
           target: { kind: "project", projectId: "p", revisionId: "r" },
         },
       };
+    if (request.operation === "transcript.render.get")
+      return {
+        ok: true,
+        data: {
+          projectId: "p",
+          revisionId: "r",
+          generation,
+          kind: "rendered-speech",
+          state: "ready",
+          issues: [],
+          page: { rows: [word], nextCursor: null },
+        },
+      };
     expect(request.operation).toBe("transcript.render.prepare");
     expect(request.params).toEqual(params);
+    return { ok: true, data: { ...params, state: "queued", jobId: "job", published: null } };
+  });
+  const output = await f.run("transcript.render.prepare", params, [
+    "--wait",
+    "--timeout-ms",
+    "1000",
+  ]);
+  expect(output.code, output.stdout + output.stderr).toBe(0);
+  expect(JSON.parse(output.stdout)).toMatchObject({
+    data: { state: "ready", generation, page: { rows: [word] } },
+    wait: { state: "settled", job: { attemptId: generation } },
+  });
+  expect(f.calls.map((call) => call.operation)).toEqual([
+    "transcript.render.prepare",
+    "job.get",
+    "transcript.render.get",
+  ]);
+  expect(f.calls[2]!.params).toEqual({ projectId: "p", revisionId: "r", generation });
+});
+
+test("an already published render preparation reads its words without waiting on a job", async () => {
+  const params = {
+    projectId: "p",
+    revisionId: "r",
+    range: { startUs: 0, endUs: 1000000 },
+    tap: { target: { kind: "output" }, point: { kind: "processed" } },
+    rendition: { sampleRate: 16000, channels: 1 },
+  };
+  const generation = "c6df7efc-a023-4c40-aa08-3b8b1c0b1b90";
+  const f = await fixture((request) => {
+    if (request.operation === "transcript.render.get")
+      return {
+        ok: true,
+        data: {
+          projectId: "p",
+          revisionId: "r",
+          generation,
+          state: "ready",
+          issues: [],
+          page: { rows: [{ type: "word", text: "hi" }], nextCursor: null },
+        },
+      };
+    expect(request.operation).toBe("transcript.render.prepare");
     return {
       ok: true,
       data: {
         ...params,
-        state: ++preparations === 1 ? "queued" : "ready",
-        jobId: "job",
-        published:
-          preparations === 1
-            ? null
-            : {
-                generation: 2,
-                attemptId: generation,
-                output: { kind: "rendered-speech", generation, pcm: { assetId: "measured" } },
-              },
+        state: "ready",
+        jobId: null,
+        published: { generation: 1, attemptId: generation, output: { generation }, issues: [] },
       },
     };
   });
@@ -428,11 +477,11 @@ test("rendered recognition waits on the project attempt with its complete pinned
     "1000",
   ]);
   expect(output.code, output.stdout + output.stderr).toBe(0);
-  expect(JSON.parse(output.stdout)).toMatchObject({
-    data: { state: "ready", published: { output: { generation } } },
-    wait: { state: "settled", job: { attemptId: generation } },
-  });
-  expect(f.calls.filter((call) => call.operation === "transcript.render.prepare")).toHaveLength(2);
+  expect(JSON.parse(output.stdout)).toMatchObject({ data: { page: { rows: [{ text: "hi" }] } } });
+  expect(f.calls.map((call) => call.operation)).toEqual([
+    "transcript.render.prepare",
+    "transcript.render.get",
+  ]);
 });
 
 test.each(["package.open", "package.status"])(
