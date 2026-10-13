@@ -355,20 +355,12 @@ try {
   assert.equal(admission(neverReady, "primary").job.state, "ready");
   assert.equal(admission(neverReady, "camera").acquisitionId, null);
   assert.deepEqual((await service.fixtureCall("inspect")).cameraOpens, 0);
-  // Measured, not asserted: a reserved camera's mapping logs every screen and microphone
-  // callback while it is off, so its size grows with the take.
+  // The mapping logs camera callbacks only, so a camera that was never on writes nothing into it
+  // while the screen records, however long the take.
   const mappingPath = join(recordingDirectory(idle.recordingId), "camera/camera.mapping.jsonl");
-  const rows = {};
-  for (const line of (await readFile(mappingPath, "utf8")).trim().split("\n")) {
-    const role = JSON.parse(line).role;
-    rows[role] ??= { rows: 0, bytes: 0 };
-    rows[role].rows += 1;
-    rows[role].bytes += Buffer.byteLength(line) + 1;
-  }
-  report.cases.neverOn = {
-    take: never,
-    mapping: { bytes: (await stat(mappingPath)).size, byRole: rows },
-  };
+  const mapping = { bytes: (await stat(mappingPath)).size };
+  assert.equal(mapping.bytes, 0, "a never-on camera's mapping is empty");
+  report.cases.neverOn = { take: never, mapping };
 
   // 4. A camera-only take has no companion camera to switch.
   await service.fixtureCall("configure", { productionCamera: true, primaryFrames: false });

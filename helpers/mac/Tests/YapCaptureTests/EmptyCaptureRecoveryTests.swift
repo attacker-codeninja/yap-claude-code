@@ -37,22 +37,25 @@ func runEmptyCaptureRecoveryTests(output: String? = nil) async throws {
         "Allocated camera emptiness must close independently")
     // A reserved camera that never delivered a picture (never turned on, or crashed before its
     // first one) leaves only its mapping. Recovery closes it unavailable and keeps the mapping.
-    let mapping = camera.appendingPathComponent("camera.mapping.jsonl"), rows = Data("{\"role\":\"screen\"}\n".utf8)
-    try rows.write(to: mapping)
-    let mappingOnly = try await emptyRecoveryWire(["directory": camera.path, "sourceAuthority": [
-        "kind": "camera", "sourceId": "empty-camera", "binding": [
-            "recordingId": "empty-take", "sourceId": "empty-camera", "deviceId": "fixture-device"]]],
-        root: root, name: "mapping-only-camera")
-    guard mappingOnly["ok"] as? Bool == true, let mappingData = mappingOnly["data"] as? [String: Any],
-        mappingData["inputsClosed"] as? Bool == true,
-        let mappingOutcome = mappingData["sourcePublication"] as? [String: Any], mappingOutcome["state"] as? String == "unavailable",
-        (mappingOutcome["error"] as? [String: Any])?["code"] as? String == "NO_CAMERA" else {
-        throw NativeFailure("TEST_FAILED", "A mapping-only camera did not close unavailable: \(mappingOnly)")
+    // This build leaves it empty when no camera callback arrived; 0.1.33 also logged screen rows.
+    let mapping = camera.appendingPathComponent("camera.mapping.jsonl")
+    for (name, rows) in [("empty", Data()), ("0.1.33", Data("{\"role\":\"screen\"}\n".utf8))] {
+        try rows.write(to: mapping)
+        let mappingOnly = try await emptyRecoveryWire(["directory": camera.path, "sourceAuthority": [
+            "kind": "camera", "sourceId": "empty-camera", "binding": [
+                "recordingId": "empty-take", "sourceId": "empty-camera", "deviceId": "fixture-device"]]],
+            root: root, name: "mapping-only-camera-\(name)")
+        guard mappingOnly["ok"] as? Bool == true, let mappingData = mappingOnly["data"] as? [String: Any],
+            mappingData["inputsClosed"] as? Bool == true,
+            let mappingOutcome = mappingData["sourcePublication"] as? [String: Any], mappingOutcome["state"] as? String == "unavailable",
+            (mappingOutcome["error"] as? [String: Any])?["code"] as? String == "NO_CAMERA" else {
+            throw NativeFailure("TEST_FAILED", "A \(name) mapping-only camera did not close unavailable: \(mappingOnly)")
+        }
+        let retained = try Data(contentsOf: mapping), cameraMembers = try FileManager.default.contentsOfDirectory(atPath: camera.path)
+        precondition(retained == rows && cameraMembers == ["camera.mapping.jsonl"],
+            "Recovery keeps the \(name) mapping and manufactures nothing")
+        try FileManager.default.removeItem(at: mapping)
     }
-    let retained = try Data(contentsOf: mapping), cameraMembers = try FileManager.default.contentsOfDirectory(atPath: camera.path)
-    precondition(retained == rows && cameraMembers == ["camera.mapping.jsonl"],
-        "Recovery keeps the mapping and manufactures nothing")
-    try FileManager.default.removeItem(at: mapping)
     let generic = try await emptyRecoveryWire(["directory": source.path], root: root, name: "directory-only-empty")
     let genericData = generic["data"] as! [String: Any]
     precondition(generic["ok"] as? Bool == true && genericData["durationUs"] as? Int == 0

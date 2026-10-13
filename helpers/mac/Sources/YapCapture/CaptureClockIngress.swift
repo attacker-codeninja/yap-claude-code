@@ -16,7 +16,8 @@ package enum CaptureVideoDestination {
     case companion(CameraWriter)
 }
 
-/// Streams clock observations and accepted camera mappings on the existing capture writer queue.
+/// Routes capture callbacks on the existing capture writer queue. A companion camera's callbacks,
+/// and only those, are logged to its mapping.
 package final class CaptureClockIngress: NSObject, SCStreamOutput, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDataOutputSampleBufferDelegate,
     @unchecked Sendable {
     package let writer: CaptureWriter
@@ -64,7 +65,7 @@ package final class CaptureClockIngress: NSObject, SCStreamOutput, AVCaptureVide
     }
     package func captureOutput(_ output: AVCaptureOutput, didDrop sample: CMSampleBuffer,
         from connection: AVCaptureConnection) {
-        do { try log(sample, role: .camera, arrivalHostUs: CaptureHostTime.nowUs(), converted: nil, disposition: "device-dropped", sourceUs: nil, clock: captureSessionClock?()) }
+        do { try log(sample, arrivalHostUs: CaptureHostTime.nowUs(), converted: nil, disposition: "device-dropped", sourceUs: nil, clock: captureSessionClock?()) }
         catch { fail(error) }
     }
     @discardableResult
@@ -77,10 +78,10 @@ package final class CaptureClockIngress: NSObject, SCStreamOutput, AVCaptureVide
         case .audio: role = .system
         @unknown default: return nil
         }
-        return accept(sample, role: role, from: clock, clockDomain: "screen-stream")
+        return accept(sample, role: role, from: clock)
     }
     @discardableResult
-    package func accept(_ sample: CMSampleBuffer, role: CaptureIngressRole, from clock: CMClockOrTimebase?, clockDomain: String = "camera-session") -> CaptureWriter.IngressReceipt? {
+    package func accept(_ sample: CMSampleBuffer, role: CaptureIngressRole, from clock: CMClockOrTimebase?) -> CaptureWriter.IngressReceipt? {
         guard !stopped else { return nil }
         let arrival = CaptureHostTime.nowUs()
         do {
@@ -89,36 +90,33 @@ package final class CaptureClockIngress: NSObject, SCStreamOutput, AVCaptureVide
             }
             let host = CMSyncConvertTime(sample.presentationTimeStamp, from: clock, to: CMClockGetHostTimeClock())
             let converted = try Self.convert(sample, from: clock)
+            // Screen and audio callbacks go to the primary writer, whose journal records them. The
+            // camera's mapping records camera callbacks only, so its size follows camera time.
+            switch role {
+            case .screen: return writer.ingestObserved(converted, of: .screen)
+            case .microphone: return writer.ingestObserved(converted, of: .microphone)
+            case .system: return writer.ingestObserved(converted, of: .audio)
+            case .camera: break
+            }
+            if let image = sample.imageBuffer { previewFrame?(NativeCapture.CameraPreviewFrame(image)) }
             let receipt: CaptureWriter.IngressReceipt
             var frame: CameraFrameMapping?
-            if role == .camera {
-                if let image = sample.imageBuffer { previewFrame?(NativeCapture.CameraPreviewFrame(image)) }
-                switch destination {
-                case .companion(let camera):
-                    (receipt, frame) = try camera.append(converted, state: writer.ingressState)
-                case .primary(let width, let height):
-                    if converted.isValid, CMSampleBufferDataIsReady(converted), let image = converted.imageBuffer {
-                        guard CVPixelBufferGetWidth(image) == width, CVPixelBufferGetHeight(image) == height,
-                            let format = converted.formatDescription,
-                            primaryFormat.map({ CMFormatDescriptionEqual($0, otherFormatDescription: format) }) ?? true else {
-                            throw CaptureFailure("FORMAT_CHANGED", "Selected camera changed the fixed primary picture format.")
-                        }
-                        primaryFormat = converted.formatDescription
+            switch destination {
+            case .companion(let camera):
+                (receipt, frame) = try camera.append(converted, state: writer.ingressState)
+            case .primary(let width, let height):
+                if converted.isValid, CMSampleBufferDataIsReady(converted), let image = converted.imageBuffer {
+                    guard CVPixelBufferGetWidth(image) == width, CVPixelBufferGetHeight(image) == height,
+                        let format = converted.formatDescription,
+                        primaryFormat.map({ CMFormatDescriptionEqual($0, otherFormatDescription: format) }) ?? true else {
+                        throw CaptureFailure("FORMAT_CHANGED", "Selected camera changed the fixed primary picture format.")
                     }
-                    receipt = writer.ingestPrimaryVideo(converted)
+                    primaryFormat = converted.formatDescription
                 }
-            } else {
-                let type: SCStreamOutputType
-                switch role {
-                case .screen: type = .screen
-                case .microphone: type = .microphone
-                case .system: type = .audio
-                case .camera: preconditionFailure("Camera video is routed by its allocation above")
-                }
-                receipt = writer.ingestObserved(converted, of: type)
+                receipt = writer.ingestPrimaryVideo(converted)
             }
-            try log(sample, role: role, arrivalHostUs: arrival, converted: host, disposition: receipt.disposition,
-                sourceUs: receipt.sourceUs, clock: clock, cameraFrame: frame, clockDomain: clockDomain)
+            try log(sample, arrivalHostUs: arrival, converted: host, disposition: receipt.disposition,
+                sourceUs: receipt.sourceUs, clock: clock, cameraFrame: frame)
             if let frame, let companion, let observationURL { companion.recorded(observations: observationURL, bytes: writtenBytes, frames: frame.ordinal + 1) }
             return receipt
         } catch {
@@ -132,8 +130,10 @@ package final class CaptureClockIngress: NSObject, SCStreamOutput, AVCaptureVide
         stopped = true
         failure((error as? CaptureFailure) ?? CaptureFailure("CAPTURE_EVIDENCE_FAILED", error.localizedDescription))
     }
-    private func log(_ sample: CMSampleBuffer, role: CaptureIngressRole, arrivalHostUs: Int64, converted: CMTime?,
-        disposition: String, sourceUs: Int64?, clock: CMClockOrTimebase?, cameraFrame: CameraFrameMapping? = nil, clockDomain: String = "camera-session") throws {
+    /// One camera callback. Rows keep `role` and `clockDomain` so the file reads like 0.1.33
+    /// mappings, which also held screen and microphone rows.
+    private func log(_ sample: CMSampleBuffer, arrivalHostUs: Int64, converted: CMTime?,
+        disposition: String, sourceUs: Int64?, clock: CMClockOrTimebase?, cameraFrame: CameraFrameMapping? = nil) throws {
         guard !stopped, let observations else { return }
         struct Row: Codable {
             let role: CaptureIngressRole
@@ -151,7 +151,7 @@ package final class CaptureClockIngress: NSObject, SCStreamOutput, AVCaptureVide
         // Bound pathological callback floods without accumulating a take in memory.
         guard rows < maximumRows else { throw CaptureFailure("EVIDENCE_LIMIT", "Clock observation limit reached.") }
         let rate = clock.map { CMSyncGetRelativeRate($0, relativeTo: CMClockGetHostTimeClock()) }
-        let row = Row(role: role, clockDomain: clockDomain, generation: generation, rawPTS: CaptureRationalTime(sample.presentationTimeStamp),
+        let row = Row(role: .camera, clockDomain: "camera-session", generation: generation, rawPTS: CaptureRationalTime(sample.presentationTimeStamp),
             convertedHostPTS: converted.map(CaptureRationalTime.init), arrivalHostUs: arrivalHostUs,
             duration: CaptureRationalTime(sample.duration), sourceUs: sourceUs, disposition: disposition,
             relativeRate: rate.flatMap { $0.isFinite ? $0 : nil }, cameraFrame: cameraFrame)

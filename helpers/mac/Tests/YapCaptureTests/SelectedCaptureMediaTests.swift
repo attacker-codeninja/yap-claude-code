@@ -62,8 +62,11 @@ func runSelectedCaptureMediaTests(output: String, corpus: String) async throws {
     precondition(receipt.acceptedFrames == receipt.representedFrames && input.rejectedAudioBuffers > 0)
     let rows = try String(contentsOf: folder.appendingPathComponent("timestamps.jsonl"), encoding: .utf8)
         .split(separator: "\n").map { try JSONSerialization.jsonObject(with: Data($0.utf8)) as! [String: Any] }
-    precondition(Set(rows.compactMap { $0["role"] as? String }) == Set(["screen","camera","microphone"]))
-    precondition(rows.contains { $0["disposition"] as? String == "outside-support" })
+    precondition(!rows.isEmpty && rows.allSatisfy { $0["role"] as? String == "camera" },
+        "The camera's mapping logs camera callbacks only, not the screen or microphone")
+    // The primary's callbacks inside the pause are counted by its own result, not the mapping.
+    precondition(result.tracks.contains { $0.omittedSamples > 0 },
+        "The primary reports the paused callbacks it omitted: \(result.tracks.map { "\($0.role)=\($0.omittedSamples)" })")
     precondition(rows.contains { $0["disposition"] as? String == "sealed-or-failed" })
     let earlier = CaptureFailure("EARLIER", "earlier failure")
     let later = CaptureFailure("CAMERA", "camera failure")
@@ -111,7 +114,8 @@ func runSelectedCaptureMediaTests(output: String, corpus: String) async throws {
     try await RecoveryFixture.writeVariableDurationVideo(to: firstFrame, timesUs: [0], endUs: 33333)
     let running = PrerecordedCaptureInput(source: firstFrame)
     running.probeDirectory = root.appendingPathComponent("limited-after-start")
-    running.probeMaximumRows = 3
+    // The one picture offers two camera callbacks during startup; the next one reaches the limit.
+    running.probeMaximumRows = 2
     let boundedRunning = NativeCapture(prepareInput: { _, _ in running })
     try await boundedRunning.start(CaptureRequest(source: CaptureSource(kind: "offline-prerecorded"),
         outputDirectory: running.probeDirectory!.path, microphone: false, systemAudio: false))
@@ -124,7 +128,7 @@ func runSelectedCaptureMediaTests(output: String, corpus: String) async throws {
     let stopped = try await boundedRunning.stop()
     precondition(stopped.state == "interrupted" && stopped.failure?.code == "EVIDENCE_LIMIT")
     let retained = try String(contentsOf: running.probeDirectory!.appendingPathComponent("timestamps.jsonl"), encoding: .utf8)
-    precondition(retained.split(separator: "\n").count == 3 && running.finalizations == 1)
+    precondition(retained.split(separator: "\n").count == 2 && running.finalizations == 1)
     try JSONEncoder().encode(stopped).write(to: root.appendingPathComponent("limit-result.json"))
     print("PASS shared ingress camera offset/pause, separate results, exact canonical microphone PCM, final pause closure and earlier failure precedence")
 }

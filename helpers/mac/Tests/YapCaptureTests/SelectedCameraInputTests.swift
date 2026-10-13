@@ -70,7 +70,8 @@ func runSelectedCameraInputTests(output: String? = nil) async throws {
             precondition(receipts[0].supportSHA256 == receipts[1].supportSHA256)
             let rows = try String(contentsOf: folder.appendingPathComponent("timestamps.jsonl"), encoding: .utf8)
                 .split(separator: "\n").map { try JSONSerialization.jsonObject(with: Data($0.utf8)) as! [String: Any] }
-            precondition(Set(rows.compactMap { $0["role"] as? String }) == Set(["screen", "camera", "microphone", "system"]))
+            precondition(!rows.isEmpty && rows.allSatisfy { $0["role"] as? String == "camera" },
+                "The camera's mapping logs camera callbacks only, not the screen, microphone or system audio")
         }
         try JSONEncoder().encode(result).write(to: folder.appendingPathComponent("native-result.json"))
         print("PASS \(mode): exact selected camera, independent native timing, cursor and requested audio routing")
@@ -80,7 +81,8 @@ func runSelectedCameraInputTests(output: String? = nil) async throws {
     try await verifySelectedLifecycle(root: root, screenSource: screenSource, cameraSource: cameraSource)
     try await verifyDiscardedPreparation(root: root, screenSource: screenSource, cameraSource: cameraSource)
     try await verifyWriterRefusal(root: root, screenSource: screenSource, cameraSource: cameraSource)
-    try await verifyCameraSwitch(root: root, screenSource: screenSource, cameraSource: cameraSource)
+    try await verifyCameraSwitch(root: root, screenSource: screenSource, cameraSource: cameraSource,
+        audio: audioFolder.appendingPathComponent("narration.packed.mov"))
     try await runCaptureStreamInputTests(root: root)
 
 }
@@ -464,9 +466,9 @@ private final class SwitchTake {
         })
         capture.onInterruption = { [unowned self] reason in interruption = reason }
     }
-    func start() async throws {
+    func start(microphone: Bool = false) async throws {
         try await capture.start(CaptureRequest(source: CaptureSource(kind: "offline-prerecorded"),
-            outputDirectory: folder.appendingPathComponent("screen").path, microphone: false, systemAudio: false))
+            outputDirectory: folder.appendingPathComponent("screen").path, microphone: microphone, systemAudio: false))
     }
     func stop() async throws -> CaptureResult { try await capture.stop() }
     @discardableResult
@@ -493,7 +495,7 @@ private final class SwitchTake {
 }
 
 @MainActor
-private func verifyCameraSwitch(root: URL, screenSource: URL, cameraSource: URL) async throws {
+private func verifyCameraSwitch(root: URL, screenSource: URL, cameraSource: URL, audio: URL) async throws {
     func take(_ name: String, startsOn: Bool, session: @escaping (FixtureCameraSession) -> Void = { _ in }) throws -> SwitchTake {
         try SwitchTake(root: root, name: name, screenSource: screenSource, cameraSource: cameraSource,
             startsOn: startsOn, session: session)
@@ -501,7 +503,8 @@ private func verifyCameraSwitch(root: URL, screenSource: URL, cameraSource: URL)
 
     // Reserved but never turned on: the device is never opened and the take completes.
     var t = try take("reserved-off-never-on", startsOn: false)
-    try await t.start()
+    t.screen.audio = audio
+    try await t.start(microphone: true)
     precondition(t.capture.companionCamera?.deviceId == "chosen" && t.capture.companionCamera?.on == false)
     var result = try await t.stop()
     precondition(t.device.opens == 0, "A camera that was never turned on is never opened")
@@ -511,7 +514,15 @@ private func verifyCameraSwitch(root: URL, screenSource: URL, cameraSource: URL)
     let members = try FileManager.default.contentsOfDirectory(atPath: t.camera.path)
     precondition(members == [CameraMedia.mappingFile],
         "A never-turned-on camera leaves only its mapping")
-    print("PASS reserved-off-never-on: no open, take complete, camera CAMERA_NOT_TURNED_ON")
+    // The mapping records camera callbacks only. Screen and microphone delivered throughout
+    // this take; a mapping that logged them would grow with the take while the camera is off.
+    precondition(result.tracks.contains { $0.role == "video" && $0.samples > 0 }
+        && result.tracks.contains { $0.role == "narration" && $0.samples > 0 },
+        "The take recorded screen and microphone: \(result.tracks.map { "\($0.role)=\($0.samples)" })")
+    let neverOnMapping = try Data(contentsOf: t.camera.appendingPathComponent(CameraMedia.mappingFile))
+    precondition(neverOnMapping.isEmpty,
+        "A reserved-off take writes no screen or microphone rows into the camera mapping: \(neverOnMapping.count) bytes")
+    print("PASS reserved-off-never-on: no open, take complete, camera CAMERA_NOT_TURNED_ON, empty mapping")
 
     // Off, on, off, on: each turn-on opens a fresh session and each turn-off drops it.
     t = try take("off-on-off-on", startsOn: false)
