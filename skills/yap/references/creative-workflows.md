@@ -173,8 +173,8 @@ Yap has no sync operation; derive each offset from evidence:
    each section separately.
 4. To refine, read a short stretch of both with `audio.get` and cross-correlate
    their envelopes.
-5. Place clips at the explicit offset (group angles with the `angle.declare`
-   edit), converting through each acquisition binding's `sourceToAssetOffsetUs`.
+5. Place each clip at its derived offset, converting through each acquisition
+   binding's `sourceToAssetOffsetUs`.
 
 Before choosing which recording carries the dialogue, `audio.measure` every
 candidate over one shared range and listen to each.

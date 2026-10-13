@@ -43,8 +43,6 @@ target. Measure after it before proposing another gain. Excess makeup can raise
 peaks. Bypass preserves dry audio and cannot retain an implicit makeup gain.
 
 Prepare and measure the complete final mix with the requested mastering recipe.
-Normalization and the limiter always publish their best result; read the issues on
-it. A missed target names each excess, and a gain-only miss also names the input's
-peak-to-loudness ratio and the loudest feasible target. Deciding whether to accept
-it or revise the treatment within the brief is yours. A compliant PCM master does not guarantee the encoded file's true peak;
+Normalization and the limiter always publish their best result; read its issues
+and the feasibility arithmetic in [media workflows](media-workflows.md). A compliant PCM master does not guarantee the encoded file's true peak;
 measure decoded delivery separately and retain each meter's identity.
