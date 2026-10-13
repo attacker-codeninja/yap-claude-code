@@ -16,7 +16,9 @@ turns what cost it time into contracts. Sources:
 
 You are resuming this spec. Status (2026-10-13): slices 01a–d, 02 and 09
 are merged, along with the authored-range half of 06 and sub-slices 07c, 07g
-and 07h. The refusal ledger (`packages/protocol/src/refusal-ledger.json`) is
+and 07h. 06b (read ranges, synchronous render admission, the curve-clock
+message, CLI `--wait` render mapping, docs) is done on branch `lvf/06b`; its
+deferred sites are listed under "06b" in [choices.md](choices.md). The refusal ledger (`packages/protocol/src/refusal-ledger.json`) is
 the live to-do list: `pendingConversion`, `pendingSites`,
 `refusedStatus.pending` and `messageCodes.pending` name every gate still to
 convert, each with its owning slice.
@@ -28,8 +30,8 @@ worktrees):
 2. [04](slices/04-audio-treatments-publish.md): normalization and limiter
    publish their best result. Un-skip slice 02's failed-job test
    (`apps/service/src/audio-processing.test.ts`).
-3. 06b: the read ranges, synchronous render admission, and the CLI `--wait`
-   render mapping. The authored ranges (06a) are done.
+3. 06 remainder: the content-anchor, angle-validity, transcript
+   execution-range and project-alignment range sites (see choices.md, 06b).
 4. 07: (a) fonts and (b) gaps are native; (d) SRT and (k) caption vocabulary
    touch `apps/service/src/exports.ts`; (f), (i) and (j) are vocabulary only.
 5. 05, then 10. Then the full suite, then 11.
@@ -57,7 +59,7 @@ Checklist:
 - [ ] [03 Long-media transcription always publishes](slices/03-transcription-publishes.md)
 - [ ] [04 Audio treatments publish their best result](slices/04-audio-treatments-publish.md)
 - [ ] [05 Short-window level for word-sized ranges](slices/05-short-window-level.md)
-- [ ] [06 Ranges and messages](slices/06-ranges-and-messages.md) (authored ranges done)
+- [ ] [06 Ranges and messages](slices/06-ranges-and-messages.md) (a–d done; four deferred range sites)
 - [ ] [07 The remaining gates: publish, or justify the refusal](slices/07-remaining-quality-gates.md) (c, g, h done)
 - [x] [08 Multicam sync: no new primitive (closed by decision)](slices/08-sync-estimate.md)
 - [x] [09 View-shot fixtures](slices/09-view-shot-fixtures.md)

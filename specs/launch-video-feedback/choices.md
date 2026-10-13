@@ -146,6 +146,65 @@ overridden. Each entry: the choice, why, and how confident.
   *Confident.*
 - **Holds and image streams are untouched.** A hold is a point, and a point
   outside its domain is malformed. *Confident.*
+
+### 06b: read ranges, render admission and messages
+
+- **One read-side helper, `admitReadRange(requested, domain)`, wraps
+  `admitRange` for wire ranges** (`range-admission.ts`). It returns the applied
+  range and `issues` (`range-clamped` or empty). A requested range that isn't a
+  nonempty half-open range is `INVALID_RANGE`. Project reads share
+  `admitProjectRange(durationUs, range)` in `project-window.ts`, so the project
+  window, rendered recognition, project evidence and package speakers apply one
+  rule. *Confident.*
+- **Where the issue goes depends on what the identity holds.** Rendered
+  recognition's job identity already keeps the requested range, so its clamp is
+  stored with the output (`StagedJobResult.issues`) and returned by
+  `transcript.render.get`. `transcript.render.prepare` admits synchronously, so a
+  range with no overlap refuses before any job. The other reads (`audio.get`,
+  preview, `transcript.get`/`review`, source and capture `timeline.events`/
+  `cursor.raw`, project evidence, package speakers) keep the *applied* range in
+  their cached identity and report the clamp as the result's top-level `issues`.
+  Every re-read of the same request, including a CLI `--wait` poll, recomputes
+  it, and a request for the applied range shares the same cached output. This
+  avoids changing those identities, which exports and extractions pin.
+  *Confident; it departs from the slice's "identity keeps the requested range"
+  for these reads, so review it.*
+- **The CLI's ready marker counts a read's `issues` plus its published
+  output's `issues`.** It used to read `data.issues ?? published.issues`; an
+  always-present empty `data.issues` would hide published issues. *Confident.*
+- **Continuations keep the requested range.** A transcript page cursor stores the
+  requested range and re-admits it on each page, so every page reports the same
+  clamp. Event and evidence cursors digest the applied range. *Confident.*
+- **Integer-microsecond sites keep their own integer check** (transcript pages,
+  source and capture events) and refuse a fractional range with `INVALID_RANGE`,
+  as before. *Confident.*
+- **The trim pin "Trim range must stay within the clip's resolved interval" is
+  retired.** The kept range is admitted against the clip's resolved interval;
+  `edits.test.ts` dropped that refusal assertion and `range-admission.test.ts`
+  owns the clamp. *Confident.*
+- **Left as refusals, with reasons:**
+  - content anchors (`model.ts` ~143) and angle validity (`model.ts` ~444) are
+    stored-document validators. Clamping them at authoring time means clamping
+    inside place, reanchor and `angle.declare`, composed with the source clamp,
+    and that isn't straightforward. *Deferred.*
+  - the transcript execution range (`transcript-processing.ts` ~236) is part of
+    the stored speech-execution identity that native receipts are validated
+    against (`transcript.ts` ~850). It belongs with slice 03's seam work.
+    *Deferred.*
+  - the project alignment range (`project-service.ts` ~525) aligns caller text to
+    that range. Clamping the audio while keeping the full text needs a decision,
+    and the only test seam needs a prepared tap and the native aligner.
+    *Deferred.*
+- **6b splits the curve error three ways:** a clock error (details `clock`,
+  `slot`, `expectedKey`: `fraction` or `microseconds`), a malformed curve
+  (details `reason`), and a bound error (details `slot`, `bounds`). All three
+  stay `INVALID_COMPOSITION` refusals inside `INVALID_EDIT`. *Confident.*
+- **6c maps `transcript.render.prepare` and `.retry` `--wait` to
+  `transcript.render.get`** with only `projectId`, `revisionId` and the
+  generation: the job's `attemptId`, or the already-published output's
+  generation. *Confident.*
+
+
 ## Slice 09
 
 - **The variable is `FIXTURE_LABEL`, and `omit` is its only value.** Any

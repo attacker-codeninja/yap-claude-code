@@ -381,6 +381,13 @@ Use direct frames or a preview to investigate those intervals. Source support ga
 are known exclusions, while unavailable observations remain missing evidence. Source
 indexes exclude project edits; measured source scenes are not authored project cuts.
 
+A range that runs past its source or project is clamped to the part inside it: the
+result carries a `range-clamped` issue with the requested range, the applied range
+and the bounds, so read the applied range rather than assuming the request. A
+range with no part inside refuses with `INVALID_RANGE` and names the bounds.
+Synchronous reads report the issue as the result's `issues`; rendered recognition
+reports it with its published output.
+
 For timeline inspection, use advertised `timeline.events` reads. Video scene changes
 need a selected asset/stream, not capture metadata; add acquisition only to apply
 its support. Source ranges use source time, while project reads use the pinned

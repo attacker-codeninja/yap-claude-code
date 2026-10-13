@@ -34,6 +34,15 @@ single invented inverse timestamp. Stream offsets share the asset presentation
 origin. Missing support and a known source with no occurrence remain different
 from invalid identity.
 
+[Range admission](src/range-admission.ts) is the one rule for a requested range
+against its domain, whether an edit authors it or a read selects it. A range that
+partly overlaps is clamped to the overlap and the result reports `range-clamped`
+with the requested range, the applied range and the bounds. A range with no
+overlap is malformed: `INVALID_RANGE`, naming the bounds. A clamp shortens; it
+never holds a last frame or invents support. A single point outside its domain is
+malformed, because a point can't be partly valid. Stored documents stay strictly
+validated, so only the authoring operation clamps.
+
 [Editorial boundaries](src/project-cuts.ts) use the same source mapping for
 authored cuts and explicit two-sided review points. Opening/ending and nearby
 candidate coordinates stay exact; asking about a point never authors a cut or
