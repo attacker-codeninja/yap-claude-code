@@ -41,7 +41,9 @@ with the requested range, the applied range and the bounds. A range with no
 overlap is malformed: `INVALID_RANGE`, naming the bounds. A clamp shortens; it
 never holds a last frame or invents support. A single point outside its domain is
 malformed, because a point can't be partly valid. Stored documents stay strictly
-validated, so only the authoring operation clamps.
+validated, so only the authoring operation clamps. Work a read or preparation caches
+is keyed by the applied range, and the clamp belongs to the request: it is reported
+on each result and never stored with the shared output.
 
 A placement maps linearly onto its source, so it must fit every domain at once: its
 media source within the stream, and a content anchor within the parent's selected
