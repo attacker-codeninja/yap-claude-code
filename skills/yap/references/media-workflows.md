@@ -122,7 +122,8 @@ speech models through the advertised model operation. Keep the returned rendered
 generation and read it with `transcript.render.get`; preserve PCM origin, model
 provenance and both PCM/project ranges. These reads need no inference. Diagnose
 failed/canceled work before explicit `transcript.render.retry` with the same
-selection. Missing source support is a refusal, not silence. Fresh ASR may complete
+selection. Missing source support refuses rather than reading as silence; the
+refusal names the gaps, so select a range on one side of them. Fresh ASR may complete
 a clipped word: compare it with source evidence and inspect actual boundary audio
 before deciding that a join is clean or defective.
 
@@ -174,7 +175,12 @@ audio asset ID, discover its stream with `asset.get`, then inspect it through th
 ordinary audio/waveform/spectrogram operations. Unavailable processing still
 refuses; preparation does not make an unverified denoiser or retimer executable.
 Preserve the preparation receipt's unavailable-support information; rendered zero
-samples do not by themselves prove recorded silence.
+samples do not by themselves prove recorded silence. A stateful processor
+(denoise, limiter, normalization) never runs over a hole in its input: it
+restarts after the gap, and the output carries a `support-gap` issue naming the
+gap and the split steps. Expect a level or noise-profile change across it.
+Speaker and alignment inputs need one contiguous supported span; their refusal
+lists the `available` runs to choose from.
 
 Normalization and limiting always publish their best result. When a gain-only
 loudness target would push the true peak past its ceiling, the ceiling wins and
