@@ -10,6 +10,7 @@ import {
   processingCapabilities,
   requireWindowReady,
   validateComposition,
+  type WireRange,
   type Issue,
   type ProcessingTap,
   type ProcessorImplementations,
@@ -215,18 +216,32 @@ export function projectComposition(
  * A project read's range is clamped to the pinned project, with `range-clamped`; one with no part
  * inside it refuses. An omitted range is the whole project.
  */
-export function admitProjectRange(
+export function admitProjectRange<Range extends WireRange = { startUs: number; endUs: number }>(
   durationUs: number,
-  range: { startUs: number; endUs: number } | undefined,
+  range: Range | undefined,
 ) {
   const admitted = admitReadRange(range ?? { startUs: 0, endUs: durationUs }, {
     startUs: 0,
     endUs: durationUs,
   });
-  return {
-    range: admitted.range as { startUs: number; endUs: number },
-    issues: admitted.issues,
-  };
+  // The applied bounds are the requested ones or the project's whole microseconds.
+  return { range: admitted.range as Range, issues: admitted.issues };
+}
+
+/**
+ * Evidence reads enumerate what a project holds, so an empty project reads as 0..0 with no issue
+ * when the caller omits the range. `stored` marks a range a continuation re-reads from its own
+ * query, which may be that 0..0. A range the caller states must still be a nonempty part.
+ */
+export function admitProjectEvidenceRange(
+  durationUs: number,
+  range: { startUs: number; endUs: number } | undefined,
+  stored: boolean,
+) {
+  return durationUs === 0 &&
+    (range === undefined || (stored && range.startUs === 0 && range.endUs === 0))
+    ? { range: { startUs: 0, endUs: 0 }, issues: [] }
+    : admitProjectRange(durationUs, range);
 }
 
 /** Staged and catalog revisions share compilation; file publication is not a read prerequisite. */

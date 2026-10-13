@@ -34,8 +34,10 @@ import { partitionClips } from "./partition.js";
 import { add, subtract, compare, fromTime, rational, toFraction, toTime } from "./rational.js";
 import {
   admitRange,
+  interval,
   keepSameFraction,
   rangeClampedIssue,
+  wire,
   type Interval,
 } from "./range-admission.js";
 import { boundedIssues, type Issue } from "./issues.js";
@@ -535,13 +537,8 @@ export function applyBatch(
       placement:
         anchor.kind === "project" ? anchor : { ...anchor, clipId: resolve(anchor.clipId, "clip") },
     };
-    return fitPlacement(placed, operationIndex).clip;
+    return fitClip(placed, operationIndex).clip;
   };
-  const interval = (range: { startUs: TimeValue; endUs: TimeValue }): Interval => ({
-    start: fromTime(range.startUs),
-    end: fromTime(range.endUs),
-  });
-  const wire = (range: Interval) => ({ startUs: toTime(range.start), endUs: toTime(range.end) });
   const unit: Interval = { start: rational(0n), end: rational(1n) };
   const sourceDomain = (clip: object) => {
     if (!("assetId" in clip)) return null;
@@ -558,29 +555,19 @@ export function applyBatch(
     if (parent?.source.kind !== "range") return null;
     return { requested: interval(anchor.sourceRange), bounds: interval(parent.source.range) };
   };
-  // Authored selections past a stream's support are shortened to it, never extended or held.
-  const clampSource = (
-    media: { assetId: string; streamId: string; source: MediaClip["source"] },
-    operationIndex: number,
-  ) => {
-    const domain = sourceDomain(media);
-    if (!domain) return null;
-    const { range: kept, clamped } = admitRange(domain.requested, domain.bounds);
-    if (!clamped) return null;
-    issues.push(rangeClampedIssue(domain.requested, kept, domain.bounds, operationIndex));
-    return { source: { ...media.source, range: wire(kept) } as MediaClip["source"] };
-  };
   /**
-   * A placement maps linearly onto its source, so each domain it must fit (a media source within
+   * Authored selections past their domain are shortened to it, never extended or held. A
+   * placement maps linearly onto its source, so each domain a clip must fit (a media source within
    * its stream, a content anchor within its parent's selected source) keeps a fraction of it. The
    * clip keeps the overlap of those fractions, and each range that overran reports range-clamped.
+   * Replacement media has no placement yet; only its source is fitted.
    */
-  const fitPlacement = <T extends { placement: Anchor; source: unknown }>(
+  const fitClip = <T extends { placement?: Anchor; source: unknown }>(
     clip: T,
     operationIndex: number,
   ) => {
     const media = sourceDomain(clip),
-      content = contentDomain(clip.placement);
+      content = clip.placement ? contentDomain(clip.placement) : null;
     const domains = [media, content].flatMap((domain) =>
       domain ? [{ ...domain, ...admitRange(domain.requested, domain.bounds) }] : [],
     );
@@ -615,6 +602,21 @@ export function applyBatch(
           ),
         );
     const placement = clip.placement;
+    const fitted =
+      placement?.kind === "project"
+        ? { ...placement, range: wire(keep(interval(placement.range))) }
+        : placement?.kind === "content"
+          ? { ...placement, sourceRange: wire(keep(interval(placement.sourceRange))) }
+          : placement && {
+              ...placement,
+              ...(() => {
+                const span = keep({
+                  start: fromTime(placement.start),
+                  end: fromTime(placement.end),
+                });
+                return { start: toFraction(span.start), end: toFraction(span.end) };
+              })(),
+            };
     return {
       kept,
       clip: {
@@ -622,18 +624,7 @@ export function applyBatch(
         ...(media
           ? { source: { ...(clip.source as object), range: wire(keep(media.requested)) } }
           : {}),
-        placement:
-          placement.kind === "project"
-            ? { ...placement, range: wire(keep(interval(placement.range))) }
-            : placement.kind === "content"
-              ? { ...placement, sourceRange: wire(keep(interval(placement.sourceRange))) }
-              : (() => {
-                  const span = keep({
-                    start: fromTime(placement.start),
-                    end: fromTime(placement.end),
-                  });
-                  return { ...placement, start: toFraction(span.start), end: toFraction(span.end) };
-                })(),
+        ...(fitted ? { placement: fitted } : {}),
       } as T,
     };
   };
@@ -1306,11 +1297,7 @@ export function applyBatch(
           }
           case "replace": {
             // Every fit sees the clamped source, so ripple sizes the clip from what plays.
-            const media = {
-              ...operation.media,
-              source:
-                clampSource(operation.media, operationIndex)?.source ?? operation.media.source,
-            };
+            const media = fitClip(operation.media, operationIndex).clip;
             const result = replaceClip(
               operation.processing === "reset"
                 ? resolveComposition(
@@ -1425,7 +1412,7 @@ export function applyBatch(
               ...before,
               clips: before.clips.map((clip) => {
                 if (clip.id !== id) return clip;
-                const fitted = fitPlacement({ ...clip, placement: resolvedAnchor }, operationIndex);
+                const fitted = fitClip({ ...clip, placement: resolvedAnchor }, operationIndex);
                 kept = fitted.kept;
                 return fitted.clip;
               }),

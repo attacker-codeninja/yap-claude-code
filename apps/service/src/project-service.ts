@@ -11,13 +11,12 @@ import { RenderedSpeech } from "@yap/core/rendered-speech";
 import { assetProbe } from "./media-probe.js";
 import { sourceExporter } from "./source-export.js";
 import { PreparedAudioStore } from "@yap/core/prepared-audio";
-import { projectComposition } from "@yap/core/project-window";
+import { admitProjectRange, projectComposition } from "@yap/core/project-window";
 import { selectSource } from "@yap/core/source-selection";
 import {
   outputCapabilities,
   audioOutputCapabilities,
   createSourceRangeProjection,
-  admitReadRange,
   omit,
 } from "@yap/composition";
 import { ProjectPackages } from "./project-packages.js";
@@ -528,10 +527,7 @@ export async function startProjectService(options: {
             revisionId: input.revisionId,
           });
           // The caller's text aligns against the part of the range inside the revision.
-          const admitted = admitReadRange(input.range, {
-            startUs: 0,
-            endUs: composition.model.durationUs,
-          });
+          const admitted = admitProjectRange(composition.model.durationUs, input.range);
           const prepared = preparedAudio.resolve(composition, input.tap, input.preparedResourceId);
           if (!prepared)
             throw new CatalogError(
@@ -1387,6 +1383,9 @@ export async function startProjectService(options: {
                   },
                   true,
                 );
+              // The display range is a project read range: clamped to the revision, with its issue.
+              const admitted = admitProjectRange(composition.model.durationUs, params.range),
+                range = admitted.range;
               const identity = {
                   owner: { kind: "asset" as const, assetId: params.assetId },
                   generation: params.generation,
@@ -1408,11 +1407,10 @@ export async function startProjectService(options: {
                     revisionId: composition.revisionId,
                     tap: params.tap,
                     preparedResourceId: prepared.resourceId,
-                    range: params.range ?? { startUs: 0, endUs: composition.model.durationUs },
+                    range,
                     trackIds: params.trackIds ?? null,
                   }),
                 ).page(query),
-                range = params.range ?? { startUs: 0, endUs: composition.model.durationUs },
                 occurrences = createSourceRangeProjection(composition.model).window({
                   range,
                   ...(params.trackIds === undefined ? {} : { trackIds: params.trackIds }),
@@ -1439,6 +1437,7 @@ export async function startProjectService(options: {
                   preparedResourceId: prepared.resourceId,
                   state: "ready",
                   generation: params.generation,
+                  issues: admitted.issues,
                   view: sourcePage.view,
                   rows,
                   nextCursor: sourcePage.nextCursor,

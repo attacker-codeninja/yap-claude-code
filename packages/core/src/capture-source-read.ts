@@ -12,7 +12,7 @@ import {
   sourceAvailability,
   type TimeValue,
   type SignedTimeValue,
-  admitReadRange,
+  admitMicrosecondRange,
 } from "@yap/composition";
 import type { AssetStore } from "./assets.js";
 import type { AcquisitionStore } from "./acquisitions.js";
@@ -306,13 +306,8 @@ export class CaptureSourceRead {
       requested = input.sourceRange ?? whole;
     const limit = input.limit ?? (domain === "events" ? 100 : 1000),
       maximum = domain === "events" ? 500 : 5000;
-    if (!Number.isSafeInteger(requested.startUs) || !Number.isSafeInteger(requested.endUs))
-      throw new CatalogError(
-        "INVALID_RANGE",
-        "Capture evidence range must use integer microseconds",
-      );
-    const admitted = admitReadRange(requested, whole),
-      range = admitted.range as { startUs: number; endUs: number };
+    const admitted = admitMicrosecondRange(requested, whole),
+      range = admitted.range;
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > maximum)
       throw new CatalogError("INVALID_PARAMS", `Limit must be 1 to ${maximum}`);
     const reference = digest({ context, range });

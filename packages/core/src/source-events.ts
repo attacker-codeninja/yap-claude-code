@@ -1,4 +1,4 @@
-import { admitReadRange, ceil, sourceAvailability } from "@yap/composition";
+import { admitMicrosecondRange, ceil, sourceAvailability } from "@yap/composition";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { compare, fromTime, intervalIndex } from "@yap/composition";
@@ -133,10 +133,8 @@ export class SourceEvents {
     const whole = { startUs: 0, endUs: ceil(fromTime(selected.durationUs)) },
       requested = input.sourceRange ?? whole,
       limit = input.limit ?? 100;
-    if (!Number.isSafeInteger(requested.startUs) || !Number.isSafeInteger(requested.endUs))
-      throw new CatalogError("INVALID_RANGE", "Event range must use integer microseconds");
-    const admitted = admitReadRange(requested, whole),
-      range = admitted.range as { startUs: number; endUs: number };
+    const admitted = admitMicrosecondRange(requested, whole),
+      range = admitted.range;
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 500)
       throw new CatalogError("INVALID_PARAMS", "Limit must be 1 to 500");
     const reference = createHash("sha256").update(JSON.stringify({ context, range })).digest("hex");

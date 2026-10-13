@@ -844,11 +844,10 @@
         "helpers/mac/Sources/YapFrames/FrameTypes.swift": 6,
         "packages/composition/src/edits.ts": 1,
         "packages/composition/src/errors.ts": 1,
-        "packages/composition/src/range-admission.ts": 2,
+        "packages/composition/src/range-admission.ts": 3,
         "packages/core/src/audio-inspection.ts": 2,
         "packages/core/src/audio-spectrum.ts": 1,
         "packages/core/src/audio-wave.ts": 1,
-        "packages/core/src/capture-source-read.ts": 1,
         "packages/core/src/capture-store.ts": 1,
         "packages/core/src/composition-pointer.ts": 1,
         "packages/core/src/evidence-read.ts": 1,
@@ -860,8 +859,6 @@
         "packages/core/src/presentation-pointer.ts": 2,
         "packages/core/src/raw-cursor.ts": 1,
         "packages/core/src/scenes.ts": 3,
-        "packages/core/src/source-events.ts": 1,
-        "packages/core/src/transcript-read.ts": 1,
         "packages/core/src/visual-cache.ts": 1
       }
     },
