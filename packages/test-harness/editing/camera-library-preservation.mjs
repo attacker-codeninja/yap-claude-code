@@ -77,13 +77,6 @@ async function inventory(root) {
   return members;
 }
 const inventoryDigest = (members) => hash(JSON.stringify(members));
-function keysNamed(value, name, path = "$") {
-  if (!value || typeof value !== "object") return [];
-  return Object.entries(value).flatMap(([key, child]) => [
-    ...(key === name ? [`${path}.${key}`] : []),
-    ...keysNamed(child, name, `${path}.${key}`),
-  ]);
-}
 async function pages(operation, field) {
   const items = [];
   for (let cursor; ;) {
@@ -216,13 +209,21 @@ try {
       const receipt = JSON.parse(
         await readFile(join(directory, "camera.publication.json"), "utf8"),
       );
-      assert.deepEqual(keysNamed(receipt, "gaps"), [], "A pre-change receipt has no gaps");
-      assert.deepEqual(keysNamed(acquisition.evidence.receipt, "gaps"), []);
+      // Admission states exactly the receipt's own gaps: none for a camera never turned off.
+      const proof = acquisition.evidence.receipt.publications.video;
+      assert.equal("gaps" in proof, "gaps" in receipt);
+      assert.deepEqual(proof.gaps, receipt.gaps);
       const binding = acquisition.bindings.find((value) => value.sourceRoles.includes("video"));
       assert.ok(binding, "Camera acquisition binds its video");
       const asset = await service.call("asset.get", { assetId: binding.assetId });
       const origin = asset.originUs ?? 0;
-      const expected = [range(receipt.support.startUs - origin, receipt.support.endUs - origin)];
+      // Available is the receipt's support minus its gaps, from the asset origin.
+      const bounds = [receipt.support.startUs];
+      for (const gap of receipt.gaps ?? []) bounds.push(gap.startUs, gap.endUs);
+      bounds.push(receipt.support.endUs);
+      const expected = [];
+      for (let index = 0; index < bounds.length; index += 2)
+        expected.push(range(bounds[index] - origin, bounds[index + 1] - origin));
       assert.deepEqual(binding.available, expected);
       const frame = await picture(
         {

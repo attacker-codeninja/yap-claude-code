@@ -37,8 +37,9 @@ Warnings:
 - The preservation gate runs the built `dist/` and `YAP_NATIVE`: rebuild both from the code
   under test first. A fresh checkout needs the prepared RNNoise model
   (`node helpers/denoise/prepare.mjs`) before any native build.
-- The gate asserts the camera receipt has no `gaps` key anywhere. That holds for the pre-change
-  takes and must stay true for continuous takes after 02 (`gaps` omitted when empty).
+- The gate asserts admission states exactly the receipt's own `gaps` (none for a pre-change
+  take, which keeps the key absent) and availability equal to support minus gaps, so it also
+  holds for a library that already has toggled takes.
 - Gate frames use `maxLongEdge: 144` so old cached renders cannot answer for new code. The
   [baseline frames](assets/pre-toggle-corpus/baseline/) are the before picture for
   compare-screenshots.
