@@ -1,6 +1,6 @@
 # Launch-video feedback
 
-Status: active plan, nothing implemented. Last updated 2026-10-12.
+Status: in progress. Last updated 2026-10-13.
 
 An agent used Yap 0.1.33 end to end to make Yap's own launch video. This spec
 turns what cost it time into contracts. Sources:
@@ -14,35 +14,43 @@ turns what cost it time into contracts. Sources:
 
 ## Next Agent Prompt
 
-You are resuming this spec. Status (2026-10-13): slices 01a–d, 02 and 09
-are merged, along with the authored-range half of 06 and sub-slices 07c, 07g
-and 07h. 06b (read ranges, synchronous render admission, the curve-clock
-message, CLI `--wait` render mapping, docs) is done on branch `lvf/06b`; its
-deferred sites are listed under "06b" in [choices.md](choices.md). The refusal ledger (`packages/protocol/src/refusal-ledger.json`) is
-the live to-do list: `pendingConversion`, `pendingSites`,
-`refusedStatus.pending` and `messageCodes.pending` name every gate still to
-convert, each with its owning slice.
+You are resuming this spec. Status (2026-10-13): slices 01–04, 08 and 09 and
+06a–d are merged on `t3code/create-launch-video`, as are 07c–07k. The refusal
+ledger (`packages/protocol/src/refusal-ledger.json`) is the live to-do list:
+`pendingConversion`, `pendingSites` and `messageCodes.pending` name every gate
+still to convert, with its owning slice.
 
-Next pickup, in priority order (03, 04 and 06b can run in parallel
-worktrees):
-1. [03](slices/03-transcription-publishes.md): Swift seam and timing. Needs
-   the native build and real inference on `fixtures/launch-video/narration.mov`.
-2. [04](slices/04-audio-treatments-publish.md): normalization and limiter
-   publish their best result. Un-skip slice 02's failed-job test
-   (`apps/service/src/audio-processing.test.ts`).
-3. 06 remainder: the content-anchor, angle-validity, transcript
-   execution-range and project-alignment range sites (see choices.md, 06b).
-4. 07: (a) fonts and (b) gaps are native; (d) SRT and (k) caption vocabulary
-   touch `apps/service/src/exports.ts`; (f), (i) and (j) are vocabulary only.
-5. 05, then 10. Then the full suite, then 11.
+In flight, each in its own worktree `../lvf-<slice>` on branch `lvf/<slice>`:
+- 07a: font fallback publishes with issues; `FONT_UNAVAILABLE` becomes a real
+  code.
+- 07b: support gaps. Stateful processing and source-channel reads
+  (`UNAVAILABLE_SUPPORT`) treat each available run as its own domain, with
+  `unavailable` ranges and a `support-gap` issue. Alignment and the speaker
+  model work per run. This is the user-side decision recorded in choices.md.
+- 05: `rmsDbfs` in `audio.measure`.
+- 06e: the four range sites 06 deferred (transcript execution range, project
+  alignment range, content anchors, angle validity) clamp with
+  `range-clamped`. Stored-document validation stays strict.
 
-Open integration items:
-- Slice 02 returns `stale` lists from package export and import
-  (`PinnedProjectPackage.stale`, `ValidatedProjectPackage.stale`). They aren't
-  yet surfaced as issues, because export tests need the native binary.
-- 01e docs (`AGENTS.md` after audit-agents, root `README.md`, the archive
-  pointer) are not written.
-- The spec's synchronous `data.issues` is done only for `edit.apply`.
+Next pickup, in order:
+1. Merge 07a, 07b, 05 and 06e: rerun the touched packages' checks on the merged
+   tree, then remove each worktree and branch.
+2. [10](slices/10-skill-guidance.md): skill guidance, written against what
+   shipped (read each slice's choices).
+3. Full suite run. The ledger's `pendingConversion` must be empty.
+4. [11](slices/11-replay-acceptance.md): replay acceptance. Then the
+   whole-spec review, a rewritten choices.md, and close-spec.
+
+Known before this spec, not caused by it:
+- `descriptor exhaustion` (`apps/service/src/audio-processing.test.ts`) still
+  fails. A spawn under EMFILE now reports a retryable failure (fixed). The
+  test also expects the exhaustion to strike a native domain call; it now
+  strikes the ffmpeg spawn first. The assertion is unchanged.
+- Some speaker-service and project-import tests pass only without the
+  real-native env vars (`YAP_NATIVE`, `YAP_FFMPEG_*`).
+
+Open, needs the user: 01e's `AGENTS.md` paragraph waits on `/audit-agents`,
+which only the user can run.
 
 Rules for every pass:
 - Follow [`write-tests`](../../.agents/skills/write-tests/SKILL.md): red
@@ -54,13 +62,13 @@ Rules for every pass:
 - Update this section before ending a pass.
 
 Checklist:
-- [ ] [01 Output by default: one `issues` contract and a refusal ledger](slices/01-issues-contract.md) (a–d done; 01e docs open)
+- [x] [01 Output by default: one `issues` contract and a refusal ledger](slices/01-issues-contract.md) (`AGENTS.md` line waits on the user)
 - [x] [02 Stale derived generations self-recover](slices/02-stale-derived-self-recovery.md)
-- [ ] [03 Long-media transcription always publishes](slices/03-transcription-publishes.md)
-- [ ] [04 Audio treatments publish their best result](slices/04-audio-treatments-publish.md)
+- [x] [03 Long-media transcription always publishes](slices/03-transcription-publishes.md)
+- [x] [04 Audio treatments publish their best result](slices/04-audio-treatments-publish.md) (`UNAVAILABLE_SUPPORT` moved to 07b)
 - [ ] [05 Short-window level for word-sized ranges](slices/05-short-window-level.md)
-- [ ] [06 Ranges and messages](slices/06-ranges-and-messages.md) (a–d done; four deferred range sites)
-- [ ] [07 The remaining gates: publish, or justify the refusal](slices/07-remaining-quality-gates.md) (c, g, h done)
+- [ ] [06 Ranges and messages](slices/06-ranges-and-messages.md) (06e open)
+- [ ] [07 The remaining gates: publish, or justify the refusal](slices/07-remaining-quality-gates.md) (a, b open)
 - [x] [08 Multicam sync: no new primitive (closed by decision)](slices/08-sync-estimate.md)
 - [x] [09 View-shot fixtures](slices/09-view-shot-fixtures.md)
 - [ ] [10 Skill guidance](slices/10-skill-guidance.md)
