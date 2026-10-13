@@ -301,10 +301,10 @@ test("project alignment uses a project job while retaining the prepared tap sour
 
 test("a project alignment range the resolver clamped publishes its issue with the evidence", async () => {
   const f = await fixture();
-  const [clamp] = admitReadRange(
+  const clamp = admitReadRange(
     { startUs: f.input.sourceRange.startUs, endUs: 9_000_000 },
     { startUs: 0, endUs: f.input.sourceRange.endUs },
-  ).issues;
+  ).issues[0]!;
   f.options.project = {
     resolve: (input) => ({
       source: f.input,
