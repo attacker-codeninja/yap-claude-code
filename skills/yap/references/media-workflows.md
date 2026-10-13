@@ -239,6 +239,11 @@ For denoise strength, use its advertised mix control and ordinary keys. A zero
 mix restores the immediate upstream audio; it does not mute the clip. Keep one
 continuous processor through a fade instead of inserting bypasses that change
 learned state, and inspect both dry neighbors and the processed transition.
+After denoise, render speech on the dry and processed taps and diff the words.
+For a word that changed or vanished, compare `waveform.get` on both taps over its
+range with buckets of about 20 ms: denoise spares a word's loud middle and takes
+its onset and tail with the noise, so one level over the whole word hides the
+loss. Lower the mix over that word only when the caller wants it back.
 
 For a spoken cut that should shorten picture and sound together, select both
 media clips and name both tracks in the ripple scope. A cut adds no implicit
