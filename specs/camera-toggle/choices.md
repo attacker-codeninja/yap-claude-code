@@ -192,10 +192,15 @@ deterministic; before it, recovery depended on where the fragment happened to en
 - **Startup's turn-on is not joined by stop (05).** It is fenced by NativeCapture's generation, and
   a stop during startup must stop the session being opened (existing `discarded-startup` case).
   Turn-ons through `setCamera` are serialized and joined by stop and discard.
-- **Stop during a turn-on yields `NO_CAMERA` (05).** The joined turn-on completes, but the writer
-  is already sealed, so the camera records nothing and the take is interrupted with `NO_CAMERA`,
-  the existing meaning of "turned on but never delivered". Open: whether a run that recorded
-  nothing because the take stopped should count as never turned on.
+- **A stop or discard cancels a turn-on in flight (05, decided 2026-10-12).** A stop racing a
+  turn-on is a race, not a camera failure, and must not cost the take. The ending still waits for
+  the session to finish starting, then the turn-on releases that session itself (no orphan), the
+  `setCamera` call is refused `INVALID_STATE`, and the camera publishes as if the turn-on never
+  happened: with no earlier turn-on it is `unavailable CAMERA_NOT_TURNED_ON` and the take
+  completes; with earlier runs they publish as before, the last ending where it ended. The writer
+  is sealed before the switch is joined, so the cancelled turn-on records nothing. Replaces the
+  earlier `NO_CAMERA` outcome. Startup's turn-on is unchanged (entry above). An earlier turn-on
+  that completed but recorded nothing still counts, so that take stays `NO_CAMERA`.
 - **Recovery of a mapping-only camera directory answers `NO_CAMERA` (05).** A crashed take leaves
   the same directory whether the camera was never turned on or lost before its first picture, so
   recovery states what it can prove. Only a camera authority whose single member is the mapping

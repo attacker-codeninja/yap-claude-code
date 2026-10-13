@@ -552,22 +552,48 @@ private func verifyCameraSwitch(root: URL, screenSource: URL, cameraSource: URL)
         print("PASS \(mode): refused with \(code), no open, take complete")
     }
 
-    // Stop joins a turn-on in flight; no session outlives the take.
-    t = try take("stop-during-turn-on", startsOn: false) { $0.holdStart = true }
-    try await t.start()
-    let switching = t
-    let turning = Task { try await switching.capture.setCamera(on: true) }
-    await t.device.session.startEntered.wait()
-    let stopping = Task { try await switching.stop() }
-    await Task.yield()
-    t.device.session.releaseStart.release()
-    try await turning.value
-    result = try await stopping.value
-    precondition(t.device.opens == 1 && t.device.session.starts == 1 && t.device.session.stops == 1
-        && t.device.session.stopsDuringStart == 0,
-        "Stop waits for the switch in flight, then stops the session it opened")
-    precondition(t.capture.deviceState == "idle")
-    print("PASS stop-during-turn-on: no orphan session (\(result.camera?.failure?.code ?? result.state))")
+    // Stop or discard cancels a turn-on in flight: the turn-on is refused, its session is still
+    // released once, and the camera publishes as if that turn-on never happened.
+    for mode in ["stop-during-turn-on", "stop-during-second-turn-on", "discard-during-turn-on"] {
+        let earlierRun = mode == "stop-during-second-turn-on"
+        t = try take(mode, startsOn: earlierRun) { $0.holdStart = !earlierRun }
+        if earlierRun { t.reopen { $0.holdStart = true } }
+        try await t.start()
+        if earlierRun { try await t.record(); try await t.capture.setCamera(on: false) }
+        let switching = t
+        let turning = Task { try await switching.capture.setCamera(on: true) }
+        while t.device.sessions.count < (earlierRun ? 2 : 1) { await Task.yield() }
+        let turningSession = t.device.sessions.last!
+        await turningSession.startEntered.wait()
+        let ending: Task<CaptureResult?, any Error> = mode == "discard-during-turn-on"
+            ? Task { await switching.capture.discard(); return nil }
+            : Task { try await switching.stop() }
+        // The take has sealed its writers before the turn-on's session finishes starting.
+        while t.capture.deviceState == "recording" { await Task.yield() }
+        turningSession.releaseStart.release()
+        do { try await turning.value; preconditionFailure("\(mode): a turn-on cancelled by the take's end must refuse") }
+        catch let error as CaptureFailure { precondition(error.code == "INVALID_STATE", "\(mode): got \(error.code)") }
+        let ended = try await ending.value
+        precondition(t.device.opens == (earlierRun ? 2 : 1)
+            && t.device.sessions.allSatisfy { $0.starts == 1 && $0.stops == 1 && $0.stopsDuringStart == 0 },
+            "\(mode): the cancelled turn-on's session starts once and is released once, after its start")
+        precondition(t.capture.deviceState == "idle")
+        if let result = ended {
+            precondition(result.state == "complete" && result.failure == nil,
+                "\(mode): a stop racing a turn-on keeps the take: \(String(describing: result.failure))")
+            if earlierRun {
+                precondition(result.camera?.state == "complete" && result.camera?.failure == nil
+                    && result.camera?.tracks.first?.samples == 3 && t.gaps == nil,
+                    "The earlier run publishes alone, ending where it ended: \(String(describing: result.camera?.failure)), gaps \(String(describing: t.gaps))")
+            } else {
+                precondition(result.camera == nil && t.cameraUnavailableCode == "CAMERA_NOT_TURNED_ON",
+                    "A camera whose only turn-on was cancelled was never turned on: \(String(describing: t.cameraUnavailableCode))")
+                let members = try FileManager.default.contentsOfDirectory(atPath: t.camera.path)
+                precondition(members == [CameraMedia.mappingFile], "A cancelled turn-on records nothing beside the mapping: \(members)")
+            }
+        }
+        print("PASS \(mode): the turn-on is cancelled, its session released once, the take \(ended?.state ?? "discarded")")
+    }
 
     // Loss while off reaches no observer; the next turn-on finds the device gone.
     t = try take("device-loss-while-off", startsOn: true)

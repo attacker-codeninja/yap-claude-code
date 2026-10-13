@@ -98,7 +98,9 @@ under "Slice 05 and the native part of 06".
 - The limit is counted in `CameraCaptureInput` as turn-ons, not by the writer (coordinator rule).
 - The turn-on order opens acquisition before `makeSession` rather than after the format check;
   every refusal closes it again.
-- `stop-during-turn-on` ends `NO_CAMERA` (the sealed writer accepts nothing after stop).
+- A stop or discard during a `setCamera` turn-on cancels it (revised 2026-10-12; first built as
+  `NO_CAMERA`): the call is refused `INVALID_STATE`, its session is released, and the camera
+  publishes as if it had never been asked, so the take completes.
 - Recovery pins `NO_CAMERA`, not `CAMERA_NOT_TURNED_ON`: a crashed directory cannot tell the two
   apart.
 - `CameraAvailabilityTests.crashRecoveryWithGaps` (slice 02) failed in the full native product run
@@ -107,12 +109,14 @@ under "Slice 05 and the native part of 06".
 
 **Evidence.** `YAP_SELECTED_CAMERA_INPUT_OUTPUT=<dir>`: `reserved-off-never-on`, `off-on-off-on`
 (an equivalent, not byte-equal, re-created format is accepted), `format-changed`,
-`turn-on-device-missing`, `turn-on-permission-revoked`, `stop-during-turn-on`,
-`device-loss-while-off`, `device-loss-while-on`, `idempotent-set`, `toggle-limit` (500 turn-ons
+`turn-on-device-missing`, `turn-on-permission-revoked`, `stop-during-turn-on` (take complete,
+`CAMERA_NOT_TURNED_ON`, only the mapping), `stop-during-second-turn-on` (the earlier run publishes
+alone, no gap), `discard-during-turn-on`, `device-loss-while-off`, `device-loss-while-on`, `idempotent-set`, `toggle-limit` (500 turn-ons
 publish 499 gaps; the 501st is refused). `EmptyCaptureRecoveryTests`: mapping-only camera.
 `NativeCaptureInputTests`: screen-only and camera-only takes have no switch. Falsified once each:
 strict description equality (off-on-off-on red), a limit of 501 (toggle-limit red), stop not
-joining the switch (stop-during-turn-on red).
+joining the switch (stop-during-turn-on red), and a cancelled turn-on counted as on
+(stop-during-turn-on red with `NO_CAMERA`).
 
 Must-stay-green, run on this build: the whole `YapCaptureTests` product with no suite variable
 (includes `PrimaryCameraInputTests`, `PrimaryCameraPublicationTests`, `DeferredPauseTests`,

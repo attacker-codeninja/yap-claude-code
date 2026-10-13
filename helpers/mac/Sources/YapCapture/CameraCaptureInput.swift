@@ -242,7 +242,16 @@ package final class CameraCaptureInput: CaptureInputSession, CompanionCameraSwit
         let change = Task { @MainActor [self] in
             await previous?.value
             guard !ended else { throw CaptureFailure("INVALID_STATE", "The take has stopped capturing.") }
-            if on, session == nil { try await turnOn(); everOn = true }
+            if on, session == nil {
+                try await turnOn()
+                // A stop or discard while the session was starting cancels this turn-on. Its
+                // session is released and the camera closes as if it had never been asked.
+                if ended, let session {
+                    await turnOff(session)
+                    throw CaptureFailure("INVALID_STATE", "The take stopped while the camera was turning on.")
+                }
+                everOn = true
+            }
             if !on, let session { await turnOff(session) }
         }
         switching = Task { _ = await change.result }
