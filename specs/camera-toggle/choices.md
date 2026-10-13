@@ -253,3 +253,69 @@ deterministic; before it, recovery depended on where the fragment happened to en
   hairline at 1x and the chip is pale in light mode; the slice 00 elements were left as they were
   (the "−" minimize metaphor, the `pip.exit` restore glyph, and the row changing width when the
   camera button or the restore button appears).
+
+### Slice 08 (acceptance)
+
+- **The journeys extend `camera-toggle-controls.mjs`, not `webcam.mjs --case` (08).** It already
+  drove the real controller, host channel and service with the fixture camera; `webcam.mjs` is the
+  single capture-to-project journey and its relocation steps add nothing to the toggle.
+- **The gap oracle is the fixture's schedule, not the writer's answer (08).** Each fixture run is
+  the prerecorded clip (733,333 us) from its first picture; the first pictures' host times come from
+  the mapping as the fixture stamped them, and the pause from the take journal. The expected gap is
+  the off time minus the paused time, and the pause is asserted to fall inside it.
+- **"Transparent at a gap time" is judged against the screen alone (08).** The camera is placed in a
+  second revision; at a gap time the composed frame's RGBA hash equals the screen-only revision's,
+  and the camera picture is `unavailable / source-unavailable`. Inside a run the hashes differ.
+- **`source.publication.json` holds no interval list (08).** The slice asked for its intervals;
+  it names the members and the duration only. The journey checks its `sourceDurationUs` equals the
+  receipt's support end; the intervals live in `camera.publication.json` and the admitted binding.
+- **The crash journey turns the camera on a third time, 8 s into the take (08).** A crash keeps
+  only what the raw movie's fragments hold, and the writer cuts a fragment only when a picture
+  arrives a fragment interval after the last cut (1 s, then 5 s). With on, off, on alone the second
+  run was never in a fragment and recovery kept one interval. The crashed take's primary recovers
+  `INVALID_MEDIA` ("no verified recoverable video" from the five-picture fixture screen); the
+  journey asserts only the camera.
+- **The 500-run receipt is the native case moved to ten-digit times (08).** `manyGaps` now starts
+  its runs 1,000 s into the take, so every receipt time has the digits of a long take.
+  `camera-source-admission.mjs` admits it through the service: `camera.publication.json` 21,960
+  bytes (bound 65,536), normalized receipt 22,102 bytes (bound 32,768). Each further digit adds
+  about 1 KB.
+- **`camera-source-admission.mjs` takes the availability output as a third argument (08).** It
+  admits every published take there (including the crash-recovered one) and checks the service's
+  probe equals the receipt's intervals.
+- **KU6 confirmed; raised with the user, design unchanged (08).** A reserved camera's mapping logs
+  every screen and microphone callback whether the camera is on or off. Row size from the journey's
+  never-on take: 380 bytes per screen row; physical callback rates from the retained built-in run
+  (`specs/done/agent-editing/assets/20m-camera-continuing-verification/physical-stop.tar.gz`):
+  screen 29.1 rows/s at 382 bytes, microphone 93.0 rows/s at 374 bytes, camera 25.1 rows/s at 496
+  bytes. A reserved-off take with the microphone writes about 2.75 MB per minute and reaches the
+  256 MiB mapping read budget after about 97 minutes; with system audio at the microphone's rate,
+  about 55 minutes; with the camera on, sooner. Read from the code, not run: a camera never turned
+  on is closed without reading the mapping, so such a take still completes; a camera turned on at
+  any point is refused at publication when its mapping is over the budget. The ingress row cap
+  (5,000,000 rows, `EVIDENCE_LIMIT`, fails the take) is reached after about 11 hours at these rates.
+  Before this spec only takes with the camera on carried a mapping; now every screen take that
+  reserves a camera does. The follow-up named in the slice (the companion ingress logs only camera
+  rows, owner `CaptureClockIngress`) is the user's decision.
+- **The live panel resize was confirmed through the offscreen fixture only (08).** The real app
+  lists only native cameras and this Mac has none, so no real-app take reserves a camera. The
+  overlay fixture (`recording-overlay-shots.mjs`, the production panel with a synthetic picture)
+  redrew every slice 07 shot byte-identically; the real app's floating controls (no camera) match
+  the closed recording-overlay shots in layout at 1x.
+- **The clock reserves the widest clock, not a number (08, full-run fix).** Slice 00 cut the
+  clock's reserved width from 78 to 62 points, so a ten-hour clock widened the panel
+  (`overlay-clock.test.mjs`). The reservation is now a hidden `00:00:00` in the same font: 4 points
+  wider than 62, 12 narrower than the original 78. An unprimed critique found only that change; it
+  also noted, in both builds, the separator after the clock sitting off-centre (wider gap on the
+  clock side), the trash glyph further from the right edge than the dot from the left, and the
+  camera button's chip crowding its separator. Left as open polish. The slice's overlay shots were
+  redrawn; the human checkpoint (preview-shots) is the integrator's.
+- **An explicit `nativeExecutable`, even undefined, overrides `YAP_NATIVE` (08, full-run fix).**
+  With `YAP_NATIVE` exported, seven service tests that supply a fake worker picked up the real
+  binary. Fake-worker fixtures now pass `nativeExecutable: undefined`; production and the harness
+  pass nothing and still read the environment. Rejected: "a supplied worker never reads the
+  environment", which would have needed every harness that wraps the real worker to pass the path.
+- **Retained LFS media is materialized from the shared store for the full run (08).** The test
+  harness's replay suites read `specs/done/video-editing-feedback/assets` and
+  `fixtures/video-editing-feedback`; this checkout held only pointers. `git lfs checkout` of those
+  two trees (320 MB) copied from the common `.git/lfs` store, with no download.

@@ -7,23 +7,21 @@ never shows a held picture across it, and a held picture is never certified as r
 
 ## Next Agent Prompt
 
-Status (2026-10-12): slices 00, 01, 02, 04, 05, 06 and 07 are committed. Slice 05 and the native part
-of slice 06 landed together; the preservation gate passed on corpora A and B with that build.
-Slice 07's app controls are proven by the controls, capture-view, overlay and library fixtures; the
-real-app suites and the live panel resize were not run (no `dist/` build, no camera on this Mac).
-Next pickup: slice 08.
+Status (2026-10-12): slices 00, 01, 02, 04, 05, 06, 07 and 08 are committed; 03 (optional) was not
+done. Slice 08 extended the toggle journeys and gapped admission, measured the 500-run receipt and
+the reserved-off mapping, ran the live-app suites, re-ran the preservation gate (A, B and a clone of
+`~/.yap`, all green), and ran the full suite once, fixing what it found. One finding is open for the
+user: KU6 is confirmed (below and in [choices](choices.md)); the design was not changed.
+Next pickup: whole-spec review, then close-spec.
 
 You are resuming this feature. Do this:
 
-1. Read this README, then [slice 08](slices/08-acceptance.md). The pre-change
-   corpus and its first gate run are in [assets/pre-toggle-corpus](assets/pre-toggle-corpus/README.md);
-   its README holds the build steps and the exact gate commands.
-2. Work the slices in the order of the graph below: 01, 02, then 04 and 05 (in parallel), 06,
-   07, 08. Slice 03 is optional and blocks nothing. Write each test first (`write-tests`), run the narrowest check, and run
-   the full suite once, only in slice 08.
-3. Re-run the slice 01 preservation gate where the slice files say to (after 02, 04 and 08).
-4. Before ending your pass, update this section: status, next pickup point, ticked TODOs, and
-   any decision you made that a slice left open (also record it in `choices.md` here).
+1. Read this README, [slice 08](slices/08-acceptance.md) and [choices](choices.md) (its slice 08
+   section holds the measurements, the KU6 finding and the open polish notes).
+2. Get the user's decision on KU6 (whether the companion ingress should log only camera rows,
+   owner `CaptureClockIngress`). It is a follow-up, not part of closing.
+3. Review the whole spec's commits (`review`), consolidate `choices.md`, show the user the redrawn
+   [overlay shots](assets/overlay/) (`preview-shots`), then run close-spec.
 
 Warnings:
 - Never write to `~/.yap`. Every run uses a scratch `YAP_HOME`; the preservation gate works
@@ -56,7 +54,7 @@ TODO:
 - [x] 05 Companion session lifecycle: reserve, turn on/off — [slice](slices/05-session-lifecycle.md)
 - [x] 06 Wire contract, service operation, CLI/MCP — [slice](slices/06-wire-and-service.md)
 - [x] 07 App controls: camera button, reservation, library wording — [slice](slices/07-app-controls.md)
-- [ ] 08 End-to-end harness, physical acceptance, preservation re-check, full run, close — [slice](slices/08-acceptance.md)
+- [x] 08 End-to-end harness, physical acceptance, preservation re-check, full run (close is the integrator's) — [slice](slices/08-acceptance.md)
 
 ## Decisions (made by the user)
 
@@ -147,8 +145,8 @@ Nothing in this plan is a compatibility shim, so nothing has to be removed later
 | Start latency of a cold session | Settled by design (06): the operation waits `2*nativeCall`. 03 may tighten it. |
 | Does `stopRunning` post an interruption notification the loss observer must ignore? | Settled by design (05): observers are removed before `stop`, per session. |
 | Camera light while a take holds a reserved camera | Settled by design (05): the device is not opened until turned on. |
-| Passthrough export and Stop latency with hundreds of gaps | 02 (case `manyGaps`), 08 |
-| Mapping size on long reserved takes (it logs every screen/mic callback, read budget 256 MiB at `CameraMedia.swift:84`) | 08; raise with the user if the measurement confirms a risk |
+| Passthrough export and Stop latency with hundreds of gaps | Measured (08): 500 runs, camera Stop 1,078 ms; receipt 21,960 B of 65,536, normalized 22,102 B of 32,768 |
+| Mapping size on long reserved takes (it logs every screen/mic callback, read budget 256 MiB) | **Confirmed (08), raised with the user:** about 2.75 MB/min with the microphone, so about 97 min to the budget (about 55 with system audio) |
 | Recovery code for a never-turned-on directory that holds only a mapping | 05 |
 | A crash while off may lose the last run's unfragmented tail | 02 (case `crashRecoveryWithGaps`), accepted and documented |
 
