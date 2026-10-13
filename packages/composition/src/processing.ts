@@ -161,7 +161,11 @@ export function validateProcessing(document: Document, assets: ValidatedComposit
                   ? "{numerator, denominator} fractions within [0,1]"
                   : "integer microseconds"
               }`,
-              { ...at, clock: domain, expectedKey: domain === "clip" ? "fraction" : "microseconds" },
+              {
+                ...at,
+                clock: domain,
+                expectedKey: domain === "clip" ? "fraction" : "microseconds",
+              },
             );
           if (!parsed.success)
             invalid("Processing curve is malformed", {

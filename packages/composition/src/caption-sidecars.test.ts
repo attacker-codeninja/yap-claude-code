@@ -81,7 +81,7 @@ test("selected displayed captions retain corrected Unicode text and outward timi
         startMs: 1,
         endMs: 2,
       },
-    }
+    },
   ]);
   const vtt = captionSidecar(composition, { ...request, kind: "vtt" });
   expect(vtt.content).toBe(

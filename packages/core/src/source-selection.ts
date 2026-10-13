@@ -194,10 +194,14 @@ export function selectSourceChannelRange(
   );
   // A contiguous span is the model's input contract; the supported runs let the caller pick one.
   if (compare(covered, subtract(end, start)) !== 0)
-    throw new CatalogError("UNAVAILABLE_SUPPORT", "Observations require complete selected support", {
-      range: sourceRange,
-      available,
-    });
+    throw new CatalogError(
+      "UNAVAILABLE_SUPPORT",
+      "Observations require complete selected support",
+      {
+        range: sourceRange,
+        available,
+      },
+    );
   return {
     ...selected,
     sourceRange,

@@ -307,7 +307,10 @@ export class CaptureSourceRead {
     const limit = input.limit ?? (domain === "events" ? 100 : 1000),
       maximum = domain === "events" ? 500 : 5000;
     if (!Number.isSafeInteger(requested.startUs) || !Number.isSafeInteger(requested.endUs))
-      throw new CatalogError("INVALID_RANGE", "Capture evidence range must use integer microseconds");
+      throw new CatalogError(
+        "INVALID_RANGE",
+        "Capture evidence range must use integer microseconds",
+      );
     const admitted = admitReadRange(requested, whole),
       range = admitted.range as { startUs: number; endUs: number };
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > maximum)

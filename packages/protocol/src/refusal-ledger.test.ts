@@ -11,7 +11,9 @@ const root = join(import.meta.dirname, "../../..");
 const ledgerPath = join(import.meta.dirname, "refusal-ledger.json");
 const sourceRoots = [
   ...["packages", "apps"].flatMap((parent) =>
-    readdirSync(join(root, parent)).map((name) => join(parent, name, "src")).filter((dir) => exists(dir)),
+    readdirSync(join(root, parent))
+      .map((name) => join(parent, name, "src"))
+      .filter((dir) => exists(dir)),
   ),
   "helpers/mac/Sources",
   "skills/yap/scripts",
@@ -25,7 +27,12 @@ const refusalCategories = new Set([
   "destructive",
   "execution-failure",
 ]);
-const categories = new Set([...refusalCategories, "issue-code", "not-a-refusal", "pending-conversion"]);
+const categories = new Set([
+  ...refusalCategories,
+  "issue-code",
+  "not-a-refusal",
+  "pending-conversion",
+]);
 const gateWords = /UNMET|FEASIBLE|DISAGREEMENT|TOLERANCE|THRESHOLD|QUALITY/;
 
 type Ledger = {
@@ -51,7 +58,8 @@ function productFiles(): string[] {
     for (const name of readdirSync(dir)) {
       const path = join(dir, name);
       if (statSync(path).isDirectory()) walk(path);
-      else if (/\.(ts|swift|mjs)$/.test(name) && !/\.(test|fixture)\./.test(name)) out.push(relative(root, path));
+      else if (/\.(ts|swift|mjs)$/.test(name) && !/\.(test|fixture)\./.test(name))
+        out.push(relative(root, path));
     }
   };
   for (const dir of sourceRoots) walk(join(root, dir));
@@ -79,18 +87,30 @@ const scanned = scan();
 if (process.env.UPDATE_REFUSAL_LEDGER === "1") {
   const codes: Ledger["codes"] = {};
   for (const code of [...scanned.keys()].sort()) {
-    codes[code] = { category: ledger.codes[code]?.category ?? null, files: Object.fromEntries(Object.entries(scanned.get(code)!).sort()) };
+    codes[code] = {
+      category: ledger.codes[code]?.category ?? null,
+      files: Object.fromEntries(Object.entries(scanned.get(code)!).sort()),
+    };
   }
-  writeFileSync(ledgerPath, `${JSON.stringify({ ...ledger, codes }, null, 1)}\n`);
+  writeFileSync(ledgerPath, `${JSON.stringify({ ...ledger, codes }, null, 2)}\n`);
   Object.assign(ledger, { codes });
 }
 
 describe("refusal ledger", () => {
   it("classifies every code literal in product source with exact per-file counts", () => {
-    const actual = Object.fromEntries([...scanned].map(([code, perFile]) => [code, Object.fromEntries(Object.entries(perFile).sort())]));
-    const recorded = Object.fromEntries(Object.entries(ledger.codes).map(([code, entry]) => [code, entry.files]));
+    const actual = Object.fromEntries(
+      [...scanned].map(([code, perFile]) => [
+        code,
+        Object.fromEntries(Object.entries(perFile).sort()),
+      ]),
+    );
+    const recorded = Object.fromEntries(
+      Object.entries(ledger.codes).map(([code, entry]) => [code, entry.files]),
+    );
     expect(actual).toEqual(recorded);
-    const unclassified = Object.entries(ledger.codes).filter(([, entry]) => !entry.category || !categories.has(entry.category));
+    const unclassified = Object.entries(ledger.codes).filter(
+      ([, entry]) => !entry.category || !categories.has(entry.category),
+    );
     expect(unclassified.map(([code]) => code)).toEqual([]);
   });
 
@@ -103,29 +123,40 @@ describe("refusal ledger", () => {
 
   it("keeps pending conversions exactly in step with the source", () => {
     for (const [code, slice] of Object.entries(ledger.pendingConversion)) {
-      expect(ledger.codes[code]?.category, `${code} (slice ${slice}) was converted: drop it from pendingConversion`).toBe(
-        "pending-conversion",
-      );
+      expect(
+        ledger.codes[code]?.category,
+        `${code} (slice ${slice}) was converted: drop it from pendingConversion`,
+      ).toBe("pending-conversion");
     }
-    const pending = Object.entries(ledger.codes).filter(([, entry]) => entry.category === "pending-conversion");
-    expect(pending.map(([code]) => code).sort()).toEqual(Object.keys(ledger.pendingConversion).sort());
+    const pending = Object.entries(ledger.codes).filter(
+      ([, entry]) => entry.category === "pending-conversion",
+    );
+    expect(pending.map(([code]) => code).sort()).toEqual(
+      Object.keys(ledger.pendingConversion).sort(),
+    );
     for (const site of ledger.pendingSites) {
-      expect(text.get(site.file)?.includes(site.text), `${site.file}: "${site.text}" (slice ${site.slice}) was converted: drop it`).toBe(
-        true,
-      );
+      expect(
+        text.get(site.file)?.includes(site.text),
+        `${site.file}: "${site.text}" (slice ${site.slice}) was converted: drop it`,
+      ).toBe(true);
     }
   });
 
   it("hides no code inside a message", () => {
     const embedded = new Set<string>();
     for (const source of text.values()) {
-      for (const [, code] of source.matchAll(/"([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+): /g)) embedded.add(code!);
+      for (const [, code] of source.matchAll(/"([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+): /g))
+        embedded.add(code!);
     }
     expect([...embedded].sort()).toEqual(Object.keys(ledger.messageCodes.pending).sort());
   });
 
   it("uses a refused status only for caller-authored verdicts", () => {
-    const users = [...text].filter(([, source]) => source.includes('"refused"')).map(([file]) => file);
-    expect(users.sort()).toEqual(Object.keys({ ...ledger.refusedStatus.allowed, ...ledger.refusedStatus.pending }).sort());
+    const users = [...text]
+      .filter(([, source]) => source.includes('"refused"'))
+      .map(([file]) => file);
+    expect(users.sort()).toEqual(
+      Object.keys({ ...ledger.refusedStatus.allowed, ...ledger.refusedStatus.pending }).sort(),
+    );
   });
 });

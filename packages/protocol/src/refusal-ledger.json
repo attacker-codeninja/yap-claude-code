@@ -1,2106 +1,2106 @@
 {
- "rules": "Owned by packages/protocol/src/refusal-ledger.test.ts; see specs/launch-video-feedback/slices/01-issues-contract.md. codes: every UPPER_SNAKE string literal in product source, with a category and per-file counts. Refusal categories: malformed, ambiguous, conflict, resource-bound, missing-prerequisite, destructive, execution-failure. issue-code: already an output diagnostic (migrates to issues). not-a-refusal: another constant. pending-conversion: a quality gate the spec converts; its slice removes it. pendingSites: quality gates hiding behind generic codes, keyed by message text. refusedStatus: files using a 'refused' status literal. messageCodes: UPPER_SNAKE codes embedded in messages.",
- "pendingConversion": {},
- "pendingSites": [],
- "refusedStatus": {
-  "allowed": {
-   "packages/composition/src/schema.ts": "caller-authored synchronization verdict",
-   "packages/protocol/src/correspondence.ts": "caller-authored correspondence verdict",
-   "packages/composition/src/edits.ts": "reads a caller-authored synchronization verdict to report it as an issue",
-   "packages/core/src/alignment-evidence.ts": "retained alignment-worker evidence keeps the worker's own verdict word",
-   "packages/core/src/alignment-operands.ts": "retained alignment-worker evidence keeps the worker's own verdict word",
-   "packages/core/src/speaker-continuity.ts": "an evaluation verdict over measured gates, like synchronization evidence; retained receipts keep it"
-  },
-  "pending": {}
- },
- "messageCodes": {
-  "pending": {}
- },
- "codes": {
-  "ACQUISITION_BUSY": {
-   "category": "resource-bound",
-   "files": {
-    "packages/core/src/acquisitions.ts": 1
-   }
-  },
-  "AMBIGUOUS_PREPARED_AUDIO": {
-   "category": "ambiguous",
-   "files": {
-    "packages/core/src/prepared-audio.ts": 1
-   }
-  },
-  "APP_NOT_FOUND": {
-   "category": "missing-prerequisite",
-   "files": {
-    "packages/client/src/discovery.ts": 2
-   }
-  },
-  "ARCHIVE_CHANGED": {
-   "category": "conflict",
-   "files": {
-    "helpers/mac/Sources/YapWire/ArchiveAssembly.swift": 9,
-    "helpers/mac/Sources/YapWire/ArchiveExtraction.swift": 2
-   }
-  },
-  "ARCHIVE_CLEANUP_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "apps/service/src/archive-write.ts": 1,
-    "apps/service/src/package-archive.ts": 1
-   }
-  },
-  "ARTIFACT_CHANGED": {
-   "category": "conflict",
-   "files": {
-    "apps/service/src/asset-conversion.ts": 3,
-    "apps/service/src/join-verification.ts": 2,
-    "apps/service/src/portable-speakers.ts": 1,
-    "apps/service/src/project-packages.ts": 3,
-    "apps/service/src/project-service.ts": 8,
-    "apps/service/src/source-channel.ts": 1,
-    "helpers/mac/Sources/YapAudio/RetainedPCMSource.swift": 2,
-    "helpers/mac/Sources/YapWire/AudioFileOperation.swift": 2,
-    "helpers/mac/Sources/YapWire/RetainedAudioInput.swift": 1,
-    "packages/core/src/acoustic-inspection.ts": 1,
-    "packages/core/src/alignment-evidence.ts": 3,
-    "packages/core/src/alignment-processing.ts": 4,
-    "packages/core/src/alignment-read.ts": 1,
-    "packages/core/src/audio-extraction.ts": 3,
-    "packages/core/src/audio-inspection.ts": 1,
-    "packages/core/src/capture-source-read.ts": 1,
-    "packages/core/src/frame-inspection.ts": 1,
-    "packages/core/src/index-processing.ts": 11,
-    "packages/core/src/index-read.ts": 3,
-    "packages/core/src/pointer-preparation.ts": 1,
-    "packages/core/src/prepared-audio.ts": 4,
-    "packages/core/src/project-evidence.ts": 1,
-    "packages/core/src/project-index-materialization.ts": 1,
-    "packages/core/src/raw-cursor.ts": 1,
-    "packages/core/src/rendered-speech.ts": 4,
-    "packages/core/src/scene-evidence.ts": 1,
-    "packages/core/src/scene-processing.ts": 1,
-    "packages/core/src/source-events.ts": 1,
-    "packages/core/src/source-index-materialization.ts": 1,
-    "packages/core/src/speaker-evidence.ts": 2,
-    "packages/core/src/speaker-processing.ts": 2,
-    "packages/core/src/speaker-read.ts": 1,
-    "packages/core/src/transcript-processing.ts": 3,
-    "packages/core/src/transcript-read.ts": 3,
-    "packages/core/src/voice-generation.ts": 1,
-    "skills/yap/scripts/compact-transcripts.mjs": 2,
-    "skills/yap/scripts/delivered-scenes.mjs": 5,
-    "skills/yap/scripts/fresh-delivery-check.mjs": 2,
-    "skills/yap/scripts/inspection-artifacts.mjs": 1,
-    "skills/yap/scripts/join-repair.mjs": 1,
-    "skills/yap/scripts/review-bundle.mjs": 2,
-    "skills/yap/scripts/task-notes.mjs": 2,
-    "skills/yap/scripts/timeline-inspection.mjs": 2
-   }
-  },
-  "ARTIFACT_EXPIRED": {
-   "category": "conflict",
-   "files": {
-    "apps/cli/src/artifact-delivery.ts": 1,
-    "apps/service/src/delivery.ts": 3,
-    "apps/service/src/exports.ts": 1,
-    "packages/core/src/acoustic-inspection.ts": 2,
-    "packages/core/src/audio-inspection.ts": 1,
-    "packages/core/src/cache.ts": 1,
-    "packages/core/src/pointer-preparation.ts": 1
-   }
-  },
-  "ASSET_CONFLICT": {
-   "category": "conflict",
-   "files": {
-    "packages/core/src/assets.ts": 2
-   }
-  },
-  "AUDIO_FORMAT_CHANGED": {
-   "category": "conflict",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureClock.swift": 1,
-    "helpers/mac/Sources/YapCapture/CapturePCM.swift": 1
-   }
-  },
-  "AUDIO_OVERLAP": {
-   "category": "issue-code",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureClock.swift": 1
-   }
-  },
-  "AUDIO_PUBLICATION_PARTIAL": {
-   "category": "issue-code",
-   "files": {
-    "helpers/mac/Sources/YapCapture/NativeCapture.swift": 1,
-    "helpers/mac/Sources/YapWire/MediaRecovery.swift": 1
-   }
-  },
-  "AUDIO_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
-    "helpers/mac/Sources/YapCapture/NativeCapture.swift": 1,
-    "helpers/mac/Sources/YapWire/MediaRecovery.swift": 2
-   }
-  },
-  "CACHE_BUSY": {
-   "category": "resource-bound",
-   "files": {
-    "packages/core/src/cache.ts": 3
-   }
-  },
-  "CAMERA_FORMAT_CHANGED": {
-   "category": "conflict",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 1,
-    "helpers/mac/Sources/YapCapture/CameraWriter.swift": 2
-   }
-  },
-  "CAMERA_NOT_RESERVED": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/service/src/capture.ts": 1,
-    "helpers/mac/Sources/YapCapture/NativeCapture.swift": 1
-   }
-  },
-  "CAMERA_NOT_TURNED_ON": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
-    "helpers/mac/Sources/YapCapture/NativeCapture.swift": 1
-   }
-  },
-  "CAMERA_PERMISSION_REQUIRED": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 2
-   }
-  },
-  "CAMERA_TOGGLE_LIMIT": {
-   "category": "resource-bound",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 1
-   }
-  },
-  "CAPTURE_BUSY": {
-   "category": "resource-bound",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureAudioPublication.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureJournalLease.swift": 1,
-    "helpers/mac/Sources/YapWire/MediaRecovery.swift": 1,
-    "helpers/mac/Sources/YapWire/Wire.swift": 2
-   }
-  },
-  "CAPTURE_EVIDENCE_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureClockIngress.swift": 1
-   }
-  },
-  "CAPTURE_INTERRUPTED": {
-   "category": "conflict",
-   "files": {
-    "apps/service/src/capture.ts": 2
-   }
-  },
-  "CAPTURE_NOT_QUIET": {
-   "category": "conflict",
-   "files": {
-    "apps/service/src/capture.ts": 2
-   }
-  },
-  "CAPTURE_RECOVERED": {
-   "category": "issue-code",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureSourcePublication.swift": 1
-   }
-  },
-  "CAPTURE_RECOVERY_PENDING": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/service/src/capture.ts": 2
-   }
-  },
-  "CAPTURE_RECOVERY_UNRESOLVED": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/service/src/capture.ts": 1
-   }
-  },
-  "CLEANUP_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "helpers/mac/Sources/YapWire/Wire.swift": 1
-   }
-  },
-  "CLEANUP_PENDING": {
-   "category": "issue-code",
-   "files": {
-    "helpers/mac/Sources/YapCapture/NativeCapture.swift": 2,
-    "helpers/mac/Sources/YapWire/MediaRecovery.swift": 1
-   }
-  },
-  "CLEANUP_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/service/src/capture-cleanup.ts": 1,
-    "helpers/mac/Sources/YapWire/Wire.swift": 1
-   }
-  },
-  "CLI_TIMEOUT": {
-   "category": "execution-failure",
-   "files": {
-    "skills/yap/scripts/batch-prepare.mjs": 1,
-    "skills/yap/scripts/yap-cli.mjs": 1
-   }
-  },
-  "CLI_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/service/src/project-service.ts": 1,
-    "skills/yap/scripts/batch-prepare.mjs": 1,
-    "skills/yap/scripts/yap-cli.mjs": 1
-   }
-  },
-  "CLOCK_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureClockIngress.swift": 1
-   }
-  },
-  "CONNECTION_CLOSED": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/cli/src/wait.ts": 1,
-    "packages/client/src/transport.ts": 1,
-    "skills/yap/scripts/batch-prepare.mjs": 1
-   }
-  },
-  "CONNECTION_ERROR": {
-   "category": "execution-failure",
-   "files": {
-    "apps/cli/src/wait.ts": 1,
-    "packages/client/src/discovery.ts": 1,
-    "packages/client/src/transport.ts": 1,
-    "skills/yap/scripts/batch-prepare.mjs": 1
-   }
-  },
-  "CONTEXT_CLOSED": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/service/src/package-registry.ts": 2,
-    "apps/service/src/project-packages.ts": 4,
-    "packages/core/src/files.ts": 3,
-    "packages/core/src/jobs.ts": 1
-   }
-  },
-  "COVERAGE_INCOMPLETE": {
-   "category": "issue-code",
-   "files": {
-    "skills/yap/scripts/fresh-delivery-check.mjs": 1
-   }
-  },
-  "COVERAGE_OVERCLAIM": {
-   "category": "issue-code",
-   "files": {
-    "skills/yap/scripts/fresh-delivery-check.mjs": 1
-   }
-  },
-  "CROSS_DEVICE_PUBLICATION": {
-   "category": "conflict",
-   "files": {
-    "helpers/mac/Sources/YapWire/PublicationOperation.swift": 1
-   }
-  },
-  "CUE_WORD_PIN_LIMIT": {
-   "category": "issue-code",
-   "files": {
-    "skills/yap/scripts/caption-proposals.mjs": 2
-   }
-  },
-  "DECODE_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureMediaInspection.swift": 4
-   }
-  },
-  "DELETE_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "apps/service/src/deletion.ts": 1,
-    "apps/service/src/project-deletion.ts": 1,
-    "helpers/mac/Sources/YapMedia/DirectoryContents.swift": 1,
-    "helpers/mac/Sources/YapWire/Wire.swift": 1
-   }
-  },
-  "DEPENDENCY_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "apps/service/src/exports.ts": 3,
-    "packages/core/src/audio-inspection.ts": 1,
-    "packages/core/src/pointer-preparation.ts": 1,
-    "packages/core/src/rendered-speech.ts": 1
-   }
-  },
-  "DESTINATION_CHANGED": {
-   "category": "conflict",
-   "files": {
-    "apps/service/src/exports.ts": 1
-   }
-  },
-  "DESTINATION_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/service/src/exports.ts": 1
-   }
-  },
-  "DEVICE_RESTORE_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 1
-   }
-  },
-  "DISCONTINUOUS_WORD": {
-   "category": "issue-code",
-   "files": {
-    "skills/yap/scripts/caption-proposals.mjs": 1
-   }
-  },
-  "DOMAIN_MAX": {
-   "category": "issue-code",
-   "files": {
-    "helpers/mac/Sources/YapMedia/CubeLUT.swift": 1
-   }
-  },
-  "DOMAIN_MIN": {
-   "category": "issue-code",
-   "files": {
-    "helpers/mac/Sources/YapMedia/CubeLUT.swift": 2
-   }
-  },
-  "EMPTY_DISPLAY_TEXT": {
-   "category": "issue-code",
-   "files": {
-    "skills/yap/scripts/caption-proposals.mjs": 1
-   }
-  },
-  "ENCODER_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CameraWriter.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureWriter.swift": 1
-   }
-  },
-  "EVIDENCE_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "helpers/mac/Sources/YapWire/Wire.swift": 1
-   }
-  },
-  "EVIDENCE_LIMIT": {
-   "category": "resource-bound",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureAudioMaterializer.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureClockIngress.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureJournal.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
-    "helpers/mac/Sources/YapWire/SourceEvidenceExport.swift": 3
-   }
-  },
-  "EXPORT_ABANDONING": {
-   "category": "conflict",
-   "files": {
-    "apps/service/src/exports.ts": 2
-   }
-  },
-  "EXPORT_CLEANUP_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "apps/service/src/exports.ts": 1
-   }
-  },
-  "FFMPEG_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/service/src/ffmpeg-tools.ts": 1,
-    "packages/protocol/src/tools.ts": 1
-   }
-  },
-  "FILE_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "skills/yap/scripts/task-notes.mjs": 1
-   }
-  },
-  "FONT_CHANGED": {
-   "category": "conflict",
-   "files": {
-    "helpers/mac/Sources/YapMedia/FontFile.swift": 1
-   }
-  },
-  "FONT_GLYPH_BOUNDS_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapFrames/TextRaster.swift": 1
-   }
-  },
-  "FONT_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapMedia/FontFile.swift": 1
-   }
-  },
-  "FORMAT_CHANGED": {
-   "category": "conflict",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureClockIngress.swift": 1
-   }
-  },
-  "FORMAT_UNAVAILABLE": {
-   "category": "malformed",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 2
-   }
-  },
-  "FRAME_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "packages/core/src/project-index-materialization.ts": 1,
-    "packages/core/src/source-index-materialization.ts": 2
-   }
-  },
-  "FRAME_TOO_LARGE": {
-   "category": "resource-bound",
-   "files": {
-    "apps/cli/src/main.ts": 2,
-    "apps/service/src/control.ts": 1,
-    "apps/service/src/index.ts": 1,
-    "packages/core/src/voice-generation.ts": 1,
-    "packages/protocol/src/framing.ts": 5
-   }
-  },
-  "GRAPHEME_WIDTH": {
-   "category": "issue-code",
-   "files": {
-    "skills/yap/scripts/caption-proposals.mjs": 1
-   }
-  },
-  "HUMAN_QA_REQUIRED": {
-   "category": "issue-code",
-   "files": {
-    "skills/yap/scripts/fresh-delivery-check.mjs": 1
-   }
-  },
-  "IDENTITY_COLLISION": {
-   "category": "ambiguous",
-   "files": {
-    "packages/core/src/jobs.ts": 1
-   }
-  },
-  "INCOMPLETE_EVIDENCE": {
-   "category": "issue-code",
-   "files": {
-    "skills/yap/scripts/caption-proposals.mjs": 1
-   }
-  },
-  "INSPECTION_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "skills/yap/scripts/timeline-inspection.mjs": 1
-   }
-  },
-  "INSTANT_WORD": {
-   "category": "issue-code",
-   "files": {
-    "skills/yap/scripts/caption-proposals.mjs": 1
-   }
-  },
-  "INTERNAL_ERROR": {
-   "category": "execution-failure",
-   "files": {
-    "apps/service/src/capture.ts": 1,
-    "apps/service/src/control.ts": 1,
-    "apps/service/src/index.ts": 2,
-    "apps/service/src/operation-errors.ts": 1
-   }
-  },
-  "INVALID_AUDIO": {
-   "category": "malformed",
-   "files": {
-    "helpers/mac/Sources/YapAudio/CompositionAudio.swift": 1,
-    "helpers/mac/Sources/YapAudio/CompositionGain.swift": 1
-   }
-  },
-  "INVALID_AUDIO_FORMAT": {
-   "category": "malformed",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CapturePCM.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureWriter.swift": 3
-   }
-  },
-  "INVALID_AUDIO_TIMING": {
-   "category": "malformed",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureClock.swift": 5,
-    "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureWriter.swift": 1,
-    "helpers/mac/Sources/YapCapture/PCMContainerTime.swift": 3
-   }
-  },
-  "INVALID_CACHE": {
-   "category": "malformed",
-   "files": {
-    "apps/service/src/exports.ts": 2,
-    "packages/core/src/cache.ts": 6,
-    "packages/core/src/visual-cache.ts": 2
-   }
-  },
-  "INVALID_CAMERA_FRAME": {
-   "category": "malformed",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CameraWriter.swift": 1
-   }
-  },
-  "INVALID_CAMERA_MAPPING": {
-   "category": "malformed",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CameraMedia.swift": 4,
-    "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
-    "helpers/mac/Sources/YapWire/SourceEvidenceExport.swift": 1
-   }
-  },
-  "INVALID_CATALOG": {
-   "category": "malformed",
-   "files": {
-    "packages/core/src/storage.ts": 1
-   }
-  },
-  "INVALID_CLI_RESPONSE": {
-   "category": "malformed",
-   "files": {
-    "skills/yap/scripts/batch-prepare.mjs": 1,
-    "skills/yap/scripts/yap-cli.mjs": 2
-   }
-  },
-  "INVALID_CLOCK": {
-   "category": "malformed",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureClockIngress.swift": 7
-   }
-  },
-  "INVALID_COMPOSITION": {
-   "category": "malformed",
-   "files": {
-    "packages/composition/src/caption-sidecars.ts": 2,
-    "packages/composition/src/compiler.ts": 4,
-    "packages/composition/src/errors.ts": 1,
-    "packages/composition/src/geometry.ts": 1,
-    "packages/composition/src/model.ts": 1,
-    "packages/composition/src/processing-plan.ts": 3,
-    "packages/composition/src/processing-state.ts": 3,
-    "packages/composition/src/processing.ts": 1,
-    "packages/composition/src/project-cuts.ts": 2,
-    "packages/composition/src/routing.ts": 1,
-    "packages/composition/src/scalar-program.ts": 1,
-    "packages/composition/src/source-projection.ts": 1,
-    "packages/composition/src/visual-plan.ts": 1
-   }
-  },
-  "INVALID_CURSOR": {
-   "category": "malformed",
-   "files": {
-    "apps/service/src/exports.ts": 1
-   }
-  },
-  "INVALID_EDIT": {
-   "category": "malformed",
-   "files": {
-    "packages/composition/src/edits.ts": 1,
-    "packages/composition/src/errors.ts": 1,
-    "packages/composition/src/model.ts": 1,
-    "packages/composition/src/rational.ts": 1,
-    "packages/composition/src/replace.ts": 6,
-    "packages/composition/src/ripple.ts": 6,
-    "packages/composition/src/transform.ts": 1,
-    "packages/core/src/text-seeds.ts": 1
-   }
-  },
-  "INVALID_EVIDENCE": {
-   "category": "malformed",
-   "files": {
-    "apps/service/src/alignment.ts": 2,
-    "apps/service/src/join-verification.ts": 1,
-    "apps/service/src/source-channel.ts": 1,
-    "apps/service/src/speaker.ts": 1,
-    "packages/core/src/acquisitions.ts": 4,
-    "packages/core/src/alignment-evidence.ts": 2,
-    "packages/core/src/alignment-operands.ts": 1,
-    "packages/core/src/alignment-processing.ts": 1,
-    "packages/core/src/capture-source-read.ts": 1,
-    "packages/core/src/composition-pointer.ts": 8,
-    "packages/core/src/correspondence.ts": 3,
-    "packages/core/src/evidence-merge.ts": 1,
-    "packages/core/src/evidence-pages.ts": 3,
-    "packages/core/src/evidence-read.ts": 1,
-    "packages/core/src/evidence.ts": 1,
-    "packages/core/src/files.ts": 3,
-    "packages/core/src/ordered-pages.ts": 1,
-    "packages/core/src/pointer-preparation.ts": 1,
-    "packages/core/src/presentation-evidence.ts": 1,
-    "packages/core/src/presentation-pointer-history.ts": 1,
-    "packages/core/src/project-index-materialization.ts": 1,
-    "packages/core/src/project-index.ts": 1,
-    "packages/core/src/rendered-speech.ts": 2,
-    "packages/core/src/retained-image.ts": 1,
-    "packages/core/src/scene-evidence.ts": 1,
-    "packages/core/src/scene-source-read.ts": 1,
-    "packages/core/src/scenes.ts": 1,
-    "packages/core/src/screenshot-index-read.ts": 1,
-    "packages/core/src/screenshot-index.ts": 1,
-    "packages/core/src/source-index.ts": 2,
-    "packages/core/src/source-scene-chunks.ts": 1,
-    "packages/core/src/source-scenes.ts": 1,
-    "packages/core/src/speaker-evidence.ts": 1,
-    "packages/core/src/trails.ts": 2,
-    "packages/core/src/transcript-processing.ts": 1,
-    "packages/core/src/transcript-read.ts": 1,
-    "packages/core/src/transcript.ts": 4,
-    "packages/core/src/visual-cache.ts": 1
-   }
-  },
-  "INVALID_JOB": {
-   "category": "malformed",
-   "files": {
-    "apps/service/src/exports.ts": 4,
-    "packages/core/src/audio-inspection.ts": 1,
-    "packages/core/src/transcript.ts": 1
-   }
-  },
-  "INVALID_JOURNAL": {
-   "category": "malformed",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureJournal.swift": 16,
-    "helpers/mac/Sources/YapCapture/CaptureJournalLease.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
-    "helpers/mac/Sources/YapCapture/JournalPCM.swift": 2,
-    "helpers/mac/Sources/YapWire/MediaRecovery.swift": 4,
-    "helpers/mac/Sources/YapWire/SourceEvidenceExport.swift": 3
-   }
-  },
-  "INVALID_JOURNAL_PREFIX": {
-   "category": "malformed",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureJournal.swift": 2,
-    "helpers/mac/Sources/YapCapture/CaptureSourcePublication.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1
-   }
-  },
-  "INVALID_MEDIA": {
-   "category": "malformed",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureAudioMaterializer.swift": 8,
-    "helpers/mac/Sources/YapCapture/CaptureJournalLease.swift": 2,
-    "helpers/mac/Sources/YapCapture/CaptureSourcePublication.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
-    "helpers/mac/Sources/YapCapture/NativeCapture.swift": 1,
-    "helpers/mac/Sources/YapMedia/MediaInput.swift": 1
-   }
-  },
-  "INVALID_MODEL": {
-   "category": "malformed",
-   "files": {
-    "apps/service/src/runtime-materialization.ts": 1,
-    "packages/core/src/models.ts": 1
-   }
-  },
-  "INVALID_NATIVE_RESPONSE": {
-   "category": "malformed",
-   "files": {
-    "apps/service/src/archive-write.ts": 1,
-    "apps/service/src/capture-cleanup.ts": 1,
-    "apps/service/src/ffmpeg-input.ts": 6,
-    "apps/service/src/hdr-conversion.ts": 7,
-    "apps/service/src/loudness.ts": 4,
-    "apps/service/src/managed-files.ts": 2,
-    "apps/service/src/media-probe.ts": 3,
-    "apps/service/src/package-archive.ts": 1,
-    "apps/service/src/package-workspace.ts": 1,
-    "apps/service/src/project-render.ts": 1,
-    "apps/service/src/publication.ts": 8,
-    "apps/service/src/worker.ts": 1,
-    "packages/core/src/assets.ts": 1,
-    "packages/core/src/hdr-conversion-facts.ts": 3,
-    "packages/core/src/package-archive.ts": 1,
-    "packages/core/src/prepared-audio.ts": 1
-   }
-  },
-  "INVALID_NOTES": {
-   "category": "malformed",
-   "files": {
-    "skills/yap/scripts/task-notes.mjs": 2
-   }
-  },
-  "INVALID_OUTPUT": {
-   "category": "malformed",
-   "files": {
-    "helpers/mac/Sources/YapMedia/OutputFile.swift": 15,
-    "helpers/mac/Sources/YapSpeech/SourceTranscript.swift": 1,
-    "helpers/mac/Sources/YapWire/MovieAudioTail.swift": 1,
-    "helpers/mac/Sources/YapWire/SourceEvidenceExport.swift": 2,
-    "packages/core/src/composition-pointer.ts": 1,
-    "packages/core/src/pointer-schedule.ts": 1
-   }
-  },
-  "INVALID_PACKAGE": {
-   "category": "malformed",
-   "files": {
-    "apps/service/src/archive-input.ts": 2,
-    "apps/service/src/portable-index.ts": 1,
-    "apps/service/src/project-package-metadata.ts": 2,
-    "apps/service/src/project-packages.ts": 6,
-    "apps/service/src/source-export.ts": 1,
-    "helpers/mac/Sources/YapWire/ArchiveAssembly.swift": 6,
-    "helpers/mac/Sources/YapWire/ArchiveExtraction.swift": 11,
-    "helpers/mac/Sources/YapWire/Wire.swift": 1,
-    "packages/core/src/acquisitions.ts": 14,
-    "packages/core/src/alignment-evidence.ts": 2,
-    "packages/core/src/alignment-processing.ts": 3,
-    "packages/core/src/assets.ts": 3,
-    "packages/core/src/files.ts": 1,
-    "packages/core/src/index-processing.ts": 6,
-    "packages/core/src/jobs.ts": 3,
-    "packages/core/src/package-archive.ts": 1,
-    "packages/core/src/prepared-audio.ts": 5,
-    "packages/core/src/project-package.ts": 2,
-    "packages/core/src/projects.ts": 5,
-    "packages/core/src/scene-processing.ts": 4,
-    "packages/core/src/screenshot-index.ts": 9,
-    "packages/core/src/source-admission.ts": 2,
-    "packages/core/src/speaker-processing.ts": 3,
-    "packages/core/src/transcript-processing.ts": 5,
-    "packages/core/src/transcript.ts": 7
-   }
-  },
-  "INVALID_PARAMS": {
-   "category": "malformed",
-   "files": {
-    "apps/cli/src/main.ts": 1,
-    "apps/service/src/asset-conversion.ts": 1,
-    "apps/service/src/exports.ts": 3,
-    "apps/service/src/join-verification.ts": 4,
-    "apps/service/src/loudness.ts": 1,
-    "apps/service/src/portable-speakers.ts": 2,
-    "apps/service/src/project-service.ts": 5,
-    "packages/core/src/acoustic-inspection.ts": 3,
-    "packages/core/src/acquisitions.ts": 2,
-    "packages/core/src/alignment-evidence.ts": 3,
-    "packages/core/src/alignment-read.ts": 4,
-    "packages/core/src/assets.ts": 5,
-    "packages/core/src/audio-extraction.ts": 1,
-    "packages/core/src/audio-inspection.ts": 1,
-    "packages/core/src/audio-spectrum.ts": 1,
-    "packages/core/src/capture-publication.ts": 1,
-    "packages/core/src/capture-source-read.ts": 2,
-    "packages/core/src/capture-store.ts": 6,
-    "packages/core/src/correspondence.ts": 1,
-    "packages/core/src/frame-inspection.ts": 3,
-    "packages/core/src/prepared-audio.ts": 1,
-    "packages/core/src/project-evidence.ts": 3,
-    "packages/core/src/project-index.ts": 1,
-    "packages/core/src/project-preview.ts": 2,
-    "packages/core/src/projects.ts": 4,
-    "packages/core/src/scene-evidence.ts": 3,
-    "packages/core/src/scene-processing.ts": 1,
-    "packages/core/src/screenshot-index-read.ts": 2,
-    "packages/core/src/source-alignment.ts": 1,
-    "packages/core/src/source-events.ts": 2,
-    "packages/core/src/source-selection.ts": 3,
-    "packages/core/src/source-speakers.ts": 3,
-    "packages/core/src/speaker-evidence.ts": 2,
-    "packages/core/src/speaker-read.ts": 2,
-    "packages/core/src/transcript-read.ts": 4,
-    "packages/core/src/voice-generation.ts": 4
-   }
-  },
-  "INVALID_PATH": {
-   "category": "malformed",
-   "files": {
-    "packages/core/src/acquisitions.ts": 8,
-    "packages/core/src/assets.ts": 3,
-    "packages/core/src/files.ts": 1
-   }
-  },
-  "INVALID_PERMIT": {
-   "category": "malformed",
-   "files": {
-    "apps/service/src/update-admission.ts": 1
-   }
-  },
-  "INVALID_RANGE": {
-   "category": "malformed",
-   "files": {
-    "apps/service/src/delivery.ts": 1,
-    "helpers/mac/Sources/YapAudio/ExcerptLayout.swift": 6,
-    "helpers/mac/Sources/YapFrames/FrameTypes.swift": 6,
-    "packages/composition/src/edits.ts": 1,
-    "packages/composition/src/errors.ts": 1,
-    "packages/composition/src/range-admission.ts": 2,
-    "packages/core/src/audio-inspection.ts": 2,
-    "packages/core/src/audio-spectrum.ts": 1,
-    "packages/core/src/audio-wave.ts": 1,
-    "packages/core/src/capture-source-read.ts": 1,
-    "packages/core/src/capture-store.ts": 1,
-    "packages/core/src/composition-pointer.ts": 1,
-    "packages/core/src/evidence-read.ts": 1,
-    "packages/core/src/frame-inspection.ts": 1,
-    "packages/core/src/pointer-schedule.ts": 1,
-    "packages/core/src/prepared-audio.ts": 2,
-    "packages/core/src/presentation-evidence.ts": 3,
-    "packages/core/src/presentation-pointer-history.ts": 2,
-    "packages/core/src/presentation-pointer.ts": 2,
-    "packages/core/src/raw-cursor.ts": 1,
-    "packages/core/src/scenes.ts": 3,
-    "packages/core/src/source-events.ts": 1,
-    "packages/core/src/transcript-read.ts": 1,
-    "packages/core/src/visual-cache.ts": 1
-   }
-  },
-  "INVALID_REFERENCE": {
-   "category": "malformed",
-   "files": {
-    "packages/core/src/voice-generation.ts": 3
-   }
-  },
-  "INVALID_REQUEST": {
-   "category": "malformed",
-   "files": {
-    "apps/cli/src/artifact-delivery.ts": 1,
-    "apps/cli/src/main.ts": 2,
-    "apps/service/src/control.ts": 2,
-    "apps/service/src/package-registry.ts": 1,
-    "apps/service/src/voice.ts": 2,
-    "apps/service/src/worker.ts": 5,
-    "helpers/mac/Sources/YapAudio/AudioPCMStream.swift": 2,
-    "helpers/mac/Sources/YapAudio/AudioSource.swift": 1,
-    "helpers/mac/Sources/YapAudio/CompositionAudio.swift": 1,
-    "helpers/mac/Sources/YapAudio/ExcerptLayout.swift": 1,
-    "helpers/mac/Sources/YapAudio/RetainedPCMSource.swift": 3,
-    "helpers/mac/Sources/YapAudio/SelectedAudioConversion.swift": 3,
-    "helpers/mac/Sources/YapAudio/SourceChannelPCM.swift": 3,
-    "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 3,
-    "helpers/mac/Sources/YapCapture/CaptureClockIngress.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureInputSession.swift": 3,
-    "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 2,
-    "helpers/mac/Sources/YapCapture/NativeCapture.swift": 2,
-    "helpers/mac/Sources/YapCapture/SelectedCaptureProbe.swift": 4,
-    "helpers/mac/Sources/YapCapture/SelectedCaptureRequest.swift": 2,
-    "helpers/mac/Sources/YapFrames/AcousticImage.swift": 6,
-    "helpers/mac/Sources/YapFrames/CompositionFrameRenderer.swift": 1,
-    "helpers/mac/Sources/YapFrames/CompositionPictureExecutor.swift": 4,
-    "helpers/mac/Sources/YapFrames/CompositionVideoRenderer.swift": 1,
-    "helpers/mac/Sources/YapFrames/FaceObservations.swift": 1,
-    "helpers/mac/Sources/YapFrames/LUTColor.swift": 1,
-    "helpers/mac/Sources/YapFrames/PictureObservations.swift": 1,
-    "helpers/mac/Sources/YapFrames/PreparedPointers.swift": 1,
-    "helpers/mac/Sources/YapFrames/PresentationEvidence.swift": 2,
-    "helpers/mac/Sources/YapFrames/PresentationSource.swift": 3,
-    "helpers/mac/Sources/YapFrames/RetainedJSONLines.swift": 1,
-    "helpers/mac/Sources/YapFrames/SDRCorrection.swift": 1,
-    "helpers/mac/Sources/YapFrames/SourceFrameRenderer.swift": 1,
-    "helpers/mac/Sources/YapFrames/SourceImageRenderer.swift": 1,
-    "helpers/mac/Sources/YapFrames/SourceVisualSamples.swift": 1,
-    "helpers/mac/Sources/YapFrames/TextRaster.swift": 3,
-    "helpers/mac/Sources/YapMedia/AudioStateRecipe.swift": 1,
-    "helpers/mac/Sources/YapMedia/ExactRange.swift": 1,
-    "helpers/mac/Sources/YapMedia/ExactTime.swift": 6,
-    "helpers/mac/Sources/YapMedia/ScalarProgram.swift": 2,
-    "helpers/mac/Sources/YapMedia/StillImageSource.swift": 1,
-    "helpers/mac/Sources/YapSpeech/ParakeetEngine.swift": 2,
-    "helpers/mac/Sources/YapSpeech/SpeechModelFiles.swift": 1,
-    "helpers/mac/Sources/YapSpeech/SpeechWindows.swift": 1,
-    "helpers/mac/Sources/YapWire/AcousticImageOperation.swift": 3,
-    "helpers/mac/Sources/YapWire/ArchiveAssembly.swift": 3,
-    "helpers/mac/Sources/YapWire/ArchiveOperation.swift": 2,
-    "helpers/mac/Sources/YapWire/AudioFileOperation.swift": 1,
-    "helpers/mac/Sources/YapWire/CompositionAudioOperation.swift": 3,
-    "helpers/mac/Sources/YapWire/CompositionMovieOperation.swift": 4,
-    "helpers/mac/Sources/YapWire/CompositionVideoOperation.swift": 1,
-    "helpers/mac/Sources/YapWire/Descriptors.swift": 2,
-    "helpers/mac/Sources/YapWire/ManagedFiles.swift": 1,
-    "helpers/mac/Sources/YapWire/PackageWorkspace.swift": 2,
-    "helpers/mac/Sources/YapWire/PublicationOperation.swift": 9,
-    "helpers/mac/Sources/YapWire/RenderWorkspace.swift": 2,
-    "helpers/mac/Sources/YapWire/SourceEvidenceExport.swift": 2,
-    "helpers/mac/Sources/YapWire/SpeechOperation.swift": 1,
-    "helpers/mac/Sources/YapWire/Wire.swift": 3,
-    "helpers/mac/Sources/YapWire/WireRequest.swift": 1,
-    "packages/core/src/acquisitions.ts": 1,
-    "packages/core/src/cache.ts": 1,
-    "packages/core/src/jobs.ts": 2,
-    "packages/core/src/models.ts": 5,
-    "packages/core/src/project-evidence.ts": 2,
-    "packages/core/src/transcript.ts": 1,
-    "packages/core/src/voice-profile.ts": 1,
-    "skills/yap/scripts/caption-proposals.mjs": 12,
-    "skills/yap/scripts/compact-transcripts.mjs": 2,
-    "skills/yap/scripts/delivered-scenes.mjs": 5,
-    "skills/yap/scripts/dialogue-proposals.mjs": 4,
-    "skills/yap/scripts/fresh-delivery-check.mjs": 15,
-    "skills/yap/scripts/inspection-artifacts.mjs": 3,
-    "skills/yap/scripts/join-repair.mjs": 11,
-    "skills/yap/scripts/review-bundle.mjs": 5,
-    "skills/yap/scripts/task-notes.mjs": 1,
-    "skills/yap/scripts/timeline-inspection.mjs": 3,
-    "skills/yap/scripts/use-case-routing.mjs": 3,
-    "skills/yap/scripts/yap-cli.mjs": 1
-   }
-  },
-  "INVALID_RESPONSE": {
-   "category": "malformed",
-   "files": {
-    "apps/cli/src/artifact-delivery.ts": 6,
-    "apps/cli/src/main.ts": 1,
-    "apps/cli/src/wait.ts": 10,
-    "apps/service/src/audio-processing.ts": 7,
-    "apps/service/src/capture.ts": 1,
-    "apps/service/src/control.ts": 1,
-    "apps/service/src/project-render.ts": 2,
-    "apps/service/src/render.ts": 1,
-    "apps/service/src/voice.ts": 3,
-    "helpers/mac/Sources/YapAudio/RetainedPCMSource.swift": 1,
-    "helpers/mac/Sources/YapAudio/SelectedAudioConversion.swift": 1,
-    "helpers/mac/Sources/YapFrames/FaceObservations.swift": 1,
-    "helpers/mac/Sources/YapFrames/PictureObservations.swift": 1,
-    "helpers/mac/Sources/YapFrames/SourceFrameRenderer.swift": 1,
-    "helpers/mac/Sources/YapWire/MovieAudioTail.swift": 1,
-    "packages/client/src/transport.ts": 1,
-    "packages/core/src/acoustic-image.ts": 1,
-    "packages/core/src/audio-extraction.ts": 4,
-    "packages/core/src/audio-inspection.ts": 1,
-    "packages/core/src/audio-measurement.ts": 1,
-    "packages/core/src/audio-spectrum.ts": 2,
-    "packages/core/src/audio-wave.ts": 1,
-    "packages/core/src/frame-inspection.ts": 15,
-    "packages/core/src/pointer-preparation.ts": 3,
-    "packages/core/src/project-preview.ts": 5,
-    "packages/core/src/rendered-movie.ts": 2,
-    "packages/core/src/text-fallback.ts": 1,
-    "packages/core/src/transcript.ts": 2,
-    "packages/core/src/voice-generation.ts": 5,
-    "skills/yap/scripts/batch-prepare.mjs": 1,
-    "skills/yap/scripts/compact-transcripts.mjs": 1,
-    "skills/yap/scripts/delivered-scenes.mjs": 2,
-    "skills/yap/scripts/inspection-artifacts.mjs": 1,
-    "skills/yap/scripts/join-repair.mjs": 1,
-    "skills/yap/scripts/review-bundle.mjs": 2,
-    "skills/yap/scripts/timeline-inspection.mjs": 2
-   }
-  },
-  "INVALID_SOURCE": {
-   "category": "malformed",
-   "files": {
-    "skills/yap/scripts/fresh-delivery-check.mjs": 3
-   }
-  },
-  "INVALID_SPEECH_TIMING": {
-   "category": "malformed",
-   "files": {
-    "helpers/mac/Sources/YapSpeech/SourceTranscript.swift": 2
-   }
-  },
-  "INVALID_STATE": {
-   "category": "malformed",
-   "files": {
-    "apps/service/src/capture-cleanup.ts": 1,
-    "apps/service/src/capture.ts": 10,
-    "apps/service/src/exports.ts": 3,
-    "apps/service/src/project-service.ts": 1,
-    "apps/service/src/publication.ts": 1,
-    "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 3,
-    "helpers/mac/Sources/YapCapture/NativeCapture.swift": 8,
-    "packages/core/src/acquisitions.ts": 3,
-    "packages/core/src/capture-publication.ts": 7,
-    "packages/core/src/capture-store.ts": 7,
-    "packages/core/src/jobs.ts": 3,
-    "packages/core/src/pointer-preparation.ts": 1,
-    "packages/core/src/presentation-pointer-history.ts": 2,
-    "packages/core/src/projects.ts": 1
-   }
-  },
-  "INVALID_STORAGE": {
-   "category": "malformed",
-   "files": {
-    "apps/service/src/exports.ts": 1,
-    "apps/service/src/ffmpeg-artifact.ts": 2,
-    "apps/service/src/package-archive.ts": 1,
-    "apps/service/src/package-workspace.ts": 8,
-    "apps/service/src/project-packages.ts": 8,
-    "apps/service/src/publication.ts": 7,
-    "apps/service/src/render.ts": 2,
-    "helpers/mac/Sources/YapMedia/DirectoryContents.swift": 2,
-    "helpers/mac/Sources/YapWire/ArchiveAssembly.swift": 2,
-    "helpers/mac/Sources/YapWire/ArchiveOperation.swift": 3,
-    "helpers/mac/Sources/YapWire/Descriptors.swift": 1,
-    "helpers/mac/Sources/YapWire/ManagedFiles.swift": 4,
-    "helpers/mac/Sources/YapWire/PackageWorkspace.swift": 2,
-    "helpers/mac/Sources/YapWire/PublicationOperation.swift": 6,
-    "helpers/mac/Sources/YapWire/Wire.swift": 2,
-    "packages/core/src/acquisitions.ts": 2,
-    "packages/core/src/files.ts": 6,
-    "packages/core/src/index-processing.ts": 2,
-    "packages/core/src/prepared-audio.ts": 4,
-    "packages/core/src/screenshot-index.ts": 1,
-    "packages/core/src/transcript-processing.ts": 1,
-    "packages/core/src/transcript.ts": 2
-   }
-  },
-  "INVALID_TIME": {
-   "category": "malformed",
-   "files": {
-    "packages/composition/src/compiler.ts": 5,
-    "packages/composition/src/errors.ts": 1,
-    "packages/composition/src/execution-window.ts": 1,
-    "packages/composition/src/model.ts": 1,
-    "packages/composition/src/project-cuts.ts": 3,
-    "packages/composition/src/rational.ts": 1,
-    "packages/composition/src/sample-clock.ts": 1,
-    "packages/composition/src/scalar-program.ts": 1,
-    "packages/composition/src/source-projection.ts": 2
-   }
-  },
-  "IO_ERROR": {
-   "category": "execution-failure",
-   "files": {
-    "helpers/mac/Sources/YapAudio/RetainedPCMSource.swift": 1
-   }
-  },
-  "ITU_R_2020": {
-   "category": "not-a-refusal",
-   "files": {
-    "apps/service/src/hdr-conversion.ts": 2
-   }
-  },
-  "ITU_R_2100_HLG": {
-   "category": "not-a-refusal",
-   "files": {
-    "apps/service/src/hdr-conversion.ts": 1
-   }
-  },
-  "ITU_R_709_2": {
-   "category": "not-a-refusal",
-   "files": {
-    "apps/service/src/hdr-conversion.ts": 3
-   }
-  },
-  "JOB_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "packages/core/src/jobs.ts": 1
-   }
-  },
-  "JOURNAL_CHANGED": {
-   "category": "conflict",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureAudioPublication.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureJournalLease.swift": 2,
-    "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
-    "helpers/mac/Sources/YapWire/MediaRecovery.swift": 2
-   }
-  },
-  "JOURNAL_CLOSED": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureAudioPublication.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureJournalLease.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1
-   }
-  },
-  "JOURNAL_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CameraWriter.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureJournal.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureWriter.swift": 1,
-    "helpers/mac/Sources/YapCapture/ClosedCameraSource.swift": 1
-   }
-  },
-  "JOURNAL_MISSING": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureJournal.swift": 1,
-    "helpers/mac/Sources/YapWire/MediaRecovery.swift": 2
-   }
-  },
-  "JOURNAL_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureJournal.swift": 2,
-    "helpers/mac/Sources/YapCapture/CaptureJournalLease.swift": 1,
-    "helpers/mac/Sources/YapWire/MediaRecovery.swift": 4,
-    "helpers/mac/Sources/YapWire/SourceEvidenceExport.swift": 1,
-    "helpers/mac/Sources/YapWire/Wire.swift": 2
-   }
-  },
-  "LAUNCH_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "packages/client/src/discovery.ts": 2
-   }
-  },
-  "LIMIT_EXCEEDED": {
-   "category": "resource-bound",
-   "files": {
-    "apps/cli/src/artifact-delivery.ts": 3,
-    "apps/cli/src/main.ts": 1,
-    "apps/service/src/archive-write.ts": 1,
-    "apps/service/src/control.ts": 6,
-    "apps/service/src/delivery.ts": 1,
-    "apps/service/src/exports.ts": 3,
-    "apps/service/src/index.ts": 2,
-    "apps/service/src/package-registry.ts": 3,
-    "apps/service/src/portable-speakers.ts": 2,
-    "apps/service/src/project-packages.ts": 12,
-    "apps/service/src/project-service.ts": 2,
-    "helpers/mac/Sources/YapAudio/AudioSource.swift": 2,
-    "helpers/mac/Sources/YapAudio/AudioWave.swift": 1,
-    "helpers/mac/Sources/YapAudio/ExcerptLayout.swift": 3,
-    "helpers/mac/Sources/YapFrames/AcousticImage.swift": 1,
-    "helpers/mac/Sources/YapFrames/CompositionPictureExecutor.swift": 1,
-    "helpers/mac/Sources/YapFrames/FrameImage.swift": 1,
-    "helpers/mac/Sources/YapFrames/PresentationEvidence.swift": 2,
-    "helpers/mac/Sources/YapFrames/PresentationSource.swift": 1,
-    "helpers/mac/Sources/YapFrames/SourceVisualSamples.swift": 1,
-    "helpers/mac/Sources/YapFrames/TextRaster.swift": 1,
-    "helpers/mac/Sources/YapMedia/DecodedAudioInspection.swift": 2,
-    "helpers/mac/Sources/YapMedia/DescriptorAudioType.swift": 1,
-    "helpers/mac/Sources/YapMedia/DirectoryContents.swift": 1,
-    "helpers/mac/Sources/YapMedia/MediaInput.swift": 2,
-    "helpers/mac/Sources/YapMedia/StillImageSource.swift": 1,
-    "helpers/mac/Sources/YapSpeech/SourceTranscript.swift": 1,
-    "helpers/mac/Sources/YapSpeech/SpeechWindows.swift": 1,
-    "helpers/mac/Sources/YapWire/AcousticImageOperation.swift": 2,
-    "helpers/mac/Sources/YapWire/ArchiveAssembly.swift": 4,
-    "helpers/mac/Sources/YapWire/ArchiveExtraction.swift": 8,
-    "helpers/mac/Sources/YapWire/ArchiveOperation.swift": 1,
-    "helpers/mac/Sources/YapWire/CorrespondenceOperation.swift": 1,
-    "helpers/mac/Sources/YapWire/ManagedFiles.swift": 1,
-    "helpers/mac/Sources/YapWire/MovieAudioTail.swift": 2,
-    "helpers/mac/Sources/YapWire/ProbeOperation.swift": 1,
-    "helpers/mac/Sources/YapWire/PublicationOperation.swift": 2,
-    "packages/composition/src/caption-sidecars.ts": 3,
-    "packages/composition/src/errors.ts": 1,
-    "packages/core/src/acoustic-inspection.ts": 2,
-    "packages/core/src/acquisitions.ts": 2,
-    "packages/core/src/assets.ts": 1,
-    "packages/core/src/audio-inspection.ts": 2,
-    "packages/core/src/audio-spectrum.ts": 1,
-    "packages/core/src/audio-wave.ts": 1,
-    "packages/core/src/cache.ts": 1,
-    "packages/core/src/capture-source-read.ts": 1,
-    "packages/core/src/composition-pointer.ts": 8,
-    "packages/core/src/evidence-read.ts": 3,
-    "packages/core/src/files.ts": 1,
-    "packages/core/src/jobs.ts": 8,
-    "packages/core/src/ordered-pages.ts": 3,
-    "packages/core/src/package-archive.ts": 1,
-    "packages/core/src/pointer-preparation.ts": 1,
-    "packages/core/src/pointer-schedule.ts": 1,
-    "packages/core/src/prepared-audio.ts": 1,
-    "packages/core/src/presentation-evidence.ts": 1,
-    "packages/core/src/presentation-pointer-history.ts": 2,
-    "packages/core/src/project-evidence.ts": 5,
-    "packages/core/src/project-index-selection.ts": 1,
-    "packages/core/src/project-package.ts": 1,
-    "packages/core/src/projects.ts": 4,
-    "packages/core/src/scene-evidence.ts": 1,
-    "packages/core/src/screenshot-index.ts": 3,
-    "packages/core/src/source-index-selection.ts": 1,
-    "packages/core/src/speaker-evidence.ts": 1,
-    "packages/core/src/storage.ts": 3,
-    "packages/core/src/trails.ts": 2,
-    "packages/core/src/transcript.ts": 1,
-    "skills/yap/scripts/batch-prepare.mjs": 1,
-    "skills/yap/scripts/yap-cli.mjs": 1
-   }
-  },
-  "LINE_COUNT": {
-   "category": "issue-code",
-   "files": {
-    "skills/yap/scripts/caption-proposals.mjs": 1
-   }
-  },
-  "LUT_3D_SIZE": {
-   "category": "not-a-refusal",
-   "files": {
-    "helpers/mac/Sources/YapMedia/CubeLUT.swift": 1
-   }
-  },
-  "LUT_CHANGED": {
-   "category": "conflict",
-   "files": {
-    "helpers/mac/Sources/YapMedia/CubeLUT.swift": 1
-   }
-  },
-  "MALFORMED_FRAME": {
-   "category": "malformed",
-   "files": {
-    "packages/protocol/src/framing.ts": 7
-   }
-  },
-  "MATERIALIZATION_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureAudioMaterializer.swift": 1
-   }
-  },
-  "MAXIMUM_DWELL": {
-   "category": "issue-code",
-   "files": {
-    "skills/yap/scripts/caption-proposals.mjs": 1
-   }
-  },
-  "MEDIA_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/service/src/source-export.ts": 1,
-    "helpers/mac/Sources/YapCapture/CameraMedia.swift": 5,
-    "helpers/mac/Sources/YapCapture/CaptureAudioMaterializer.swift": 4,
-    "helpers/mac/Sources/YapCapture/CaptureMediaInspection.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureSourcePublication.swift": 1,
-    "helpers/mac/Sources/YapWire/MediaRecovery.swift": 2,
-    "helpers/mac/Sources/YapWire/Wire.swift": 3
-   }
-  },
-  "MEDIA_WORKER_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "apps/service/src/capture.ts": 1,
-    "apps/service/src/worker.ts": 10,
-    "packages/core/src/capture-publication.ts": 2
-   }
-  },
-  "MEDIA_WORKER_TIMEOUT": {
-   "category": "execution-failure",
-   "files": {
-    "apps/service/src/worker.ts": 1
-   }
-  },
-  "MEDIA_WORKER_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/service/src/worker.ts": 2
-   }
-  },
-  "MICROPHONE_PERMISSION_REQUIRED": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureInputSession.swift": 1
-   }
-  },
-  "MINIMUM_DWELL": {
-   "category": "issue-code",
-   "files": {
-    "skills/yap/scripts/caption-proposals.mjs": 1
-   }
-  },
-  "MISSING_MEDIA": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureMediaInspection.swift": 1
-   }
-  },
-  "MODEL_DOWNLOAD_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "packages/core/src/models.ts": 1
-   }
-  },
-  "MODEL_HASH_MISMATCH": {
-   "category": "conflict",
-   "files": {
-    "packages/core/src/model-files.ts": 1,
-    "packages/core/src/models.ts": 1
-   }
-  },
-  "MODEL_INVALID": {
-   "category": "malformed",
-   "files": {
-    "helpers/mac/Sources/YapSpeech/SpeechModelFiles.swift": 1
-   }
-  },
-  "MODEL_NOT_PREPARED": {
-   "category": "missing-prerequisite",
-   "files": {
-    "packages/core/src/models.ts": 2,
-    "packages/core/src/rendered-speech.ts": 2,
-    "packages/core/src/transcript-processing.ts": 4
-   }
-  },
-  "MODEL_PLATFORM_UNSUPPORTED": {
-   "category": "missing-prerequisite",
-   "files": {
-    "packages/core/src/models.ts": 1
-   }
-  },
-  "MODEL_RUNTIME_EXTRACTION_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "apps/service/src/runtime-materialization.ts": 1
-   }
-  },
-  "MODEL_RUNTIME_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "packages/core/src/models.ts": 1
-   }
-  },
-  "MODEL_SOURCE_REQUIRED": {
-   "category": "missing-prerequisite",
-   "files": {
-    "packages/core/src/models.ts": 2
-   }
-  },
-  "MODEL_STORAGE_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "packages/core/src/models.ts": 2
-   }
-  },
-  "MODEL_STORAGE_FULL": {
-   "category": "resource-bound",
-   "files": {
-    "packages/core/src/model-files.ts": 1
-   }
-  },
-  "MODEL_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapSpeech/SpeechModelFiles.swift": 1
-   }
-  },
-  "NATIVE_CAPTURE_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureInputSession.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureStreamInputs.swift": 1,
-    "helpers/mac/Sources/YapCapture/NativeCapture.swift": 1
-   }
-  },
-  "NATIVE_DECODE_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "helpers/mac/Sources/YapMedia/NativeFailure.swift": 1
-   }
-  },
-  "NOTES_REFERENCE_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "skills/yap/scripts/task-notes.mjs": 1
-   }
-  },
-  "NOTHING_TO_UNDO": {
-   "category": "malformed",
-   "files": {
-    "packages/core/src/projects.ts": 1
-   }
-  },
-  "NOT_FOUND": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/cli/src/wait.ts": 1,
-    "apps/service/src/capture-sources.ts": 1,
-    "apps/service/src/exports.ts": 2,
-    "apps/service/src/package-registry.ts": 2,
-    "apps/service/src/portable-speakers.ts": 4,
-    "apps/service/src/project-packages.ts": 4,
-    "apps/service/src/project-service.ts": 7,
-    "packages/core/src/acquisitions.ts": 7,
-    "packages/core/src/alignment-evidence.ts": 2,
-    "packages/core/src/assets.ts": 4,
-    "packages/core/src/capture-store.ts": 2,
-    "packages/core/src/files.ts": 2,
-    "packages/core/src/jobs.ts": 3,
-    "packages/core/src/prepared-audio.ts": 1,
-    "packages/core/src/projects.ts": 3,
-    "packages/core/src/rendered-speech.ts": 1,
-    "packages/core/src/screenshot-index-read.ts": 1,
-    "packages/core/src/screenshot-index.ts": 1,
-    "packages/core/src/speaker-evidence.ts": 1,
-    "packages/core/src/storage.ts": 3,
-    "packages/core/src/transcript-processing.ts": 1,
-    "packages/core/src/transcript.ts": 1
-   }
-  },
-  "NOT_READY": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/service/src/asset-conversion.ts": 1,
-    "apps/service/src/audio-processing.ts": 3,
-    "apps/service/src/capture-sources.ts": 1,
-    "apps/service/src/exports.ts": 3,
-    "apps/service/src/index.ts": 1,
-    "apps/service/src/join-verification.ts": 2,
-    "apps/service/src/loudness.ts": 1,
-    "apps/service/src/project-packages.ts": 1,
-    "apps/service/src/project-render.ts": 4,
-    "apps/service/src/project-service.ts": 12,
-    "apps/service/src/source-export.ts": 2,
-    "helpers/mac/Sources/YapAudio/CompositionRetime.swift": 4,
-    "helpers/mac/Sources/YapAudio/CompositionState.swift": 3,
-    "helpers/mac/Sources/YapFrames/CompositionFrameRenderer.swift": 1,
-    "helpers/mac/Sources/YapFrames/CompositionPictureExecutor.swift": 1,
-    "helpers/mac/Sources/YapFrames/CompositionVideoRenderer.swift": 1,
-    "helpers/mac/Sources/YapFrames/LUTColor.swift": 2,
-    "helpers/mac/Sources/YapFrames/SDRCorrection.swift": 1,
-    "helpers/mac/Sources/YapFrames/VideoColorPolicy.swift": 1,
-    "helpers/mac/Sources/YapMedia/ExactTime.swift": 7,
-    "packages/composition/src/compiler.ts": 1,
-    "packages/composition/src/errors.ts": 1,
-    "packages/composition/src/execution-window.ts": 1,
-    "packages/composition/src/processing-state.ts": 1,
-    "packages/core/src/acoustic-inspection.ts": 4,
-    "packages/core/src/acquisitions.ts": 1,
-    "packages/core/src/alignment-evidence.ts": 1,
-    "packages/core/src/alignment-processing.ts": 1,
-    "packages/core/src/alignment-read.ts": 1,
-    "packages/core/src/audio-extraction.ts": 1,
-    "packages/core/src/audio-inspection.ts": 12,
-    "packages/core/src/cache.ts": 1,
-    "packages/core/src/capture-store.ts": 1,
-    "packages/core/src/evidence-pages.ts": 1,
-    "packages/core/src/evidence.ts": 1,
-    "packages/core/src/frame-inspection.ts": 5,
-    "packages/core/src/index-frame.ts": 1,
-    "packages/core/src/index-processing.ts": 1,
-    "packages/core/src/pointer-preparation.ts": 1,
-    "packages/core/src/project-evidence.ts": 1,
-    "packages/core/src/project-index.ts": 1,
-    "packages/core/src/project-preview.ts": 3,
-    "packages/core/src/project-window.ts": 2,
-    "packages/core/src/rendered-speech.ts": 1,
-    "packages/core/src/scene-source-read.ts": 1,
-    "packages/core/src/source-index-materialization.ts": 1,
-    "packages/core/src/speaker-evidence.ts": 1,
-    "packages/core/src/speaker-processing.ts": 1,
-    "skills/yap/scripts/delivered-scenes.mjs": 2,
-    "skills/yap/scripts/join-repair.mjs": 2
-   }
-  },
-  "NOT_REQUESTED": {
-   "category": "issue-code",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureMediaInspection.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
-    "helpers/mac/Sources/YapWire/MediaRecovery.swift": 1,
-    "packages/core/src/capture-publication.ts": 1
-   }
-  },
-  "NO_CAMERA": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CameraWriter.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
-    "helpers/mac/Sources/YapCapture/NativeCapture.swift": 1,
-    "helpers/mac/Sources/YapWire/MediaRecovery.swift": 1
-   }
-  },
-  "NO_NARRATION": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureWriter.swift": 1
-   }
-  },
-  "NO_RECOVERABLE_VIDEO": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/service/src/capture.ts": 1
-   }
-  },
-  "NO_SOURCE_MEDIA": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/service/src/capture.ts": 1,
-    "helpers/mac/Sources/YapWire/MediaRecovery.swift": 1
-   }
-  },
-  "NO_SYSTEM_AUDIO": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureWriter.swift": 1
-   }
-  },
-  "NO_TRACK": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureMediaInspection.swift": 1
-   }
-  },
-  "NO_VIDEO": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureWriter.swift": 1
-   }
-  },
-  "OUTPUT_BUDGET_EXCEEDED": {
-   "category": "resource-bound",
-   "files": {
-    "skills/yap/scripts/caption-proposals.mjs": 2,
-    "skills/yap/scripts/compact-transcripts.mjs": 2,
-    "skills/yap/scripts/delivered-scenes.mjs": 3,
-    "skills/yap/scripts/inspection-artifacts.mjs": 1,
-    "skills/yap/scripts/review-bundle.mjs": 2,
-    "skills/yap/scripts/task-notes.mjs": 1,
-    "skills/yap/scripts/timeline-inspection.mjs": 3
-   }
-  },
-  "OUTPUT_EXISTS": {
-   "category": "conflict",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CameraWriter.swift": 1
-   }
-  },
-  "PACKED_MEDIA_INVALID": {
-   "category": "malformed",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureAudioMaterializer.swift": 2,
-    "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1
-   }
-  },
-  "PARITY_UNSUPPORTED": {
-   "category": "missing-prerequisite",
-   "files": {
-    "skills/yap/scripts/fresh-delivery-check.mjs": 1
-   }
-  },
-  "PARTIAL_CAMERA": {
-   "category": "issue-code",
-   "files": {
-    "helpers/mac/Sources/YapCapture/ClosedCameraSource.swift": 1,
-    "helpers/mac/Sources/YapWire/MediaRecovery.swift": 1
-   }
-  },
-  "PARTIAL_WORD": {
-   "category": "issue-code",
-   "files": {
-    "skills/yap/scripts/caption-proposals.mjs": 1
-   }
-  },
-  "PERMISSION_REQUIRED": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureInputSession.swift": 1,
-    "helpers/mac/Sources/YapCapture/SelectedCaptureProbe.swift": 1,
-    "helpers/mac/Sources/YapCapture/SelectedCaptureRequest.swift": 1
-   }
-  },
-  "PREPARATION_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "skills/yap/scripts/batch-prepare.mjs": 2
-   }
-  },
-  "PROCESSING_BUSY": {
-   "category": "resource-bound",
-   "files": {
-    "apps/service/src/package-registry.ts": 2,
-    "packages/core/src/acquisitions.ts": 1,
-    "packages/core/src/alignment-evidence.ts": 1,
-    "packages/core/src/files.ts": 1,
-    "packages/core/src/jobs.ts": 4,
-    "packages/core/src/scene-evidence.ts": 2,
-    "packages/core/src/screenshot-index.ts": 1,
-    "packages/core/src/speaker-evidence.ts": 1,
-    "packages/core/src/transcript.ts": 2
-   }
-  },
-  "PROJECT_PROJECTION_REQUIRED": {
-   "category": "malformed",
-   "files": {
-    "skills/yap/scripts/caption-proposals.mjs": 1
-   }
-  },
-  "PUBLICATION_BUSY": {
-   "category": "resource-bound",
-   "files": {
-    "apps/service/src/publication.ts": 3,
-    "helpers/mac/Sources/YapWire/PublicationOperation.swift": 1
-   }
-  },
-  "PUBLICATION_CHANGED": {
-   "category": "conflict",
-   "files": {
-    "apps/service/src/publication.ts": 1,
-    "helpers/mac/Sources/YapWire/PublicationOperation.swift": 8
-   }
-  },
-  "PUBLICATION_CONFLICT": {
-   "category": "conflict",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CameraMedia.swift": 2,
-    "helpers/mac/Sources/YapCapture/CaptureAudioPublication.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
-    "helpers/mac/Sources/YapWire/PublicationOperation.swift": 2
-   }
-  },
-  "PUBLICATION_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureAudioPublication.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
-    "helpers/mac/Sources/YapWire/MediaRecovery.swift": 1,
-    "helpers/mac/Sources/YapWire/SourceEvidenceExport.swift": 1
-   }
-  },
-  "PUBLICATION_IO": {
-   "category": "execution-failure",
-   "files": {
-    "apps/service/src/exports.ts": 1,
-    "helpers/mac/Sources/YapWire/PublicationOperation.swift": 1
-   }
-  },
-  "READING_SPEED": {
-   "category": "issue-code",
-   "files": {
-    "skills/yap/scripts/caption-proposals.mjs": 1
-   }
-  },
-  "READING_SPEED_UNDEFINED": {
-   "category": "issue-code",
-   "files": {
-    "skills/yap/scripts/caption-proposals.mjs": 1
-   }
-  },
-  "RECORDING_BUSY": {
-   "category": "resource-bound",
-   "files": {
-    "apps/service/src/managed-files.ts": 1,
-    "helpers/mac/Sources/YapWire/ManagedFiles.swift": 1,
-    "packages/core/src/acquisitions.ts": 1
-   }
-  },
-  "RECOVERY_BUSY": {
-   "category": "resource-bound",
-   "files": {
-    "helpers/mac/Sources/YapWire/PackageWorkspace.swift": 2
-   }
-  },
-  "RECOVERY_CANCELED": {
-   "category": "execution-failure",
-   "files": {
-    "apps/service/src/capture.ts": 1
-   }
-  },
-  "RECOVERY_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "apps/service/src/capture.ts": 3
-   }
-  },
-  "REFERENCE_INVALID": {
-   "category": "malformed",
-   "files": {
-    "skills/yap/scripts/use-case-routing.mjs": 3
-   }
-  },
-  "REFERENCE_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "skills/yap/scripts/use-case-routing.mjs": 1
-   }
-  },
-  "RENDERED_LAYOUT_UNVERIFIED": {
-   "category": "issue-code",
-   "files": {
-    "skills/yap/scripts/caption-proposals.mjs": 1
-   }
-  },
-  "RENDER_WORKSPACE_BUSY": {
-   "category": "resource-bound",
-   "files": {
-    "apps/service/src/render.ts": 1
-   }
-  },
-  "REPLAY_INCOMPLETE": {
-   "category": "issue-code",
-   "files": {
-    "skills/yap/scripts/fresh-delivery-check.mjs": 2
-   }
-  },
-  "REPLAY_MISMATCH": {
-   "category": "conflict",
-   "files": {
-    "skills/yap/scripts/fresh-delivery-check.mjs": 5
-   }
-  },
-  "REQUEST_CONFLICT": {
-   "category": "conflict",
-   "files": {
-    "apps/service/src/capture-sources.ts": 1,
-    "apps/service/src/exports.ts": 4,
-    "packages/core/src/acquisitions.ts": 3,
-    "packages/core/src/assets.ts": 1,
-    "packages/core/src/capture-store.ts": 1,
-    "packages/core/src/projects.ts": 3
-   }
-  },
-  "RETIME_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureWriter.swift": 3,
-    "helpers/mac/Sources/YapCapture/HeldTailFrame.swift": 1
-   }
-  },
-  "REVIEW_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "skills/yap/scripts/review-bundle.mjs": 1
-   }
-  },
-  "SAFE_AREA": {
-   "category": "issue-code",
-   "files": {
-    "skills/yap/scripts/caption-proposals.mjs": 1
-   }
-  },
-  "SERVICE_STOPPED": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/service/src/capture.ts": 3,
-    "apps/service/src/control.ts": 2,
-    "apps/service/src/deletion.ts": 1,
-    "apps/service/src/delivery.ts": 1,
-    "apps/service/src/exports.ts": 3,
-    "apps/service/src/package-registry.ts": 2,
-    "apps/service/src/project-deletion.ts": 1,
-    "apps/service/src/project-packages.ts": 1,
-    "apps/service/src/project-service.ts": 5,
-    "packages/core/src/jobs.ts": 1
-   }
-  },
-  "SERVICE_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/service/src/main.ts": 1,
-    "apps/service/src/startup.ts": 6
-   }
-  },
-  "SKILL_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/service/src/project-service.ts": 1
-   }
-  },
-  "SMPTE_ST_2084_PQ": {
-   "category": "not-a-refusal",
-   "files": {
-    "apps/service/src/hdr-conversion.ts": 1
-   }
-  },
-  "SOCKET_IN_USE": {
-   "category": "resource-bound",
-   "files": {
-    "apps/service/src/startup.ts": 3
-   }
-  },
-  "SOURCE_CHANGED": {
-   "category": "conflict",
-   "files": {
-    "apps/service/src/capture-cleanup.ts": 1,
-    "apps/service/src/hdr-conversion.ts": 2,
-    "apps/service/src/source-export.ts": 1,
-    "packages/core/src/acquisitions.ts": 7,
-    "packages/core/src/files.ts": 5
-   }
-  },
-  "SOURCE_DESTINATION": {
-   "category": "malformed",
-   "files": {
-    "apps/service/src/exports.ts": 1
-   }
-  },
-  "SOURCE_LOST": {
-   "category": "conflict",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 3,
-    "helpers/mac/Sources/YapCapture/CaptureInputSession.swift": 2
-   }
-  },
-  "SOURCE_PICTURE_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapFrames/SourceFrameRenderer.swift": 1,
-    "packages/core/src/frame-inspection.ts": 1
-   }
-  },
-  "SOURCE_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 9,
-    "helpers/mac/Sources/YapCapture/CaptureInputSession.swift": 4,
-    "helpers/mac/Sources/YapCapture/SelectedCaptureRequest.swift": 1,
-    "skills/yap/scripts/fresh-delivery-check.mjs": 2
-   }
-  },
-  "STALE_REVISION": {
-   "category": "conflict",
-   "files": {
-    "packages/core/src/projects.ts": 1
-   }
-  },
-  "STATE_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "skills/yap/scripts/fresh-delivery-check.mjs": 2
-   }
-  },
-  "STORAGE_BUSY": {
-   "category": "resource-bound",
-   "files": {
-    "packages/core/src/assets.ts": 1,
-    "packages/core/src/catalog.ts": 1
-   }
-  },
-  "STORAGE_CHANGED": {
-   "category": "conflict",
-   "files": {
-    "packages/core/src/storage.ts": 2
-   }
-  },
-  "STORAGE_ERROR": {
-   "category": "execution-failure",
-   "files": {
-    "packages/core/src/files.ts": 1
-   }
-  },
-  "STORAGE_IO": {
-   "category": "execution-failure",
-   "files": {
-    "packages/core/src/storage.ts": 1
-   }
-  },
-  "TEXT_SIZE_LIMIT": {
-   "category": "resource-bound",
-   "files": {
-    "skills/yap/scripts/caption-proposals.mjs": 1
-   }
-  },
-  "TRANSCRIPTION_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "helpers/mac/Sources/YapSpeech/ParakeetEngine.swift": 2,
-    "helpers/mac/Sources/YapWire/SpeechOperation.swift": 1,
-    "helpers/mac/Sources/YapWire/Wire.swift": 1
-   }
-  },
-  "TRUNCATED_FRAME": {
-   "category": "malformed",
-   "files": {
-    "packages/protocol/src/framing.ts": 3
-   }
-  },
-  "UNAVAILABLE_SUPPORT": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapAudio/SourceChannelPCM.swift": 1,
-    "packages/core/src/acoustic-inspection.ts": 1,
-    "packages/core/src/rendered-speech.ts": 1,
-    "packages/core/src/source-selection.ts": 1
-   }
-  },
-  "UNCORRELATED_RESPONSE": {
-   "category": "malformed",
-   "files": {
-    "apps/cli/src/mcp-result.ts": 1,
-    "apps/cli/src/wait.ts": 1,
-    "packages/client/src/transport.ts": 1,
-    "skills/yap/scripts/batch-prepare.mjs": 1
-   }
-  },
-  "UNKNOWN_CLIP": {
-   "category": "malformed",
-   "files": {
-    "packages/composition/src/caption-sidecars.ts": 1,
-    "packages/composition/src/errors.ts": 1,
-    "packages/composition/src/model.ts": 1,
-    "packages/composition/src/source-projection.ts": 1
-   }
-  },
-  "UNKNOWN_MODEL": {
-   "category": "malformed",
-   "files": {
-    "apps/service/src/voice.ts": 1,
-    "packages/core/src/models.ts": 1,
-    "packages/core/src/voice-generation.ts": 1
-   }
-  },
-  "UNKNOWN_OPERATION": {
-   "category": "malformed",
-   "files": {
-    "apps/cli/src/main.ts": 2,
-    "apps/service/src/index.ts": 1,
-    "apps/service/src/project-service.ts": 1,
-    "helpers/mac/Sources/YapWire/Wire.swift": 1
-   }
-  },
-  "UNKNOWN_SOURCE": {
-   "category": "malformed",
-   "files": {
-    "packages/composition/src/errors.ts": 1,
-    "packages/composition/src/model.ts": 1,
-    "packages/composition/src/source-projection.ts": 2
-   }
-  },
-  "UNKNOWN_TAIL": {
-   "category": "malformed",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CaptureMediaInspection.swift": 1
-   }
-  },
-  "UNRESOLVED_START": {
-   "category": "issue-code",
-   "files": {
-    "apps/service/src/capture.ts": 1
-   }
-  },
-  "UNSUPPORTED_CATALOG": {
-   "category": "conflict",
-   "files": {
-    "packages/core/src/catalog.ts": 1
-   }
-  },
-  "UNSUPPORTED_CLOCK": {
-   "category": "malformed",
-   "files": {
-    "helpers/mac/Sources/YapFrames/MovieClock.swift": 1
-   }
-  },
-  "UNSUPPORTED_CONSTRAINT": {
-   "category": "malformed",
-   "files": {
-    "skills/yap/scripts/caption-proposals.mjs": 1
-   }
-  },
-  "UNSUPPORTED_DESTINATION": {
-   "category": "missing-prerequisite",
-   "files": {
-    "helpers/mac/Sources/YapWire/PublicationOperation.swift": 3
-   }
-  },
-  "UNSUPPORTED_FORMAT": {
-   "category": "malformed",
-   "files": {
-    "helpers/mac/Sources/YapAudio/AudioPCMStream.swift": 1,
-    "helpers/mac/Sources/YapAudio/AudioSource.swift": 5,
-    "helpers/mac/Sources/YapAudio/CompositionAudio.swift": 1,
-    "helpers/mac/Sources/YapAudio/SelectedAudioConversion.swift": 2,
-    "helpers/mac/Sources/YapFrames/OutputSettings.swift": 1,
-    "helpers/mac/Sources/YapWire/MovieMux.swift": 1,
-    "packages/composition/src/caption-sidecars.ts": 1,
-    "packages/composition/src/errors.ts": 1,
-    "packages/core/src/acoustic-inspection.ts": 2,
-    "packages/core/src/audio-inspection.ts": 1,
-    "skills/yap/scripts/timeline-inspection.mjs": 1
-   }
-  },
-  "UNSUPPORTED_JOB": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/service/src/capture-cleanup.ts": 1,
-    "apps/service/src/exports.ts": 1,
-    "packages/core/src/acoustic-inspection.ts": 2,
-    "packages/core/src/alignment-processing.ts": 3,
-    "packages/core/src/audio-extraction.ts": 1,
-    "packages/core/src/audio-inspection.ts": 5,
-    "packages/core/src/frame-inspection.ts": 6,
-    "packages/core/src/index-processing.ts": 6,
-    "packages/core/src/pointer-preparation.ts": 1,
-    "packages/core/src/prepared-audio.ts": 1,
-    "packages/core/src/project-evidence.ts": 1,
-    "packages/core/src/project-preview.ts": 2,
-    "packages/core/src/scene-processing.ts": 1,
-    "packages/core/src/speaker-processing.ts": 1,
-    "packages/core/src/transcript-processing.ts": 1,
-    "packages/core/src/voice-generation.ts": 1
-   }
-  },
-  "UNSUPPORTED_MEDIA": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/service/src/asset-conversion.ts": 1,
-    "apps/service/src/ffmpeg-input.ts": 4,
-    "apps/service/src/hdr-conversion.ts": 5,
-    "apps/service/src/project-service.ts": 1,
-    "helpers/mac/Sources/YapFrames/SourceImageRenderer.swift": 1,
-    "helpers/mac/Sources/YapMedia/CompressedVideoInspection.swift": 1,
-    "helpers/mac/Sources/YapMedia/CubeLUT.swift": 2,
-    "helpers/mac/Sources/YapMedia/DecodedAudioInspection.swift": 5,
-    "helpers/mac/Sources/YapMedia/FontFile.swift": 2,
-    "helpers/mac/Sources/YapMedia/FontProbe.swift": 2,
-    "helpers/mac/Sources/YapMedia/MediaInput.swift": 2,
-    "helpers/mac/Sources/YapMedia/MediaProbe.swift": 3,
-    "helpers/mac/Sources/YapMedia/SampleTiming.swift": 3,
-    "helpers/mac/Sources/YapMedia/StillImageSource.swift": 3,
-    "packages/core/src/acquisitions.ts": 2,
-    "packages/core/src/assets.ts": 3,
-    "packages/core/src/audio-inspection.ts": 1,
-    "packages/core/src/files.ts": 1,
-    "packages/core/src/frame-inspection.ts": 1,
-    "packages/core/src/hdr-conversion-facts.ts": 1,
-    "packages/core/src/pointer-preparation.ts": 1,
-    "packages/core/src/scene-processing.ts": 1,
-    "packages/core/src/source-selection.ts": 2,
-    "packages/core/src/transcript-processing.ts": 1,
-    "skills/yap/scripts/delivered-scenes.mjs": 1
-   }
-  },
-  "UNSUPPORTED_MODEL": {
-   "category": "missing-prerequisite",
-   "files": {
-    "packages/core/src/voice-generation.ts": 1
-   }
-  },
-  "UNSUPPORTED_PACKAGE_DEPENDENCY": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/service/src/project-packages.ts": 1
-   }
-  },
-  "UNSUPPORTED_PLATFORM": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/service/src/archive-input.ts": 1,
-    "packages/core/src/files.ts": 1,
-    "packages/core/src/storage.ts": 1
-   }
-  },
-  "UPDATE_UNAVAILABLE": {
-   "category": "missing-prerequisite",
-   "files": {
-    "apps/service/src/project-service.ts": 1
-   }
-  },
-  "WRAPPING_DISABLED": {
-   "category": "issue-code",
-   "files": {
-    "skills/yap/scripts/caption-proposals.mjs": 1
-   }
-  },
-  "WRITE_FAILED": {
-   "category": "execution-failure",
-   "files": {
-    "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 2,
-    "helpers/mac/Sources/YapCapture/CameraWriter.swift": 4,
-    "helpers/mac/Sources/YapCapture/CaptureClockIngress.swift": 1,
-    "helpers/mac/Sources/YapCapture/CaptureWriter.swift": 4,
-    "helpers/mac/Sources/YapCapture/HeldTailFrame.swift": 2
-   }
-  },
-  "YAP_NATIVE": {
-   "category": "not-a-refusal",
-   "files": {
-    "apps/service/src/worker.ts": 1
-   }
+  "rules": "Owned by packages/protocol/src/refusal-ledger.test.ts; see specs/launch-video-feedback/slices/01-issues-contract.md. codes: every UPPER_SNAKE string literal in product source, with a category and per-file counts. Refusal categories: malformed, ambiguous, conflict, resource-bound, missing-prerequisite, destructive, execution-failure. issue-code: already an output diagnostic (migrates to issues). not-a-refusal: another constant. pending-conversion: a quality gate the spec converts; its slice removes it. pendingSites: quality gates hiding behind generic codes, keyed by message text. refusedStatus: files using a 'refused' status literal. messageCodes: UPPER_SNAKE codes embedded in messages.",
+  "pendingConversion": {},
+  "pendingSites": [],
+  "refusedStatus": {
+    "allowed": {
+      "packages/composition/src/schema.ts": "caller-authored synchronization verdict",
+      "packages/protocol/src/correspondence.ts": "caller-authored correspondence verdict",
+      "packages/composition/src/edits.ts": "reads a caller-authored synchronization verdict to report it as an issue",
+      "packages/core/src/alignment-evidence.ts": "retained alignment-worker evidence keeps the worker's own verdict word",
+      "packages/core/src/alignment-operands.ts": "retained alignment-worker evidence keeps the worker's own verdict word",
+      "packages/core/src/speaker-continuity.ts": "an evaluation verdict over measured gates, like synchronization evidence; retained receipts keep it"
+    },
+    "pending": {}
+  },
+  "messageCodes": {
+    "pending": {}
+  },
+  "codes": {
+    "ACQUISITION_BUSY": {
+      "category": "resource-bound",
+      "files": {
+        "packages/core/src/acquisitions.ts": 1
+      }
+    },
+    "AMBIGUOUS_PREPARED_AUDIO": {
+      "category": "ambiguous",
+      "files": {
+        "packages/core/src/prepared-audio.ts": 1
+      }
+    },
+    "APP_NOT_FOUND": {
+      "category": "missing-prerequisite",
+      "files": {
+        "packages/client/src/discovery.ts": 2
+      }
+    },
+    "ARCHIVE_CHANGED": {
+      "category": "conflict",
+      "files": {
+        "helpers/mac/Sources/YapWire/ArchiveAssembly.swift": 9,
+        "helpers/mac/Sources/YapWire/ArchiveExtraction.swift": 2
+      }
+    },
+    "ARCHIVE_CLEANUP_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "apps/service/src/archive-write.ts": 1,
+        "apps/service/src/package-archive.ts": 1
+      }
+    },
+    "ARTIFACT_CHANGED": {
+      "category": "conflict",
+      "files": {
+        "apps/service/src/asset-conversion.ts": 3,
+        "apps/service/src/join-verification.ts": 2,
+        "apps/service/src/portable-speakers.ts": 1,
+        "apps/service/src/project-packages.ts": 3,
+        "apps/service/src/project-service.ts": 8,
+        "apps/service/src/source-channel.ts": 1,
+        "helpers/mac/Sources/YapAudio/RetainedPCMSource.swift": 2,
+        "helpers/mac/Sources/YapWire/AudioFileOperation.swift": 2,
+        "helpers/mac/Sources/YapWire/RetainedAudioInput.swift": 1,
+        "packages/core/src/acoustic-inspection.ts": 1,
+        "packages/core/src/alignment-evidence.ts": 3,
+        "packages/core/src/alignment-processing.ts": 4,
+        "packages/core/src/alignment-read.ts": 1,
+        "packages/core/src/audio-extraction.ts": 3,
+        "packages/core/src/audio-inspection.ts": 1,
+        "packages/core/src/capture-source-read.ts": 1,
+        "packages/core/src/frame-inspection.ts": 1,
+        "packages/core/src/index-processing.ts": 11,
+        "packages/core/src/index-read.ts": 3,
+        "packages/core/src/pointer-preparation.ts": 1,
+        "packages/core/src/prepared-audio.ts": 4,
+        "packages/core/src/project-evidence.ts": 1,
+        "packages/core/src/project-index-materialization.ts": 1,
+        "packages/core/src/raw-cursor.ts": 1,
+        "packages/core/src/rendered-speech.ts": 4,
+        "packages/core/src/scene-evidence.ts": 1,
+        "packages/core/src/scene-processing.ts": 1,
+        "packages/core/src/source-events.ts": 1,
+        "packages/core/src/source-index-materialization.ts": 1,
+        "packages/core/src/speaker-evidence.ts": 2,
+        "packages/core/src/speaker-processing.ts": 2,
+        "packages/core/src/speaker-read.ts": 1,
+        "packages/core/src/transcript-processing.ts": 3,
+        "packages/core/src/transcript-read.ts": 3,
+        "packages/core/src/voice-generation.ts": 1,
+        "skills/yap/scripts/compact-transcripts.mjs": 2,
+        "skills/yap/scripts/delivered-scenes.mjs": 5,
+        "skills/yap/scripts/fresh-delivery-check.mjs": 2,
+        "skills/yap/scripts/inspection-artifacts.mjs": 1,
+        "skills/yap/scripts/join-repair.mjs": 1,
+        "skills/yap/scripts/review-bundle.mjs": 2,
+        "skills/yap/scripts/task-notes.mjs": 2,
+        "skills/yap/scripts/timeline-inspection.mjs": 2
+      }
+    },
+    "ARTIFACT_EXPIRED": {
+      "category": "conflict",
+      "files": {
+        "apps/cli/src/artifact-delivery.ts": 1,
+        "apps/service/src/delivery.ts": 3,
+        "apps/service/src/exports.ts": 1,
+        "packages/core/src/acoustic-inspection.ts": 2,
+        "packages/core/src/audio-inspection.ts": 1,
+        "packages/core/src/cache.ts": 1,
+        "packages/core/src/pointer-preparation.ts": 1
+      }
+    },
+    "ASSET_CONFLICT": {
+      "category": "conflict",
+      "files": {
+        "packages/core/src/assets.ts": 2
+      }
+    },
+    "AUDIO_FORMAT_CHANGED": {
+      "category": "conflict",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureClock.swift": 1,
+        "helpers/mac/Sources/YapCapture/CapturePCM.swift": 1
+      }
+    },
+    "AUDIO_OVERLAP": {
+      "category": "issue-code",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureClock.swift": 1
+      }
+    },
+    "AUDIO_PUBLICATION_PARTIAL": {
+      "category": "issue-code",
+      "files": {
+        "helpers/mac/Sources/YapCapture/NativeCapture.swift": 1,
+        "helpers/mac/Sources/YapWire/MediaRecovery.swift": 1
+      }
+    },
+    "AUDIO_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
+        "helpers/mac/Sources/YapCapture/NativeCapture.swift": 1,
+        "helpers/mac/Sources/YapWire/MediaRecovery.swift": 2
+      }
+    },
+    "CACHE_BUSY": {
+      "category": "resource-bound",
+      "files": {
+        "packages/core/src/cache.ts": 3
+      }
+    },
+    "CAMERA_FORMAT_CHANGED": {
+      "category": "conflict",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 1,
+        "helpers/mac/Sources/YapCapture/CameraWriter.swift": 2
+      }
+    },
+    "CAMERA_NOT_RESERVED": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/service/src/capture.ts": 1,
+        "helpers/mac/Sources/YapCapture/NativeCapture.swift": 1
+      }
+    },
+    "CAMERA_NOT_TURNED_ON": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
+        "helpers/mac/Sources/YapCapture/NativeCapture.swift": 1
+      }
+    },
+    "CAMERA_PERMISSION_REQUIRED": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 2
+      }
+    },
+    "CAMERA_TOGGLE_LIMIT": {
+      "category": "resource-bound",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 1
+      }
+    },
+    "CAPTURE_BUSY": {
+      "category": "resource-bound",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureAudioPublication.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureJournalLease.swift": 1,
+        "helpers/mac/Sources/YapWire/MediaRecovery.swift": 1,
+        "helpers/mac/Sources/YapWire/Wire.swift": 2
+      }
+    },
+    "CAPTURE_EVIDENCE_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureClockIngress.swift": 1
+      }
+    },
+    "CAPTURE_INTERRUPTED": {
+      "category": "conflict",
+      "files": {
+        "apps/service/src/capture.ts": 2
+      }
+    },
+    "CAPTURE_NOT_QUIET": {
+      "category": "conflict",
+      "files": {
+        "apps/service/src/capture.ts": 2
+      }
+    },
+    "CAPTURE_RECOVERED": {
+      "category": "issue-code",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureSourcePublication.swift": 1
+      }
+    },
+    "CAPTURE_RECOVERY_PENDING": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/service/src/capture.ts": 2
+      }
+    },
+    "CAPTURE_RECOVERY_UNRESOLVED": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/service/src/capture.ts": 1
+      }
+    },
+    "CLEANUP_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "helpers/mac/Sources/YapWire/Wire.swift": 1
+      }
+    },
+    "CLEANUP_PENDING": {
+      "category": "issue-code",
+      "files": {
+        "helpers/mac/Sources/YapCapture/NativeCapture.swift": 2,
+        "helpers/mac/Sources/YapWire/MediaRecovery.swift": 1
+      }
+    },
+    "CLEANUP_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/service/src/capture-cleanup.ts": 1,
+        "helpers/mac/Sources/YapWire/Wire.swift": 1
+      }
+    },
+    "CLI_TIMEOUT": {
+      "category": "execution-failure",
+      "files": {
+        "skills/yap/scripts/batch-prepare.mjs": 1,
+        "skills/yap/scripts/yap-cli.mjs": 1
+      }
+    },
+    "CLI_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/service/src/project-service.ts": 1,
+        "skills/yap/scripts/batch-prepare.mjs": 1,
+        "skills/yap/scripts/yap-cli.mjs": 1
+      }
+    },
+    "CLOCK_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureClockIngress.swift": 1
+      }
+    },
+    "CONNECTION_CLOSED": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/cli/src/wait.ts": 1,
+        "packages/client/src/transport.ts": 1,
+        "skills/yap/scripts/batch-prepare.mjs": 1
+      }
+    },
+    "CONNECTION_ERROR": {
+      "category": "execution-failure",
+      "files": {
+        "apps/cli/src/wait.ts": 1,
+        "packages/client/src/discovery.ts": 1,
+        "packages/client/src/transport.ts": 1,
+        "skills/yap/scripts/batch-prepare.mjs": 1
+      }
+    },
+    "CONTEXT_CLOSED": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/service/src/package-registry.ts": 2,
+        "apps/service/src/project-packages.ts": 4,
+        "packages/core/src/files.ts": 3,
+        "packages/core/src/jobs.ts": 1
+      }
+    },
+    "COVERAGE_INCOMPLETE": {
+      "category": "issue-code",
+      "files": {
+        "skills/yap/scripts/fresh-delivery-check.mjs": 1
+      }
+    },
+    "COVERAGE_OVERCLAIM": {
+      "category": "issue-code",
+      "files": {
+        "skills/yap/scripts/fresh-delivery-check.mjs": 1
+      }
+    },
+    "CROSS_DEVICE_PUBLICATION": {
+      "category": "conflict",
+      "files": {
+        "helpers/mac/Sources/YapWire/PublicationOperation.swift": 1
+      }
+    },
+    "CUE_WORD_PIN_LIMIT": {
+      "category": "issue-code",
+      "files": {
+        "skills/yap/scripts/caption-proposals.mjs": 2
+      }
+    },
+    "DECODE_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureMediaInspection.swift": 4
+      }
+    },
+    "DELETE_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "apps/service/src/deletion.ts": 1,
+        "apps/service/src/project-deletion.ts": 1,
+        "helpers/mac/Sources/YapMedia/DirectoryContents.swift": 1,
+        "helpers/mac/Sources/YapWire/Wire.swift": 1
+      }
+    },
+    "DEPENDENCY_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "apps/service/src/exports.ts": 3,
+        "packages/core/src/audio-inspection.ts": 1,
+        "packages/core/src/pointer-preparation.ts": 1,
+        "packages/core/src/rendered-speech.ts": 1
+      }
+    },
+    "DESTINATION_CHANGED": {
+      "category": "conflict",
+      "files": {
+        "apps/service/src/exports.ts": 1
+      }
+    },
+    "DESTINATION_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/service/src/exports.ts": 1
+      }
+    },
+    "DEVICE_RESTORE_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 1
+      }
+    },
+    "DISCONTINUOUS_WORD": {
+      "category": "issue-code",
+      "files": {
+        "skills/yap/scripts/caption-proposals.mjs": 1
+      }
+    },
+    "DOMAIN_MAX": {
+      "category": "issue-code",
+      "files": {
+        "helpers/mac/Sources/YapMedia/CubeLUT.swift": 1
+      }
+    },
+    "DOMAIN_MIN": {
+      "category": "issue-code",
+      "files": {
+        "helpers/mac/Sources/YapMedia/CubeLUT.swift": 2
+      }
+    },
+    "EMPTY_DISPLAY_TEXT": {
+      "category": "issue-code",
+      "files": {
+        "skills/yap/scripts/caption-proposals.mjs": 1
+      }
+    },
+    "ENCODER_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CameraWriter.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureWriter.swift": 1
+      }
+    },
+    "EVIDENCE_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "helpers/mac/Sources/YapWire/Wire.swift": 1
+      }
+    },
+    "EVIDENCE_LIMIT": {
+      "category": "resource-bound",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureAudioMaterializer.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureClockIngress.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureJournal.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
+        "helpers/mac/Sources/YapWire/SourceEvidenceExport.swift": 3
+      }
+    },
+    "EXPORT_ABANDONING": {
+      "category": "conflict",
+      "files": {
+        "apps/service/src/exports.ts": 2
+      }
+    },
+    "EXPORT_CLEANUP_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "apps/service/src/exports.ts": 1
+      }
+    },
+    "FFMPEG_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/service/src/ffmpeg-tools.ts": 1,
+        "packages/protocol/src/tools.ts": 1
+      }
+    },
+    "FILE_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "skills/yap/scripts/task-notes.mjs": 1
+      }
+    },
+    "FONT_CHANGED": {
+      "category": "conflict",
+      "files": {
+        "helpers/mac/Sources/YapMedia/FontFile.swift": 1
+      }
+    },
+    "FONT_GLYPH_BOUNDS_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapFrames/TextRaster.swift": 1
+      }
+    },
+    "FONT_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapMedia/FontFile.swift": 1
+      }
+    },
+    "FORMAT_CHANGED": {
+      "category": "conflict",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureClockIngress.swift": 1
+      }
+    },
+    "FORMAT_UNAVAILABLE": {
+      "category": "malformed",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 2
+      }
+    },
+    "FRAME_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "packages/core/src/project-index-materialization.ts": 1,
+        "packages/core/src/source-index-materialization.ts": 2
+      }
+    },
+    "FRAME_TOO_LARGE": {
+      "category": "resource-bound",
+      "files": {
+        "apps/cli/src/main.ts": 2,
+        "apps/service/src/control.ts": 1,
+        "apps/service/src/index.ts": 1,
+        "packages/core/src/voice-generation.ts": 1,
+        "packages/protocol/src/framing.ts": 5
+      }
+    },
+    "GRAPHEME_WIDTH": {
+      "category": "issue-code",
+      "files": {
+        "skills/yap/scripts/caption-proposals.mjs": 1
+      }
+    },
+    "HUMAN_QA_REQUIRED": {
+      "category": "issue-code",
+      "files": {
+        "skills/yap/scripts/fresh-delivery-check.mjs": 1
+      }
+    },
+    "IDENTITY_COLLISION": {
+      "category": "ambiguous",
+      "files": {
+        "packages/core/src/jobs.ts": 1
+      }
+    },
+    "INCOMPLETE_EVIDENCE": {
+      "category": "issue-code",
+      "files": {
+        "skills/yap/scripts/caption-proposals.mjs": 1
+      }
+    },
+    "INSPECTION_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "skills/yap/scripts/timeline-inspection.mjs": 1
+      }
+    },
+    "INSTANT_WORD": {
+      "category": "issue-code",
+      "files": {
+        "skills/yap/scripts/caption-proposals.mjs": 1
+      }
+    },
+    "INTERNAL_ERROR": {
+      "category": "execution-failure",
+      "files": {
+        "apps/service/src/capture.ts": 1,
+        "apps/service/src/control.ts": 1,
+        "apps/service/src/index.ts": 2,
+        "apps/service/src/operation-errors.ts": 1
+      }
+    },
+    "INVALID_AUDIO": {
+      "category": "malformed",
+      "files": {
+        "helpers/mac/Sources/YapAudio/CompositionAudio.swift": 1,
+        "helpers/mac/Sources/YapAudio/CompositionGain.swift": 1
+      }
+    },
+    "INVALID_AUDIO_FORMAT": {
+      "category": "malformed",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CapturePCM.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureWriter.swift": 3
+      }
+    },
+    "INVALID_AUDIO_TIMING": {
+      "category": "malformed",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureClock.swift": 5,
+        "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureWriter.swift": 1,
+        "helpers/mac/Sources/YapCapture/PCMContainerTime.swift": 3
+      }
+    },
+    "INVALID_CACHE": {
+      "category": "malformed",
+      "files": {
+        "apps/service/src/exports.ts": 2,
+        "packages/core/src/cache.ts": 6,
+        "packages/core/src/visual-cache.ts": 2
+      }
+    },
+    "INVALID_CAMERA_FRAME": {
+      "category": "malformed",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CameraWriter.swift": 1
+      }
+    },
+    "INVALID_CAMERA_MAPPING": {
+      "category": "malformed",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CameraMedia.swift": 4,
+        "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
+        "helpers/mac/Sources/YapWire/SourceEvidenceExport.swift": 1
+      }
+    },
+    "INVALID_CATALOG": {
+      "category": "malformed",
+      "files": {
+        "packages/core/src/storage.ts": 1
+      }
+    },
+    "INVALID_CLI_RESPONSE": {
+      "category": "malformed",
+      "files": {
+        "skills/yap/scripts/batch-prepare.mjs": 1,
+        "skills/yap/scripts/yap-cli.mjs": 2
+      }
+    },
+    "INVALID_CLOCK": {
+      "category": "malformed",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureClockIngress.swift": 7
+      }
+    },
+    "INVALID_COMPOSITION": {
+      "category": "malformed",
+      "files": {
+        "packages/composition/src/caption-sidecars.ts": 2,
+        "packages/composition/src/compiler.ts": 4,
+        "packages/composition/src/errors.ts": 1,
+        "packages/composition/src/geometry.ts": 1,
+        "packages/composition/src/model.ts": 1,
+        "packages/composition/src/processing-plan.ts": 3,
+        "packages/composition/src/processing-state.ts": 3,
+        "packages/composition/src/processing.ts": 1,
+        "packages/composition/src/project-cuts.ts": 2,
+        "packages/composition/src/routing.ts": 1,
+        "packages/composition/src/scalar-program.ts": 1,
+        "packages/composition/src/source-projection.ts": 1,
+        "packages/composition/src/visual-plan.ts": 1
+      }
+    },
+    "INVALID_CURSOR": {
+      "category": "malformed",
+      "files": {
+        "apps/service/src/exports.ts": 1
+      }
+    },
+    "INVALID_EDIT": {
+      "category": "malformed",
+      "files": {
+        "packages/composition/src/edits.ts": 1,
+        "packages/composition/src/errors.ts": 1,
+        "packages/composition/src/model.ts": 1,
+        "packages/composition/src/rational.ts": 1,
+        "packages/composition/src/replace.ts": 6,
+        "packages/composition/src/ripple.ts": 6,
+        "packages/composition/src/transform.ts": 1,
+        "packages/core/src/text-seeds.ts": 1
+      }
+    },
+    "INVALID_EVIDENCE": {
+      "category": "malformed",
+      "files": {
+        "apps/service/src/alignment.ts": 2,
+        "apps/service/src/join-verification.ts": 1,
+        "apps/service/src/source-channel.ts": 1,
+        "apps/service/src/speaker.ts": 1,
+        "packages/core/src/acquisitions.ts": 4,
+        "packages/core/src/alignment-evidence.ts": 2,
+        "packages/core/src/alignment-operands.ts": 1,
+        "packages/core/src/alignment-processing.ts": 1,
+        "packages/core/src/capture-source-read.ts": 1,
+        "packages/core/src/composition-pointer.ts": 8,
+        "packages/core/src/correspondence.ts": 3,
+        "packages/core/src/evidence-merge.ts": 1,
+        "packages/core/src/evidence-pages.ts": 3,
+        "packages/core/src/evidence-read.ts": 1,
+        "packages/core/src/evidence.ts": 1,
+        "packages/core/src/files.ts": 3,
+        "packages/core/src/ordered-pages.ts": 1,
+        "packages/core/src/pointer-preparation.ts": 1,
+        "packages/core/src/presentation-evidence.ts": 1,
+        "packages/core/src/presentation-pointer-history.ts": 1,
+        "packages/core/src/project-index-materialization.ts": 1,
+        "packages/core/src/project-index.ts": 1,
+        "packages/core/src/rendered-speech.ts": 2,
+        "packages/core/src/retained-image.ts": 1,
+        "packages/core/src/scene-evidence.ts": 1,
+        "packages/core/src/scene-source-read.ts": 1,
+        "packages/core/src/scenes.ts": 1,
+        "packages/core/src/screenshot-index-read.ts": 1,
+        "packages/core/src/screenshot-index.ts": 1,
+        "packages/core/src/source-index.ts": 2,
+        "packages/core/src/source-scene-chunks.ts": 1,
+        "packages/core/src/source-scenes.ts": 1,
+        "packages/core/src/speaker-evidence.ts": 1,
+        "packages/core/src/trails.ts": 2,
+        "packages/core/src/transcript-processing.ts": 1,
+        "packages/core/src/transcript-read.ts": 1,
+        "packages/core/src/transcript.ts": 4,
+        "packages/core/src/visual-cache.ts": 1
+      }
+    },
+    "INVALID_JOB": {
+      "category": "malformed",
+      "files": {
+        "apps/service/src/exports.ts": 4,
+        "packages/core/src/audio-inspection.ts": 1,
+        "packages/core/src/transcript.ts": 1
+      }
+    },
+    "INVALID_JOURNAL": {
+      "category": "malformed",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureJournal.swift": 16,
+        "helpers/mac/Sources/YapCapture/CaptureJournalLease.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
+        "helpers/mac/Sources/YapCapture/JournalPCM.swift": 2,
+        "helpers/mac/Sources/YapWire/MediaRecovery.swift": 4,
+        "helpers/mac/Sources/YapWire/SourceEvidenceExport.swift": 3
+      }
+    },
+    "INVALID_JOURNAL_PREFIX": {
+      "category": "malformed",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureJournal.swift": 2,
+        "helpers/mac/Sources/YapCapture/CaptureSourcePublication.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1
+      }
+    },
+    "INVALID_MEDIA": {
+      "category": "malformed",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureAudioMaterializer.swift": 8,
+        "helpers/mac/Sources/YapCapture/CaptureJournalLease.swift": 2,
+        "helpers/mac/Sources/YapCapture/CaptureSourcePublication.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
+        "helpers/mac/Sources/YapCapture/NativeCapture.swift": 1,
+        "helpers/mac/Sources/YapMedia/MediaInput.swift": 1
+      }
+    },
+    "INVALID_MODEL": {
+      "category": "malformed",
+      "files": {
+        "apps/service/src/runtime-materialization.ts": 1,
+        "packages/core/src/models.ts": 1
+      }
+    },
+    "INVALID_NATIVE_RESPONSE": {
+      "category": "malformed",
+      "files": {
+        "apps/service/src/archive-write.ts": 1,
+        "apps/service/src/capture-cleanup.ts": 1,
+        "apps/service/src/ffmpeg-input.ts": 6,
+        "apps/service/src/hdr-conversion.ts": 7,
+        "apps/service/src/loudness.ts": 4,
+        "apps/service/src/managed-files.ts": 2,
+        "apps/service/src/media-probe.ts": 3,
+        "apps/service/src/package-archive.ts": 1,
+        "apps/service/src/package-workspace.ts": 1,
+        "apps/service/src/project-render.ts": 1,
+        "apps/service/src/publication.ts": 8,
+        "apps/service/src/worker.ts": 1,
+        "packages/core/src/assets.ts": 1,
+        "packages/core/src/hdr-conversion-facts.ts": 3,
+        "packages/core/src/package-archive.ts": 1,
+        "packages/core/src/prepared-audio.ts": 1
+      }
+    },
+    "INVALID_NOTES": {
+      "category": "malformed",
+      "files": {
+        "skills/yap/scripts/task-notes.mjs": 2
+      }
+    },
+    "INVALID_OUTPUT": {
+      "category": "malformed",
+      "files": {
+        "helpers/mac/Sources/YapMedia/OutputFile.swift": 15,
+        "helpers/mac/Sources/YapSpeech/SourceTranscript.swift": 1,
+        "helpers/mac/Sources/YapWire/MovieAudioTail.swift": 1,
+        "helpers/mac/Sources/YapWire/SourceEvidenceExport.swift": 2,
+        "packages/core/src/composition-pointer.ts": 1,
+        "packages/core/src/pointer-schedule.ts": 1
+      }
+    },
+    "INVALID_PACKAGE": {
+      "category": "malformed",
+      "files": {
+        "apps/service/src/archive-input.ts": 2,
+        "apps/service/src/portable-index.ts": 1,
+        "apps/service/src/project-package-metadata.ts": 2,
+        "apps/service/src/project-packages.ts": 6,
+        "apps/service/src/source-export.ts": 1,
+        "helpers/mac/Sources/YapWire/ArchiveAssembly.swift": 6,
+        "helpers/mac/Sources/YapWire/ArchiveExtraction.swift": 11,
+        "helpers/mac/Sources/YapWire/Wire.swift": 1,
+        "packages/core/src/acquisitions.ts": 14,
+        "packages/core/src/alignment-evidence.ts": 2,
+        "packages/core/src/alignment-processing.ts": 3,
+        "packages/core/src/assets.ts": 3,
+        "packages/core/src/files.ts": 1,
+        "packages/core/src/index-processing.ts": 6,
+        "packages/core/src/jobs.ts": 3,
+        "packages/core/src/package-archive.ts": 1,
+        "packages/core/src/prepared-audio.ts": 5,
+        "packages/core/src/project-package.ts": 2,
+        "packages/core/src/projects.ts": 5,
+        "packages/core/src/scene-processing.ts": 4,
+        "packages/core/src/screenshot-index.ts": 9,
+        "packages/core/src/source-admission.ts": 2,
+        "packages/core/src/speaker-processing.ts": 3,
+        "packages/core/src/transcript-processing.ts": 5,
+        "packages/core/src/transcript.ts": 7
+      }
+    },
+    "INVALID_PARAMS": {
+      "category": "malformed",
+      "files": {
+        "apps/cli/src/main.ts": 1,
+        "apps/service/src/asset-conversion.ts": 1,
+        "apps/service/src/exports.ts": 3,
+        "apps/service/src/join-verification.ts": 4,
+        "apps/service/src/loudness.ts": 1,
+        "apps/service/src/portable-speakers.ts": 2,
+        "apps/service/src/project-service.ts": 5,
+        "packages/core/src/acoustic-inspection.ts": 3,
+        "packages/core/src/acquisitions.ts": 2,
+        "packages/core/src/alignment-evidence.ts": 3,
+        "packages/core/src/alignment-read.ts": 4,
+        "packages/core/src/assets.ts": 5,
+        "packages/core/src/audio-extraction.ts": 1,
+        "packages/core/src/audio-inspection.ts": 1,
+        "packages/core/src/audio-spectrum.ts": 1,
+        "packages/core/src/capture-publication.ts": 1,
+        "packages/core/src/capture-source-read.ts": 2,
+        "packages/core/src/capture-store.ts": 6,
+        "packages/core/src/correspondence.ts": 1,
+        "packages/core/src/frame-inspection.ts": 3,
+        "packages/core/src/prepared-audio.ts": 1,
+        "packages/core/src/project-evidence.ts": 3,
+        "packages/core/src/project-index.ts": 1,
+        "packages/core/src/project-preview.ts": 2,
+        "packages/core/src/projects.ts": 4,
+        "packages/core/src/scene-evidence.ts": 3,
+        "packages/core/src/scene-processing.ts": 1,
+        "packages/core/src/screenshot-index-read.ts": 2,
+        "packages/core/src/source-alignment.ts": 1,
+        "packages/core/src/source-events.ts": 2,
+        "packages/core/src/source-selection.ts": 3,
+        "packages/core/src/source-speakers.ts": 3,
+        "packages/core/src/speaker-evidence.ts": 2,
+        "packages/core/src/speaker-read.ts": 2,
+        "packages/core/src/transcript-read.ts": 4,
+        "packages/core/src/voice-generation.ts": 4
+      }
+    },
+    "INVALID_PATH": {
+      "category": "malformed",
+      "files": {
+        "packages/core/src/acquisitions.ts": 8,
+        "packages/core/src/assets.ts": 3,
+        "packages/core/src/files.ts": 1
+      }
+    },
+    "INVALID_PERMIT": {
+      "category": "malformed",
+      "files": {
+        "apps/service/src/update-admission.ts": 1
+      }
+    },
+    "INVALID_RANGE": {
+      "category": "malformed",
+      "files": {
+        "apps/service/src/delivery.ts": 1,
+        "helpers/mac/Sources/YapAudio/ExcerptLayout.swift": 6,
+        "helpers/mac/Sources/YapFrames/FrameTypes.swift": 6,
+        "packages/composition/src/edits.ts": 1,
+        "packages/composition/src/errors.ts": 1,
+        "packages/composition/src/range-admission.ts": 2,
+        "packages/core/src/audio-inspection.ts": 2,
+        "packages/core/src/audio-spectrum.ts": 1,
+        "packages/core/src/audio-wave.ts": 1,
+        "packages/core/src/capture-source-read.ts": 1,
+        "packages/core/src/capture-store.ts": 1,
+        "packages/core/src/composition-pointer.ts": 1,
+        "packages/core/src/evidence-read.ts": 1,
+        "packages/core/src/frame-inspection.ts": 1,
+        "packages/core/src/pointer-schedule.ts": 1,
+        "packages/core/src/prepared-audio.ts": 2,
+        "packages/core/src/presentation-evidence.ts": 3,
+        "packages/core/src/presentation-pointer-history.ts": 2,
+        "packages/core/src/presentation-pointer.ts": 2,
+        "packages/core/src/raw-cursor.ts": 1,
+        "packages/core/src/scenes.ts": 3,
+        "packages/core/src/source-events.ts": 1,
+        "packages/core/src/transcript-read.ts": 1,
+        "packages/core/src/visual-cache.ts": 1
+      }
+    },
+    "INVALID_REFERENCE": {
+      "category": "malformed",
+      "files": {
+        "packages/core/src/voice-generation.ts": 3
+      }
+    },
+    "INVALID_REQUEST": {
+      "category": "malformed",
+      "files": {
+        "apps/cli/src/artifact-delivery.ts": 1,
+        "apps/cli/src/main.ts": 2,
+        "apps/service/src/control.ts": 2,
+        "apps/service/src/package-registry.ts": 1,
+        "apps/service/src/voice.ts": 2,
+        "apps/service/src/worker.ts": 5,
+        "helpers/mac/Sources/YapAudio/AudioPCMStream.swift": 2,
+        "helpers/mac/Sources/YapAudio/AudioSource.swift": 1,
+        "helpers/mac/Sources/YapAudio/CompositionAudio.swift": 1,
+        "helpers/mac/Sources/YapAudio/ExcerptLayout.swift": 1,
+        "helpers/mac/Sources/YapAudio/RetainedPCMSource.swift": 3,
+        "helpers/mac/Sources/YapAudio/SelectedAudioConversion.swift": 3,
+        "helpers/mac/Sources/YapAudio/SourceChannelPCM.swift": 3,
+        "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 3,
+        "helpers/mac/Sources/YapCapture/CaptureClockIngress.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureInputSession.swift": 3,
+        "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 2,
+        "helpers/mac/Sources/YapCapture/NativeCapture.swift": 2,
+        "helpers/mac/Sources/YapCapture/SelectedCaptureProbe.swift": 4,
+        "helpers/mac/Sources/YapCapture/SelectedCaptureRequest.swift": 2,
+        "helpers/mac/Sources/YapFrames/AcousticImage.swift": 6,
+        "helpers/mac/Sources/YapFrames/CompositionFrameRenderer.swift": 1,
+        "helpers/mac/Sources/YapFrames/CompositionPictureExecutor.swift": 4,
+        "helpers/mac/Sources/YapFrames/CompositionVideoRenderer.swift": 1,
+        "helpers/mac/Sources/YapFrames/FaceObservations.swift": 1,
+        "helpers/mac/Sources/YapFrames/LUTColor.swift": 1,
+        "helpers/mac/Sources/YapFrames/PictureObservations.swift": 1,
+        "helpers/mac/Sources/YapFrames/PreparedPointers.swift": 1,
+        "helpers/mac/Sources/YapFrames/PresentationEvidence.swift": 2,
+        "helpers/mac/Sources/YapFrames/PresentationSource.swift": 3,
+        "helpers/mac/Sources/YapFrames/RetainedJSONLines.swift": 1,
+        "helpers/mac/Sources/YapFrames/SDRCorrection.swift": 1,
+        "helpers/mac/Sources/YapFrames/SourceFrameRenderer.swift": 1,
+        "helpers/mac/Sources/YapFrames/SourceImageRenderer.swift": 1,
+        "helpers/mac/Sources/YapFrames/SourceVisualSamples.swift": 1,
+        "helpers/mac/Sources/YapFrames/TextRaster.swift": 3,
+        "helpers/mac/Sources/YapMedia/AudioStateRecipe.swift": 1,
+        "helpers/mac/Sources/YapMedia/ExactRange.swift": 1,
+        "helpers/mac/Sources/YapMedia/ExactTime.swift": 6,
+        "helpers/mac/Sources/YapMedia/ScalarProgram.swift": 2,
+        "helpers/mac/Sources/YapMedia/StillImageSource.swift": 1,
+        "helpers/mac/Sources/YapSpeech/ParakeetEngine.swift": 2,
+        "helpers/mac/Sources/YapSpeech/SpeechModelFiles.swift": 1,
+        "helpers/mac/Sources/YapSpeech/SpeechWindows.swift": 1,
+        "helpers/mac/Sources/YapWire/AcousticImageOperation.swift": 3,
+        "helpers/mac/Sources/YapWire/ArchiveAssembly.swift": 3,
+        "helpers/mac/Sources/YapWire/ArchiveOperation.swift": 2,
+        "helpers/mac/Sources/YapWire/AudioFileOperation.swift": 1,
+        "helpers/mac/Sources/YapWire/CompositionAudioOperation.swift": 3,
+        "helpers/mac/Sources/YapWire/CompositionMovieOperation.swift": 4,
+        "helpers/mac/Sources/YapWire/CompositionVideoOperation.swift": 1,
+        "helpers/mac/Sources/YapWire/Descriptors.swift": 2,
+        "helpers/mac/Sources/YapWire/ManagedFiles.swift": 1,
+        "helpers/mac/Sources/YapWire/PackageWorkspace.swift": 2,
+        "helpers/mac/Sources/YapWire/PublicationOperation.swift": 9,
+        "helpers/mac/Sources/YapWire/RenderWorkspace.swift": 2,
+        "helpers/mac/Sources/YapWire/SourceEvidenceExport.swift": 2,
+        "helpers/mac/Sources/YapWire/SpeechOperation.swift": 1,
+        "helpers/mac/Sources/YapWire/Wire.swift": 3,
+        "helpers/mac/Sources/YapWire/WireRequest.swift": 1,
+        "packages/core/src/acquisitions.ts": 1,
+        "packages/core/src/cache.ts": 1,
+        "packages/core/src/jobs.ts": 2,
+        "packages/core/src/models.ts": 5,
+        "packages/core/src/project-evidence.ts": 2,
+        "packages/core/src/transcript.ts": 1,
+        "packages/core/src/voice-profile.ts": 1,
+        "skills/yap/scripts/caption-proposals.mjs": 12,
+        "skills/yap/scripts/compact-transcripts.mjs": 2,
+        "skills/yap/scripts/delivered-scenes.mjs": 5,
+        "skills/yap/scripts/dialogue-proposals.mjs": 4,
+        "skills/yap/scripts/fresh-delivery-check.mjs": 15,
+        "skills/yap/scripts/inspection-artifacts.mjs": 3,
+        "skills/yap/scripts/join-repair.mjs": 11,
+        "skills/yap/scripts/review-bundle.mjs": 5,
+        "skills/yap/scripts/task-notes.mjs": 1,
+        "skills/yap/scripts/timeline-inspection.mjs": 3,
+        "skills/yap/scripts/use-case-routing.mjs": 3,
+        "skills/yap/scripts/yap-cli.mjs": 1
+      }
+    },
+    "INVALID_RESPONSE": {
+      "category": "malformed",
+      "files": {
+        "apps/cli/src/artifact-delivery.ts": 6,
+        "apps/cli/src/main.ts": 1,
+        "apps/cli/src/wait.ts": 10,
+        "apps/service/src/audio-processing.ts": 7,
+        "apps/service/src/capture.ts": 1,
+        "apps/service/src/control.ts": 1,
+        "apps/service/src/project-render.ts": 2,
+        "apps/service/src/render.ts": 1,
+        "apps/service/src/voice.ts": 3,
+        "helpers/mac/Sources/YapAudio/RetainedPCMSource.swift": 1,
+        "helpers/mac/Sources/YapAudio/SelectedAudioConversion.swift": 1,
+        "helpers/mac/Sources/YapFrames/FaceObservations.swift": 1,
+        "helpers/mac/Sources/YapFrames/PictureObservations.swift": 1,
+        "helpers/mac/Sources/YapFrames/SourceFrameRenderer.swift": 1,
+        "helpers/mac/Sources/YapWire/MovieAudioTail.swift": 1,
+        "packages/client/src/transport.ts": 1,
+        "packages/core/src/acoustic-image.ts": 1,
+        "packages/core/src/audio-extraction.ts": 4,
+        "packages/core/src/audio-inspection.ts": 1,
+        "packages/core/src/audio-measurement.ts": 1,
+        "packages/core/src/audio-spectrum.ts": 2,
+        "packages/core/src/audio-wave.ts": 1,
+        "packages/core/src/frame-inspection.ts": 15,
+        "packages/core/src/pointer-preparation.ts": 3,
+        "packages/core/src/project-preview.ts": 5,
+        "packages/core/src/rendered-movie.ts": 2,
+        "packages/core/src/text-fallback.ts": 1,
+        "packages/core/src/transcript.ts": 2,
+        "packages/core/src/voice-generation.ts": 5,
+        "skills/yap/scripts/batch-prepare.mjs": 1,
+        "skills/yap/scripts/compact-transcripts.mjs": 1,
+        "skills/yap/scripts/delivered-scenes.mjs": 2,
+        "skills/yap/scripts/inspection-artifacts.mjs": 1,
+        "skills/yap/scripts/join-repair.mjs": 1,
+        "skills/yap/scripts/review-bundle.mjs": 2,
+        "skills/yap/scripts/timeline-inspection.mjs": 2
+      }
+    },
+    "INVALID_SOURCE": {
+      "category": "malformed",
+      "files": {
+        "skills/yap/scripts/fresh-delivery-check.mjs": 3
+      }
+    },
+    "INVALID_SPEECH_TIMING": {
+      "category": "malformed",
+      "files": {
+        "helpers/mac/Sources/YapSpeech/SourceTranscript.swift": 2
+      }
+    },
+    "INVALID_STATE": {
+      "category": "malformed",
+      "files": {
+        "apps/service/src/capture-cleanup.ts": 1,
+        "apps/service/src/capture.ts": 10,
+        "apps/service/src/exports.ts": 3,
+        "apps/service/src/project-service.ts": 1,
+        "apps/service/src/publication.ts": 1,
+        "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 3,
+        "helpers/mac/Sources/YapCapture/NativeCapture.swift": 8,
+        "packages/core/src/acquisitions.ts": 3,
+        "packages/core/src/capture-publication.ts": 7,
+        "packages/core/src/capture-store.ts": 7,
+        "packages/core/src/jobs.ts": 3,
+        "packages/core/src/pointer-preparation.ts": 1,
+        "packages/core/src/presentation-pointer-history.ts": 2,
+        "packages/core/src/projects.ts": 1
+      }
+    },
+    "INVALID_STORAGE": {
+      "category": "malformed",
+      "files": {
+        "apps/service/src/exports.ts": 1,
+        "apps/service/src/ffmpeg-artifact.ts": 2,
+        "apps/service/src/package-archive.ts": 1,
+        "apps/service/src/package-workspace.ts": 8,
+        "apps/service/src/project-packages.ts": 8,
+        "apps/service/src/publication.ts": 7,
+        "apps/service/src/render.ts": 2,
+        "helpers/mac/Sources/YapMedia/DirectoryContents.swift": 2,
+        "helpers/mac/Sources/YapWire/ArchiveAssembly.swift": 2,
+        "helpers/mac/Sources/YapWire/ArchiveOperation.swift": 3,
+        "helpers/mac/Sources/YapWire/Descriptors.swift": 1,
+        "helpers/mac/Sources/YapWire/ManagedFiles.swift": 4,
+        "helpers/mac/Sources/YapWire/PackageWorkspace.swift": 2,
+        "helpers/mac/Sources/YapWire/PublicationOperation.swift": 6,
+        "helpers/mac/Sources/YapWire/Wire.swift": 2,
+        "packages/core/src/acquisitions.ts": 2,
+        "packages/core/src/files.ts": 6,
+        "packages/core/src/index-processing.ts": 2,
+        "packages/core/src/prepared-audio.ts": 4,
+        "packages/core/src/screenshot-index.ts": 1,
+        "packages/core/src/transcript-processing.ts": 1,
+        "packages/core/src/transcript.ts": 2
+      }
+    },
+    "INVALID_TIME": {
+      "category": "malformed",
+      "files": {
+        "packages/composition/src/compiler.ts": 5,
+        "packages/composition/src/errors.ts": 1,
+        "packages/composition/src/execution-window.ts": 1,
+        "packages/composition/src/model.ts": 1,
+        "packages/composition/src/project-cuts.ts": 3,
+        "packages/composition/src/rational.ts": 1,
+        "packages/composition/src/sample-clock.ts": 1,
+        "packages/composition/src/scalar-program.ts": 1,
+        "packages/composition/src/source-projection.ts": 2
+      }
+    },
+    "IO_ERROR": {
+      "category": "execution-failure",
+      "files": {
+        "helpers/mac/Sources/YapAudio/RetainedPCMSource.swift": 1
+      }
+    },
+    "ITU_R_2020": {
+      "category": "not-a-refusal",
+      "files": {
+        "apps/service/src/hdr-conversion.ts": 2
+      }
+    },
+    "ITU_R_2100_HLG": {
+      "category": "not-a-refusal",
+      "files": {
+        "apps/service/src/hdr-conversion.ts": 1
+      }
+    },
+    "ITU_R_709_2": {
+      "category": "not-a-refusal",
+      "files": {
+        "apps/service/src/hdr-conversion.ts": 3
+      }
+    },
+    "JOB_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "packages/core/src/jobs.ts": 1
+      }
+    },
+    "JOURNAL_CHANGED": {
+      "category": "conflict",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureAudioPublication.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureJournalLease.swift": 2,
+        "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
+        "helpers/mac/Sources/YapWire/MediaRecovery.swift": 2
+      }
+    },
+    "JOURNAL_CLOSED": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureAudioPublication.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureJournalLease.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1
+      }
+    },
+    "JOURNAL_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CameraWriter.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureJournal.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureWriter.swift": 1,
+        "helpers/mac/Sources/YapCapture/ClosedCameraSource.swift": 1
+      }
+    },
+    "JOURNAL_MISSING": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureJournal.swift": 1,
+        "helpers/mac/Sources/YapWire/MediaRecovery.swift": 2
+      }
+    },
+    "JOURNAL_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureJournal.swift": 2,
+        "helpers/mac/Sources/YapCapture/CaptureJournalLease.swift": 1,
+        "helpers/mac/Sources/YapWire/MediaRecovery.swift": 4,
+        "helpers/mac/Sources/YapWire/SourceEvidenceExport.swift": 1,
+        "helpers/mac/Sources/YapWire/Wire.swift": 2
+      }
+    },
+    "LAUNCH_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "packages/client/src/discovery.ts": 2
+      }
+    },
+    "LIMIT_EXCEEDED": {
+      "category": "resource-bound",
+      "files": {
+        "apps/cli/src/artifact-delivery.ts": 3,
+        "apps/cli/src/main.ts": 1,
+        "apps/service/src/archive-write.ts": 1,
+        "apps/service/src/control.ts": 6,
+        "apps/service/src/delivery.ts": 1,
+        "apps/service/src/exports.ts": 3,
+        "apps/service/src/index.ts": 2,
+        "apps/service/src/package-registry.ts": 3,
+        "apps/service/src/portable-speakers.ts": 2,
+        "apps/service/src/project-packages.ts": 12,
+        "apps/service/src/project-service.ts": 2,
+        "helpers/mac/Sources/YapAudio/AudioSource.swift": 2,
+        "helpers/mac/Sources/YapAudio/AudioWave.swift": 1,
+        "helpers/mac/Sources/YapAudio/ExcerptLayout.swift": 3,
+        "helpers/mac/Sources/YapFrames/AcousticImage.swift": 1,
+        "helpers/mac/Sources/YapFrames/CompositionPictureExecutor.swift": 1,
+        "helpers/mac/Sources/YapFrames/FrameImage.swift": 1,
+        "helpers/mac/Sources/YapFrames/PresentationEvidence.swift": 2,
+        "helpers/mac/Sources/YapFrames/PresentationSource.swift": 1,
+        "helpers/mac/Sources/YapFrames/SourceVisualSamples.swift": 1,
+        "helpers/mac/Sources/YapFrames/TextRaster.swift": 1,
+        "helpers/mac/Sources/YapMedia/DecodedAudioInspection.swift": 2,
+        "helpers/mac/Sources/YapMedia/DescriptorAudioType.swift": 1,
+        "helpers/mac/Sources/YapMedia/DirectoryContents.swift": 1,
+        "helpers/mac/Sources/YapMedia/MediaInput.swift": 2,
+        "helpers/mac/Sources/YapMedia/StillImageSource.swift": 1,
+        "helpers/mac/Sources/YapSpeech/SourceTranscript.swift": 1,
+        "helpers/mac/Sources/YapSpeech/SpeechWindows.swift": 1,
+        "helpers/mac/Sources/YapWire/AcousticImageOperation.swift": 2,
+        "helpers/mac/Sources/YapWire/ArchiveAssembly.swift": 4,
+        "helpers/mac/Sources/YapWire/ArchiveExtraction.swift": 8,
+        "helpers/mac/Sources/YapWire/ArchiveOperation.swift": 1,
+        "helpers/mac/Sources/YapWire/CorrespondenceOperation.swift": 1,
+        "helpers/mac/Sources/YapWire/ManagedFiles.swift": 1,
+        "helpers/mac/Sources/YapWire/MovieAudioTail.swift": 2,
+        "helpers/mac/Sources/YapWire/ProbeOperation.swift": 1,
+        "helpers/mac/Sources/YapWire/PublicationOperation.swift": 2,
+        "packages/composition/src/caption-sidecars.ts": 3,
+        "packages/composition/src/errors.ts": 1,
+        "packages/core/src/acoustic-inspection.ts": 2,
+        "packages/core/src/acquisitions.ts": 2,
+        "packages/core/src/assets.ts": 1,
+        "packages/core/src/audio-inspection.ts": 2,
+        "packages/core/src/audio-spectrum.ts": 1,
+        "packages/core/src/audio-wave.ts": 1,
+        "packages/core/src/cache.ts": 1,
+        "packages/core/src/capture-source-read.ts": 1,
+        "packages/core/src/composition-pointer.ts": 8,
+        "packages/core/src/evidence-read.ts": 3,
+        "packages/core/src/files.ts": 1,
+        "packages/core/src/jobs.ts": 8,
+        "packages/core/src/ordered-pages.ts": 3,
+        "packages/core/src/package-archive.ts": 1,
+        "packages/core/src/pointer-preparation.ts": 1,
+        "packages/core/src/pointer-schedule.ts": 1,
+        "packages/core/src/prepared-audio.ts": 1,
+        "packages/core/src/presentation-evidence.ts": 1,
+        "packages/core/src/presentation-pointer-history.ts": 2,
+        "packages/core/src/project-evidence.ts": 5,
+        "packages/core/src/project-index-selection.ts": 1,
+        "packages/core/src/project-package.ts": 1,
+        "packages/core/src/projects.ts": 4,
+        "packages/core/src/scene-evidence.ts": 1,
+        "packages/core/src/screenshot-index.ts": 3,
+        "packages/core/src/source-index-selection.ts": 1,
+        "packages/core/src/speaker-evidence.ts": 1,
+        "packages/core/src/storage.ts": 3,
+        "packages/core/src/trails.ts": 2,
+        "packages/core/src/transcript.ts": 1,
+        "skills/yap/scripts/batch-prepare.mjs": 1,
+        "skills/yap/scripts/yap-cli.mjs": 1
+      }
+    },
+    "LINE_COUNT": {
+      "category": "issue-code",
+      "files": {
+        "skills/yap/scripts/caption-proposals.mjs": 1
+      }
+    },
+    "LUT_3D_SIZE": {
+      "category": "not-a-refusal",
+      "files": {
+        "helpers/mac/Sources/YapMedia/CubeLUT.swift": 1
+      }
+    },
+    "LUT_CHANGED": {
+      "category": "conflict",
+      "files": {
+        "helpers/mac/Sources/YapMedia/CubeLUT.swift": 1
+      }
+    },
+    "MALFORMED_FRAME": {
+      "category": "malformed",
+      "files": {
+        "packages/protocol/src/framing.ts": 7
+      }
+    },
+    "MATERIALIZATION_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureAudioMaterializer.swift": 1
+      }
+    },
+    "MAXIMUM_DWELL": {
+      "category": "issue-code",
+      "files": {
+        "skills/yap/scripts/caption-proposals.mjs": 1
+      }
+    },
+    "MEDIA_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/service/src/source-export.ts": 1,
+        "helpers/mac/Sources/YapCapture/CameraMedia.swift": 5,
+        "helpers/mac/Sources/YapCapture/CaptureAudioMaterializer.swift": 4,
+        "helpers/mac/Sources/YapCapture/CaptureMediaInspection.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureSourcePublication.swift": 1,
+        "helpers/mac/Sources/YapWire/MediaRecovery.swift": 2,
+        "helpers/mac/Sources/YapWire/Wire.swift": 3
+      }
+    },
+    "MEDIA_WORKER_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "apps/service/src/capture.ts": 1,
+        "apps/service/src/worker.ts": 10,
+        "packages/core/src/capture-publication.ts": 2
+      }
+    },
+    "MEDIA_WORKER_TIMEOUT": {
+      "category": "execution-failure",
+      "files": {
+        "apps/service/src/worker.ts": 1
+      }
+    },
+    "MEDIA_WORKER_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/service/src/worker.ts": 2
+      }
+    },
+    "MICROPHONE_PERMISSION_REQUIRED": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureInputSession.swift": 1
+      }
+    },
+    "MINIMUM_DWELL": {
+      "category": "issue-code",
+      "files": {
+        "skills/yap/scripts/caption-proposals.mjs": 1
+      }
+    },
+    "MISSING_MEDIA": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureMediaInspection.swift": 1
+      }
+    },
+    "MODEL_DOWNLOAD_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "packages/core/src/models.ts": 1
+      }
+    },
+    "MODEL_HASH_MISMATCH": {
+      "category": "conflict",
+      "files": {
+        "packages/core/src/model-files.ts": 1,
+        "packages/core/src/models.ts": 1
+      }
+    },
+    "MODEL_INVALID": {
+      "category": "malformed",
+      "files": {
+        "helpers/mac/Sources/YapSpeech/SpeechModelFiles.swift": 1
+      }
+    },
+    "MODEL_NOT_PREPARED": {
+      "category": "missing-prerequisite",
+      "files": {
+        "packages/core/src/models.ts": 2,
+        "packages/core/src/rendered-speech.ts": 2,
+        "packages/core/src/transcript-processing.ts": 4
+      }
+    },
+    "MODEL_PLATFORM_UNSUPPORTED": {
+      "category": "missing-prerequisite",
+      "files": {
+        "packages/core/src/models.ts": 1
+      }
+    },
+    "MODEL_RUNTIME_EXTRACTION_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "apps/service/src/runtime-materialization.ts": 1
+      }
+    },
+    "MODEL_RUNTIME_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "packages/core/src/models.ts": 1
+      }
+    },
+    "MODEL_SOURCE_REQUIRED": {
+      "category": "missing-prerequisite",
+      "files": {
+        "packages/core/src/models.ts": 2
+      }
+    },
+    "MODEL_STORAGE_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "packages/core/src/models.ts": 2
+      }
+    },
+    "MODEL_STORAGE_FULL": {
+      "category": "resource-bound",
+      "files": {
+        "packages/core/src/model-files.ts": 1
+      }
+    },
+    "MODEL_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapSpeech/SpeechModelFiles.swift": 1
+      }
+    },
+    "NATIVE_CAPTURE_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureInputSession.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureStreamInputs.swift": 1,
+        "helpers/mac/Sources/YapCapture/NativeCapture.swift": 1
+      }
+    },
+    "NATIVE_DECODE_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "helpers/mac/Sources/YapMedia/NativeFailure.swift": 1
+      }
+    },
+    "NOTES_REFERENCE_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "skills/yap/scripts/task-notes.mjs": 1
+      }
+    },
+    "NOTHING_TO_UNDO": {
+      "category": "malformed",
+      "files": {
+        "packages/core/src/projects.ts": 1
+      }
+    },
+    "NOT_FOUND": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/cli/src/wait.ts": 1,
+        "apps/service/src/capture-sources.ts": 1,
+        "apps/service/src/exports.ts": 2,
+        "apps/service/src/package-registry.ts": 2,
+        "apps/service/src/portable-speakers.ts": 4,
+        "apps/service/src/project-packages.ts": 4,
+        "apps/service/src/project-service.ts": 7,
+        "packages/core/src/acquisitions.ts": 7,
+        "packages/core/src/alignment-evidence.ts": 2,
+        "packages/core/src/assets.ts": 4,
+        "packages/core/src/capture-store.ts": 2,
+        "packages/core/src/files.ts": 2,
+        "packages/core/src/jobs.ts": 3,
+        "packages/core/src/prepared-audio.ts": 1,
+        "packages/core/src/projects.ts": 3,
+        "packages/core/src/rendered-speech.ts": 1,
+        "packages/core/src/screenshot-index-read.ts": 1,
+        "packages/core/src/screenshot-index.ts": 1,
+        "packages/core/src/speaker-evidence.ts": 1,
+        "packages/core/src/storage.ts": 3,
+        "packages/core/src/transcript-processing.ts": 1,
+        "packages/core/src/transcript.ts": 1
+      }
+    },
+    "NOT_READY": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/service/src/asset-conversion.ts": 1,
+        "apps/service/src/audio-processing.ts": 3,
+        "apps/service/src/capture-sources.ts": 1,
+        "apps/service/src/exports.ts": 3,
+        "apps/service/src/index.ts": 1,
+        "apps/service/src/join-verification.ts": 2,
+        "apps/service/src/loudness.ts": 1,
+        "apps/service/src/project-packages.ts": 1,
+        "apps/service/src/project-render.ts": 4,
+        "apps/service/src/project-service.ts": 12,
+        "apps/service/src/source-export.ts": 2,
+        "helpers/mac/Sources/YapAudio/CompositionRetime.swift": 4,
+        "helpers/mac/Sources/YapAudio/CompositionState.swift": 3,
+        "helpers/mac/Sources/YapFrames/CompositionFrameRenderer.swift": 1,
+        "helpers/mac/Sources/YapFrames/CompositionPictureExecutor.swift": 1,
+        "helpers/mac/Sources/YapFrames/CompositionVideoRenderer.swift": 1,
+        "helpers/mac/Sources/YapFrames/LUTColor.swift": 2,
+        "helpers/mac/Sources/YapFrames/SDRCorrection.swift": 1,
+        "helpers/mac/Sources/YapFrames/VideoColorPolicy.swift": 1,
+        "helpers/mac/Sources/YapMedia/ExactTime.swift": 7,
+        "packages/composition/src/compiler.ts": 1,
+        "packages/composition/src/errors.ts": 1,
+        "packages/composition/src/execution-window.ts": 1,
+        "packages/composition/src/processing-state.ts": 1,
+        "packages/core/src/acoustic-inspection.ts": 4,
+        "packages/core/src/acquisitions.ts": 1,
+        "packages/core/src/alignment-evidence.ts": 1,
+        "packages/core/src/alignment-processing.ts": 1,
+        "packages/core/src/alignment-read.ts": 1,
+        "packages/core/src/audio-extraction.ts": 1,
+        "packages/core/src/audio-inspection.ts": 12,
+        "packages/core/src/cache.ts": 1,
+        "packages/core/src/capture-store.ts": 1,
+        "packages/core/src/evidence-pages.ts": 1,
+        "packages/core/src/evidence.ts": 1,
+        "packages/core/src/frame-inspection.ts": 5,
+        "packages/core/src/index-frame.ts": 1,
+        "packages/core/src/index-processing.ts": 1,
+        "packages/core/src/pointer-preparation.ts": 1,
+        "packages/core/src/project-evidence.ts": 1,
+        "packages/core/src/project-index.ts": 1,
+        "packages/core/src/project-preview.ts": 3,
+        "packages/core/src/project-window.ts": 2,
+        "packages/core/src/rendered-speech.ts": 1,
+        "packages/core/src/scene-source-read.ts": 1,
+        "packages/core/src/source-index-materialization.ts": 1,
+        "packages/core/src/speaker-evidence.ts": 1,
+        "packages/core/src/speaker-processing.ts": 1,
+        "skills/yap/scripts/delivered-scenes.mjs": 2,
+        "skills/yap/scripts/join-repair.mjs": 2
+      }
+    },
+    "NOT_REQUESTED": {
+      "category": "issue-code",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureMediaInspection.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
+        "helpers/mac/Sources/YapWire/MediaRecovery.swift": 1,
+        "packages/core/src/capture-publication.ts": 1
+      }
+    },
+    "NO_CAMERA": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CameraWriter.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
+        "helpers/mac/Sources/YapCapture/NativeCapture.swift": 1,
+        "helpers/mac/Sources/YapWire/MediaRecovery.swift": 1
+      }
+    },
+    "NO_NARRATION": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureWriter.swift": 1
+      }
+    },
+    "NO_RECOVERABLE_VIDEO": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/service/src/capture.ts": 1
+      }
+    },
+    "NO_SOURCE_MEDIA": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/service/src/capture.ts": 1,
+        "helpers/mac/Sources/YapWire/MediaRecovery.swift": 1
+      }
+    },
+    "NO_SYSTEM_AUDIO": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureWriter.swift": 1
+      }
+    },
+    "NO_TRACK": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureMediaInspection.swift": 1
+      }
+    },
+    "NO_VIDEO": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureWriter.swift": 1
+      }
+    },
+    "OUTPUT_BUDGET_EXCEEDED": {
+      "category": "resource-bound",
+      "files": {
+        "skills/yap/scripts/caption-proposals.mjs": 2,
+        "skills/yap/scripts/compact-transcripts.mjs": 2,
+        "skills/yap/scripts/delivered-scenes.mjs": 3,
+        "skills/yap/scripts/inspection-artifacts.mjs": 1,
+        "skills/yap/scripts/review-bundle.mjs": 2,
+        "skills/yap/scripts/task-notes.mjs": 1,
+        "skills/yap/scripts/timeline-inspection.mjs": 3
+      }
+    },
+    "OUTPUT_EXISTS": {
+      "category": "conflict",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CameraWriter.swift": 1
+      }
+    },
+    "PACKED_MEDIA_INVALID": {
+      "category": "malformed",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureAudioMaterializer.swift": 2,
+        "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1
+      }
+    },
+    "PARITY_UNSUPPORTED": {
+      "category": "missing-prerequisite",
+      "files": {
+        "skills/yap/scripts/fresh-delivery-check.mjs": 1
+      }
+    },
+    "PARTIAL_CAMERA": {
+      "category": "issue-code",
+      "files": {
+        "helpers/mac/Sources/YapCapture/ClosedCameraSource.swift": 1,
+        "helpers/mac/Sources/YapWire/MediaRecovery.swift": 1
+      }
+    },
+    "PARTIAL_WORD": {
+      "category": "issue-code",
+      "files": {
+        "skills/yap/scripts/caption-proposals.mjs": 1
+      }
+    },
+    "PERMISSION_REQUIRED": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureInputSession.swift": 1,
+        "helpers/mac/Sources/YapCapture/SelectedCaptureProbe.swift": 1,
+        "helpers/mac/Sources/YapCapture/SelectedCaptureRequest.swift": 1
+      }
+    },
+    "PREPARATION_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "skills/yap/scripts/batch-prepare.mjs": 2
+      }
+    },
+    "PROCESSING_BUSY": {
+      "category": "resource-bound",
+      "files": {
+        "apps/service/src/package-registry.ts": 2,
+        "packages/core/src/acquisitions.ts": 1,
+        "packages/core/src/alignment-evidence.ts": 1,
+        "packages/core/src/files.ts": 1,
+        "packages/core/src/jobs.ts": 4,
+        "packages/core/src/scene-evidence.ts": 2,
+        "packages/core/src/screenshot-index.ts": 1,
+        "packages/core/src/speaker-evidence.ts": 1,
+        "packages/core/src/transcript.ts": 2
+      }
+    },
+    "PROJECT_PROJECTION_REQUIRED": {
+      "category": "malformed",
+      "files": {
+        "skills/yap/scripts/caption-proposals.mjs": 1
+      }
+    },
+    "PUBLICATION_BUSY": {
+      "category": "resource-bound",
+      "files": {
+        "apps/service/src/publication.ts": 3,
+        "helpers/mac/Sources/YapWire/PublicationOperation.swift": 1
+      }
+    },
+    "PUBLICATION_CHANGED": {
+      "category": "conflict",
+      "files": {
+        "apps/service/src/publication.ts": 1,
+        "helpers/mac/Sources/YapWire/PublicationOperation.swift": 8
+      }
+    },
+    "PUBLICATION_CONFLICT": {
+      "category": "conflict",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CameraMedia.swift": 2,
+        "helpers/mac/Sources/YapCapture/CaptureAudioPublication.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
+        "helpers/mac/Sources/YapWire/PublicationOperation.swift": 2
+      }
+    },
+    "PUBLICATION_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureAudioPublication.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
+        "helpers/mac/Sources/YapWire/MediaRecovery.swift": 1,
+        "helpers/mac/Sources/YapWire/SourceEvidenceExport.swift": 1
+      }
+    },
+    "PUBLICATION_IO": {
+      "category": "execution-failure",
+      "files": {
+        "apps/service/src/exports.ts": 1,
+        "helpers/mac/Sources/YapWire/PublicationOperation.swift": 1
+      }
+    },
+    "READING_SPEED": {
+      "category": "issue-code",
+      "files": {
+        "skills/yap/scripts/caption-proposals.mjs": 1
+      }
+    },
+    "READING_SPEED_UNDEFINED": {
+      "category": "issue-code",
+      "files": {
+        "skills/yap/scripts/caption-proposals.mjs": 1
+      }
+    },
+    "RECORDING_BUSY": {
+      "category": "resource-bound",
+      "files": {
+        "apps/service/src/managed-files.ts": 1,
+        "helpers/mac/Sources/YapWire/ManagedFiles.swift": 1,
+        "packages/core/src/acquisitions.ts": 1
+      }
+    },
+    "RECOVERY_BUSY": {
+      "category": "resource-bound",
+      "files": {
+        "helpers/mac/Sources/YapWire/PackageWorkspace.swift": 2
+      }
+    },
+    "RECOVERY_CANCELED": {
+      "category": "execution-failure",
+      "files": {
+        "apps/service/src/capture.ts": 1
+      }
+    },
+    "RECOVERY_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "apps/service/src/capture.ts": 3
+      }
+    },
+    "REFERENCE_INVALID": {
+      "category": "malformed",
+      "files": {
+        "skills/yap/scripts/use-case-routing.mjs": 3
+      }
+    },
+    "REFERENCE_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "skills/yap/scripts/use-case-routing.mjs": 1
+      }
+    },
+    "RENDERED_LAYOUT_UNVERIFIED": {
+      "category": "issue-code",
+      "files": {
+        "skills/yap/scripts/caption-proposals.mjs": 1
+      }
+    },
+    "RENDER_WORKSPACE_BUSY": {
+      "category": "resource-bound",
+      "files": {
+        "apps/service/src/render.ts": 1
+      }
+    },
+    "REPLAY_INCOMPLETE": {
+      "category": "issue-code",
+      "files": {
+        "skills/yap/scripts/fresh-delivery-check.mjs": 2
+      }
+    },
+    "REPLAY_MISMATCH": {
+      "category": "conflict",
+      "files": {
+        "skills/yap/scripts/fresh-delivery-check.mjs": 5
+      }
+    },
+    "REQUEST_CONFLICT": {
+      "category": "conflict",
+      "files": {
+        "apps/service/src/capture-sources.ts": 1,
+        "apps/service/src/exports.ts": 4,
+        "packages/core/src/acquisitions.ts": 3,
+        "packages/core/src/assets.ts": 1,
+        "packages/core/src/capture-store.ts": 1,
+        "packages/core/src/projects.ts": 3
+      }
+    },
+    "RETIME_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureWriter.swift": 3,
+        "helpers/mac/Sources/YapCapture/HeldTailFrame.swift": 1
+      }
+    },
+    "REVIEW_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "skills/yap/scripts/review-bundle.mjs": 1
+      }
+    },
+    "SAFE_AREA": {
+      "category": "issue-code",
+      "files": {
+        "skills/yap/scripts/caption-proposals.mjs": 1
+      }
+    },
+    "SERVICE_STOPPED": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/service/src/capture.ts": 3,
+        "apps/service/src/control.ts": 2,
+        "apps/service/src/deletion.ts": 1,
+        "apps/service/src/delivery.ts": 1,
+        "apps/service/src/exports.ts": 3,
+        "apps/service/src/package-registry.ts": 2,
+        "apps/service/src/project-deletion.ts": 1,
+        "apps/service/src/project-packages.ts": 1,
+        "apps/service/src/project-service.ts": 5,
+        "packages/core/src/jobs.ts": 1
+      }
+    },
+    "SERVICE_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/service/src/main.ts": 1,
+        "apps/service/src/startup.ts": 6
+      }
+    },
+    "SKILL_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/service/src/project-service.ts": 1
+      }
+    },
+    "SMPTE_ST_2084_PQ": {
+      "category": "not-a-refusal",
+      "files": {
+        "apps/service/src/hdr-conversion.ts": 1
+      }
+    },
+    "SOCKET_IN_USE": {
+      "category": "resource-bound",
+      "files": {
+        "apps/service/src/startup.ts": 3
+      }
+    },
+    "SOURCE_CHANGED": {
+      "category": "conflict",
+      "files": {
+        "apps/service/src/capture-cleanup.ts": 1,
+        "apps/service/src/hdr-conversion.ts": 2,
+        "apps/service/src/source-export.ts": 1,
+        "packages/core/src/acquisitions.ts": 7,
+        "packages/core/src/files.ts": 5
+      }
+    },
+    "SOURCE_DESTINATION": {
+      "category": "malformed",
+      "files": {
+        "apps/service/src/exports.ts": 1
+      }
+    },
+    "SOURCE_LOST": {
+      "category": "conflict",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 3,
+        "helpers/mac/Sources/YapCapture/CaptureInputSession.swift": 2
+      }
+    },
+    "SOURCE_PICTURE_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapFrames/SourceFrameRenderer.swift": 1,
+        "packages/core/src/frame-inspection.ts": 1
+      }
+    },
+    "SOURCE_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 9,
+        "helpers/mac/Sources/YapCapture/CaptureInputSession.swift": 4,
+        "helpers/mac/Sources/YapCapture/SelectedCaptureRequest.swift": 1,
+        "skills/yap/scripts/fresh-delivery-check.mjs": 2
+      }
+    },
+    "STALE_REVISION": {
+      "category": "conflict",
+      "files": {
+        "packages/core/src/projects.ts": 1
+      }
+    },
+    "STATE_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "skills/yap/scripts/fresh-delivery-check.mjs": 2
+      }
+    },
+    "STORAGE_BUSY": {
+      "category": "resource-bound",
+      "files": {
+        "packages/core/src/assets.ts": 1,
+        "packages/core/src/catalog.ts": 1
+      }
+    },
+    "STORAGE_CHANGED": {
+      "category": "conflict",
+      "files": {
+        "packages/core/src/storage.ts": 2
+      }
+    },
+    "STORAGE_ERROR": {
+      "category": "execution-failure",
+      "files": {
+        "packages/core/src/files.ts": 1
+      }
+    },
+    "STORAGE_IO": {
+      "category": "execution-failure",
+      "files": {
+        "packages/core/src/storage.ts": 1
+      }
+    },
+    "TEXT_SIZE_LIMIT": {
+      "category": "resource-bound",
+      "files": {
+        "skills/yap/scripts/caption-proposals.mjs": 1
+      }
+    },
+    "TRANSCRIPTION_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "helpers/mac/Sources/YapSpeech/ParakeetEngine.swift": 2,
+        "helpers/mac/Sources/YapWire/SpeechOperation.swift": 1,
+        "helpers/mac/Sources/YapWire/Wire.swift": 1
+      }
+    },
+    "TRUNCATED_FRAME": {
+      "category": "malformed",
+      "files": {
+        "packages/protocol/src/framing.ts": 3
+      }
+    },
+    "UNAVAILABLE_SUPPORT": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapAudio/SourceChannelPCM.swift": 1,
+        "packages/core/src/acoustic-inspection.ts": 1,
+        "packages/core/src/rendered-speech.ts": 1,
+        "packages/core/src/source-selection.ts": 1
+      }
+    },
+    "UNCORRELATED_RESPONSE": {
+      "category": "malformed",
+      "files": {
+        "apps/cli/src/mcp-result.ts": 1,
+        "apps/cli/src/wait.ts": 1,
+        "packages/client/src/transport.ts": 1,
+        "skills/yap/scripts/batch-prepare.mjs": 1
+      }
+    },
+    "UNKNOWN_CLIP": {
+      "category": "malformed",
+      "files": {
+        "packages/composition/src/caption-sidecars.ts": 1,
+        "packages/composition/src/errors.ts": 1,
+        "packages/composition/src/model.ts": 1,
+        "packages/composition/src/source-projection.ts": 1
+      }
+    },
+    "UNKNOWN_MODEL": {
+      "category": "malformed",
+      "files": {
+        "apps/service/src/voice.ts": 1,
+        "packages/core/src/models.ts": 1,
+        "packages/core/src/voice-generation.ts": 1
+      }
+    },
+    "UNKNOWN_OPERATION": {
+      "category": "malformed",
+      "files": {
+        "apps/cli/src/main.ts": 2,
+        "apps/service/src/index.ts": 1,
+        "apps/service/src/project-service.ts": 1,
+        "helpers/mac/Sources/YapWire/Wire.swift": 1
+      }
+    },
+    "UNKNOWN_SOURCE": {
+      "category": "malformed",
+      "files": {
+        "packages/composition/src/errors.ts": 1,
+        "packages/composition/src/model.ts": 1,
+        "packages/composition/src/source-projection.ts": 2
+      }
+    },
+    "UNKNOWN_TAIL": {
+      "category": "malformed",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CaptureMediaInspection.swift": 1
+      }
+    },
+    "UNRESOLVED_START": {
+      "category": "issue-code",
+      "files": {
+        "apps/service/src/capture.ts": 1
+      }
+    },
+    "UNSUPPORTED_CATALOG": {
+      "category": "conflict",
+      "files": {
+        "packages/core/src/catalog.ts": 1
+      }
+    },
+    "UNSUPPORTED_CLOCK": {
+      "category": "malformed",
+      "files": {
+        "helpers/mac/Sources/YapFrames/MovieClock.swift": 1
+      }
+    },
+    "UNSUPPORTED_CONSTRAINT": {
+      "category": "malformed",
+      "files": {
+        "skills/yap/scripts/caption-proposals.mjs": 1
+      }
+    },
+    "UNSUPPORTED_DESTINATION": {
+      "category": "missing-prerequisite",
+      "files": {
+        "helpers/mac/Sources/YapWire/PublicationOperation.swift": 3
+      }
+    },
+    "UNSUPPORTED_FORMAT": {
+      "category": "malformed",
+      "files": {
+        "helpers/mac/Sources/YapAudio/AudioPCMStream.swift": 1,
+        "helpers/mac/Sources/YapAudio/AudioSource.swift": 5,
+        "helpers/mac/Sources/YapAudio/CompositionAudio.swift": 1,
+        "helpers/mac/Sources/YapAudio/SelectedAudioConversion.swift": 2,
+        "helpers/mac/Sources/YapFrames/OutputSettings.swift": 1,
+        "helpers/mac/Sources/YapWire/MovieMux.swift": 1,
+        "packages/composition/src/caption-sidecars.ts": 1,
+        "packages/composition/src/errors.ts": 1,
+        "packages/core/src/acoustic-inspection.ts": 2,
+        "packages/core/src/audio-inspection.ts": 1,
+        "skills/yap/scripts/timeline-inspection.mjs": 1
+      }
+    },
+    "UNSUPPORTED_JOB": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/service/src/capture-cleanup.ts": 1,
+        "apps/service/src/exports.ts": 1,
+        "packages/core/src/acoustic-inspection.ts": 2,
+        "packages/core/src/alignment-processing.ts": 3,
+        "packages/core/src/audio-extraction.ts": 1,
+        "packages/core/src/audio-inspection.ts": 5,
+        "packages/core/src/frame-inspection.ts": 6,
+        "packages/core/src/index-processing.ts": 6,
+        "packages/core/src/pointer-preparation.ts": 1,
+        "packages/core/src/prepared-audio.ts": 1,
+        "packages/core/src/project-evidence.ts": 1,
+        "packages/core/src/project-preview.ts": 2,
+        "packages/core/src/scene-processing.ts": 1,
+        "packages/core/src/speaker-processing.ts": 1,
+        "packages/core/src/transcript-processing.ts": 1,
+        "packages/core/src/voice-generation.ts": 1
+      }
+    },
+    "UNSUPPORTED_MEDIA": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/service/src/asset-conversion.ts": 1,
+        "apps/service/src/ffmpeg-input.ts": 4,
+        "apps/service/src/hdr-conversion.ts": 5,
+        "apps/service/src/project-service.ts": 1,
+        "helpers/mac/Sources/YapFrames/SourceImageRenderer.swift": 1,
+        "helpers/mac/Sources/YapMedia/CompressedVideoInspection.swift": 1,
+        "helpers/mac/Sources/YapMedia/CubeLUT.swift": 2,
+        "helpers/mac/Sources/YapMedia/DecodedAudioInspection.swift": 5,
+        "helpers/mac/Sources/YapMedia/FontFile.swift": 2,
+        "helpers/mac/Sources/YapMedia/FontProbe.swift": 2,
+        "helpers/mac/Sources/YapMedia/MediaInput.swift": 2,
+        "helpers/mac/Sources/YapMedia/MediaProbe.swift": 3,
+        "helpers/mac/Sources/YapMedia/SampleTiming.swift": 3,
+        "helpers/mac/Sources/YapMedia/StillImageSource.swift": 3,
+        "packages/core/src/acquisitions.ts": 2,
+        "packages/core/src/assets.ts": 3,
+        "packages/core/src/audio-inspection.ts": 1,
+        "packages/core/src/files.ts": 1,
+        "packages/core/src/frame-inspection.ts": 1,
+        "packages/core/src/hdr-conversion-facts.ts": 1,
+        "packages/core/src/pointer-preparation.ts": 1,
+        "packages/core/src/scene-processing.ts": 1,
+        "packages/core/src/source-selection.ts": 2,
+        "packages/core/src/transcript-processing.ts": 1,
+        "skills/yap/scripts/delivered-scenes.mjs": 1
+      }
+    },
+    "UNSUPPORTED_MODEL": {
+      "category": "missing-prerequisite",
+      "files": {
+        "packages/core/src/voice-generation.ts": 1
+      }
+    },
+    "UNSUPPORTED_PACKAGE_DEPENDENCY": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/service/src/project-packages.ts": 1
+      }
+    },
+    "UNSUPPORTED_PLATFORM": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/service/src/archive-input.ts": 1,
+        "packages/core/src/files.ts": 1,
+        "packages/core/src/storage.ts": 1
+      }
+    },
+    "UPDATE_UNAVAILABLE": {
+      "category": "missing-prerequisite",
+      "files": {
+        "apps/service/src/project-service.ts": 1
+      }
+    },
+    "WRAPPING_DISABLED": {
+      "category": "issue-code",
+      "files": {
+        "skills/yap/scripts/caption-proposals.mjs": 1
+      }
+    },
+    "WRITE_FAILED": {
+      "category": "execution-failure",
+      "files": {
+        "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 2,
+        "helpers/mac/Sources/YapCapture/CameraWriter.swift": 4,
+        "helpers/mac/Sources/YapCapture/CaptureClockIngress.swift": 1,
+        "helpers/mac/Sources/YapCapture/CaptureWriter.swift": 4,
+        "helpers/mac/Sources/YapCapture/HeldTailFrame.swift": 2
+      }
+    },
+    "YAP_NATIVE": {
+      "category": "not-a-refusal",
+      "files": {
+        "apps/service/src/worker.ts": 1
+      }
+    }
   }
- }
 }

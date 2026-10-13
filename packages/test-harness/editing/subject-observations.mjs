@@ -710,7 +710,10 @@ try {
         observationsSha256: hash(Buffer.from(JSON.stringify(f.observations))),
         plan,
         geometry: held,
-        policy: plan.status === "ready" && !plan.issues.length ? "explicit proposal" : "caller-authored hold",
+        policy:
+          plan.status === "ready" && !plan.issues.length
+            ? "explicit proposal"
+            : "caller-authored hold",
       });
     }
     assert.equal(plans[24].plan.reason, "subject_missing");

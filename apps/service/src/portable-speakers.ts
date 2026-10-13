@@ -27,12 +27,7 @@ import type {
 } from "@yap/core/project-evidence";
 import type { PortableResource, ValidatedProjectPackage } from "@yap/core/project-package";
 import type { FileAccess } from "@yap/core/files";
-import {
-  createSourceRangeProjection,
-  toTime,
-  type ExactRange,
-  type Issue,
-} from "@yap/composition";
+import { createSourceRangeProjection, toTime, type ExactRange, type Issue } from "@yap/composition";
 
 type Context = { manifest: ValidatedProjectPackage; files: FileAccess };
 export type PortableSpeakerCheckpoint = {

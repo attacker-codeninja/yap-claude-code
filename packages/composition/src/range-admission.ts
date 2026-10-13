@@ -69,10 +69,14 @@ export type WireRange = { startUs: TimeValue; endUs: TimeValue };
  */
 export function admitReadRange(requested: WireRange, domain: WireRange) {
   if (!selectionRangeSchema.safeParse(requested).success)
-    throw new CompositionError("INVALID_RANGE", "Requested range must be a nonempty half-open range", {
-      requested,
-      bounds: domain,
-    });
+    throw new CompositionError(
+      "INVALID_RANGE",
+      "Requested range must be a nonempty half-open range",
+      {
+        requested,
+        bounds: domain,
+      },
+    );
   const asked = { start: fromTime(requested.startUs), end: fromTime(requested.endUs) };
   const bounds = { start: fromTime(domain.startUs), end: fromTime(domain.endUs) };
   const { range, clamped } = admitRange(asked, bounds);

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { boundedIssues, issueCodes, issueLimit, issueSchema, issuesSchema, type Issue } from "./issues.js";
+import {
+  boundedIssues,
+  issueCodes,
+  issueLimit,
+  issueSchema,
+  issuesSchema,
+  type Issue,
+} from "./issues.js";
 
 const truncated = (omitted: number): Issue => ({
   code: "issues-truncated",
@@ -24,7 +31,9 @@ describe("issues", () => {
   it("places an issue on an explicit subject", () => {
     const at = { range: { startUs: 0, endUs: 1_000_000 } };
     expect(issueSchema.parse({ ...truncated(1), at })).toEqual({ ...truncated(1), at });
-    expect(issueSchema.safeParse({ ...truncated(1), at: { range: { startUs: 2, endUs: 1 } } }).success).toBe(false);
+    expect(
+      issueSchema.safeParse({ ...truncated(1), at: { range: { startUs: 2, endUs: 1 } } }).success,
+    ).toBe(false);
   });
 
   it("bounds an output's issues and reports what it omitted", () => {
