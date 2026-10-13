@@ -1,4 +1,5 @@
 import {
+  boundedIssues,
   normalizeOutputRequest,
   normalizeAudioOutputRequest,
   type AudioOutputSettingsInput,
@@ -881,7 +882,11 @@ export class MediaExports {
       },
       receipt: intent.receipt,
       output: intent.receipt ? join(intent.destination.directory, intent.destination.leaf) : null,
-      issues: snapshotIssues(intent.kind, row.issues),
+      // Snapshot issues are pinned at admission; treatment issues arrive with the published media.
+      issues: boundedIssues([
+        ...snapshotIssues(intent.kind, row.issues),
+        ...(job.published?.issues ?? []),
+      ]),
       jobId: job.jobId,
       reason: intent.receipt ? null : job.reason,
       retryable: !intent.receipt && job.retryable,
