@@ -193,7 +193,11 @@ export async function captureFixture(
   });
   const service = await startProjectService({
     home,
-    control: { input, output, timeoutMs: controlTimeoutMs },
+    control: {
+      input,
+      output,
+      ...(controlTimeoutMs === undefined ? {} : { timeoutMs: controlTimeoutMs }),
+    },
     worker: async (operation, params, options) => {
       if (operation === "storage.clearRenderWorkspace")
         return { ok: true, data: { removed: true } };
