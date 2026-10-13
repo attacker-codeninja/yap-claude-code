@@ -48,3 +48,12 @@ A consequence for later slices: any library closed mid-admission cannot be check
 - Recording and project counts are read from the clone's catalog before the service opens it, and
   recording directories from disk; every one must still be listed, so a build that loses old
   rows cannot pass on an empty listing.
+
+- **`cameraProofIntervals()` returns a fresh, mutable array of fresh ranges** (04). Callers
+  map it immediately (admission shifts it by the asset origin); a copy needs no freezing
+  contract and cannot alias the stored receipt.
+- **An empty `gaps` list is refused, not read as "no gaps"** (04). Slice 02 omits `gaps` when
+  empty, so a continuous take has exactly one encoding and stays byte-identical to a
+  pre-change receipt. Accepting `[]` would admit a second encoding no writer produces.
+- **Malformed gaps refuse with their own message, "Invalid verified camera gaps"** (04), beside
+  the existing "Invalid verified camera support", so a refusal says which field was wrong.

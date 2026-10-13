@@ -48,6 +48,7 @@ import {
   openDirectoryLease,
 } from "./files.js";
 import {
+  cameraProofIntervals,
   validateSourceReceipt,
   type CameraPublicationProof,
   type SourceEvidenceMetadata,
@@ -1214,12 +1215,10 @@ export class AcquisitionImporter {
     const stream = streams[0]!;
     let available = stream.available;
     if (sourceRole === "video" && camera) {
-      const verified = [
-        {
-          startUs: toTime(subtract(fromTime(camera.support.startUs), fromTime(asset.originUs))),
-          endUs: toTime(subtract(fromTime(camera.support.endUs), fromTime(asset.originUs))),
-        },
-      ];
+      const verified = cameraProofIntervals(camera).map((interval) => ({
+        startUs: toTime(subtract(fromTime(interval.startUs), fromTime(asset.originUs))),
+        endUs: toTime(subtract(fromTime(interval.endUs), fromTime(asset.originUs))),
+      }));
       if (!isDeepStrictEqual(available, verified))
         throw new CatalogError(
           "INVALID_EVIDENCE",
