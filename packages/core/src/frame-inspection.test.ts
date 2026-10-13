@@ -160,7 +160,7 @@ async function fixture(render = renderer) {
       },
     ],
   });
-  return { projects, cache, jobs, frames, projectId, assetId: asset.id };
+  return { projects, assets, cache, jobs, frames, projectId, assetId: asset.id };
 }
 test("demanded still pins global picture timing across head changes and cache regeneration", async () => {
   const f = await fixture();
@@ -418,6 +418,161 @@ test("face observations measured on another raster cannot publish as the request
     },
   });
   const request = { projectId: f.projectId, atUs: 75001, faceObservations: {} };
+  f.frames.request(request);
+  await f.jobs.idle();
+  expect(f.frames.request(request)).toMatchObject({ state: "failed", published: null });
+  expect(f.cache.bytes).toBe(0);
+});
+
+/** Places one text clip over the video and renders it as native would after a font fallback. */
+async function fallbackFixture(fallbacks: (clipId: string) => unknown[], fonts?: string[]) {
+  const f = await fixture({
+    ...renderer,
+    async render(request, signal) {
+      const frame = [...request.window.frames()][0]!;
+      const video = await renderer.render(
+        {
+          ...request,
+          window: {
+            ...request.window,
+            frames: function* () {
+              yield { ...frame, layers: frame.layers.filter((layer) => layer.kind === "video") };
+            },
+          } as typeof request.window,
+        },
+        signal,
+      );
+      const receipt = video as { pictures: unknown[] };
+      const text = frame.layers.find((layer) => layer.kind === "text")!;
+      if (text.kind !== "text") throw new Error("Expected text");
+      const length = text.text.text.length;
+      return {
+        ...receipt,
+        frame,
+        pictures: [
+          ...receipt.pictures,
+          {
+            kind: "text",
+            clipId: text.clipId,
+            status: "available",
+            layout: {
+              font: text.text.font,
+              text: text.text.text,
+              visibleRange: [0, length],
+              lines: [
+                {
+                  range: [0, length],
+                  text: text.text.text,
+                  origin: [0, 10],
+                  width: 30,
+                  fonts: fonts ?? ["Pinned", "AppleColorEmoji", "LastResort"],
+                },
+              ],
+              inkBounds: [0, 0, 30, 10],
+              visibleBounds: [0, 0, 30, 10],
+              decorationBounds: [0, 0, 30, 10],
+              verticalOffset: 0,
+            },
+          },
+        ],
+        textFallbacks: fallbacks(text.clipId),
+      };
+    },
+  });
+  const fontPath = join(await mkdtemp("/tmp/yap-font-"), "pinned.ttf");
+  cleanup.push(() => rm(join(fontPath, ".."), { recursive: true, force: true }));
+  await writeFile(fontPath, "pinned font bytes");
+  const font = await f.assets.import(fontPath, { kind: "import" }, async () => ({
+    originUs: 0,
+    streams: [],
+    fontFaces: [{ postScriptName: "Pinned", familyName: "Pinned" }],
+  }));
+  const placed = f.projects.apply(f.projectId, {
+    requestId: "caption",
+    expectedRevisionId: f.projects.revision(f.projectId).id,
+    operations: [
+      { operation: "track.add", track: { kind: "video", order: 1 }, label: "captions" },
+      {
+        operation: "place",
+        label: "caption",
+        clip: {
+          trackId: { label: "captions" },
+          source: {
+            kind: "text",
+            text: "A\u{1F600}￿",
+            font: { assetId: font.id, postScriptName: "Pinned" },
+            width: 160,
+            height: 40,
+            size: 20,
+            color: "#ffffffff",
+            alignment: "left",
+            wrap: true,
+          },
+          placement: { kind: "project", range: { startUs: 0, endUs: 1000000 } },
+        },
+      },
+    ],
+  });
+  return {
+    ...f,
+    clipId: placed.edit.labels["caption"]!,
+    font: { assetId: font.id, postScriptName: "Pinned" },
+  };
+}
+
+test("a text font fallback publishes the frame with what was requested and what was drawn", async () => {
+  const f = await fallbackFixture((clipId) => [
+    { clipId, face: "AppleColorEmoji", substituted: [0x1f600], missing: [] },
+    { clipId, face: "LastResort", substituted: [], missing: [0xffff] },
+  ]);
+  const request = { projectId: f.projectId, atUs: 75001 };
+  f.frames.request(request);
+  await f.jobs.idle();
+  const ready = f.frames.request(request);
+  expect(ready.state).toBe("ready");
+  expect(ready.published!.issues).toEqual([
+    {
+      code: "font-substituted",
+      message: expect.stringContaining("AppleColorEmoji"),
+      evidence: {
+        clipId: f.clipId,
+        requested: f.font,
+        used: "AppleColorEmoji",
+        codePoints: [0x1f600],
+      },
+    },
+    {
+      code: "glyph-missing",
+      message: expect.stringContaining("U+FFFF"),
+      evidence: { clipId: f.clipId, requested: f.font, used: "LastResort", codePoints: [0xffff] },
+    },
+  ]);
+});
+
+test.each([
+  [
+    "a drawn face no fallback names",
+    (clipId: string) => [{ clipId, face: "AppleColorEmoji", substituted: [0x1f600], missing: [] }],
+  ],
+  [
+    "a fallback for a clip the frame does not draw",
+    (clipId: string) => [
+      { clipId, face: "AppleColorEmoji", substituted: [0x1f600], missing: [] },
+      { clipId, face: "LastResort", substituted: [], missing: [0xffff] },
+      { clipId: "elsewhere", face: "LastResort", substituted: [], missing: [0xffff] },
+    ],
+  ],
+  [
+    "a fallback that reports nothing",
+    (clipId: string) => [
+      { clipId, face: "AppleColorEmoji", substituted: [0x1f600], missing: [] },
+      { clipId, face: "LastResort", substituted: [], missing: [0xffff] },
+      { clipId, face: "Pinned", substituted: [], missing: [] },
+    ],
+  ],
+])("a frame receipt with %s cannot publish", async (_name, fallbacks) => {
+  const f = await fallbackFixture(fallbacks);
+  const request = { projectId: f.projectId, atUs: 75001 };
   f.frames.request(request);
   await f.jobs.idle();
   expect(f.frames.request(request)).toMatchObject({ state: "failed", published: null });

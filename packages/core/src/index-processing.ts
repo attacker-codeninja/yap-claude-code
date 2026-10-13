@@ -37,6 +37,7 @@ import type {
   JobOwner,
   JobQueue,
   RetainedArtifact,
+  StagedJobResult,
 } from "./jobs.js";
 import type { SceneProcessing } from "./scene-processing.js";
 import {
@@ -359,9 +360,10 @@ export class IndexProcessing {
         signal,
       );
     const pointers = this.project.frames.projectSupport.pointers;
-    return JSON.stringify(
-      pointers ? await pointers.withReady(plan.pointerSources, materialize) : await materialize(),
-    );
+    const { metadata, issues } = pointers
+      ? await pointers.withReady(plan.pointerSources, materialize)
+      : await materialize();
+    return { result: JSON.stringify(metadata), issues };
   }
   portableProject(metadata: ScreenshotIndexMetadata<ProjectIndexRecords>) {
     const publication = this.jobs.retainedArtifact(
@@ -717,7 +719,7 @@ export class IndexProcessing {
     );
   }
 
-  async execute({ job, signal }: JobExecution): Promise<string> {
+  async execute({ job, signal }: JobExecution): Promise<string | StagedJobResult> {
     if (job.target.kind === "asset") return this.executeSource({ job, signal });
     if (job.target.kind === "project") return this.executeProject({ job, signal });
     throw new CatalogError(

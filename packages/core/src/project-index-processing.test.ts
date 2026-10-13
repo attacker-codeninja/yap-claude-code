@@ -1,5 +1,6 @@
 import { omit } from "@yap/composition";
-import { unlink } from "node:fs/promises";
+import { unlink, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { portableProjectIndexMetadataSchema } from "./project-index.js";
 import { expect, test } from "vitest";
 import { fixture, gate, png } from "./index-processing.fixture.js";
@@ -98,6 +99,63 @@ test("face observation requests reach project index frame materialization", asyn
     f.projectRetained.page({ identity: result.published!.evidence }).entries[0]!.frame
       .faceObservations,
   ).toMatchObject({ status: "available", faces: [{ id: "face-0" }] });
+});
+
+test("a project index over text that fell back to another face publishes the frames' font issues", async () => {
+  const f = await fixture({ textFallback: { face: "AppleColorEmoji", codePoint: 0x1f600 } });
+  videos(f);
+  const fontPath = join(f.home, "pinned.ttf");
+  await writeFile(fontPath, "pinned font bytes");
+  const font = await f.assets.import(fontPath, { kind: "import" }, async () => ({
+    originUs: 0,
+    streams: [],
+    fontFaces: [{ postScriptName: "Pinned", familyName: "Pinned" }],
+  }));
+  const placed = f.projects.apply(f.projectId, {
+    requestId: "caption",
+    expectedRevisionId: f.projects.get(f.projectId).currentRevisionId,
+    operations: [
+      { operation: "track.add", track: { kind: "video", order: 1 }, label: "captions" },
+      {
+        operation: "place",
+        label: "caption",
+        clip: {
+          trackId: { label: "captions" },
+          source: {
+            kind: "text",
+            text: "A\u{1F600}",
+            font: { assetId: font.id, postScriptName: "Pinned" },
+            width: 1,
+            height: 1,
+            size: 1,
+            color: "#ffffffff",
+            alignment: "left",
+            wrap: true,
+          },
+          placement: { kind: "project", range: { startUs: 0, endUs: 2400000 } },
+        },
+      },
+    ],
+  });
+  f.index.requestProject({ projectId: f.projectId });
+  await f.jobs.idle();
+  f.index.requestProject({ projectId: f.projectId });
+  await f.jobs.idle();
+  const result = f.index.requestProject({ projectId: f.projectId });
+  expect(result.state).toBe("ready");
+  // Every candidate frame draws the same caption; the index reports its fallback once.
+  expect(result.published!.issues).toEqual([
+    {
+      code: "font-substituted",
+      message: expect.any(String),
+      evidence: {
+        clipId: placed.edit.labels["caption"],
+        requested: { assetId: font.id, postScriptName: "Pinned" },
+        used: "AppleColorEmoji",
+        codePoints: [0x1f600],
+      },
+    },
+  ]);
 });
 
 test("project recipes pin both selected scene generations while queued and retain independent PNGs", async () => {

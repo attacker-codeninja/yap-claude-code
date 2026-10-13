@@ -28,6 +28,7 @@ import { audioProcessingEvidenceSchema, audioProcessingIssues } from "./audio-me
 import type { DerivedCache } from "./cache.js";
 import { submitCachedDerivative } from "./cached-derivative.js";
 import { checkRenderedMovie, type RenderedMovie } from "./rendered-movie.js";
+import { textFallbackIssues, textFallbacksSchema } from "./text-fallback.js";
 
 export type ProjectPreviewInput = {
   /** Internal immutable preparation binding; never a public selector. */
@@ -50,6 +51,8 @@ export type CompositionMovie = RenderedMovie & {
     /** Validated as audio processing evidence before the movie publishes. */
     processingEvidence?: unknown[];
   };
+  /** Native font fallback facts, validated before the movie publishes; omitted when clean. */
+  textFallbacks?: unknown;
 };
 export type ProjectMovieRenderer = ProjectRenderSupport & {
   render(
@@ -327,8 +330,17 @@ export class ProjectPreviewInspection {
         .safeParse(movie.audio?.processingEvidence);
       if (!evidence.success)
         throw new CatalogError("INVALID_RESPONSE", "Renderer returned malformed audio evidence");
-      // The movie's audio postconditions are issues on the movie, never a refusal.
-      const issues = audioProcessingIssues(evidence.data ?? []);
+      const fallbacks = textFallbacksSchema.optional().safeParse(movie.textFallbacks);
+      if (!fallbacks.success)
+        throw new CatalogError("INVALID_RESPONSE", "Renderer returned malformed text fallbacks");
+      // The movie's audio postconditions and font fallbacks are issues on the movie, never a refusal.
+      const issues = [
+        ...audioProcessingIssues(evidence.data ?? []),
+        ...textFallbackIssues(fallbacks.data, (clipId) => {
+          const clip = plan.model.clips.find((candidate) => candidate.clip.id === clipId)?.clip;
+          return clip?.source.kind === "text" ? clip.source.font : undefined;
+        }),
+      ];
       const cached = await this.cache.publish(output.id);
       signal.throwIfAborted();
       if (cached.bytes !== movie.bytes)
