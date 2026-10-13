@@ -169,14 +169,16 @@ final class CaptureController {
     private func sources() async throws -> [String: Any] {
         try await Self.discoverSources(screenAuthorized: NativeCapture.screenPermission, screens: {
             let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+            let own = Set(CaptureExclusion.ownApplications(
+                among: content.applications, bundleIdentifier: Bundle.main.bundleIdentifier,
+                identity: \.bundleIdentifier).map(\.processID))
             let windows = content.windows.filter { window in
                 if let fixture = self.fixtureWindow { return UInt32(fixture.windowNumber) == window.windowID }
                 return WindowSource(
-                    layer: window.windowLayer, title: window.title ?? "",
-                    application: window.owningApplication?.applicationName ?? "",
-                    bundleIdentifier: window.owningApplication?.bundleIdentifier,
+                    layer: window.windowLayer, application: window.owningApplication?.applicationName ?? "",
+                    isOwn: window.owningApplication.map { own.contains($0.processID) } ?? false,
                     width: window.frame.width, height: window.frame.height
-                ).isRecordable(ownBundle: Bundle.main.bundleIdentifier)
+                ).isRecordable
             }
             return (
                 displays: self.fixtureWindow != nil ? [] : content.displays.map {
