@@ -339,11 +339,50 @@ test("malformed native receipts and WAV files cannot publish and repeated reads 
   }
 });
 
+test("a partly overlapping audio range is clamped to the source with range-clamped", async () => {
+  const f = await fixture();
+  const clamped = await f.inspection.request({
+    ...f.selection,
+    range: { startUs: 500000, endUs: 1000001 },
+  });
+  expect(clamped).toMatchObject({
+    range: { startUs: 500000, endUs: 1000000 },
+    issues: [
+      {
+        code: "range-clamped",
+        evidence: {
+          requested: { startUs: 500000, endUs: 1000001 },
+          applied: { startUs: 500000, endUs: 1000000 },
+          bounds: { startUs: 0, endUs: 1000000 },
+        },
+      },
+    ],
+  });
+  await f.jobs.idle();
+  // A later read of the same request still reports the clamp beside the published audio.
+  expect(
+    await f.inspection.request({ ...f.selection, range: { startUs: 500000, endUs: 1000001 } }),
+  ).toMatchObject({
+    state: "ready",
+    published: { audio: { range: { startUs: 500000, endUs: 1000000 } } },
+    issues: [{ code: "range-clamped" }],
+  });
+  expect(
+    (await f.inspection.request({ ...f.selection, range: { startUs: 500000, endUs: 1000000 } }))
+      .issues,
+  ).toEqual([]);
+});
+
 test("invalid ranges and acquisition/stream mismatches refuse before queue admission", async () => {
   const f = await fixture();
   await expect(
-    f.inspection.request({ ...f.selection, range: { startUs: 0, endUs: 1000001 } }),
-  ).rejects.toThrow(expect.objectContaining({ code: "INVALID_RANGE" }));
+    f.inspection.request({ ...f.selection, range: { startUs: 1000000, endUs: 1000001 } }),
+  ).rejects.toThrow(
+    expect.objectContaining({
+      code: "INVALID_RANGE",
+      details: expect.objectContaining({ bounds: { startUs: 0, endUs: 1000000 } }),
+    }),
+  );
   await expect(
     f.inspection.request({ ...f.selection, streamId: "b", acquisitionId: "mask" }),
   ).rejects.toThrow(expect.objectContaining({ code: "INVALID_PARAMS" }));
@@ -803,9 +842,9 @@ test("exact admitted endpoints drive full and late audio while explicit integer 
     range: { startUs: 5134000, endUs: 5134958 },
   });
   expect(floor.sampleClock?.sampleRange).toEqual({ start: 246432, end: 246477 });
-  expect(() =>
-    f.inspection.recipe({ ...f.selection, range: { startUs: 5134000, endUs: 5134959 } }),
-  ).toThrow(expect.objectContaining({ code: "INVALID_RANGE" }));
+  const over = f.inspection.recipe({ ...f.selection, range: { startUs: 5134000, endUs: 5134959 } });
+  expect(over.selection.range).toEqual({ startUs: 5134000, endUs });
+  expect(over.issues).toMatchObject([{ code: "range-clamped" }]);
   expect(
     f.inspection.context(
       { ...f.selection, range: { startUs: 5134000, endUs } },

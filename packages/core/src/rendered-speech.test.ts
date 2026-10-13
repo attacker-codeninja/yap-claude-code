@@ -297,6 +297,7 @@ async function fixture() {
   };
   return {
     home,
+    catalog,
     jobs,
     projects,
     processing,
@@ -357,6 +358,60 @@ test("rendered recognition survives failed original transcription and maps actua
   });
   expect(f.state.renders).toBe(1);
   expect(f.requests).toHaveLength(2);
+});
+
+test("receipt 09: a render range past the project's end publishes clamped words with range-clamped", async () => {
+  const f = await fixture();
+  // The project ends at 3 s; receipt 09 asked 128–143.08 s of a project ending at 139.73 s.
+  const selection = { ...f.selection, range: { startUs: 2000000, endUs: 3500000 } };
+  const pending = f.rendered.prepare(selection);
+  await f.jobs.idle();
+  const ready = f.rendered.prepare(selection);
+  expect(ready.jobId).toBe(pending.jobId);
+  expect(ready.state, JSON.stringify(f.jobs.inspect(ready.jobId!))).toBe("ready");
+  const clamped = {
+    code: "range-clamped",
+    message: expect.any(String),
+    at: { range: { startUs: 2000000, endUs: 3000000 } },
+    evidence: {
+      requested: { startUs: 2000000, endUs: 3500000 },
+      applied: { startUs: 2000000, endUs: 3000000 },
+      bounds: { startUs: 0, endUs: 3000000 },
+    },
+  };
+  expect(ready.published!.issues).toEqual([clamped]);
+  // The job identity keeps the requested range; the rendered PCM covers the applied one.
+  expect(ready.published!.speech.selection.range).toEqual(selection.range);
+  expect(ready.published!.speech.pcm.origin.selection).toMatchObject({
+    range: { startUs: 2000000, endUs: 3000000 },
+  });
+  const words = f.rendered.get({
+    projectId: selection.projectId,
+    revisionId: selection.revisionId,
+    generation: ready.published!.speech.generation,
+  });
+  expect(words.issues).toEqual([clamped]);
+  expect(words.page.rows[0]).toMatchObject({
+    text: "rendered",
+    projectRange: { startUs: 2100000, endUs: 2300000 },
+  });
+});
+
+test("a render range wholly outside the project refuses with its bounds before any job exists", async () => {
+  const f = await fixture();
+  const jobs = () =>
+    (f.catalog.catalog.prepare("SELECT COUNT(*) AS n FROM jobs").get() as { n: number }).n;
+  const before = jobs();
+  expect(() =>
+    f.rendered.prepare({ ...f.selection, range: { startUs: 3000000, endUs: 4000000 } }),
+  ).toThrow(
+    expect.objectContaining({
+      code: "INVALID_RANGE",
+      details: expect.objectContaining({ bounds: { startUs: 0, endUs: 3000000 } }),
+    }),
+  );
+  expect(jobs()).toBe(before);
+  expect(f.state.renders).toBe(0);
 });
 
 test("missing selected support refuses recognition while preserving extraction identity", async () => {

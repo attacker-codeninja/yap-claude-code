@@ -78,7 +78,7 @@ async function sendRaw(socketPath: string, bytes: Buffer) {
     });
   });
 }
-test("public rendered recognition rejects absent generations and refuses out-of-project rendering through its job", async () => {
+test("public rendered recognition rejects absent generations and refuses a range wholly outside the project before any job", async () => {
   const f = await emptyProject();
   const selector = { projectId: f.project.projectId, revisionId: f.revision.id };
   expect(
@@ -93,14 +93,16 @@ test("public rendered recognition rejects absent generations and refuses out-of-
     tap: { target: { kind: "output" }, point: { kind: "processed" } },
     rendition: { sampleRate: 16000, channels: 1 },
   };
-  const pending = await f.call("transcript.render.prepare", request);
-  expect(pending).toMatchObject({ ok: true, data: { ...selector, published: null } });
-  if (!pending.ok) throw Error(JSON.stringify(pending));
-  const job = await f.job((pending.data as { jobId: string }).jobId, "failed");
-  expect(job).toMatchObject({
-    errorCode: "INVALID_PARAMS",
-    reason: "Rendering requires a nonempty range within the pinned project",
+  expect(await f.call("transcript.render.prepare", request)).toMatchObject({
+    ok: false,
+    error: {
+      code: "INVALID_RANGE",
+      details: { requested: { startUs: 0, endUs: 1000000 }, bounds: { startUs: 0, endUs: 0 } },
+    },
   });
+  const db = new DatabaseSync(join(f.home, "library", "catalog.sqlite"));
+  cleanups.push(async () => db.close());
+  expect(db.prepare("SELECT COUNT(*) AS n FROM jobs").get()).toEqual({ n: 0 });
 });
 test("oversized independently valid project mutation does not dispatch", async () => {
   const f = await emptyProject();

@@ -167,6 +167,7 @@ export type { CaptionSidecarRequest, CaptionCue } from "./caption-sidecars.js";
 
 export { omit } from "./omit.js";
 export type { Omitted } from "./omit.js";
+export { admitReadRange, type WireRange } from "./range-admission.js";
 export {
   boundedIssues,
   issueCodes,

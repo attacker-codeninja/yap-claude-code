@@ -1,6 +1,16 @@
 import { CompositionError } from "./errors.js";
 import type { Issue } from "./issues.js";
-import { add, compare, divide, multiply, subtract, toTime, type Rational } from "./rational.js";
+import {
+  add,
+  compare,
+  divide,
+  fromTime,
+  multiply,
+  subtract,
+  toTime,
+  type Rational,
+} from "./rational.js";
+import { selectionRangeSchema, type TimeValue } from "./schema.js";
 
 /**
  * Output by default for ranges: a requested range that partly overlaps its domain is clamped and
@@ -49,4 +59,25 @@ export function keepSameFraction(requested: Interval, kept: Interval, span: Inte
   const at = (point: Rational) =>
     add(span.start, multiply(spanLength, divide(subtract(point, requested.start), length)));
   return { start: at(kept.start), end: at(kept.end) };
+}
+
+export type WireRange = { startUs: TimeValue; endUs: TimeValue };
+
+/**
+ * A read's range on the wire: the applied range plus its `range-clamped` issue when clamped. A
+ * requested range that isn't a nonempty half-open range is malformed.
+ */
+export function admitReadRange(requested: WireRange, domain: WireRange) {
+  if (!selectionRangeSchema.safeParse(requested).success)
+    throw new CompositionError("INVALID_RANGE", "Requested range must be a nonempty half-open range", {
+      requested,
+      bounds: domain,
+    });
+  const asked = { start: fromTime(requested.startUs), end: fromTime(requested.endUs) };
+  const bounds = { start: fromTime(domain.startUs), end: fromTime(domain.endUs) };
+  const { range, clamped } = admitRange(asked, bounds);
+  return {
+    range: wire(range),
+    issues: clamped ? [rangeClampedIssue(asked, range, bounds)] : [],
+  };
 }

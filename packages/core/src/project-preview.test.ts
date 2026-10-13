@@ -228,6 +228,35 @@ test("pins an old revision through edits, repeated admission and cache eviction"
   expect(JSON.parse(await readFile(again.published!.preview.file, "utf8"))).toEqual(content);
 });
 
+test("a preview range past the project's end renders the clamped range and reports range-clamped", async () => {
+  const f = await fixture(renderer);
+  const clamped = await f.preview.request({
+    projectId: f.projectId,
+    range: { startUs: 900000, endUs: 1500000 },
+  });
+  expect(clamped).toMatchObject({
+    range: { startUs: 900000, endUs: 1000000 },
+    issues: [
+      {
+        code: "range-clamped",
+        evidence: {
+          requested: { startUs: 900000, endUs: 1500000 },
+          bounds: { startUs: 0, endUs: 1000000 },
+        },
+      },
+    ],
+  });
+  const applied = await f.preview.request({
+    projectId: f.projectId,
+    range: { startUs: 900000, endUs: 1000000 },
+  });
+  expect(applied.jobId).toBe(clamped.jobId);
+  expect(applied.issues).toEqual([]);
+  await expect(
+    f.preview.request({ projectId: f.projectId, range: { startUs: 1000000, endUs: 1500000 } }),
+  ).rejects.toMatchObject({ code: "INVALID_RANGE" });
+});
+
 test("warm published preview reuses the cached render for its pinned revision", async () => {
   let renders = 0;
   const f = await fixture({

@@ -283,9 +283,12 @@ export async function waitForWork(options: {
       // Package admissions expose a context-job ID that public job.get cannot inspect.
       const jobId = read === "package.status" ? undefined : work.jobId;
       // Issues never change the exit status; a ready output names how many it carries.
-      const issues = data.issues ?? record(data.published).issues;
+      // A read's admission issues sit beside the issues published with its output.
+      const issues = [data.issues, record(data.published).issues].flatMap((value) =>
+        Array.isArray(value) ? value : [],
+      );
       const marker =
-        work.state === "ready" && Array.isArray(issues) && issues.length > 0
+        work.state === "ready" && issues.length > 0
           ? `${request.operation}: ready (${issues.length} issues)`
           : `${request.operation}: ${String(work.state ?? "batch")} ${current ? `(${current.jobId}, generation ${current.generation})` : ""}`;
       if (marker !== progress) {

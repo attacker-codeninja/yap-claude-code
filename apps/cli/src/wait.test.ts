@@ -1732,3 +1732,25 @@ test("one published output reports the same issues through the service, CLI --wa
   if (!reply.ok) throw Error(reply.error.message);
   expect((reply.data as typeof served).published?.issues).toEqual(served.published?.issues);
 });
+
+test("a ready read counts its admission issues beside its published issues", async () => {
+  const clamp = { code: "range-clamped", message: "clamped", evidence: {} };
+  const published = { code: "issues-truncated", message: "truncated", evidence: { omitted: 1 } };
+  const f = await fixture(() => ({
+    ok: true,
+    data: {
+      assetId: "a",
+      streamId: "s",
+      state: "ready",
+      issues: [clamp],
+      published: { generation: 1, output: {}, issues: [published] },
+    },
+  }));
+  const output = await f.run(
+    "audio.get",
+    { assetId: "a", streamId: "s", range: { startUs: 0, endUs: 2 } },
+    ["--wait", "--timeout-ms", "1000"],
+  );
+  // The stub serves no delivery; the progress line is the claim here.
+  expect(output.stderr.split("\n")).toContain("audio.get: ready (2 issues)");
+});

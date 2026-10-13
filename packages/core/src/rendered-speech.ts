@@ -21,6 +21,7 @@ import {
 } from "./transcript.js";
 import type { TranscriptProcessing } from "./transcript-processing.js";
 import { SourceTranscriptRead } from "./transcript-read.js";
+import { admitProjectRange, projectComposition } from "./project-window.js";
 
 const artifact = "rendered-speech";
 export type RenderedSpeechInput = Extract<AudioExtractionInput, { projectId: string }> & {
@@ -79,6 +80,11 @@ export class RenderedSpeech {
       input: JSON.stringify({ request, execution: this.owners.transcripts.recognitionExecution() }),
     };
   }
+  /** The pinned project bounds the range: clamped with range-clamped, or refused with no overlap. */
+  private admission(input: RenderedSpeechInput) {
+    const { model } = projectComposition(this.owners.projects, this.owners.assets, input);
+    return admitProjectRange(model.durationUs, input.range);
+  }
   private status(input: RenderedSpeechInput) {
     const status = this.owners.jobs.status(this.identity(input));
     return {
@@ -94,6 +100,7 @@ export class RenderedSpeech {
     };
   }
   prepare(input: RenderedSpeechInput) {
+    this.admission(input);
     const identity = this.identity(input);
     if (!this.owners.jobs.status(identity).published)
       this.owners.jobs.submitDeferred({ ...identity, lane: "heavy" }, (job) => {
@@ -215,6 +222,7 @@ export class RenderedSpeech {
     let published = false;
     return {
       result: JSON.stringify(speech),
+      issues: this.admission(input).issues,
       publish: () => {
         this.references.retain("transcript-generation", { kind: "job", id: job.jobId }, [
           resourceId,
@@ -264,6 +272,7 @@ export class RenderedSpeech {
       generation: input.generation,
       kind: "rendered-speech" as const,
       state: "ready" as const,
+      issues: this.owners.jobs.issues(retained),
       pcm: speech.pcm,
       transcript: speech.transcript,
       page: {
