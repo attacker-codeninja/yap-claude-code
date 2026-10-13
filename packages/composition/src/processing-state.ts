@@ -60,6 +60,14 @@ export const statePlanSchema = z
               })
               .strict(),
           ),
+          /**
+           * Unavailable support a member's input had inside its active span. The span was split
+           * there, so each available run is its own domain; present only when a gap split it.
+           */
+          supportGaps: z
+            .array(z.object({ clipId: id, range: selectionRangeSchema }).strict())
+            .min(1)
+            .optional(),
         })
         .strict(),
     ),
@@ -177,6 +185,68 @@ function prefixInputs(plan: Pick<StatePlan, "nodes">) {
       }
     }
   };
+}
+
+/**
+ * A stateful processor never learns across missing input, and missing input never becomes silence:
+ * every member's span loses the unavailable support anywhere in its input prefix (its detector's
+ * included), and each remaining run starts its own domain. Domains without a gap are untouched.
+ */
+function splitAtSupportGaps(
+  domains: StatePlan["domains"],
+  audio: ValidatedComposition["clips"],
+  visitPrefix: ReturnType<typeof prefixInputs>,
+) {
+  const clipGaps = new Map(
+    audio.map(({ clip, range, available }) => [
+      clip.id,
+      missingRanges([stored(range)], available.map(stored)),
+    ]),
+  );
+  const split: StatePlan["domains"] = [];
+  for (const domain of domains) {
+    const gaps = new Map<string, { clipId: string; range: Range }>();
+    const pieces = domain.members.flatMap((member) => {
+      const cut: Range[] = [];
+      const collect = (node: StatePlan["nodes"][number], _end: number, range: Range) => {
+        if (node.target.kind !== "clip") return;
+        for (const gap of clipGaps.get(node.target.id) ?? []) {
+          const part = intersection(gap, range);
+          if (!part) continue;
+          cut.push(part);
+          gaps.set(JSON.stringify([node.target.id, part]), { clipId: node.target.id, range: part });
+        }
+      };
+      visitPrefix(member.target, member.stepId, member.range, collect);
+      if (member.detector)
+        visitPrefix(member.detector.target, member.detector.beforeStepIndex, member.range, collect);
+      return cut.length
+        ? missingRanges([member.range], cut).map((range) => ({ ...member, range }))
+        : [member];
+    });
+    if (!gaps.size) {
+      split.push(domain);
+      continue;
+    }
+    const supportGaps = [...gaps.values()].sort(
+      (a, b) =>
+        compare(fromTime(a.range.startUs), fromTime(b.range.startUs)) ||
+        compareId(a.clipId, b.clipId),
+    );
+    let current: StatePlan["domains"][number] | undefined;
+    for (const piece of pieces) {
+      if (!current || compare(fromTime(current.range.endUs), fromTime(piece.range.startUs)) !== 0) {
+        current = { ...domain, range: piece.range, members: [], dependencies: [], supportGaps };
+        split.push(current);
+      } else current.range = { ...current.range, endUs: piece.range.endUs };
+      current.sampleRange = {
+        start: sampleAt(fromTime(current.range.startUs), 48000),
+        end: sampleAt(fromTime(current.range.endUs), 48000),
+      };
+      current.members.push(piece);
+    }
+  }
+  domains.splice(0, domains.length, ...split);
 }
 
 /** These processors can change shared state membership when the editor changes their input. */
@@ -340,6 +410,7 @@ export function deriveStatePlan(model: ValidatedComposition): StatePlan {
       "Shared state requires distinct clips on one track",
       { stateStepIds: [...invalidMembers] },
     );
+  splitAtSupportGaps(domains, audio, prefixInputs({ nodes }));
   domains.sort(
     (a, b) =>
       compare(fromTime(a.range.startUs), fromTime(b.range.startUs)) ||

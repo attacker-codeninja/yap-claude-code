@@ -469,7 +469,7 @@ test("fractional splits, zero-sample spans and unavailable support retain exact 
     tap: { target: { kind: "output" }, point: { kind: "processed" } },
   });
   expect(window.manifest.state!.inputs[0]!.available).toEqual(assets[0]!.streams[0]!.available);
-  expect(window.manifest.state!.domains[0]!.range).toEqual({ startUs: 0, endUs: 4000000 });
+  expect(window.manifest.state!.domains[0]!.range).toEqual({ startUs: 2000000, endUs: 4000000 });
   const windowed = {
     ...source,
     processing: [
@@ -488,15 +488,16 @@ test("fractional splits, zero-sample spans and unavailable support retain exact 
       },
     ],
   };
-  const selected = createCompiler(
-    validateComposition(windowed, assets),
-    "window-holes",
-  ).audioWindow({
-    range: { startUs: 1500000, endUs: 1800000 },
-    rendition: { sampleRate: 48000, channels: 2 },
-    tap: { target: { kind: "output" }, point: { kind: "processed" } },
-  }).manifest.state!;
-  expect(selected.domains.map((d) => d.range)).toEqual([{ startUs: 500000, endUs: 3500000 }]);
+  const windowedState = (range: { startUs: number; endUs: number }) =>
+    createCompiler(validateComposition(windowed, assets), "window-holes").audioWindow({
+      range,
+      rendition: { sampleRate: 48000, channels: 2 },
+      tap: { target: { kind: "output" }, point: { kind: "processed" } },
+    }).manifest.state;
+  // Inside the gap the processor has no input, so a read there selects no state at all.
+  expect(windowedState({ startUs: 1500000, endUs: 1800000 })).toBeUndefined();
+  const selected = windowedState({ startUs: 2500000, endUs: 2800000 })!;
+  expect(selected.domains.map((d) => d.range)).toEqual([{ startUs: 2000000, endUs: 3500000 }]);
   expect(selected.inputs[0]!.available).toEqual(assets[0]!.streams[0]!.available);
 });
 
@@ -955,7 +956,7 @@ test("out-of-range state input prefixes retain enabled stateless execution requi
   );
 });
 
-test("selected state inputs retain exact consumed spans and distinguish unavailable support", () => {
+test("a source gap splits state into one domain per available run and records the gap", () => {
   const source = {
     ...document,
     clips: [
@@ -998,14 +999,34 @@ test("selected state inputs retain exact consumed spans and distinguish unavaila
       ],
     },
   ];
-  const input = createCompiler(validateComposition(source, assets), "revision").audioWindow({
-    range: { startUs: 2500000, endUs: 2800000 },
-    rendition: { sampleRate: 48000, channels: 2 },
-    tap: { target: { kind: "output" }, point: { kind: "processed" } },
-  }).manifest.state!.inputs[0]!;
-  expect(input).toMatchObject({
-    selected: [{ startUs: 1000000, endUs: 3000000 }],
-    unavailable: [{ startUs: 1500000, endUs: 2000000 }],
+  const compiler = createCompiler(validateComposition(source, assets), "revision");
+  const state = (range: { startUs: number; endUs: number }) =>
+    compiler.audioWindow({
+      range,
+      rendition: { sampleRate: 48000, channels: 2 },
+      tap: { target: { kind: "output" }, point: { kind: "processed" } },
+    }).manifest.state!;
+  const gap = { clipId: "clip", range: { startUs: 1500000, endUs: 2000000 } };
+  // Never silence: the processor's state stops at the gap and starts fresh after it.
+  expect(state({ startUs: 0, endUs: 4000000 }).domains).toMatchObject([
+    {
+      range: { startUs: 1000000, endUs: 1500000 },
+      sampleRange: { start: 48000, end: 72000 },
+      members: [{ stepId: "noise", range: { startUs: 1000000, endUs: 1500000 } }],
+      supportGaps: [gap],
+    },
+    {
+      range: { startUs: 2000000, endUs: 3000000 },
+      sampleRange: { start: 96000, end: 144000 },
+      members: [{ stepId: "noise", range: { startUs: 2000000, endUs: 3000000 } }],
+      supportGaps: [gap],
+    },
+  ]);
+  const narrow = state({ startUs: 2500000, endUs: 2800000 });
+  expect(narrow.domains.map((d) => d.range)).toEqual([{ startUs: 2000000, endUs: 3000000 }]);
+  expect(narrow.inputs[0]).toMatchObject({
+    selected: [{ startUs: 2000000, endUs: 3000000 }],
+    unavailable: [],
   });
 });
 

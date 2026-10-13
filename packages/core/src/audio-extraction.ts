@@ -221,7 +221,7 @@ export class AudioExtraction {
               unavailable: [],
               implementationId: "verified-whole-source-v1",
             }
-          : await this.owners.audio.renderSelection(request.recipe, selectedPath, signal);
+          : (await this.owners.audio.renderSelection(request.recipe, selectedPath, signal)).value;
         const input = {
           sampleRate: selected.sampleRate,
           channels: selected.channels,

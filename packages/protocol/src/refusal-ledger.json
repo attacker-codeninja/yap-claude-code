@@ -6,12 +6,6 @@
  },
  "pendingSites": [
   {
-   "slice": "07b",
-   "file": "packages/core/src/project-window.ts",
-   "text": "State processing requires complete verified mono or stereo input",
-   "why": "gaps: process each run with unavailable + support-gap"
-  },
-  {
    "slice": "07a",
    "file": "helpers/mac/Sources/YapMedia/FontFile.swift",
    "text": "FONT_SUBSTITUTED:",
@@ -1471,7 +1465,7 @@
     "apps/service/src/project-service.ts": 12,
     "apps/service/src/source-export.ts": 2,
     "helpers/mac/Sources/YapAudio/CompositionRetime.swift": 4,
-    "helpers/mac/Sources/YapAudio/CompositionState.swift": 4,
+    "helpers/mac/Sources/YapAudio/CompositionState.swift": 3,
     "helpers/mac/Sources/YapFrames/CompositionFrameRenderer.swift": 1,
     "helpers/mac/Sources/YapFrames/CompositionPictureExecutor.swift": 1,
     "helpers/mac/Sources/YapFrames/CompositionVideoRenderer.swift": 1,

@@ -328,7 +328,7 @@ export class ProjectPreviewInspection {
       if (!evidence.success)
         throw new CatalogError("INVALID_RESPONSE", "Renderer returned malformed audio evidence");
       // The movie's audio postconditions are issues on the movie, never a refusal.
-      const issues = audioProcessingIssues(evidence.data ?? []);
+      const issues = [...plan.outputIssues, ...audioProcessingIssues(evidence.data ?? [])];
       const cached = await this.cache.publish(output.id);
       signal.throwIfAborted();
       if (cached.bytes !== movie.bytes)

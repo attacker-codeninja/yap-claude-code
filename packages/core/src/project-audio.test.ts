@@ -890,7 +890,7 @@ test("state channel admission refuses wider and unknown probes without blocking 
   }
 });
 
-test("state support diagnostics preserve acquisition holes only inside consumed input", async () => {
+test("an acquisition hole splits state at the gap and names support-gap for its output", async () => {
   const f = await fixture(render, undefined, 1000000, 1);
   const original = f.placed.revision,
     clipId = f.placed.edit.labels["voice-clip"]!;
@@ -925,34 +925,30 @@ test("state support diagnostics preserve acquisition holes only inside consumed 
     },
   ];
   const composition = projectCompositionFromRevision(revision, f.assets, contexts);
-  const retained = composition.window(
+  // The hole splits the output's denoise state: the read after it gets its own run and an issue.
+  const produced = composition.window(
     { range: { startUs: 750000, endUs: 1000000 } },
-    { implementationId: "fixture" },
+    { implementationId: "fixture", rnnoise: "rnnoise-fixture" },
     "audio",
-    "retained",
   );
-  expect(retained.window.manifest.state!.inputs[0]).toMatchObject({
+  expect(produced.window.manifest.state!.domains.map((d) => d.range)).toEqual([
+    { startUs: 500000, endUs: 1000000 },
+  ]);
+  expect(produced.window.manifest.state!.inputs[0]).toMatchObject({
     clip: { acquisitionId: "capture" },
     channels: 1,
-    selected: [{ startUs: 0, endUs: 1000000 }],
-    unavailable: [{ startUs: 250000, endUs: 500000 }],
+    selected: [{ startUs: 500000, endUs: 1000000 }],
+    unavailable: [],
   });
-  expect(() =>
-    composition.window(
-      { range: { startUs: 750000, endUs: 1000000 } },
-      { implementationId: "fixture" },
-      "audio",
-    ),
-  ).toThrow(
-    expect.objectContaining({
-      code: "NOT_READY",
-      details: {
-        stateInputs: [
-          { kind: "unavailable-support", clipId, ranges: [{ startUs: 250000, endUs: 500000 }] },
-        ],
-      },
-    }),
-  );
+  expect(produced.issues).toEqual([]);
+  expect(produced.outputIssues).toEqual([
+    {
+      code: "support-gap",
+      message: expect.any(String),
+      at: { range: { startUs: 250000, endUs: 500000 } },
+      evidence: { clipId, unavailable: { startUs: 250000, endUs: 500000 }, stepIds: ["noise"] },
+    },
+  ]);
   const narrowed = {
     ...revision,
     document: {
@@ -982,7 +978,94 @@ test("state support diagnostics preserve acquisition holes only inside consumed 
     }),
   );
   expect(
-    composition.window({}, { implementationId: "fixture" }, "audio", "retained").window.manifest
-      .state!.inputs[0]!.unavailable,
-  ).toEqual([{ startUs: 250000, endUs: 500000 }]);
+    composition
+      .window({}, { implementationId: "fixture" }, "audio", "retained")
+      .window.manifest.state!.domains.map((d) => d.range),
+  ).toEqual([
+    { startUs: 0, endUs: 250000 },
+    { startUs: 500000, endUs: 1000000 },
+  ]);
+});
+
+test("stateful processing over a source gap publishes its audio with support-gap", async () => {
+  const states: ReturnType<
+    Parameters<ProjectAudioRenderer["render"]>[0]["window"]["audioState"]
+  >[] = [];
+  const f = await fixture(
+    async (request, signal) => {
+      states.push(request.window.audioState());
+      return render(request, signal);
+    },
+    undefined,
+    1000000,
+    1,
+    { rnnoise: "rnnoise-fixture" },
+  );
+  const gapped = join(f.home, "gapped.wav");
+  await wave(gapped, 48001, 1); // distinct bytes: assets are content-addressed
+  const asset = await f.assets.import(gapped, { kind: "import" }, async () => ({
+    originUs: 0,
+    streams: [
+      {
+        id: "sound",
+        kind: "audio",
+        codec: "pcm",
+        decodable: true,
+        startUs: 0,
+        endUs: 1000000,
+        segments: [
+          { startUs: 0, endUs: 250000, empty: false },
+          { startUs: 250000, endUs: 500000, empty: true },
+          { startUs: 500000, endUs: 1000000, empty: false },
+        ],
+        sampleRate: 48000,
+        channels: 1,
+      },
+    ],
+  }));
+  const placed = f.projects.apply(f.projectId, {
+    requestId: "gapped",
+    expectedRevisionId: f.placed.revision.id,
+    operations: [
+      {
+        operation: "place",
+        label: "gapped",
+        clip: {
+          trackId: f.placed.edit.labels.voice!,
+          assetId: asset.id,
+          streamId: "sound",
+          source: { kind: "range", range: { startUs: 0, endUs: 1000000 } },
+          placement: { kind: "project", range: { startUs: 2000000, endUs: 3000000 } },
+        },
+      },
+      {
+        operation: "processing.set",
+        target: { kind: "clip", id: { label: "gapped" } },
+        steps: [{ label: "denoise", processor: { type: "rnnoise" } }],
+      },
+    ],
+  });
+  const input = { projectId: f.projectId, revisionId: placed.revision.id };
+  await f.inspection.request(input);
+  await f.jobs.idle();
+  const status = await f.inspection.request(input);
+  expect(status).toMatchObject({ state: "ready", issues: [] });
+  const gap = { startUs: 2250000, endUs: 2500000 };
+  expect(status.published!.issues).toEqual([
+    {
+      code: "support-gap",
+      message: expect.any(String),
+      at: { range: gap },
+      evidence: {
+        clipId: placed.edit.labels.gapped,
+        unavailable: gap,
+        stepIds: [placed.edit.labels.denoise],
+      },
+    },
+  ]);
+  // The renderer received one domain per available run; nothing spans the gap.
+  expect(states.at(-1)!.domains.map((d) => d.sampleRange)).toEqual([
+    { start: 96000, end: 108000 },
+    { start: 120000, end: 144000 },
+  ]);
 });

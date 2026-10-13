@@ -474,8 +474,7 @@ export class MediaAudioInspection {
       await validateProjectAudio(this.owners.project!.renderer, plan);
     return {
       snapshot: { ...selection, ...options },
-      submit: (admitted?: () => void) =>
-        this.submitProject(identity, selection, issues, admitted),
+      submit: (admitted?: () => void) => this.submitProject(identity, selection, issues, admitted),
     };
   }
   private submitProject(
@@ -806,14 +805,17 @@ export class MediaAudioInspection {
       signal.throwIfAborted();
       const sampleRange = plan.window.manifest.sampleRange;
       return {
-        ...value,
-        ...parsed.data,
-        projectId: job.target.projectId,
-        revisionId: job.target.revisionId,
-        mediaType: "audio/wav",
-        layout: "stereo",
-        sampleRange,
-      } satisfies Omit<ProjectAudioArtifact, "cacheId">;
+        value: {
+          ...value,
+          ...parsed.data,
+          projectId: job.target.projectId,
+          revisionId: job.target.revisionId,
+          mediaType: "audio/wav",
+          layout: "stereo",
+          sampleRange,
+        } satisfies Omit<ProjectAudioArtifact, "cacheId">,
+        issues: [...plan.outputIssues, ...audioProcessingIssues(value.processingEvidence ?? [])],
+      };
     } finally {
       prepared?.release();
     }
@@ -874,11 +876,14 @@ export class MediaAudioInspection {
       invalid("Source audio receipt differs from its selected stream or sample window");
     checkAudioWaveFile(value);
     return {
-      ...value,
-      ...options.selection,
-      supportDigest: options.supportDigest,
-      implementationId: options.implementationId,
-    } satisfies Omit<SourceAudioArtifact, "cacheId">;
+      value: {
+        ...value,
+        ...options.selection,
+        supportDigest: options.supportDigest,
+        implementationId: options.implementationId,
+      } satisfies Omit<SourceAudioArtifact, "cacheId">,
+      issues: [],
+    };
   }
   async execute({ job, signal }: JobExecution): Promise<string | StagedJobResult> {
     if (job.artifact === "audio-file") return this.executeEncoded({ job, signal });
@@ -886,18 +891,13 @@ export class MediaAudioInspection {
       throw new CatalogError("UNSUPPORTED_JOB", "Audio requires a project or asset selection");
     const output = this.owners.cache.reserve(job.target);
     try {
-      const value = await this.renderSelection(job, output.path, signal);
+      const { value, issues } = await this.renderSelection(job, output.path, signal);
       signal.throwIfAborted();
       const cached = await this.owners.cache.publish(output.id);
       signal.throwIfAborted();
       if (cached.bytes !== value.bytes) invalid("Published audio size differs from its receipt");
-      return {
-        result: JSON.stringify({ ...value, cacheId: output.id }),
-        // A processed project window carries its treatments' issues to every read of it.
-        issues: audioProcessingIssues(
-          ("processingEvidence" in value ? value.processingEvidence : undefined) ?? [],
-        ),
-      };
+      // A processed project window carries its state splits and treatments' issues to every read.
+      return { result: JSON.stringify({ ...value, cacheId: output.id }), issues };
     } catch (error) {
       this.owners.cache.remove(output.id);
       throw error;
