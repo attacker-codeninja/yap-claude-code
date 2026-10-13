@@ -42,7 +42,8 @@ export type CameraPublicationProof = SourcePublicationProof &
     gaps?: readonly SelectionRange[];
     representedFrames: number;
   }>;
-const maxCameraGaps = 100_000;
+// At most 500 camera runs per take (CAMERA_TOGGLE_LIMIT), so at most 499 gaps.
+const maxCameraGaps = 499;
 /** The only TypeScript reading of camera availability: support minus gaps, as a fresh list. */
 export function cameraProofIntervals(proof: CameraPublicationProof): SelectionRange[] {
   const intervals: SelectionRange[] = [];

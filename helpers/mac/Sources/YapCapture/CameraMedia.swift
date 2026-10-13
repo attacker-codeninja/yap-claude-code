@@ -49,8 +49,9 @@ package struct CameraFrameMapping: Codable {
 /// the outer span and `gaps` the off time strictly inside it, so a camera never turned off has
 /// no gaps. The only owner of camera interval arithmetic.
 package struct CameraAvailability: Sendable, Equatable {
-    /// The same bound as acquired audio intervals.
-    package static let maximumGaps = 100_000
+    /// A take turns its camera on at most 500 times (`CAMERA_TOGGLE_LIMIT`), so at most 499 gaps;
+    /// that keeps the receipt inside its 64 KiB read bound and the normalized receipt's 32 KiB.
+    package static let maximumGaps = 499
     package let support: ExactRange
     package let gaps: [ExactRange]
 
@@ -528,7 +529,7 @@ package enum CameraMedia {
             availability: availability, representedFrames: receipt.representedFrames), receipt.diagnostics)
     }
     /// Room for the most gaps a receipt may state, each with fractional endpoints.
-    private static let receiptLimit = Int64(65536 + CameraAvailability.maximumGaps * 128)
+    private static let receiptLimit = Int64(65536)
 
     struct IntendedSupport: Sendable {
         let source: Source

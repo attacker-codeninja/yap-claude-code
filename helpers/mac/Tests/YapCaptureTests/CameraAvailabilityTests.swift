@@ -17,6 +17,7 @@ func runCameraAvailabilityTests(output: String? = nil) async throws {
     try await RecoveryFixture.writeVariableDurationVideo(to: source,
         timesUs: [0, 50000, 100000, 150000], endUs: 200000)
     let pictures = try await availabilityPictures(source)
+    try runLimit()
     try await singleRunIsLegacyShape(root: root, pictures: pictures)
     try await startsOffThenOn(root: root, pictures: pictures)
     try await onOffOn(root: root, pictures: pictures)
@@ -31,11 +32,22 @@ func runCameraAvailabilityTests(output: String? = nil) async throws {
 
 // MARK: Cases
 
+/// A take turns its camera on at most 500 times (`CAMERA_TOGGLE_LIMIT`), so availability holds at
+/// most 500 intervals; the receipt then stays inside its 64 KiB read bound.
+private func runLimit() throws {
+    let runs = { (count: Int64) in (0..<count).map { ExactRange(startUs: $0 * 10, endUs: $0 * 10 + 5) } }
+    _ = try CameraAvailability(intervals: runs(500))
+    do {
+        _ = try CameraAvailability(intervals: runs(501))
+        preconditionFailure("501 camera runs must be refused")
+    } catch let failure as CaptureFailure where failure.code == "INVALID_CAMERA_MAPPING" {}
+}
+
 /// Receipt and mapping key sets of a take published by the pre-change build (commit 054c6d09,
 /// `YAP_CAMERA_CLOCK_OUTPUT` → `literal-no-primary/camera.publication.json` and
 /// `native-pause-later-primary/timestamps.jsonl`, run 2026-10-12 before any slice 02 change).
-/// TODO(camera-toggle 01): compare against the corpus-A receipt in
-/// specs/camera-toggle/assets/pre-toggle-corpus once slice 01 lands it.
+/// The same key sets as the 0.1.33 receipt and mapping in corpus A
+/// (specs/camera-toggle/assets/pre-toggle-corpus/a.tar.gz), checked at integration.
 private let preChangeReceiptKeys: Set<String> = ["binding", "candidate", "canonical", "closed", "diagnostics",
     "endUs", "firstUs", "journal", "observations", "originHostUs", "pictureSHA256", "pictureTimeScale",
     "presentation", "raw", "representedFrames", "support"]

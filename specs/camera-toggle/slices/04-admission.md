@@ -45,7 +45,7 @@ Done:
 - `CameraPublicationProof.gaps` and `cameraProofIntervals()` in `evidence.ts`; the receipt
   validator refuses malformed `gaps` with "Invalid verified camera gaps" (not a list, empty
   list, an invalid range, unsorted, overlapping, adjacent, touching or outside `support`, more
-  than 100 000 entries).
+  than 499 entries).
 - `AcquisitionImporter.binding` compares the probe's `available[]` with the proof intervals
   shifted by the asset origin; the deep-equal and its error text are unchanged. Import, capture
   and portable verification all reach this one comparison.
@@ -61,8 +61,6 @@ Left for the integrator:
   native output (the real `media.probe`-against-receipt check at µs scale).
 - Done at integration: the legacy test ("a 0.1.33 camera proof admits unchanged") now uses
   the proof release 0.1.33 stored for corpus B's camera take.
-- Budget: the normalized receipt (which carries `publications.video`) is capped at 32 KiB by
-  `validateSourceReceipt`, and `camera.publication.json` at 64 KiB. At about 40 bytes per gap
-  that admits roughly 700 gaps per take, far below the 100 000 count rule. Slice 02's
-  `manyGaps` (500 runs) fits; slice 08 should measure a real receipt and raise it with the user
-  if takes with more toggles than that are expected.
+- Budget: resolved at integration. A take has at most 500 runs (`CAMERA_TOGGLE_LIMIT`), so at
+  most 499 gaps, about 20 KB: inside the 32 KiB normalized receipt and 64 KiB
+  `camera.publication.json` bounds. Both validators state 499.

@@ -113,13 +113,13 @@ start the next interval (unless no source time separates it from the previous ru
 other frame must stay inside the current one. Raw and canonical scans share that one rule
 (`CameraMedia.startsInterval`). `validateJournal` is unchanged.
 
-### Receipt read budget grows to fit 100 000 gaps (02)
+### At most 499 gaps, inside the original receipt bounds (02, 04, revised at integration)
 
-`camera.publication.json` was read with a 64 KiB bound. It is now
-`65536 + 100000 × 128` bytes (about 12.9 MB), room for the most gaps a receipt may state with
-fractional endpoints. 500 gaps take 19.8 KB. **Slice 04 must match it**: core admission
-(`packages/core/src/evidence.ts`, the `kind === "receipt" ? 65536` identity check) still
-refuses a camera receipt over 64 KiB.
+Slice 02 first grew the `camera.publication.json` read bound to fit 100 000 gaps. Integration
+reverted that: slice 05 refuses a turn-on that would start run 500 (`CAMERA_TOGGLE_LIMIT`), so a
+take has at most 499 gaps. 500 gaps take about 20 KB, inside the original 64 KiB receipt bound
+and the normalized receipt's 32 KiB, so no bound changes. Swift (`CameraAvailability.maximumGaps`)
+and TypeScript (`maxCameraGaps`) both state 499 and both have a test at the edge.
 
 ### A crashed reordered tail ends the camera prefix (02)
 

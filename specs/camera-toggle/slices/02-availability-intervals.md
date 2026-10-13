@@ -21,8 +21,8 @@ Receipt (`camera.publication.json`, `CameraMedia.Receipt`):
 "support":{"startUs":1200000,"endUs":31033333},  // outer span, unchanged
 "gaps":[{"startUs":9033333,"endUs":14100000}]    // NEW, optional, omitted when empty
 ```
-`gaps`: sorted, disjoint, non-adjacent, strictly inside `support`, at most 100 000 entries (the
-audio interval bound). Encoded with `encodeIfPresent`. `VerifiedSource` encodes the same
+`gaps`: sorted, disjoint, non-adjacent, strictly inside `support`, at most 499 entries (500 runs,
+`CAMERA_TOGGLE_LIMIT`). Encoded with `encodeIfPresent`. `VerifiedSource` encodes the same
 `support` plus optional `gaps` into `receipt.publications.video`.
 
 One value type owns the arithmetic, in `CameraMedia.swift`:
@@ -131,8 +131,9 @@ refused (one byte form per take).
   authority), and origin sharing for a late first run (`startsOffThenOn` with a primary origin).
   The named files only follow the `VerifiedSource.availability` rename.
 - Case 1 compares against key sets captured from a take published by the pre-change build
-  (recorded in the test). TODO(integrator): point `singleRunIsLegacyShape` at the corpus-A
-  receipt in `specs/camera-toggle/assets/pre-toggle-corpus` once slice 01 lands it.
+  (recorded in the test). At integration these were checked equal to the key sets of corpus A's
+  0.1.33 receipt and mapping. The gap bound was set to 499 (500 runs), keeping the original
+  64 KiB receipt bound; see `choices.md`.
 
 **Evidence.** `YAP_CAMERA_AVAILABILITY_OUTPUT=<dir>`: all nine cases plus malformed gaps pass.
 Each mechanism was falsified once (gate ignoring the off-time crossing, canonical holding a

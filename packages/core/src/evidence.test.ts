@@ -164,6 +164,19 @@ test("camera proof intervals are support minus gaps; a proof without gaps is one
   ]);
 });
 
+test("a take carries at most 499 camera gaps, one fewer than its 500 runs", async () => {
+  const f = fixture();
+  const gaps = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({ startUs: 102 + 2 * i, endUs: 103 + 2 * i }));
+  const support = { startUs: 100, endUs: 1200 };
+  const within = { ...f.receipt, publications: { video: cameraProof({ support, gaps: gaps(499) }) } };
+  await f.evidence.ingest({ ...f.identity, generation: "within", file: f.file, receipt: within });
+  const beyond = { ...f.receipt, publications: { video: cameraProof({ support, gaps: gaps(500) }) } };
+  await expect(
+    f.evidence.ingest({ ...f.identity, generation: "beyond", file: f.file, receipt: beyond }),
+  ).rejects.toMatchObject({ code: "INVALID_EVIDENCE", message: "Invalid verified camera gaps" });
+});
+
 test("malformed camera gaps refuse the whole receipt", async () => {
   const f = fixture();
   const cases = {
