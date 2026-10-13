@@ -82,7 +82,7 @@ import type { SpeakerLabelStore } from "@yap/core/speaker-labels";
 import { selectSpeakerSource } from "@yap/core/source-speakers";
 import type { TranscriptStore } from "@yap/core/transcript";
 import type { TranscriptProcessing } from "@yap/core/transcript-processing";
-import type { JobQueue } from "@yap/core/jobs";
+import type { ContextJob, JobQueue } from "@yap/core/jobs";
 import { PackageRegistry } from "./package-registry.js";
 import { openPackageParent } from "./package-workspace.js";
 import { writeArchive } from "./archive-write.js";
@@ -97,6 +97,8 @@ export type PinnedProjectPackage = {
   transcriptFiles: Record<string, IdentifiedFile>;
 };
 type Workspace = { directory: string; handle: FileHandle };
+/** Package context work returns only a result, so it has no channel to report issues on. */
+const contextPublication = (job: ContextJob) => ({ ...job, issues: [] });
 type Owners = {
   directory: string;
   projects: ProjectStore;
@@ -286,7 +288,7 @@ export class ProjectPackages {
         ...summary,
         inputSha256: createHash("sha256").update(recipe).digest("hex"),
         published: serialized
-          ? publishedOutput(job, () => JSON.parse(serialized) as unknown)
+          ? publishedOutput(contextPublication(job), () => JSON.parse(serialized) as unknown)
           : null,
         page: null,
       };
@@ -1228,7 +1230,9 @@ export class ProjectPackages {
       packageHandle,
       requestId,
       inputSha256: createHash("sha256").update(recipe).digest("hex"),
-      published: serialized ? publishedOutput(job, () => JSON.parse(serialized) as unknown) : null,
+      published: serialized
+        ? publishedOutput(contextPublication(job), () => JSON.parse(serialized) as unknown)
+        : null,
     };
   }
   async assemble(

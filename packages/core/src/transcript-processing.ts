@@ -277,6 +277,7 @@ export class TranscriptProcessing {
           ? null
           : {
               generation: status.published.generation,
+              issues: status.published.issues,
               transcript: JSON.parse(status.published.result) as TranscriptMetadata,
             },
       models,

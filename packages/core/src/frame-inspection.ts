@@ -519,7 +519,11 @@ export class MediaFrameInspection {
       retryable: status.retryable,
       jobId: status.jobId,
       published: status.published
-        ? { generation: status.published.generation, frame: status.published.value }
+        ? {
+            generation: status.published.generation,
+            issues: status.published.issues,
+            frame: status.published.value,
+          }
         : null,
     };
   }
@@ -592,7 +596,11 @@ export class MediaFrameInspection {
       retryable: status.retryable,
       jobId: status.jobId,
       published: status.published
-        ? { generation: status.published.generation, frame: status.published.value }
+        ? {
+            generation: status.published.generation,
+            issues: status.published.issues,
+            frame: status.published.value,
+          }
         : null,
     };
   }
@@ -889,7 +897,11 @@ export class MediaFrameInspection {
       retryable: status.retryable,
       jobId: status.jobId,
       published: status.published
-        ? { generation: status.published.generation, frame: status.published.value }
+        ? {
+            generation: status.published.generation,
+            issues: status.published.issues,
+            frame: status.published.value,
+          }
         : null,
     };
   }

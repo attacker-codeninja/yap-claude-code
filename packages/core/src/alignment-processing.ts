@@ -116,6 +116,7 @@ export class AlignmentProcessing {
     const published = status.published
       ? {
           generation: status.published.generation,
+          issues: status.published.issues,
           evidence: JSON.parse(status.published.result) as AlignmentEvidenceMetadata,
         }
       : null;
@@ -168,6 +169,7 @@ export class AlignmentProcessing {
       published = status.published
         ? {
             generation: status.published.generation,
+            issues: status.published.issues,
             evidence: JSON.parse(status.published.result) as AlignmentEvidenceMetadata,
           }
         : null;
@@ -182,6 +184,7 @@ export class AlignmentProcessing {
         nextPublished = next.published
           ? {
               generation: next.published.generation,
+              issues: next.published.issues,
               evidence: JSON.parse(next.published.result) as AlignmentEvidenceMetadata,
             }
           : null;

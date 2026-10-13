@@ -117,6 +117,7 @@ const ready = (delivery: { token: string; bytes: number; expiresAt: number }) =>
   published: {
     generation: 1,
     output: { mediaType: "image/png", recipe: { width: 640, height: 360 } },
+    issues: [],
   },
   delivery,
   support: { startUs: 7, endUs: 10 },
@@ -385,7 +386,7 @@ for (const [kind, operation, mediaType] of [
       ok: true,
       data: {
         state: "ready",
-        published: { generation: 1, output: { mediaType } },
+        published: { generation: 1, output: { mediaType }, issues: [] },
         delivery: open(bytes, kind === "audio" ? 8 * 1024 ** 2 : bytes.length),
         evidence: { exact: true },
       },
@@ -403,7 +404,7 @@ for (const [name, operation, published, bytes, message, closes] of [
   [
     "image raw cap",
     "frame.get",
-    { generation: 1, output: { mediaType: "image/png" } },
+    { generation: 1, output: { mediaType: "image/png" }, issues: [] },
     32 * 1024 ** 2 + 1,
     "Image exceeds its buffered delivery byte limit",
     1,
@@ -411,7 +412,7 @@ for (const [name, operation, published, bytes, message, closes] of [
   [
     "JSON raw cap",
     "waveform.get",
-    { generation: 1, output: { mediaType: "application/json" } },
+    { generation: 1, output: { mediaType: "application/json" }, issues: [] },
     4 * 1024 ** 2 + 1,
     "JSON evidence exceeds its buffered delivery byte limit",
     1,
@@ -419,7 +420,7 @@ for (const [name, operation, published, bytes, message, closes] of [
   [
     "large audio metadata",
     "audio.get",
-    { generation: 1, output: { mediaType: "audio/wav" } },
+    { generation: 1, output: { mediaType: "audio/wav" }, issues: [] },
     Number.MAX_SAFE_INTEGER,
     null,
     0,
@@ -468,7 +469,7 @@ for (const [kind, operation, mediaType, bytes] of [
       ok: true,
       data: {
         state: "ready",
-        published: { generation: 1, output: { mediaType } },
+        published: { generation: 1, output: { mediaType }, issues: [] },
         delivery: { ...open(bytes), expiresAt: Date.now() + 1000 },
         clock: { originUs: 4, domain: "source" },
       },

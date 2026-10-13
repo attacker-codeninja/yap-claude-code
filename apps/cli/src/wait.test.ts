@@ -1,8 +1,18 @@
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
+import { createHash } from "node:crypto";
+import { writeSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { promisify } from "node:util";
 import { afterEach, expect, test } from "vitest";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { callLocal } from "@yap/client";
+import { Catalog } from "@yap/core/catalog";
+import { writeOutputIssues } from "@yap/core/issues";
 import { listenLocal } from "@yap/service";
-import type { OperationRequest, OperationResult } from "@yap/protocol";
+import { responseSchema, type OperationRequest, type OperationResult } from "@yap/protocol";
+import { startProjectService } from "../../service/dist/project-service.js";
 
 const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => {
@@ -74,7 +84,7 @@ const job = (state: string, generation = 2) => ({
   generation,
   state,
   target: { kind: "import", importId: "admission" },
-  published: { generation: 1, attemptId: "older", output: { assetId: "old" } },
+  published: { generation: 1, attemptId: "older", output: { assetId: "old" }, issues: [] },
 });
 
 test("wait submits a mutation once and waits for its current generation instead of accepting retained output", async () => {
@@ -89,7 +99,12 @@ test("wait submits a mutation once and waits for its current generation instead 
           ? job("running")
           : {
               ...job("ready"),
-              published: { generation: 2, attemptId: "attempt-2", output: { assetId: "new" } },
+              published: {
+                generation: 2,
+                attemptId: "attempt-2",
+                output: { assetId: "new" },
+                issues: [],
+              },
             },
     };
   });
@@ -123,7 +138,7 @@ test("pending timeout preserves pinned acknowledgement and current generation, c
           revisionId: "r7",
           state: "processing",
           jobId: "job",
-          published: { generation: 1, output: { mediaType: "image/png" } },
+          published: { generation: 1, output: { mediaType: "image/png" }, issues: [] },
           delivery: { token: "old-pin", bytes: 1, expiresAt: Date.now() + 30000 },
         },
       };
@@ -168,7 +183,7 @@ test("an older ready rendition never becomes the final file while its replacemen
           revisionId: "r7",
           state: "ready",
           jobId: "job",
-          published: { generation: 1, output: { mediaType: "image/png" } },
+          published: { generation: 1, output: { mediaType: "image/png" }, issues: [] },
           delivery: { token: "old-pin", bytes: 1, expiresAt: Date.now() + 30000 },
         },
       };
@@ -592,7 +607,7 @@ test("batch wait inspects replacement jobs before accepting retained ready items
               data: {
                 state: "ready",
                 jobId: "job",
-                published: { generation: 1, output: { mediaType: "image/png" } },
+                published: { generation: 1, output: { mediaType: "image/png" }, issues: [] },
                 delivery: { token: "old", bytes: 1, expiresAt: Date.now() + 30000 },
               },
             },
@@ -781,7 +796,7 @@ test("the wait deadline covers media delivery and never publishes an incomplete 
           assetId: "a",
           streamId: "s",
           state: "ready",
-          published: { generation: 1, output: { mediaType: "application/json" } },
+          published: { generation: 1, output: { mediaType: "application/json" }, issues: [] },
           delivery: { token: "measurement", bytes: 2, expiresAt: Date.now() + 30000 },
         },
       };
@@ -860,7 +875,9 @@ test("a delayed batch delivers only completed items and retains each terminal fa
               data: {
                 state: ready ? "ready" : "processing",
                 jobId: "ready-job",
-                published: ready ? { generation: 2, output: { mediaType: "image/png" } } : null,
+                published: ready
+                  ? { generation: 2, output: { mediaType: "image/png" }, issues: [] }
+                  : null,
                 delivery: ready
                   ? { token: "complete", bytes: 2, expiresAt: Date.now() + 30000 }
                   : null,
@@ -933,7 +950,7 @@ test("batch file publication drains a failed disk write without exposing a parti
             ok: true,
             data: {
               state: "ready",
-              published: { generation: 1, output: { mediaType: "image/png" } },
+              published: { generation: 1, output: { mediaType: "image/png" }, issues: [] },
               delivery: { token: `frame-${atUs}`, bytes: 4, expiresAt: Date.now() + 30000 },
             },
           })),
@@ -1019,7 +1036,11 @@ test("cached failed batch jobs drain every fresh retained lease while another it
               jobId: atUs === 7 ? "failed-job" : "ready-job",
               published:
                 atUs === 7 || reads >= 3
-                  ? { generation: atUs === 7 ? 1 : 2, output: { mediaType: "image/png" } }
+                  ? {
+                      generation: atUs === 7 ? 1 : 2,
+                      output: { mediaType: "image/png" },
+                      issues: [],
+                    }
                   : null,
               delivery:
                 atUs === 7 || reads >= 3
@@ -1111,7 +1132,7 @@ test.each(["failed", "canceled"])(
             revisionId: "r7",
             state: "ready",
             jobId: "job",
-            published: { generation: 1, output: { mediaType: "image/png" } },
+            published: { generation: 1, output: { mediaType: "image/png" }, issues: [] },
             delivery: { token: "old", bytes: 1, expiresAt: Date.now() + 30000 },
           },
         };
@@ -1513,7 +1534,7 @@ test("batch media delivery timeout reclassifies settled wait while keeping compl
               ok: true,
               data: {
                 state: "ready",
-                published: { generation: 1, output: { mediaType: "image/png" } },
+                published: { generation: 1, output: { mediaType: "image/png" }, issues: [] },
                 delivery: { token: "slow", bytes: 2, expiresAt: Date.now() + 30000 },
               },
             },
@@ -1542,4 +1563,123 @@ test("batch media delivery timeout reclassifies settled wait while keeping compl
     wait: { state: "timed_out" },
     data: { items: [{ atUs: 7 }] },
   });
+});
+
+test("one published output reports the same issues through the service, CLI --wait and MCP", async () => {
+  const home = await mkdtemp("/tmp/yap-wait-issues-");
+  cleanups.push(() => rm(home, { recursive: true, force: true }));
+  const path = join(home, "source.png");
+  await writeFile(path, "image bytes");
+  const service = await startProjectService({
+    home,
+    autoPrepareModels: false,
+    worker: async (operation, params, options) => {
+      if (["media.pictureCapabilities", "media.audioCapabilities"].includes(operation))
+        return { ok: true, data: {} };
+      if (operation === "storage.clearRenderWorkspace")
+        return { ok: true, data: { removed: true } };
+      expect(operation).toBe("media.probe");
+      // The native probe hands its answer back through the descriptor named by its output path.
+      const answer = Buffer.from(
+        JSON.stringify({
+          originUs: 0,
+          streams: [
+            {
+              id: "image",
+              kind: "image",
+              codec: "png",
+              decodable: true,
+              width: 2,
+              height: 1,
+              orientedWidth: 2,
+              orientedHeight: 1,
+            },
+          ],
+        }),
+      );
+      const descriptor = Number(String(params.output).split("/").at(-1)) - 3;
+      writeSync(options!.descriptors![descriptor]!, answer, 0, answer.length, 0);
+      return {
+        ok: true,
+        data: {
+          file: params.output,
+          bytes: answer.length,
+          sha256: createHash("sha256").update(answer).digest("hex"),
+        },
+      };
+    },
+  });
+  cleanups.push(() => service.close());
+  const params = { requestId: "issues", path };
+  const handler = async (operation: string, values: Record<string, unknown>) => {
+    const reply = await callLocal(service.socketPath, { id: "parity", operation, params: values });
+    if (!reply.ok) throw Error(reply.error.message);
+    return reply.data as {
+      jobId: string;
+      state: string;
+      published: { generation: number; attemptId: string; issues: unknown } | null;
+    };
+  };
+  let ready = await handler("asset.import", params);
+  for (let poll = 0; ["queued", "running"].includes(ready.state) && poll < 300; poll++) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    ready = await handler("job.get", { jobId: ready.jobId });
+  }
+  expect(ready.published?.issues).toEqual([]);
+
+  // No producer reports issues yet, so the publication's issue rows are written through storage.
+  const issue: Parameters<typeof writeOutputIssues>[2][number] = {
+    code: "issues-truncated",
+    message: "1 more issue was omitted",
+    evidence: { omitted: 1 },
+  };
+  const store = new Catalog(join(home, "library", "catalog.sqlite"));
+  store.transaction(() =>
+    writeOutputIssues(
+      store,
+      {
+        outputKind: "artifact",
+        outputId: ready.published!.attemptId,
+        generation: ready.published!.generation,
+      },
+      [issue],
+    ),
+  );
+  store.close();
+
+  const served = await handler("asset.import", params);
+  expect(served.published?.issues).toEqual([issue]);
+
+  const entry = new URL("../dist/main.js", import.meta.url).pathname;
+  const cli = await promisify(execFile)(process.execPath, [
+    entry,
+    "asset.import",
+    "--socket",
+    service.socketPath,
+    "--params",
+    JSON.stringify(params),
+    "--wait",
+    "--timeout-ms",
+    "5000",
+  ]);
+  expect(cli.stdout.trim().split("\n")).toHaveLength(1);
+  const waited = JSON.parse(cli.stdout) as { ok: boolean; data: typeof served };
+  expect(waited).toMatchObject({ ok: true, wait: { state: "settled" } });
+  expect(waited.data.published?.issues).toEqual(served.published?.issues);
+  expect(cli.stderr.trim().split("\n").at(-1)).toBe("asset.import: ready (1 issues)");
+
+  const client = new Client({ name: "issue-parity", version: "1" });
+  cleanups.push(() => client.close());
+  await client.connect(
+    new StdioClientTransport({
+      command: process.execPath,
+      args: [entry, "mcp", "--socket", service.socketPath],
+      stderr: "pipe",
+    }),
+  );
+  const tool = await client.callTool({ name: "asset.import", arguments: params });
+  expect(tool.isError).toBe(false);
+  const reply = responseSchema.parse(tool.structuredContent);
+  if (!reply.ok) throw Error(reply.error.message);
+  expect((reply.data as typeof served).published?.issues).toEqual(served.published?.issues);
 });

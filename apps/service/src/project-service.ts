@@ -912,7 +912,10 @@ export async function startProjectService(options: {
       const frame = "projectId" in input ? indexes.frameProject(input) : indexes.frameSource(input);
       return {
         ...frame,
-        published: publishedOutput({ generation: frame.generation }, () => frame.published.frame),
+        published: publishedOutput(
+          { generation: frame.generation, issues: frame.published.issues },
+          () => frame.published.frame,
+        ),
         delivery:
           "projectId" in input
             ? delivery.open({ kind: "project", id: input.projectId }, () =>
