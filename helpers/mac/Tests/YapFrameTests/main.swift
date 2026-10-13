@@ -72,6 +72,11 @@ if CommandLine.arguments.contains("--text-highlights") {
     finish()
 }
 
+if CommandLine.arguments.contains("--text-fallback") {
+    try verifyTextFallback()
+    finish()
+}
+
 if CommandLine.arguments.contains("--blend-modes") {
     try await verifyCompositionBlends(in: images)
     finish()

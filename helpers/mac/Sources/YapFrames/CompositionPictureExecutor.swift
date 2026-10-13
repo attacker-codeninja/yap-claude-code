@@ -115,6 +115,28 @@ public final class CompositionPictureExecutor {
         var reason: String? = nil
         var layout: TextLayout? = nil
     }
+    /// A text raster's `TextFallback`, attributed to the clip whose text it drew.
+    public struct TextFallbackReport: Encodable, Equatable {
+        let clipId: String
+        var fallback: TextFallback
+        enum CodingKeys: String, CodingKey { case clipId, face, substituted, missing }
+        public func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(clipId, forKey: .clipId)
+            try container.encode(fallback.face, forKey: .face)
+            try container.encode(fallback.substituted, forKey: .substituted)
+            try container.encode(fallback.missing, forKey: .missing)
+        }
+    }
+    private func recordFallbacks(_ fallbacks: [TextFallback], clipId: String) {
+        for fallback in fallbacks {
+            if let index = textFallbacks.firstIndex(where: { $0.clipId == clipId && $0.fallback.face == fallback.face }) {
+                textFallbacks[index].fallback.add(substituted: fallback.substituted, missing: fallback.missing)
+            } else {
+                textFallbacks.append(TextFallbackReport(clipId: clipId, fallback: fallback))
+            }
+        }
+    }
     private struct LayerKey: Equatable {
         let clipId: String
         let reader: Int
@@ -190,6 +212,8 @@ public final class CompositionPictureExecutor {
     private(set) var pointerRasterizations = 0
     private var retainedRaster: (key: RasterKey, buffer: CVPixelBuffer)?
     private(set) var pictures: [Picture] = []
+    /// Every font fallback drawn so far, one entry per text clip and face, in first-drawn order.
+    private(set) var textFallbacks: [TextFallbackReport] = []
     private(set) var outputIsKnownOpaque = false
     var decodedSamples: Int { decoded + readers.values.reduce(0) { $0 + $1.source.decodedCount } }
 
@@ -381,6 +405,7 @@ public final class CompositionPictureExecutor {
                 guard layer.availability == "available" || layer.availability == "anchor-unavailable" else { throw Self.invalid("Invalid text availability.") }
                 let available = layer.availability == "available"
                 let raster = texts[text]
+                if available, let raster { recordFallbacks(raster.fallbacks, clipId: layer.clipId) }
                 pictures.append(Picture(kind: "text", status: available ? "available" : "unavailable",
                     clipId: layer.clipId, reason: available ? nil : layer.availability, layout: available ? raster?.layout : nil))
                 keys.append(LayerKey(clipId: layer.clipId, reader: 0, binding: text.font.assetId,

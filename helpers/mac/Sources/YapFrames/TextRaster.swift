@@ -79,10 +79,33 @@ struct TextLayout: Encodable {
     let activeRanges: [[Int]]?
 }
 
+/// One face CoreText drew with other than the pinned one, or one that lacked glyphs. `substituted`
+/// lists the code points another installed face drew in place of the pinned face; `missing` those
+/// drawn as a placeholder box (this face's glyph 0, or CoreText's last resort face). Both keep first-occurrence order without repeats. Core turns these facts into
+/// `font-substituted` and `glyph-missing` issues (`packages/core/src/text-fallback.ts`).
+struct TextFallback: Encodable, Equatable {
+    let face: String
+    private(set) var substituted: [UInt32]
+    private(set) var missing: [UInt32]
+
+    init(face: String, substituted: [UInt32], missing: [UInt32]) {
+        self.face = face
+        self.substituted = []
+        self.missing = []
+        add(substituted: substituted, missing: missing)
+    }
+
+    mutating func add(substituted: [UInt32], missing: [UInt32]) {
+        for value in substituted where !self.substituted.contains(value) { self.substituted.append(value) }
+        for value in missing where !self.missing.contains(value) { self.missing.append(value) }
+    }
+}
+
 struct TextRaster {
     let image: CIImage
     let layout: TextLayout
     let pixels: Int64
+    let fallbacks: [TextFallback]
 
     init(_ request: TextSource, binding: FontAssetBinding) throws {
         func validColor(_ value: String) -> Bool {
@@ -151,6 +174,22 @@ struct TextRaster {
         CTFrameGetLineOrigins(frame, CFRange(location: 0, length: 0), &origins)
         var reports: [TextLayout.Line] = []
         var glyphBounds = CGRect.null
+        var fallbacks: [TextFallback] = []
+        let utf16 = Array(request.text.utf16)
+        func scalar(at offset: Int) -> UInt32 {
+            let unit = utf16[offset]
+            if UTF16.isLeadSurrogate(unit), offset + 1 < utf16.count, UTF16.isTrailSurrogate(utf16[offset + 1]) {
+                return UTF16.decode(UTF16.EncodedScalar([unit, utf16[offset + 1]])).value
+            }
+            return UInt32(unit)
+        }
+        func record(_ face: String, substituted: [UInt32] = [], missing: [UInt32] = []) {
+            let index = fallbacks.firstIndex { $0.face == face } ?? {
+                fallbacks.append(TextFallback(face: face, substituted: [], missing: []))
+                return fallbacks.count - 1
+            }()
+            fallbacks[index].add(substituted: substituted, missing: missing)
+        }
         for (index, line) in lines.enumerated() {
             try Task.checkCancellation()
             let range = CTLineGetStringRange(line)
@@ -158,13 +197,24 @@ struct TextRaster {
             for run in CTLineGetGlyphRuns(line) as! [CTRun] {
                 let attributes = CTRunGetAttributes(run) as NSDictionary
                 let used = attributes[kCTFontAttributeName] as! CTFont
-                guard CFEqual(CTFontCopyGraphicsFont(used, nil), graphicsFont) else {
-                    throw NativeFailure("UNSUPPORTED_MEDIA", "FONT_SUBSTITUTED: \(CTFontCopyPostScriptName(used))")
+                let face = CTFontCopyPostScriptName(used) as String
+                // CoreText falls back per run; the frame keeps that choice and reports it. Its last
+                // resort face draws a placeholder box for a code point no installed face covers, so
+                // those code points are missing glyphs rather than a substitution.
+                if face != request.font.postScriptName || !CFEqual(CTFontCopyGraphicsFont(used, nil), graphicsFont) {
+                    let span = CTRunGetStringRange(run)
+                    let drawn = (span.location..<span.location + span.length)
+                        .filter { !UTF16.isTrailSurrogate(utf16[$0]) }.map(scalar)
+                    if face == "LastResort" { record(face, missing: drawn) } else { record(face, substituted: drawn) }
                 }
-                var glyphs = [CGGlyph](repeating: 0, count: CTRunGetGlyphCount(run))
+                let count = CTRunGetGlyphCount(run)
+                var glyphs = [CGGlyph](repeating: 0, count: count)
+                var offsets = [CFIndex](repeating: 0, count: count)
                 CTRunGetGlyphs(run, CFRange(location: 0, length: 0), &glyphs)
-                guard !glyphs.contains(0) else { throw NativeFailure("UNSUPPORTED_MEDIA", "FONT_GLYPH_MISSING") }
-                usedFonts.append(CTFontCopyPostScriptName(used) as String)
+                CTRunGetStringIndices(run, CFRange(location: 0, length: 0), &offsets)
+                let blank = zip(glyphs, offsets).filter { $0.0 == 0 }.map { scalar(at: $0.1) }
+                if !blank.isEmpty { record(face, missing: blank) }
+                usedFonts.append(face)
             }
             reports.append(.init(range: [range.location, range.length],
                 text: (request.text as NSString).substring(with: NSRange(location: range.location, length: range.length)),
@@ -174,7 +224,7 @@ struct TextRaster {
         }
         let hasGlyphBounds = !glyphBounds.isNull
         guard !hasGlyphBounds || (glyphBounds.width.isFinite && glyphBounds.height.isFinite) else {
-            throw NativeFailure("UNSUPPORTED_MEDIA", "FONT_GLYPH_BOUNDS_UNAVAILABLE")
+            throw NativeFailure("FONT_GLYPH_BOUNDS_UNAVAILABLE", "The drawn glyphs have no finite bounds to lay out.")
         }
         let baseGlyphBounds = glyphBounds
         let verticalOffset: CGFloat
@@ -258,5 +308,6 @@ struct TextRaster {
             verticalOffset: Double(verticalOffset), stroke: request.stroke, shadow: request.shadow, background: request.background,
             highlight: request.highlight, activeRanges: request.activeRanges)
         self.pixels = Int64(request.width) * Int64(request.height)
+        self.fallbacks = fallbacks
     }
 }

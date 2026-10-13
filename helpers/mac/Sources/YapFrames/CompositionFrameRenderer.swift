@@ -36,6 +36,8 @@ public enum CompositionFrameRenderer {
         let bytes: Int
         let observations: PictureObservations?
         let faceObservations: FaceObservations?
+        /// Omitted when every text drew with its pinned face.
+        let textFallbacks: [CompositionPictureExecutor.TextFallbackReport]?
     }
 
     public static func write(_ request: Request) async throws -> Result {
@@ -70,6 +72,7 @@ public enum CompositionFrameRenderer {
             width: image.width, height: image.height,
             sourceWidth: request.canvas.width, sourceHeight: request.canvas.height,
             decodedImages: pictures.decodedImages, decodedSamples: pictures.decodedSamples,
-            readerOpens: pictures.opens, bytes: published.bytes, observations: published.observations, faceObservations: published.faceObservations)
+            readerOpens: pictures.opens, bytes: published.bytes, observations: published.observations, faceObservations: published.faceObservations,
+            textFallbacks: pictures.textFallbacks.isEmpty ? nil : pictures.textFallbacks)
     }
 }
