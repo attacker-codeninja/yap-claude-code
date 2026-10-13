@@ -14,6 +14,8 @@ export async function captureFixture(
   home?: string,
   worker?: MediaWorker,
   silentOperation?: string,
+  /** The control channel's default per-call deadline; production uses the protocol's. */
+  controlTimeoutMs?: number,
 ) {
   if (!home) {
     home = await mkdtemp("/tmp/project-capture-");
@@ -191,7 +193,7 @@ export async function captureFixture(
   });
   const service = await startProjectService({
     home,
-    control: { input, output },
+    control: { input, output, timeoutMs: controlTimeoutMs },
     worker: async (operation, params, options) => {
       if (operation === "storage.clearRenderWorkspace")
         return { ok: true, data: { removed: true } };

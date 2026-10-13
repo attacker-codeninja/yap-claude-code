@@ -1587,11 +1587,16 @@ const waits: Partial<Record<OperationName, number>> = {
   "storage.usage": drain,
 };
 
+/** The longest the service waits on one operation's own path before answering it. */
+export function operationWaitMs(operation: string): number {
+  return waits[operation as OperationName] ?? DEFAULT_CALL_TIMEOUT_MS;
+}
+
 /**
  * How long a client waits for one operation's answer. It outlasts every wait the service bounds on
  * that operation's own path, so the service's outcome, including its own timeout, reaches the
  * caller rather than a transport guess about work that is still running.
  */
 export function operationDeadlineMs(operation: string): number {
-  return (waits[operation as OperationName] ?? DEFAULT_CALL_TIMEOUT_MS) + 5_000;
+  return operationWaitMs(operation) + 5_000;
 }

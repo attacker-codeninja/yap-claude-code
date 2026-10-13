@@ -220,6 +220,36 @@ test("a reserved camera starts off and turns on and off in the take's control or
   ]);
 });
 
+test("a camera turn-on that outlasts an ordinary native call is still answered", async () => {
+  // The channel's ordinary deadline is shortened here; a cold camera start gets the operation's
+  // own public budget, so native's late answer still reaches the caller.
+  const f = await fixture(undefined, undefined, "capture.setCamera", 100);
+  const started = await f.call("capture.start", {
+    requestId: "slow-camera",
+    source: { kind: "display", displayId: 1 },
+    cameraDeviceId: "camera-a",
+    cameraAtStart: "off",
+  });
+  if (!started.ok) throw new Error(JSON.stringify(started));
+  const { recordingId, sourceId } = started.data as { recordingId: string; sourceId: string };
+  const turnedOn = f.call("capture.setCamera", { recordingId, on: true });
+  await expect.poll(() => f.nativeCalls).toContain("capture.setCamera");
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  await f.reply("capture.setCamera", {
+    state: "recording",
+    recordingId,
+    sourceId,
+    elapsedUs: 0,
+    selection: { source: { kind: "display", displayId: 1 }, cameraDeviceId: "camera-a" },
+    camera: { deviceId: "camera-a", state: "on" },
+    permissions: { screen: true, microphone: "authorized", camera: "authorized" },
+  });
+  expect(await turnedOn).toMatchObject({
+    ok: true,
+    data: { device: { camera: { deviceId: "camera-a", state: "on" } } },
+  });
+});
+
 test("a camera toggle refuses without a reserved camera or a live take, and carries native's refusal", async () => {
   const f = await fixture();
   const started = await f.call("capture.start", {

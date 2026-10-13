@@ -2436,9 +2436,9 @@ export async function startProjectService(options: {
     const captureCoordinator = new CaptureService(
       captures,
       library,
-      (operation, params) =>
+      (operation, params, options) =>
         controller
-          ? controller.call(operation, params)
+          ? controller.call(operation, params, options)
           : Promise.resolve(operationError("NOT_READY", "No capture controller is connected")),
       worker,
       console.error,

@@ -22,6 +22,7 @@ import {
   captureReportSchema,
   captureSourcesSchema,
   nativeStartSchema,
+  operationWaitMs,
   type CaptureReport,
   type CaptureSelection,
   type OperationResult,
@@ -231,9 +232,14 @@ export class CaptureService {
         throw new CatalogError("CAMERA_NOT_RESERVED", "This take reserved no companion camera", {
           recordingId,
         });
-      const device = captureDeviceSchema.parse(
-        await this.ask("capture.setCamera", { recordingId, on }),
+      // Turning on opens the camera cold, so native gets the operation's whole public budget.
+      const answer = await this.native(
+        "capture.setCamera",
+        { recordingId, on },
+        { timeoutMs: operationWaitMs("capture.setCamera") },
       );
+      if (!answer.ok) throw fromNative(answer);
+      const device = captureDeviceSchema.parse(answer.data);
       return { device, recording: this.store.get(recordingId) };
     });
   }

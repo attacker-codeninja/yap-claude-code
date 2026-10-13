@@ -133,6 +133,14 @@ final class CaptureController {
             try await expect(params)
             try capture.resume()
             return try transition("recording")
+        case "capture.setCamera":
+            try await expect(params)
+            guard let on = params["on"] as? Bool else {
+                throw CaptureFailure("INVALID_REQUEST", "capture.setCamera states whether the camera is on.")
+            }
+            // Native refusals, such as a missing camera or the toggle limit, pass through as codes.
+            try await capture.setCamera(on: on)
+            return status()
         case "capture.stop":
             try await expect(params)
             _ = try beginFinish(reason: nil, notify: true)
@@ -213,6 +221,9 @@ final class CaptureController {
             "sourceId": take?.sourceId as Any? ?? NSNull(),
             "elapsedUs": capture.elapsedSourceUs as Any? ?? NSNull(),
             "selection": (take ?? pendingStart)?.selection as Any? ?? NSNull(),
+            "camera": capture.companionCamera.map {
+                ["deviceId": $0.deviceId, "state": $0.on ? "on" : "off"] as [String: Any]
+            } as Any? ?? NSNull(),
             "permissions": [
                 "screen": NativeCapture.screenPermission,
                 "microphone": NativeCapture.microphonePermission,
@@ -247,7 +258,7 @@ final class CaptureController {
         }
         let camera: CaptureCameraRequest?
         if selected["kind"] as? String == "camera",
-            ["cameraDeviceId", "cameraSourceId", "cameraDirectory"].contains(where: { params[$0] != nil }) {
+            ["cameraDeviceId", "cameraSourceId", "cameraDirectory", "cameraAtStart"].contains(where: { params[$0] != nil }) {
             throw CaptureFailure("INVALID_REQUEST", "A primary camera cannot carry companion camera authority.")
         }
         if let deviceId = params["cameraDeviceId"] as? String {
@@ -257,10 +268,16 @@ final class CaptureController {
                 let cameraDirectory = params["cameraDirectory"] as? String, cameraDirectory.hasPrefix("/") else {
                 throw CaptureFailure("INVALID_REQUEST", "Camera selection requires allocated source and directory authority.")
             }
+            let startsOn: Bool
+            switch params["cameraAtStart"] {
+            case nil: startsOn = true
+            case let state as String where ["on", "off"].contains(state): startsOn = state == "on"
+            default: throw CaptureFailure("INVALID_REQUEST", "cameraAtStart must be on or off.")
+            }
             camera = CaptureCameraRequest(binding: CameraCaptureBinding(recordingId: recordingId,
-                sourceId: cameraSourceId, deviceId: deviceId), outputDirectory: cameraDirectory)
+                sourceId: cameraSourceId, deviceId: deviceId), outputDirectory: cameraDirectory, startsOn: startsOn)
         } else {
-            guard params["cameraSourceId"] == nil, params["cameraDirectory"] == nil else {
+            guard params["cameraSourceId"] == nil, params["cameraDirectory"] == nil, params["cameraAtStart"] == nil else {
                 throw CaptureFailure("INVALID_REQUEST", "Camera authority requires an explicit selected device.")
             }
             camera = nil
@@ -275,6 +292,8 @@ final class CaptureController {
         ]
         if let device = request.microphoneDeviceID { selection["microphoneDeviceId"] = device }
         if let camera { selection["cameraDeviceId"] = camera.binding.deviceId }
+        // The selection echoes what the service sent: an absent start state stays absent.
+        if let cameraAtStart = params["cameraAtStart"] { selection["cameraAtStart"] = cameraAtStart }
         let starting = Take(recordingId: recordingId, sourceId: sourceId, selection: selection)
         pendingStart = starting
         defer { releaseStart() }
