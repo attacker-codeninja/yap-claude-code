@@ -1642,11 +1642,10 @@ real(
 /**
  * A 0.1.33 library keeps its failed, non-retryable prepared-audio job for the normalization identity
  * it shipped. Jobs are keyed by input, so that failure answers every later request until the
- * normalization implementation id changes. Slice 04 of specs/launch-video-feedback publishes the
- * best result instead of refusing and bumps that id; this turns green then. Until it does, the
- * current id still equals 0.1.33's and the request answers the old failure.
+ * normalization implementation id changes. Normalization now publishes its best result instead of
+ * refusing, and its id was bumped, so the old failure no longer answers.
  */
-test.skip("a failed 0.1.33 normalization job re-runs after an identity bump (green in launch-video-feedback slice 04)", async () => {
+test("a failed 0.1.33 normalization job re-runs after an identity bump", async () => {
   const { Catalog, CatalogError } = await import("@yap/core/catalog");
   const { AssetStore } = await import("@yap/core/assets");
   const { AcquisitionStore } = await import("@yap/core/acquisitions");

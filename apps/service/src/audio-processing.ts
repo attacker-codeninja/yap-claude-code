@@ -43,7 +43,7 @@ export function processorImplementations(
   return Object.fromEntries(
     externalTypes.map((type) => [
       type,
-      `${type === "limiter" ? "linked-mono-max-limiter-v1" : type === "compressor" ? "peak-maximum-downward-compressor-v1" : "bounded-offset-normalization"}:${toolsReceiptSha256}:${preparationId}`,
+      `${type === "limiter" ? "linked-mono-max-limiter-v2" : type === "compressor" ? "peak-maximum-downward-compressor-v1" : "bounded-offset-normalization-v2"}:${toolsReceiptSha256}:${preparationId}`,
     ]),
   ) as Record<(typeof externalTypes)[number], string>;
 }
