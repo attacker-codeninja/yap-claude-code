@@ -504,6 +504,27 @@ test.runIf(process.platform === "darwin")(
     expect((portableProjection.page as { rows: unknown }).rows).toEqual(
       (projected.page as { rows: unknown }).rows,
     );
+    expect(portableProjection.issues).toEqual([]);
+    // A range past the project's end reads the clamped range in both owners.
+    const pastEnd = { ...projectQuery, range: { startUs: 750000, endUs: 70000000 } };
+    const clamp = [
+      {
+        code: "range-clamped",
+        message: expect.any(String),
+        at: { range: { startUs: 750000, endUs: 60000000 } },
+        evidence: {
+          requested: { startUs: 750000, endUs: 70000000 },
+          applied: { startUs: 750000, endUs: 60000000 },
+          bounds: { startUs: 0, endUs: 60000000 },
+        },
+      },
+    ];
+    expect((await ready("speaker.get", { ...pastEnd, packageHandle }, "ready")).issues).toEqual(
+      clamp,
+    );
+    active = f;
+    expect((await ready("speaker.get", pastEnd, "ready")).issues).toEqual(clamp);
+    active = target;
     expect(projected).toMatchObject({
       page: {
         rows: [

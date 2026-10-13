@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { acquisitionContext } from "@yap/core/acquisitions";
 import { CatalogError } from "@yap/core/catalog";
-import { projectCompositionFromRevision } from "@yap/core/project-window";
+import { admitProjectRange, projectCompositionFromRevision } from "@yap/core/project-window";
 import { sourceSelectionKey, type SourceSelection } from "@yap/core/source-selection";
 import { selectSourceChannel } from "@yap/core/source-selection";
 import {
@@ -29,9 +29,9 @@ import type { PortableResource, ValidatedProjectPackage } from "@yap/core/projec
 import type { FileAccess } from "@yap/core/files";
 import {
   createSourceRangeProjection,
-  rangeSchema,
   toTime,
   type ExactRange,
+  type Issue,
 } from "@yap/composition";
 
 type Context = { manifest: ValidatedProjectPackage; files: FileAccess };
@@ -39,6 +39,7 @@ export type PortableSpeakerCheckpoint = {
   packageHandle: string;
   manifest: EvidenceManifest;
   state: EvidenceCheckpoint<ProjectSpeakerPosition>;
+  issues: Issue[];
   rows: ProjectSpeakerRow[];
   nextCursor: ProjectEvidenceCursor | null;
 };
@@ -102,15 +103,13 @@ export function portableProjectSpeakers(
     [...acquisitions.values()].map(acquisitionContext),
   );
   const projection = createSourceRangeProjection(model);
-  const selectedRange = input.range ??
-    previous?.manifest.query.range ?? { startUs: 0, endUs: model.durationUs };
-  if (model.durationUs !== 0) rangeSchema.parse(selectedRange);
-  if (
-    selectedRange.startUs < 0 ||
-    selectedRange.endUs > model.durationUs ||
-    (model.durationUs === 0 && (selectedRange.startUs !== 0 || selectedRange.endUs !== 0))
-  )
-    throw new CatalogError("INVALID_RANGE", "Evidence range must be within the project");
+  const requestedRange = input.range ?? previous?.manifest.query.range;
+  const admitted =
+    model.durationUs === 0 &&
+    (requestedRange === undefined || (requestedRange.startUs === 0 && requestedRange.endUs === 0))
+      ? { range: { startUs: 0, endUs: 0 }, issues: [] }
+      : admitProjectRange(model.durationUs, requestedRange);
+  const selectedRange = admitted.range;
   const eligible = model.document.tracks
     .filter((track) => track.kind === "audio")
     .map((track) => track.id);
@@ -257,6 +256,7 @@ export function portableProjectSpeakers(
     packageHandle,
     manifest,
     state,
+    issues: admitted.issues,
     rows,
     nextCursor: more
       ? {

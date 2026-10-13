@@ -306,6 +306,7 @@ export class ProjectPackages {
       projectId: result.manifest.query.projectId,
       revisionId: result.manifest.query.revisionId,
       state: "ready",
+      issues: result.issues,
       dependencies: cursor ? { manifestId: result.state.manifestId } : result.manifest.dependencies,
       coverage: {
         manifestId: result.state.manifestId,

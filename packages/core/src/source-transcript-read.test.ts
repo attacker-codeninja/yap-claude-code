@@ -234,8 +234,22 @@ test("source continuations pin every source identity dimension, generation and q
   };
   const physical = new SourceTranscriptRead(store, physicalMetadata).page({ limit: 1 });
   expect(physical.nextCursor?.acquisitionId).toBeNull();
-  expect(() => read.page({ range: { startUs: 0, endUs: 1001 } })).toThrow(
-    expect.objectContaining({ code: "INVALID_RANGE" }),
+  expect(read.page({ range: { startUs: 0, endUs: 1001 } }).issues).toMatchObject([
+    {
+      code: "range-clamped",
+      evidence: {
+        requested: { startUs: 0, endUs: 1001 },
+        applied: { startUs: 0, endUs: 1000 },
+        bounds: { startUs: 0, endUs: 1000 },
+      },
+    },
+  ]);
+  expect(read.page({ range: { startUs: 0, endUs: 1000 } }).issues).toEqual([]);
+  expect(() => read.page({ range: { startUs: 1000, endUs: 1001 } })).toThrow(
+    expect.objectContaining({
+      code: "INVALID_RANGE",
+      details: expect.objectContaining({ bounds: { startUs: 0, endUs: 1000 } }),
+    }),
   );
   expect(() => read.page({ limit: 0 })).toThrow(
     expect.objectContaining({ code: "INVALID_PARAMS" }),

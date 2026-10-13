@@ -1791,9 +1791,12 @@ export async function startProjectService(options: {
             const sourceCursor = sourceParams.cursor
               ? omit(sourceParams.cursor, "speaker")
               : undefined;
-            const page =
+            const { issues, ...page } =
               "text" in params
-                ? read.search({ text: params.text, cursor: sourceCursor, limit: params.limit })
+                ? {
+                    ...read.search({ text: params.text, cursor: sourceCursor, limit: params.limit }),
+                    issues: [],
+                  }
                 : read.page({ range: params.range, cursor: sourceCursor, limit: params.limit });
             let attributedPage = page;
             let pinnedSpeaker: TranscriptSpeakerCursor | undefined;
@@ -1872,6 +1875,7 @@ export async function startProjectService(options: {
                 ...selection,
                 state: "ready",
                 generation: metadata.generation,
+                issues,
                 page: {
                   transcript: metadata,
                   ...attributedPage,
@@ -1949,13 +1953,14 @@ export async function startProjectService(options: {
             if (!current.published) return { ok: true, data: { ...current, page: null } };
             const metadata = current.published.transcript;
             const read = new SourceTranscriptRead(transcriptStore, metadata);
-            const page = read.page({ range: params.range, limit: params.limit });
+            const { issues, ...page } = read.page({ range: params.range, limit: params.limit });
             return {
               ok: true,
               data: {
                 ...selection,
                 state: "ready",
                 generation: metadata.generation,
+                issues,
                 page: { transcript: metadata, ...page },
               },
             };
