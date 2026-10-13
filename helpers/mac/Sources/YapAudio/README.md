@@ -41,8 +41,10 @@ routing, absolute sample clocks and ordered member concatenation; its file
 positions begin at zero. Held state is admitted only against the selected
 compiled recipe and complete domain. The same state owner supplies RNNoise
 prerequisites and downstream processing, and movie muxing consumes those held
-spans through the ordinary composition stream. Missing, changed or mismatched
-coverage refuses instead of restarting a processor or supplying silence.
+spans through the ordinary composition stream. Changed or mismatched coverage
+refuses instead of restarting a processor or supplying silence. Source gaps never
+reach a state domain: the compiler splits domains at them, so a plan whose state
+still requires unavailable support is malformed.
 
 The [RNNoise dependency](../../../denoise/README.md) owns its fixed mono recipe;
 [time/pitch processing](../../../stretch/README.md) owns the adopted stretch library.

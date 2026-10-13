@@ -60,7 +60,7 @@ Checklist:
 - [ ] [04 Audio treatments publish their best result](slices/04-audio-treatments-publish.md)
 - [ ] [05 Short-window level for word-sized ranges](slices/05-short-window-level.md)
 - [ ] [06 Ranges and messages](slices/06-ranges-and-messages.md) (a–d done; four deferred range sites)
-- [ ] [07 The remaining gates: publish, or justify the refusal](slices/07-remaining-quality-gates.md) (c, g, h done)
+- [ ] [07 The remaining gates: publish, or justify the refusal](slices/07-remaining-quality-gates.md) (b, c, g, h done; `UNAVAILABLE_SUPPORT` open, see choices.md 07b)
 - [x] [08 Multicam sync: no new primitive (closed by decision)](slices/08-sync-estimate.md)
 - [x] [09 View-shot fixtures](slices/09-view-shot-fixtures.md)
 - [ ] [10 Skill guidance](slices/10-skill-guidance.md)

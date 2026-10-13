@@ -264,7 +264,8 @@ overridden. Each entry: the choice, why, and how confident.
   input. Publishing supported samples "never as silence" therefore means either
   shifting alignment timing by concatenating runs or aligning each run
   separately. That's a design decision for the providers, not a gate flip. The
-  code stays in `pendingConversion`. *Open; needs the owner's call.*
+  owner chose per-run consumers; see "Slice 07b (support gaps)" below for why
+  it was measured and not shipped. *Still open.*
 ## Slice 06 (authored ranges, done ahead of the read ranges)
 
 - **The clamp keeps the same fraction of the placement.** A placement maps
@@ -425,3 +426,70 @@ overridden. Each entry: the choice, why, and how confident.
   FFmpeg's reading, or the codec and inspection facts. The caller can see
   which declarations disagree. *Confident.*
   by execution.*
+
+## Slice 07b (support gaps)
+
+- **The split lives in the state-domain owner.** `deriveStatePlan`
+  (`packages/composition/src/processing-state.ts`) cuts every member span at
+  unavailable support anywhere in its input prefix, the detector's prefix
+  included, after the shared-state validity refusals. Each remaining run starts
+  its own domain. Like this: a denoiser that hits a hole in the recording stops,
+  and starts fresh after the hole, instead of "hearing" made-up silence.
+  Gap-free plans come out byte-identical, so no existing manifest, prepared
+  state or cache changes. *Confident.*
+- **A gap inside a mix splits the parent's state too.** For a track or output
+  processor, a hole in any one child clip cuts the parent's span, so the
+  processor doesn't run over the hole; the other clips pass through unprocessed
+  there. That is the "never learn across missing input" rule applied to every
+  input. Alternative: run the parent over the hole as its own domain (it would
+  learn from a mix with a missing member). *Moderately confident; revisit if a
+  user mixes gappy captures under a parent denoiser.*
+- **The domain records `supportGaps`; the issue is derived from it.** Each split
+  domain carries every gap cut from its span. `support-gap` evidence is
+  `{ clipId, unavailable, stepIds }` with `at: { range }`, one issue per gap,
+  naming the steps of the selected domains it split. A read of any run of a
+  split processor reports every gap of that processor's span, because whole-
+  domain processors (normalization) measure differently on both sides of a
+  split. *Confident.*
+- **`support-gap` is published with the output, not the request.**
+  `projectComposition().window()` now returns `issues` (the request's, such as
+  a clamp) and `outputIssues` (the output's). Project audio and preview jobs
+  publish `outputIssues` with their treatment issues, so exports inherit them.
+  Audio extraction still carries neither (the slice 04 open item). *Confident.*
+- **`inputs[].unavailable` stays in the plan schema and is now always empty.**
+  Removing it would change every stateful manifest and re-key prepared state
+  for every user, for no behaviour. *Confident; delete it with the next change
+  that re-keys state anyway.*
+- **Native keeps its guard as a malformed-plan check.** `CompositionState`
+  refuses a state plan that still requires unavailable support with
+  `INVALID_REQUEST`, since the compiler never produces one. *Confident.*
+- **No identity bump.** The core refusal ran when a request was planned, before
+  any job keyed by input existed, and native's guard was only reachable
+  through a prepared resource that could not have been prepared for a gapped
+  program. So no stale failed job answers for this gate. Rendered speech over a
+  gap still refuses through its own `UNAVAILABLE_SUPPORT` gate. This departs
+  from the "every conversion bumps" rule because the rule's purpose doesn't
+  apply. *Moderately confident; review.*
+- **`UNAVAILABLE_SUPPORT` (source-channel reads) was measured, not shipped.**
+  - *Alignment per run is unsound.* The request carries one caller text for the
+    whole range. Aligning that text against each run forces every word into
+    every run; the aligner can't know which words fell in the hole. Splitting
+    the text is the caller's call. A multi-run alignment is ambiguous input
+    (class A), and even a single run after an edge gap misplaces words spoken
+    in the gap. This matches 06b's deferral of the project alignment range.
+  - *The speaker model per run is disproportionate.* Speaker evidence is one
+    observation per job generation: `speaker_evidence_generations` is keyed by
+    generation, the job's `attemptId` is that generation, and portable adoption
+    checks `publication.attemptId === metadata.generation`. Per-run observation
+    needs several generations per job, a new job result shape, and new
+    adoption. Measured touch points: about 93 identity/PCM references across
+    `speaker-evidence.ts` (59), `speaker-processing.ts` (14),
+    `speaker-read.ts`, `portable-speakers.ts`, `source-channel.ts`,
+    `source-speakers.ts` and `speaker.ts`, and 25 tests across five files.
+    That's several hundred lines for this consumer alone.
+  - So `selectSourceChannelRange` and `SourceChannelPCM` still refuse, and the
+    code stays in `pendingConversion`. Two more `UNAVAILABLE_SUPPORT` sites
+    share the code: integrated loudness over a hole (`acoustic-inspection.ts`)
+    and rendered speech (`rendered-speech.ts`). Neither is in the audit, but
+    the one general rule reaches them too. *Open; needs the owner's call on
+    alignment and on the speaker cost.*

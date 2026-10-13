@@ -111,8 +111,11 @@ Static stateful recipes retain complete domains and resolved detector prefixes;
 a window cannot restart preparation. Detector tap ordering follows the same
 mixed-media stack as inspection. Self-detector splits retain member-relative
 endpoints; externally referenced detector clips require a stable track or group
-tap before partitioning. A bypassed detector never adds preparation input;
-missing support and a clip tap wholly outside its domain refuse.
+tap before partitioning. A bypassed detector never adds preparation input, and
+a clip tap wholly outside its domain refuses. State never learns across missing
+source support: a gap anywhere in a member's input (its detector's included)
+splits the domain, each available run is processed as its own domain, and the
+gap stays unavailable with a `support-gap` issue, never silence.
 Authoring and execution availability remain distinct;
 [native execution](../../helpers/mac/README.md) owns actual filtering and publication.
 
