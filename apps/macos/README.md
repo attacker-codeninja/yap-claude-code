@@ -14,6 +14,9 @@ canceling it creates no take. Recorder-owned controls stay outside recorded medi
 and do not activate the app over the source being recorded. Opening the capture
 panel from the menu bar activates its window, so its native glass and controls
 are ready before the first content click.
+The floating take controls show a recording camera's live picture. Minimizing it
+only hides the picture; the camera keeps recording. Settings and the floating
+controls share that one preference.
 
 Capture status describes current work, so an idle device does not establish how its
 last take ended. Controls retain the started take's identity and resolve its

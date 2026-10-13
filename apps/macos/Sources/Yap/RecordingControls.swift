@@ -308,6 +308,8 @@ final class RecordingControls: NSObject {
             }
         case .toggleSystemAudio:
             state.selection.systemAudio.toggle()
+        case .showCameraPreview(let shown):
+            preferences.showCameraPreview = shown
         case .startOrStop:
             state.isLive ? send("capture.stop", live()) : countThenStart()
         case .pauseOrResume:
@@ -673,7 +675,8 @@ final class RecordingControls: NSObject {
         libraryWindow.update(state: state, exports: exports.state)
         overlay.update(RecordingOverlay.presentation(for: state) ?? observedOverlay)
         let cameraActive = state.isLive && (state.selection.source == .camera || state.selection.cameraDeviceId != nil)
-        overlay.updatePreview(cameraActive && preferences.showCameraPreview ? cameraPreviewImage : nil)
+        overlay.updateCamera(active: cameraActive, previewShown: preferences.showCameraPreview)
+        overlay.updatePreview(cameraActive ? cameraPreviewImage : nil)
         settings.update(state, shortcuts: shortcuts)
         showStatusItem()
         pace()
@@ -694,7 +697,7 @@ final class RecordingControls: NSObject {
                 guard let self, self.state.isLive else { return }
                 let image = NSImage(cgImage: cg, size: NSSize(width: ci.extent.width, height: ci.extent.height))
                 self.cameraPreviewImage = image
-                self.overlay.updatePreview(self.preferences.showCameraPreview ? image : nil)
+                self.overlay.updatePreview(image)
             }
         }
     }

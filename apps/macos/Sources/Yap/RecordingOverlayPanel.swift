@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import YapControls
 import SwiftUI
 
@@ -9,6 +10,8 @@ import SwiftUI
  or resume, finish, cancel, and the take's own elapsed playback time. Every button sends the same
  action the menu sends, so there is no second device state machine here and no clock of its own —
  what to show, and whether to show anything at all, is decided from the one controls state.
+ A take that records a camera also carries its live picture above the row. Minimizing the picture
+ hides it without stopping the camera.
  */
 @MainActor
 final class RecordingOverlayPanel {
@@ -21,6 +24,7 @@ final class RecordingOverlayPanel {
     private let model = RecordingOverlayModel()
     private var panel: OverlayPanel?
     private var moved: NSObjectProtocol?
+    private var changes: AnyCancellable?
 
     init(preferences: Preferences, perform: @escaping (ControlsAction) -> Void) {
         self.preferences = preferences
@@ -32,18 +36,12 @@ final class RecordingOverlayPanel {
         guard let presentation else { return hide() }
         model.presentation = presentation
         show()
-        // A clock longer than the row reserved still widens it rather than wrapping it, once the
-        // row has laid itself out again on the next turn of the loop.
-        DispatchQueue.main.async { [weak self] in
-            MainActor.assumeIsolated {
-                guard let panel = self?.panel, let content = panel.contentView else { return }
-                content.layoutSubtreeIfNeeded()
-                let size = content.fittingSize
-                if size.width > panel.frame.size.width || size.height > panel.frame.size.height {
-                    panel.setContentSize(size)
-                }
-            }
-        }
+    }
+
+    /// Whether the take records a camera, and whether its live picture is shown or minimized.
+    func updateCamera(active: Bool, previewShown: Bool) {
+        model.cameraActive = active
+        model.previewShown = previewShown
     }
 
     func updatePreview(_ image: NSImage?) { model.preview = image }
@@ -72,14 +70,31 @@ final class RecordingOverlayPanel {
             }
         }
         self.panel = panel
+        // The picture above the controls comes and goes, and a take that runs past an hour widens
+        // the row, so the panel follows what the controls ask for once they have laid themselves
+        // out again. The bottom edge holds still: that is where the person's hand is.
+        changes = model.objectWillChange.sink { [weak self] _ in
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.fit() } }
+        }
         panel.present()
         describe(panel)
+    }
+
+    private func fit() {
+        guard let panel, let content = panel.contentView else { return }
+        content.layoutSubtreeIfNeeded()
+        let size = content.fittingSize
+        guard size != panel.frame.size else { return }
+        let old = panel.frame
+        panel.setFrame(NSRect(x: old.midX - size.width / 2, y: old.minY, width: size.width, height: size.height),
+                       display: true)
     }
 
     private func hide() {
         guard let panel else { return }
         if let moved { NotificationCenter.default.removeObserver(moved) }
         moved = nil
+        changes = nil
         self.panel = nil
         panel.close()
     }
@@ -111,62 +126,106 @@ final class RecordingOverlayPanel {
 }
 
 @MainActor
-private final class RecordingOverlayModel: ObservableObject {
+final class RecordingOverlayModel: ObservableObject {
     @Published var presentation = RecordingOverlay.Presentation(
         elapsed: "0:00", paused: false, symbol: "record.circle.fill")
+    /// Whether this take records a camera, so the controls offer its live picture.
+    @Published var cameraActive = false
+    /// Whether that picture is shown or minimized; the camera records either way.
+    @Published var previewShown = true
     @Published var preview: NSImage?
 }
 
-/// The controls themselves: a state dot, the take's playback time, and the three transport
-/// actions, each sending the action the menu sends.
-private struct RecordingOverlayView: View {
+/// The controls themselves: the camera's live picture when the take records one, then a row with
+/// a state mark, the take's playback time and the transport actions, each sending the action the
+/// menu sends.
+struct RecordingOverlayView: View {
     @ObservedObject var model: RecordingOverlayModel
     let perform: (ControlsAction) -> Void
 
     private var paused: Bool { model.presentation.paused }
 
     var body: some View {
-        VStack(spacing: 0) {
-            if let preview = model.preview {
-                Image(nsImage: preview)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 280, height: 158)
-                    .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .padding(.horizontal, 8)
-                    .padding(.top, 8)
+        PictureAboveRow {
+            if model.cameraActive && model.previewShown {
+                preview
             }
-            HStack(spacing: 10) {
-                Image(systemName: model.presentation.symbol)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(paused ? AnyShapeStyle(.primary) : AnyShapeStyle(Color.red))
-                    .frame(width: 15)
-                    .accessibilityLabel(paused ? "Paused" : "Recording")
-                Text(model.presentation.elapsed)
-                    .font(.system(size: 15, weight: .medium))
-                    .monospacedDigit()
-                    .foregroundStyle(paused ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
-                    .frame(minWidth: 78, alignment: .leading)
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                Divider().frame(height: 22)
-                HStack(spacing: 2) {
-                    button(paused ? "play.fill" : "pause.fill",
-                        paused ? "Resume Recording" : "Pause Recording", .pauseOrResume)
-                    button("stop.fill", "Finish Recording", .startOrStop, tint: .red)
+            controls
+        }
+    }
+
+    /// The picture fills its card and is cropped from its centre, never squeezed.
+    private var preview: some View {
+        let card = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        return Color.black
+            .overlay {
+                if let image = model.preview {
+                    Image(nsImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } else {
+                    Image(systemName: "video")
+                        .font(.system(size: 20, weight: .regular))
+                        .foregroundStyle(.white.opacity(0.5))
                 }
-                Divider().frame(height: 22)
-                button("trash.fill", "Cancel Take", .cancel)
             }
+            .clipShape(card)
+            .overlay(card.strokeBorder(.white.opacity(0.14), lineWidth: 0.5))
+            .overlay(alignment: .topTrailing) {
+                Button { perform(.showCameraPreview(false)) } label: {
+                    Image(systemName: "minus")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 22, height: 22)
+                        .background(.black.opacity(0.5), in: Circle())
+                        .overlay(Circle().strokeBorder(.white.opacity(0.25), lineWidth: 0.5))
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .padding(8)
+                .help("Minimize camera preview")
+                .accessibilityLabel("Minimize camera preview")
+            }
+    }
+
+    private var controls: some View {
+        HStack(spacing: 10) {
+            Image(systemName: model.presentation.symbol)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(paused ? AnyShapeStyle(.primary) : AnyShapeStyle(Color.red))
+                .frame(width: 15)
+                .accessibilityLabel(paused ? "Paused" : "Recording")
+            Text(model.presentation.elapsed)
+                .font(.system(size: 15, weight: .medium))
+                .monospacedDigit()
+                .foregroundStyle(paused ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
+                .frame(minWidth: 62, alignment: .leading)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+            separator
+            HStack(spacing: 2) {
+                button(paused ? "play.fill" : "pause.fill",
+                    paused ? "Resume Recording" : "Pause Recording", .pauseOrResume)
+                button("stop.fill", "Finish Recording", .startOrStop, tint: .red)
+            }
+            if model.cameraActive && !model.previewShown {
+                separator
+                button("pip.exit", "Show camera preview", .showCameraPreview(true))
+            }
+            separator
+            button("trash.fill", "Cancel Take", .cancel)
         }
         // A button's tappable box reaches past the mark it draws, so the trailing edge needs less
         // room than the leading one for the two to look the same.
         .padding(.leading, 16)
-        .padding(.trailing, 2)
-        .padding(.vertical, 8)
+        .padding(.trailing, 6)
+        .padding(.vertical, 5)
         .background(.regularMaterial, in: Capsule())
         .overlay(Capsule().strokeBorder(.separator, lineWidth: 0.5))
+    }
+
+    private var separator: some View {
+        Rectangle().fill(.separator).frame(width: 1, height: 20)
     }
 
     private func button(
@@ -183,5 +242,29 @@ private struct RecordingOverlayView: View {
         .clipShape(Circle())
         .help(name)
         .accessibilityLabel(name)
+    }
+}
+
+/// The row of controls decides the width; a picture above it takes that width at 16:9.
+private struct PictureAboveRow: Layout {
+    private static let spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let row = subviews.last else { return .zero }
+        let size = row.sizeThatFits(.unspecified)
+        let pictures = CGFloat(subviews.count - 1)
+        return CGSize(width: size.width, height: size.height + pictures * (size.width * 9 / 16 + Self.spacing))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let row = subviews.last else { return }
+        let size = row.sizeThatFits(.unspecified)
+        var y = bounds.minY
+        for picture in subviews.dropLast() {
+            let height = size.width * 9 / 16
+            picture.place(at: CGPoint(x: bounds.minX, y: y), proposal: ProposedViewSize(width: size.width, height: height))
+            y += height + Self.spacing
+        }
+        row.place(at: CGPoint(x: bounds.minX, y: y), proposal: ProposedViewSize(size))
     }
 }

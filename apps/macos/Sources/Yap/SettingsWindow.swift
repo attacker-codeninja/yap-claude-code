@@ -81,6 +81,9 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         if model.countdownBeforeRecording != preferences.countdownBeforeRecording {
             model.countdownBeforeRecording = preferences.countdownBeforeRecording
         }
+        if model.showCameraPreview != preferences.showCameraPreview {
+            model.showCameraPreview = preferences.showCameraPreview
+        }
     }
 
     func windowDidBecomeKey(_ notification: Notification) {

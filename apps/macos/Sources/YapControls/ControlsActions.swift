@@ -9,6 +9,9 @@ public enum ControlsAction: Hashable, Sendable {
     case selectMicrophone(String?)
     case disableMicrophone
     case toggleSystemAudio
+    /// Show or minimize the live camera picture in a take's floating controls. The camera keeps
+    /// recording either way.
+    case showCameraPreview(Bool)
     case startOrStop
     case pauseOrResume
     case cancel
@@ -48,6 +51,7 @@ public enum ControlsAction: Hashable, Sendable {
         case .selectMicrophone(let device): "microphone.\(device ?? "default")"
         case .disableMicrophone: "microphone.off"
         case .toggleSystemAudio: "audio.system"
+        case .showCameraPreview(let shown): shown ? "camera.preview.show" : "camera.preview.hide"
         case .startOrStop: "capture.startOrStop"
         case .pauseOrResume: "capture.pauseOrResume"
         case .cancel: "capture.cancel"
