@@ -80,7 +80,13 @@ import { SourceAlignmentRead, type AlignmentReadInput } from "@yap/core/alignmen
 import { SourceSpeakerRead } from "@yap/core/speaker-read";
 import type { SpeakerLabelStore } from "@yap/core/speaker-labels";
 import { selectSpeakerSource } from "@yap/core/source-speakers";
-import type { TranscriptStore } from "@yap/core/transcript";
+import {
+  portableTranscript,
+  transcriptGenerationResource,
+  type PortableTranscript,
+  type TranscriptStore,
+} from "@yap/core/transcript";
+import type { ResourceReference } from "@yap/core/references";
 import type { TranscriptProcessing } from "@yap/core/transcript-processing";
 import type { ContextJob, JobQueue } from "@yap/core/jobs";
 import { PackageRegistry } from "./package-registry.js";
@@ -95,6 +101,8 @@ export type PinnedProjectPackage = {
   resources: PortableDependency[];
   acquisitionFiles: Record<string, ReturnType<AcquisitionImporter["portable"]>["files"]>;
   transcriptFiles: Record<string, IdentifiedFile>;
+  /** Stale derived transcripts the package leaves out; the recipient regenerates them on request. */
+  stale: ResourceReference[];
 };
 type Workspace = { directory: string; handle: FileHandle };
 /** Package context work returns only a result, so it has no channel to report issues on. */
@@ -499,23 +507,31 @@ export class ProjectPackages {
         return identity;
       });
     };
-    const transcriptsForAsset = (assetId: string) =>
-      this.owners.transcriptRecords.portableGenerations(assetId).map((metadata) => {
-        const resource: Extract<PortableDependency, { kind: "transcript-generation" }> = {
-          kind: "transcript-generation",
-          metadata,
-          ...this.owners.transcripts.portable(metadata),
-        };
-        const identity = resourceIdentity(resource);
-        if (!transcriptInventory.has(identity.id)) {
-          members += 2;
-          if (members >= archiveLimits.entries)
-            throw new CatalogError("LIMIT_EXCEEDED", "Transcript inventory exceeds archive budget");
-          transcriptFiles[identity.id] = this.owners.transcriptRecords.portableFile(metadata);
-          transcriptInventory.set(identity.id, resource);
-        }
-        return identity;
-      });
+    const staleTranscripts = new Map<string, ResourceReference>();
+    const addTranscript = (metadata: PortableTranscript) => {
+      const resource: Extract<PortableDependency, { kind: "transcript-generation" }> = {
+        kind: "transcript-generation",
+        metadata,
+        ...this.owners.transcripts.portable(metadata),
+      };
+      const identity = resourceIdentity(resource);
+      if (!transcriptInventory.has(identity.id)) {
+        members += 2;
+        if (members >= archiveLimits.entries)
+          throw new CatalogError("LIMIT_EXCEEDED", "Transcript inventory exceeds archive budget");
+        transcriptFiles[identity.id] = this.owners.transcriptRecords.portableFile(metadata);
+        transcriptInventory.set(identity.id, resource);
+      }
+      return identity;
+    };
+    const transcriptsForAsset = (assetId: string) => {
+      const { generations, stale } = this.owners.transcriptRecords.portableGenerations(assetId);
+      for (const generation of stale) {
+        const id = transcriptGenerationResource({ owner: { kind: "asset", assetId }, generation });
+        staleTranscripts.set(id, { kind: "transcript-generation", id });
+      }
+      return generations.map(addTranscript);
+    };
     const indexInventory = new Map<
       string,
       Extract<PortableDependency, { kind: "index-generation" | "project-index-generation" }>
@@ -690,8 +706,19 @@ export class ProjectPackages {
           if (identity.kind === "alignment-generation") alignmentsForAsset(tuple[1]);
           else if (identity.kind === "speaker-generation") speakersForAsset(tuple[1]);
           else if (identity.kind === "scene-generation") scenesForAsset(tuple[1]);
-          else if (identity.kind === "transcript-generation") transcriptsForAsset(tuple[1]);
-          else indexesForAsset(tuple[1]);
+          else if (identity.kind === "transcript-generation") {
+            transcriptsForAsset(tuple[1]);
+            // A stale transcript a revision pins travels as historical evidence.
+            if (!transcriptInventory.has(identity.id) && staleTranscripts.has(identity.id))
+              addTranscript(
+                portableTranscript(
+                  this.owners.transcriptRecords.retainedGeneration(
+                    { owner: { kind: "asset", assetId: tuple[1] }, generation: tuple[2] },
+                    { historical: true },
+                  ),
+                ),
+              );
+          } else indexesForAsset(tuple[1]);
         }
         const scene = inventory.get(identity.id);
         if (!scene)
@@ -724,6 +751,7 @@ export class ProjectPackages {
       resources,
       acquisitionFiles,
       transcriptFiles,
+      stale: [...staleTranscripts.values()].filter(({ id }) => !transcriptInventory.has(id)),
     };
   }
   checkPinned(pinned: PinnedProjectPackage): void {

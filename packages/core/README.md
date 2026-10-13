@@ -55,6 +55,16 @@ only through full-support identity; bounded reads and project dependencies pin t
 retained generation explicitly. Native windows remain raw provenance, while
 connected primary observation runs preserve phrase continuity across accepted seams.
 
+A retained transcript generation whose recipe or transcript policy is no longer
+current, or that this version can't read, is stale. Retained rows parse under a
+historical schema and keep the identity that produced them; only new requests must
+name the current recipe. Reads, inventories and package exports skip a stale
+generation, cleanup forgets its publication and reclaims it, and the next request
+regenerates it under the job key the current identity forms. A caption seed an
+existing revision already pins stays readable as historical evidence; nothing new is
+seeded from it. Any producer change that should retire old results, including old
+failures, changes an identity in its job input.
+
 [Rendered recognition](src/rendered-speech.ts) measures newly extracted revision PCM;
 source-text projection remains a separate read. Each project attempt owns fresh
 inference even when its bytes match an existing source asset. Its identity pins
@@ -153,6 +163,9 @@ alignment generations, their complete original operands and publication order.
 The same evidence parsers admit live and portable observations. Older package formats are refused;
 adoption stages evidence against package source facts and rechecks the published
 live source owner inside the existing transaction before replaying readiness.
+A stale transcript the package carries only as derived evidence is left out of
+adoption and regenerated on request; one a revision pins is adopted as historical
+evidence without a publication.
 
 Deletion fences new borrowers, drains existing work and retires durable references
 before removing owned files. Cache eviction cannot destroy original or generated

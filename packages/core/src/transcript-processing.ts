@@ -11,7 +11,8 @@ import type { Models } from "./models.js";
 import {
   transcriptPolicy,
   speechExecution,
-  speechExecutionSchema,
+  historicalSpeechExecutionSchema,
+  currentTranscript,
   portableTranscript,
   type PortableTranscript,
   type SpeechTranscriber,
@@ -153,7 +154,10 @@ export class TranscriptProcessing {
     publication: PortableTranscriptPublication | null;
   } {
     const selected = this.portableSelection(value);
-    const receipt = this.jobs.retainedArtifact(value.owner, artifact, value.generation);
+    // A stale generation travels only as evidence a revision pins, never as a publication.
+    const receipt = currentTranscript(value)
+      ? this.jobs.retainedArtifact(value.owner, artifact, value.generation)
+      : null;
     if (receipt && !isDeepStrictEqual(portableTranscript(JSON.parse(receipt.result)), value))
       throw new CatalogError(
         "INVALID_STORAGE",
@@ -185,7 +189,7 @@ export class TranscriptProcessing {
         "INVALID_PACKAGE",
         "Transcript media binding differs from local source",
       );
-    if (!publication) return;
+    if (!publication || !currentTranscript(value)) return;
     let input: unknown;
     try {
       input = JSON.parse(publication.input);
@@ -193,7 +197,10 @@ export class TranscriptProcessing {
       throw new CatalogError("INVALID_PACKAGE", "Invalid transcript publication input");
     }
     const parsed = z
-      .object({ decoderExecution: z.string().min(1).max(256), execution: speechExecutionSchema })
+      .object({
+        decoderExecution: z.string().min(1).max(256),
+        execution: historicalSpeechExecutionSchema,
+      })
       .safeParse(input);
     if (!parsed.success)
       throw new CatalogError("INVALID_PACKAGE", "Transcript publication has no decoder identity");
@@ -237,14 +244,13 @@ export class TranscriptProcessing {
       );
     let status = this.jobs.status(this.sourceIdentity(selected, this.execution(), scope));
     if (selection.generation !== undefined) {
-      const retained = this.jobs.retainedArtifact(
-        { kind: "asset", assetId: selection.assetId },
-        artifact,
-        selection.generation,
-      );
-      if (!retained)
+      const owner = { kind: "asset" as const, assetId: selection.assetId };
+      const retained = this.jobs.retainedArtifact(owner, artifact, selection.generation);
+      const stale = this.transcripts.isStale({ owner, generation: selection.generation });
+      if (!retained || stale)
         throw new CatalogError("NOT_FOUND", "Retained transcript generation is unavailable", {
           generation: selection.generation,
+          ...(stale ? { stale: true } : {}),
         });
       const metadata = JSON.parse(retained.result) as TranscriptMetadata;
       if (!isDeepStrictEqual(metadata.source, sourceDescriptor(selected)))
@@ -325,11 +331,15 @@ export class TranscriptProcessing {
     return this.sourceStatus(selection);
   }
 
+  /** A stale publication is forgotten with its job, so its generation is reclaimed unless a revision pins it. */
   private cleanupAsset(assetId: string, signal: AbortSignal) {
     const owner = { kind: "asset" as const, assetId };
     return this.transcripts.reclaim(
       owner,
-      (generation) => this.jobs.retainsAttempt(owner, artifact, generation),
+      (generation) =>
+        this.jobs.retainsAttempt(owner, artifact, generation) &&
+        (!this.transcripts.isStale({ owner, generation }) ||
+          !this.jobs.forgetPublication(owner, artifact, generation)),
       signal,
     );
   }
@@ -358,7 +368,8 @@ export class TranscriptProcessing {
     if (job.target.kind !== "asset" || job.artifact !== artifact)
       throw new CatalogError("UNSUPPORTED_JOB", "Transcript processor cannot execute this job");
     const selection = sourceSelectionSchema.parse(JSON.parse(job.input).selection);
-    const scope = speechExecutionSchema.parse(JSON.parse(job.input).execution);
+    // A job an older version queued names its own recipe; the input comparison below retires it.
+    const scope = historicalSpeechExecutionSchema.parse(JSON.parse(job.input).execution);
     const selected = selectedAudio(this.asset, selection);
     if (
       job.target.assetId !== selection.assetId ||

@@ -995,6 +995,36 @@ export class JobQueue {
     });
   }
 
+  /**
+   * Retires a publication its owner found stale, with the settled job that produced it. Returns
+   * false, forgetting nothing, while that job is still active.
+   */
+  forgetPublication(owner: JobOwner, artifact: string, attemptId: string): boolean {
+    const row = this.store.catalog
+      .prepare(
+        "SELECT targetKind,targetId,revisionId,input FROM artifacts WHERE targetKind=? AND targetId=? AND artifact=? AND attemptId=?",
+      )
+      .get(...ownerIdentity(owner), artifact, attemptId) as
+      | (TargetRow & { input: string })
+      | undefined;
+    if (!row) return true;
+    const job = this.existing({ target: targetFrom(row), artifact, input: row.input });
+    if (
+      job &&
+      (["waiting", "queued", "running"].includes(job.state) ||
+        [...this.attempts.values()].some((attempt) => attempt.jobId === job.jobId))
+    )
+      return false;
+    if (job) this.forgetJob(job.jobId);
+    else
+      this.store.catalog
+        .prepare(
+          "DELETE FROM artifacts WHERE targetKind=? AND targetId=? AND revisionId=? AND artifact=? AND attemptId=?",
+        )
+        .run(row.targetKind, row.targetId, row.revisionId, artifact, attemptId);
+    return true;
+  }
+
   /** Intent is committed first: no new attempt may enter while these executors close. */
   async drainOwner(owner: JobOwner): Promise<void> {
     if (!this.targets.isDeleting(owner))

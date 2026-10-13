@@ -37,12 +37,13 @@ export function textSeedResources(document: Document): ResourceReference[] {
   return [...ids].map((id) => ({ kind: "transcript-generation", id }));
 }
 
-function words(seed: Seed, records: TranscriptStore) {
+/** A pin an existing revision already holds is historical evidence; a new pin needs a current generation. */
+function words(seed: Seed, records: TranscriptStore, historical: boolean) {
   const identity = {
     owner: { kind: "asset" as const, assetId: seed.source.assetId },
     generation: seed.generation,
   };
-  const metadata = records.retainedGeneration(identity);
+  const metadata = records.retainedGeneration(identity, { historical });
   if (
     metadata.source.kind !== "asset" ||
     metadata.source.streamId !== seed.source.streamId ||
@@ -109,8 +110,9 @@ export function validateTextSeeds(
   const unique = new Map(textSeeds(document).map((seed) => [key(seed), seed]));
   const resources = new Map<string, ResourceReference>();
   for (const [identity, seed] of unique) {
-    if (evidence && !inherited.has(identity)) origin(seed, evidence.origins);
-    const checked = words(seed, records);
+    const pinned = !evidence || inherited.has(identity);
+    if (!pinned) origin(seed, evidence.origins);
+    const checked = words(seed, records, pinned);
     resources.set(checked.resource.id, checked.resource);
   }
   return [...resources.values()];
@@ -130,7 +132,7 @@ export function seedTextOperations(
       words: cue.words,
     };
     const clip = origin(seed, model.document.clips);
-    const selected = words(seed, records).selected;
+    const selected = words(seed, records, false).selected;
     const start = fromTime(selected[0]!.startUs),
       end = fromTime(Math.max(...selected.map((word) => word.endUs)));
     if (selected.every((word) => word.instant))

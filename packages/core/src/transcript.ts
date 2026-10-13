@@ -30,15 +30,20 @@ import { wordKind, wordKindPolicy, type WordKind } from "./word-kind.js";
 export const transcriptPolicy = "transcript-v3";
 
 const speechWindowRecipe = "source-windows-20s-context4s-guard1s-v2";
-export const speechExecutionSchema = z.strictObject({
+/** Retained and replayed execution keeps whatever recipe produced it; it is never relabelled. */
+export const historicalSpeechExecutionSchema = z.strictObject({
   executionRange: selectionRangeSchema.nullable(),
   context: z.strictObject({
     beforeUs: z.int().min(0).max(4_000_000),
     afterUs: z.int().min(0).max(4_000_000),
   }),
+  recipe: z.string().min(1).max(256),
+});
+/** What a new request may ask native to produce: only the current recipe. */
+export const speechExecutionSchema = historicalSpeechExecutionSchema.extend({
   recipe: z.literal(speechWindowRecipe),
 });
-export type SpeechExecution = z.infer<typeof speechExecutionSchema>;
+export type SpeechExecution = z.infer<typeof historicalSpeechExecutionSchema>;
 export type TranscriptExecutionSelection = {
   executionRange?: SelectionRange | undefined;
   context?: { beforeUs: number; afterUs: number } | undefined;
@@ -99,11 +104,12 @@ export type TranscriptEngine = SpeechEnginePins & {
   modelDigest: string;
   encoderPrecision: string;
   computeUnits: string;
-  policy: typeof transcriptPolicy;
-  kindPolicy: typeof wordKindPolicy;
+  policy: string;
+  kindPolicy: string;
 };
 
 const engineLabel = z.string().min(1).max(256);
+/** Retained engines keep the policies that produced them; `currentTranscript` decides staleness. */
 export const transcriptEngineSchema = z.strictObject({
   runtime: engineLabel,
   runtimeVersion: engineLabel,
@@ -114,9 +120,20 @@ export const transcriptEngineSchema = z.strictObject({
   modelDigest: engineLabel,
   encoderPrecision: engineLabel,
   computeUnits: engineLabel,
-  policy: z.literal(transcriptPolicy),
-  kindPolicy: z.literal(wordKindPolicy),
+  policy: engineLabel,
+  kindPolicy: engineLabel,
 });
+/**
+ * A generation is current when the recipe and policy that key its job are today's. Anything else
+ * is stale: reads and inventories skip it, cleanup may reclaim it, and the next request
+ * regenerates it. The kind policy is not part of the job key, so bumping it alone changes nothing.
+ */
+export function currentTranscript(value: {
+  engine: { policy: string };
+  execution: { recipe: string };
+}): boolean {
+  return value.engine.policy === transcriptPolicy && value.execution.recipe === speechWindowRecipe;
+}
 const portableInteger = z.int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 export const portableTranscriptSchema = z
   .strictObject({
@@ -141,7 +158,7 @@ export const portableTranscriptSchema = z
         ...(acquisitionId === undefined ? {} : { acquisitionId }),
       })),
     engine: transcriptEngineSchema,
-    execution: speechExecutionSchema,
+    execution: historicalSpeechExecutionSchema,
     available: z.array(selectionRangeSchema).max(10000),
     track: z.strictObject({
       streamId: engineLabel,
@@ -314,7 +331,7 @@ const receiptSchema = z.object({
     )
     .max(10_000),
   wordCount: time,
-  execution: speechExecutionSchema,
+  execution: historicalSpeechExecutionSchema,
   available: z.array(selectionRangeSchema).max(10000),
 });
 const lineSchema = z.object({
@@ -456,20 +473,42 @@ export class TranscriptStore implements TranscriptRecords {
       await setImmediate(undefined, { signal });
     }
   }
+  /**
+   * A complete, current generation. `historical` also admits a readable stale one, for evidence an
+   * existing revision already pins; nothing new may be derived from a stale generation.
+   */
   retainedGeneration(
     identity: Pick<TranscriptIdentity, "owner" | "generation">,
+    { historical = false }: { historical?: boolean } = {},
   ): TranscriptMetadata {
     const row = this.store.catalog
       .prepare(`SELECT * FROM transcript_generations WHERE ${where}`)
       .get(...ownerIdentity(identity.owner), identity.generation) as GenerationRow | undefined;
-    if (!row || row.state !== "complete")
+    const value = row?.state === "complete" ? readable(row) : null;
+    const stale = row?.state === "complete" && (!value || !currentTranscript(value));
+    if (!value || (stale && !historical))
       throw new CatalogError("NOT_FOUND", "Retained transcript generation is unavailable", {
         generation: identity.generation,
+        ...(stale ? { stale: true } : {}),
       });
-    return metadata(row);
+    return value;
   }
 
-  portableGenerations(assetId: string, limit = 25000): PortableTranscript[] {
+  /** Whether a complete retained generation is unreadable or names a recipe or policy that isn't current. */
+  isStale(identity: Pick<TranscriptIdentity, "owner" | "generation">): boolean {
+    const row = this.store.catalog
+      .prepare(`SELECT * FROM transcript_generations WHERE ${where}`)
+      .get(...ownerIdentity(identity.owner), identity.generation) as GenerationRow | undefined;
+    if (row?.state !== "complete") return false;
+    const value = readable(row);
+    return !value || !currentTranscript(value);
+  }
+
+  /** Current generations travel in packages; stale ones are left out and named for the caller to report. */
+  portableGenerations(
+    assetId: string,
+    limit = 25000,
+  ): { generations: PortableTranscript[]; stale: string[] } {
     const rows = this.store.catalog
       .prepare(
         "SELECT * FROM transcript_generations WHERE ownerKind='asset' AND ownerId=? ORDER BY generation LIMIT ?",
@@ -477,11 +516,16 @@ export class TranscriptStore implements TranscriptRecords {
       .all(assetId, limit + 1) as GenerationRow[];
     if (rows.length > limit)
       throw new CatalogError("LIMIT_EXCEEDED", "Transcript inventory exceeds its limit");
-    return rows.map((row) => {
+    const generations: PortableTranscript[] = [],
+      stale: string[] = [];
+    for (const row of rows) {
       if (row.state !== "complete")
         throw new CatalogError("PROCESSING_BUSY", "Transcript generation is incomplete", {}, true);
-      return portableTranscript(metadata(row));
-    });
+      const value = readable(row);
+      if (value && currentTranscript(value)) generations.push(portableTranscript(value));
+      else stale.push(row.generation);
+    }
+    return { generations, stale };
   }
   portableFile(value: PortableTranscript): IdentifiedFile {
     const path = join(
@@ -585,8 +629,9 @@ export class TranscriptStore implements TranscriptRecords {
           {},
           true,
         );
-      const existing = metadata(prior);
+      const existing = readable(prior);
       if (
+        !existing ||
         !isDeepStrictEqual(portableTranscript(existing), expected) ||
         !isDeepStrictEqual(this.portableReceipt(expected), receipt)
       )
@@ -1213,6 +1258,15 @@ export function transcriptGaps(
   }
 }
 
+/** A retained row this version can't read at all is as stale as one with a foreign identity. */
+function readable(row: GenerationRow): TranscriptMetadata | null {
+  try {
+    return metadata(row);
+  } catch (error) {
+    if (error instanceof z.ZodError || error instanceof SyntaxError) return null;
+    throw error;
+  }
+}
 function metadata(row: GenerationRow): TranscriptMetadata {
   return {
     owner:
@@ -1223,7 +1277,7 @@ function metadata(row: GenerationRow): TranscriptMetadata {
     generation: row.generation,
     source: JSON.parse(row.source) as TranscriptSource,
     engine: JSON.parse(row.engine) as TranscriptEngine,
-    execution: speechExecutionSchema.parse(JSON.parse(row.execution)),
+    execution: historicalSpeechExecutionSchema.parse(JSON.parse(row.execution)),
     available: z.array(selectionRangeSchema).parse(JSON.parse(row.available)),
     track: JSON.parse(row.track) as TranscriptMetadata["track"],
     segmentCount: row.segmentCount,
