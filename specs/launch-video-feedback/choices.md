@@ -425,3 +425,53 @@ overridden. Each entry: the choice, why, and how confident.
   FFmpeg's reading, or the codec and inspection facts. The caller can see
   which declarations disagree. *Confident.*
   by execution.*
+## Slice 07a
+
+- **A missing glyph is CoreText's last-resort face, not only glyph 0.** With
+  fallback on, CoreText never leaves glyph 0 for an uncovered character: it
+  draws it with `LastResort`, which shows a "?" box. So code points drawn by
+  `LastResort`, or drawn as glyph 0 by any face, are `glyph-missing`. Code points
+  another real face drew are `font-substituted`. A probe over 14 edge characters
+  found no glyph 0 at all. *Confident.*
+- **The receipt carries facts; core makes the issues.** Native adds
+  `textFallbacks: [{clipId, face, substituted, missing}]` to the picture receipt
+  and to the movie result. It is one entry per clip and face, deduplicated
+  across frames, and omitted when every text drew in its pinned face. Core turns
+  these into issues with one function, `textFallbackIssues`
+  (`packages/core/src/text-fallback.ts`). That keeps issues out of retained
+  evidence, as slice 01 requires, and lets a retained frame re-derive its issues
+  (slice 04's rule). Old receipts lack the field and read as clean, which is
+  true, because they refused instead. *Confident.*
+- **Evidence shape.** Both codes carry `{clipId, requested: {assetId,
+  postScriptName}, used, codePoints}`. `used` is the PostScript name actually
+  drawn. Code points are Unicode scalars in first-occurrence order, without
+  repeats. There is no `at`, because a clip isn't one of the issue subjects;
+  `clipId` names it. *Confident.*
+- **The receipt check got looser, but not open.** A layout line may now name
+  the pinned face or a face its clip's fallback report names, and every reported
+  face must appear in that clip's lines. A fallback for a clip that drew no text
+  is `INVALID_RESPONSE`. *Confident.*
+- **A project index publishes its frames' issues,** once each, in the order it
+  first saw them. Otherwise an index over fallback text would have dropped the
+  issues its frames published. *Moderately confident: the index's issues now
+  describe all its frames together, not per candidate.*
+- **The `FontFile` whole-face check is gone.** `FontFile.load` used to refuse
+  when CoreText resolved another face than the one named in the pinned file. Now
+  the raster compares each run's face by name as well as by graphics font, so
+  that case renders and reports every code point as `font-substituted`. It can't
+  be reproduced here. *Moderately confident.*
+- **All three font refusals became real codes,** not just `FONT_UNAVAILABLE`.
+  `FONT_CHANGED` (conflict) and `FONT_GLYPH_BOUNDS_UNAVAILABLE` (A) were also
+  message text inside `UNSUPPORTED_MEDIA`. Rule 4's scanner only missed them
+  because they had no `": "` suffix. A caller matching `UNSUPPORTED_MEDIA` for a
+  changed font now sees `FONT_CHANGED`; nothing in the repo matched on it.
+  *Confident.*
+- **Identity bumps:** `native-composition-picture-v20` → `v21` (frames, and
+  project indexes through their pinned frame renderer), and
+  `native-composition-movie-v24` → `v25` (previews and the exports that pin
+  them). `catalogFormat` is unchanged. *Confident.*
+- **Visual check.** Frames are in [assets/07a-fonts](assets/07a-fonts/frames.json).
+  The unprimed critique noted that the fallback check mark doesn't match Arial,
+  and that the placeholder box is a little taller than the caps and sits
+  slightly low. Both are what the issues report; nothing is clipped or
+  misaligned. Before this change, both frames refused. *Confident.*
