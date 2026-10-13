@@ -322,15 +322,16 @@ overridden. Each entry: the choice, why, and how confident.
   - content anchors (`model.ts` ~143) and angle validity (`model.ts` ~444) are
     stored-document validators. Clamping them at authoring time means clamping
     inside place, reanchor and `angle.declare`, composed with the source clamp,
-    and that isn't straightforward. *Deferred.*
+    and that isn't straightforward. *Deferred; resolved in 06e (clamped when
+    authored).*
   - the transcript execution range (`transcript-processing.ts` ~236) is part of
     the stored speech-execution identity that native receipts are validated
     against (`transcript.ts` ~850). It belongs with slice 03's seam work.
-    *Deferred.*
+    *Deferred; resolved in 06e (clamped before the identity forms).*
   - the project alignment range (`project-service.ts` ~525) aligns caller text to
     that range. Clamping the audio while keeping the full text needs a decision,
     and the only test seam needs a prepared tap and the native aligner.
-    *Deferred.*
+    *Deferred; resolved in 06e (the text aligns against the applied range).*
 - **6b splits the curve error three ways:** a clock error (details `clock`,
   `slot`, `expectedKey`: `fraction` or `microseconds`), a malformed curve
   (details `reason`), and a bound error (details `slot`, `bounds`). All three
@@ -339,6 +340,56 @@ overridden. Each entry: the choice, why, and how confident.
   `transcript.render.get`** with only `projectId`, `revisionId` and the
   generation: the job's `attemptId`, or the already-published output's
   generation. *Confident.*
+
+
+## Slice 06e (deferred range sites)
+
+- **The transcription clamp is reported per request, not stored with the
+  generation.** The plan said the job's published issues. But the clamped range
+  forms the same identity as a request for the applied range, so both share one
+  generation. A stored clamp would show on the exact request, and a clamped
+  request that joined a finished generation wouldn't see it. So
+  `transcript.prepare`/`retry` (and `transcript.review`, which passes its range
+  as the execution range) return `range-clamped` in the status's top-level
+  `issues`, recomputed on every call, like the 06b reads. *Confident; this
+  departs from the decision's wording, so review it.*
+- **The CLI's `--wait` on `transcript.prepare` carries the clamp.** Its pinned
+  `transcript.get` read can't take an execution range, so the wait adds the
+  preparation's `issues` to that read's `issues`. *Confident.*
+- **No implementation identity bump for transcription or alignment.** An
+  in-range request forms a byte-identical identity (checked), and an overrun used
+  to produce nothing, so no existing generation's output changes. *Confident.*
+- **The project alignment clamp publishes with its output.** That job's identity
+  keeps the request, so, like rendered recognition, the issue is stored with the
+  evidence. The project resolver adds `issues` to what it resolves only when it
+  clamps, so unclamped identities don't change. The `alignment.prepare`
+  description never stated the refusal, and lvf-07b is likely to edit it, so it
+  is unchanged. *Confident.*
+- **Alignment is proved in two halves.** A service test proves admission (an
+  overrun now reaches the prepared-tap lookup; no overlap is `INVALID_RANGE`); a
+  core test proves a resolver's issue publishes with the evidence. The native
+  aligner over a clamped range was not run. *Confident in the halves; the whole is
+  assumed.*
+- **A placement keeps the part every domain keeps.** The media source within its
+  stream and a content anchor within its parent's selected source each keep a
+  fraction of the placement; the clip keeps their overlap. Each range that
+  overran reports its own clamp, with the range finally stored as applied. A range
+  that shrank only because the other one overran gets no issue of its own, since
+  its bounds weren't the cause; the stored clip shows it. *Confident.*
+- **A source and an anchor that keep disjoint parts refuse** with
+  `INVALID_RANGE`, naming both requests and bounds: empty after clamping is
+  malformed. *Confident.*
+- **Reanchor shortens too.** An anchor past its parent's source shortens the clip
+  and its source by the same fraction, and "reanchor preserves the interval" now
+  means it keeps the same part of the old interval. A child content-anchored to
+  the shortened clip, or an angle validity range on it, isn't clamped in turn; if
+  it no longer fits, stored validation refuses the batch. *Fairly confident; that
+  cascade is rare and left strict.*
+- **Angle validity clamps per range; the offset never moves.** Each piecewise
+  segment is clamped on its own, and a segment wholly outside its member refuses
+  rather than being dropped. *Confident.*
+- **No pinned test asserted these four refusals**, so none flipped. *Checked by
+  search.*
 
 
 ## Slice 09

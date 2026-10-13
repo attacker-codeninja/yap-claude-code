@@ -59,7 +59,7 @@ Checklist:
 - [ ] [03 Long-media transcription always publishes](slices/03-transcription-publishes.md)
 - [ ] [04 Audio treatments publish their best result](slices/04-audio-treatments-publish.md)
 - [ ] [05 Short-window level for word-sized ranges](slices/05-short-window-level.md)
-- [ ] [06 Ranges and messages](slices/06-ranges-and-messages.md) (a–d done; four deferred range sites)
+- [x] [06 Ranges and messages](slices/06-ranges-and-messages.md) (a–d done; 06e resolved the four deferred range sites)
 - [ ] [07 The remaining gates: publish, or justify the refusal](slices/07-remaining-quality-gates.md) (c, g, h done)
 - [x] [08 Multicam sync: no new primitive (closed by decision)](slices/08-sync-estimate.md)
 - [x] [09 View-shot fixtures](slices/09-view-shot-fixtures.md)

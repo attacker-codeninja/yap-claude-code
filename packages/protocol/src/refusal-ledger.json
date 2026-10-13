@@ -844,9 +844,9 @@
    "category": "malformed",
    "files": {
     "apps/service/src/delivery.ts": 1,
-    "apps/service/src/project-service.ts": 1,
     "helpers/mac/Sources/YapAudio/ExcerptLayout.swift": 6,
     "helpers/mac/Sources/YapFrames/FrameTypes.swift": 6,
+    "packages/composition/src/edits.ts": 1,
     "packages/composition/src/errors.ts": 1,
     "packages/composition/src/range-admission.ts": 2,
     "packages/core/src/audio-inspection.ts": 2,
@@ -943,7 +943,6 @@
     "packages/core/src/jobs.ts": 2,
     "packages/core/src/models.ts": 5,
     "packages/core/src/project-evidence.ts": 2,
-    "packages/core/src/transcript-processing.ts": 1,
     "packages/core/src/transcript.ts": 1,
     "packages/core/src/voice-profile.ts": 1,
     "skills/yap/scripts/caption-proposals.mjs": 12,
