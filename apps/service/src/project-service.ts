@@ -17,8 +17,7 @@ import {
   outputCapabilities,
   audioOutputCapabilities,
   createSourceRangeProjection,
-  compare,
-  fromTime,
+  admitReadRange,
   omit,
 } from "@yap/composition";
 import { ProjectPackages } from "./project-packages.js";
@@ -514,16 +513,14 @@ export async function startProjectService(options: {
       project: {
         resolve(input) {
           const composition = projectComposition(projects, assets, {
-              projectId: input.projectId,
-              revisionId: input.revisionId,
-            }),
-            end = fromTime(input.range.endUs),
-            duration = fromTime(composition.model.durationUs);
-          if (compare(end, duration) > 0)
-            throw new CatalogError(
-              "INVALID_RANGE",
-              "Project alignment range exceeds the pinned revision",
-            );
+            projectId: input.projectId,
+            revisionId: input.revisionId,
+          });
+          // The caller's text aligns against the part of the range inside the revision.
+          const admitted = admitReadRange(input.range, {
+            startUs: 0,
+            endUs: composition.model.durationUs,
+          });
           const prepared = preparedAudio.resolve(composition, input.tap, input.preparedResourceId);
           if (!prepared)
             throw new CatalogError(
@@ -547,13 +544,14 @@ export async function startProjectService(options: {
               assetId: prepared.audio.assetId,
               streamId: stream.id,
               channel: input.channel,
-              sourceRange: input.range,
+              sourceRange: admitted.range,
               text: input.text,
               modelId: input.modelId,
             },
             projectId: input.projectId,
             revisionId: composition.revisionId,
             preparedResourceId: prepared.resourceId,
+            ...(admitted.issues.length ? { issues: admitted.issues } : {}),
           };
         },
       },
@@ -1794,7 +1792,11 @@ export async function startProjectService(options: {
             const { issues, ...page } =
               "text" in params
                 ? {
-                    ...read.search({ text: params.text, cursor: sourceCursor, limit: params.limit }),
+                    ...read.search({
+                      text: params.text,
+                      cursor: sourceCursor,
+                      limit: params.limit,
+                    }),
                     issues: [],
                   }
                 : read.page({ range: params.range, cursor: sourceCursor, limit: params.limit });
