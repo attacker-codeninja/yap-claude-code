@@ -129,3 +129,10 @@ the physical prefix at the first mapped picture the raw movie lacks, with the ex
 `acceptedBeyondPhysicalEOF` diagnostic, instead of refusing the whole camera. A sealed raw
 movie with a missing picture is still refused. Case `crashRecoveryWithGaps` needed this to be
 deterministic; before it, recovery depended on where the fragment happened to end.
+
+- **A picture from before a turn-off that arrives after the next turn-on is dropped** (02, review
+  finding). Accepting it would label it with the new run and place it inside a gap. It costs at
+  most one real picture per toggle and is logged with disposition `camera-off`.
+- **The 32 KiB normalized-receipt bound is checked only by core** (02, review finding). A 499-gap
+  receipt with 10-digit microsecond endpoints is about 26-29 KB with the rest of the receipt, so it
+  fits; slice 08 measures a real one.
