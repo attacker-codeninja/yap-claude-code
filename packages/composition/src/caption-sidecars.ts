@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { CompositionError } from "./errors.js";
-import { boundedIssues, type Issue } from "./issues.js";
+import { boundedIssues, issueLimit, type Issue } from "./issues.js";
 import type { ValidatedComposition } from "./model.js";
 import { ceil, compare, divide, floor, rational, toTime } from "./rational.js";
 import type { SelectionRange } from "./schema.js";
@@ -126,16 +126,18 @@ export function captionSidecar(model: ValidatedComposition, input: CaptionSideca
           ? 1
           : a.cue.fragment - b.cue.fragment),
   );
-  let addedOverlaps = 0;
+  // The cue budget bounds this pairwise scan; overlaps past the issue limit are only counted, so
+  // the issue list stays bounded however many pairs rounding joins.
+  let omittedOverlaps = 0;
   for (let i = 0; i < exactCues.length; i++) {
     const left = exactCues[i]!;
     for (let j = i + 1; j < exactCues.length && exactCues[j]!.cue.startMs < left.cue.endMs; j++) {
       const right = exactCues[j]!;
       if (compare(left.range.end, right.range.start) <= 0) {
-        if (addedOverlaps++ === 10000)
-          throw new CompositionError("LIMIT_EXCEEDED", "Sidecar overlap report budget exceeded", {
-            maximumAddedOverlaps: 10000,
-          });
+        if (issues.length >= issueLimit) {
+          omittedOverlaps++;
+          continue;
+        }
         issues.push({
           code: "caption-overlap-added",
           message: "Millisecond rounding made two captions overlap",
@@ -149,6 +151,12 @@ export function captionSidecar(model: ValidatedComposition, input: CaptionSideca
       }
     }
   }
+  if (omittedOverlaps)
+    issues.push({
+      code: "issues-truncated",
+      message: `${omittedOverlaps} more issues were omitted`,
+      evidence: { omitted: omittedOverlaps },
+    });
   const cues = exactCues.map(({ cue }) => cue);
   const blocks = [request.kind === "vtt" ? "WEBVTT\n\n" : ""];
   let bytes = new TextEncoder().encode(blocks[0]).length;

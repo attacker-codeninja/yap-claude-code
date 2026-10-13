@@ -234,15 +234,24 @@ test("malformed selection and unsafe cue boundaries refuse rather than changing 
   }
 });
 
-test("sidecar diagnostics refuse excessive introduced overlaps without dropping any cue", () => {
+test("a sidecar with more introduced overlaps than the issue limit writes every cue and counts them all", () => {
+  // 200 one-microsecond captions inside one millisecond: every pair overlaps once rounded.
   const clips = Array.from({ length: 200 }, (_, i) =>
     textClip(`caption${i}`, "x", i * 2, i * 2 + 1),
   );
-  expect(() =>
-    captionSidecar(model(clips), { kind: "srt", placementIds: clips.map((clip) => clip.id) }),
-  ).toThrow(
-    expect.objectContaining({ code: "LIMIT_EXCEEDED", details: { maximumAddedOverlaps: 10000 } }),
-  );
+  const output = captionSidecar(model(clips), {
+    kind: "srt",
+    placementIds: clips.map((clip) => clip.id),
+  });
+  expect(output.cues.map((cue) => cue.placementId)).toEqual(clips.map((clip) => clip.id));
+  expect(output.issues).toHaveLength(1001);
+  expect(
+    output.issues.slice(0, 1000).every((issue) => issue.code === "caption-overlap-added"),
+  ).toBe(true);
+  expect(output.issues.at(-1)).toMatchObject({
+    code: "issues-truncated",
+    evidence: { omitted: (200 * 199) / 2 - 1000 },
+  });
 });
 
 test("trimmed captions retain their support and genuine equal-start overlaps keep stable ID order", () => {
