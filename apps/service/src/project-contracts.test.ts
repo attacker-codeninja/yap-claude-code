@@ -657,6 +657,50 @@ test("ready source transcript reads carry the issues published with the transcri
       ok: true,
       data: { state: "ready", generation: publication!.attemptId, issues: [], published },
     });
+
+  // A project read names the source generations it projects; each carries its own issues.
+  const created = await f.call("project.create", { requestId: "issues", canvas });
+  if (!created.ok) throw new Error(JSON.stringify(created));
+  const initial = created.data as { project: { projectId: string }; revision: { id: string } };
+  const edited = await f.call("edit.apply", {
+    projectId: initial.project.projectId,
+    expectedRevisionId: initial.revision.id,
+    requestId: "place",
+    operations: [
+      { operation: "track.add", track: { kind: "audio", order: 0 }, label: "dialogue" },
+      {
+        operation: "place",
+        clip: {
+          trackId: { label: "dialogue" },
+          ...selection,
+          source: { kind: "range", range: { startUs: 0, endUs: 2000000 } },
+          placement: { kind: "project", range: { startUs: 0, endUs: 2000000 } },
+        },
+      },
+    ],
+  });
+  if (!edited.ok) throw new Error(JSON.stringify(edited));
+  const project = { projectId: initial.project.projectId };
+  let read = await f.call("transcript.get", project);
+  for (let poll = 0; read.ok && (read.data as { state: string }).state !== "ready"; poll++) {
+    if (poll > 300) throw new Error(JSON.stringify(read));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    read = await f.call("transcript.get", project);
+  }
+  expect(read).toMatchObject({
+    ok: true,
+    data: {
+      state: "ready",
+      issues: [],
+      dependencies: [
+        {
+          selection,
+          transcript: { generation: publication!.attemptId },
+          issues: published.issues,
+        },
+      ],
+    },
+  });
 });
 
 test("ready and canceled source jobs retain identity through public cancel and restart", async () => {

@@ -1839,6 +1839,31 @@ test("a ready read counts its admission issues beside its published issues", asy
   expect(output.stderr.split("\n")).toContain("audio.get: ready (2 issues)");
 });
 
+test("a ready project read counts the issues of the source generations it names", async () => {
+  const dropped = { code: "word-dropped", message: "dropped", evidence: {} };
+  const f = await fixture(() => ({
+    ok: true,
+    data: {
+      projectId: "p",
+      revisionId: "r",
+      state: "ready",
+      issues: [],
+      dependencies: [
+        { selection: { assetId: "a", streamId: "s" }, issues: [dropped] },
+        { selection: { assetId: "b", streamId: "s" }, issues: [] },
+      ],
+      page: { rows: [], nextCursor: null },
+    },
+  }));
+  const output = await f.run("transcript.get", { projectId: "p" }, [
+    "--wait",
+    "--timeout-ms",
+    "1000",
+  ]);
+  expect(output.code, output.stdout + output.stderr).toBe(0);
+  expect(output.stderr.split("\n")).toContain("transcript.get: ready (1 issues)");
+});
+
 test("the ready marker counts the issues a truncation entry stands for", async () => {
   const f = await fixture(async () => ({
     ok: true,

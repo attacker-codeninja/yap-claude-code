@@ -9,6 +9,7 @@ import {
   createProjectCuts,
   documentAssetIds,
   validateComposition,
+  type Issue,
   type TimeValue,
   type SelectionRange,
   type SourceWindowOccurrence,
@@ -117,6 +118,8 @@ type Dependency = {
   speaker?: ProjectSpeakerDependency;
   selection: SourceSelection;
   transcript: TranscriptMetadata | null;
+  /** The issues published with `transcript`; a project read reports its sources' problems. */
+  issues?: Issue[];
   state: string;
   reason: string | null;
   retryable: boolean;
@@ -418,6 +421,7 @@ export class ProjectEvidenceInspection {
       return {
         selection,
         transcript: status.published?.transcript ?? null,
+        issues: status.published?.issues ?? [],
         ...(speaker === undefined ? {} : { speaker }),
         state: status.published ? "ready" : status.state,
         reason: status.published ? null : status.reason,
@@ -697,10 +701,11 @@ export class ProjectEvidenceInspection {
       const expectedPins = digest(this.pins(manifest.dependencies));
       const validate = () => {
         this.options.projects.get(input.projectId);
-        if (digest(this.pins(this.dependencies(selections, false, plan.query))) !== expectedPins)
-          throw changed();
+        const current = this.dependencies(selections, false, plan.query);
+        if (digest(this.pins(current)) !== expectedPins) throw changed();
+        return current;
       };
-      validate();
+      const current = validate();
       const state = cursor
         ? this.acquire<ProjectCheckpoint>(cursor.checkpointId, leases)
         : ({
@@ -746,7 +751,14 @@ export class ProjectEvidenceInspection {
                 events: [],
                 speakers: [],
               };
-      const dependencies = cursor ? { manifestId } : manifest.dependencies;
+      // Issues follow the pinned generations, so a manifest cached before they were kept reports them.
+      const dependencies = cursor
+        ? { manifestId }
+        : manifest.dependencies.map((dependency, index) =>
+            current[index]!.issues === undefined
+              ? dependency
+              : { ...dependency, issues: current[index]!.issues },
+          );
       const coverage = manifest.coverage
         ? {
             manifestId,

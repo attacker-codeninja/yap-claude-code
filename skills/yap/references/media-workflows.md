@@ -52,7 +52,9 @@ boundary decisions remain in raw evidence; unowned decoded context is
 
 Transcription decodes overlapping windows, explicit ranges included, and always
 publishes; never hand-chunk a long source to get a transcript. Read the
-generation's issues: `boundary-unresolved` marks a word at a window seam that the
+generation's issues in `published.issues` on any ready source read (a project
+read's `dependencies[].issues`), not only on rows: some anchor to no published
+word. `boundary-unresolved` marks a word at a window seam that the
 two windows disagreed on (`published` says whether it reached the transcript),
 `timing-clamped` an estimate past the decoded edge, and `word-dropped` a token
 the engine timed impossibly. Check those words against the audio or the raw

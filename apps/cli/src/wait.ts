@@ -295,10 +295,15 @@ export async function waitForWork(options: {
       // Package admissions expose a context-job ID that public job.get cannot inspect.
       const jobId = read === "package.status" ? undefined : work.jobId;
       // Issues never change the exit status; a ready output names how many it carries.
-      // A read's admission issues sit beside the issues published with its output.
-      const issues = [data.issues, record(data.published).issues].flatMap((value) =>
-        Array.isArray(value) ? value : [],
-      );
+      // A read's admission issues sit beside the issues published with its output and with each
+      // source generation a project read names.
+      const issues = [
+        data.issues,
+        record(data.published).issues,
+        ...(Array.isArray(data.dependencies)
+          ? data.dependencies.map((dependency) => record(dependency).issues)
+          : []),
+      ].flatMap((value) => (Array.isArray(value) ? value : []));
       // A final issues-truncated entry stands for the issues it omitted.
       const issueCount = issues.reduce(
         (count: number, issue) =>
