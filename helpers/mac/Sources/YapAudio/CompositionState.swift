@@ -180,8 +180,10 @@ extension CompositionAudio {
         let prerequisite = Plan(output: plan.output, range: bounds, clips: state.clips,
             processing: state.processing, assets: plan.assets)
         let graph = try await graph(prerequisite, forest: true, sources: sources)
+        // The compiler splits state domains at every source gap, so a plan whose state still
+        // requires unavailable support is malformed; state never learns across a gap.
         guard graph.missing.allSatisfy({ $0.ranges.isEmpty }) else {
-            throw NativeFailure("NOT_READY", "Selected state input has unavailable source support.")
+            throw invalid("Compiled state domains require unavailable source support.")
         }
         var formats: [[String]: Plan.State.Format] = [:]
         for format in state.formats {

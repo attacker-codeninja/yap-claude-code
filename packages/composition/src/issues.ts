@@ -251,6 +251,18 @@ export const issueSchema = z.discriminatedUnion("code", [
       })
       .strict(),
   ),
+  // A stateful processor's input had no source support here. Its state was split at the gap: each
+  // available run was processed as its own state domain, and the gap stays unavailable (never silence).
+  issue(
+    "support-gap",
+    z
+      .object({
+        clipId: z.string().min(1),
+        unavailable: selectionRangeSchema,
+        stepIds: z.array(z.string().min(1)).min(1),
+      })
+      .strict(),
+  ),
   issue(
     "limiter-ceiling-unmet",
     z

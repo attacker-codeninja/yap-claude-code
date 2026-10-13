@@ -10,8 +10,10 @@ import {
   processingCapabilities,
   requireWindowReady,
   validateComposition,
+  type Issue,
   type ProcessingTap,
   type ProcessorImplementations,
+  type SelectionRange,
 } from "@yap/composition";
 import { AssetStore, compositionAsset } from "./assets.js";
 import { ProjectStore, type ProjectRevision } from "./projects.js";
@@ -79,16 +81,11 @@ export function compositionMediaInputs(manifest: CompositionWindow["manifest"]) 
       inputs.set(clip.id, { clipId: clip.id, assetId: clip.assetId, streamId: clip.streamId });
   return [...inputs.values()];
 }
+/** A layout state processing can't verify is ambiguous input; source gaps split state instead. */
 function requireStateInputsReady(manifest: CompositionWindow["manifest"]) {
   if (!manifest.state) return;
   const issues: Record<string, unknown>[] = [];
   for (const input of manifest.state.inputs) {
-    if (input.unavailable.length)
-      issues.push({
-        kind: "unavailable-support",
-        clipId: input.clip.id,
-        ranges: input.unavailable,
-      });
     if (
       isMediaClip(input.clip) &&
       (![1, 2].includes(input.channels ?? 0) || input.sampleRate === undefined)
@@ -110,11 +107,32 @@ function requireStateInputsReady(manifest: CompositionWindow["manifest"]) {
           processor: step.processor.type,
         });
   if (issues.length)
-    throw new CatalogError(
-      "NOT_READY",
-      "State processing requires complete verified mono or stereo input",
-      { stateInputs: issues },
-    );
+    throw new CatalogError("NOT_READY", "State processing requires verified mono or stereo input", {
+      stateInputs: issues,
+    });
+}
+
+/** One `support-gap` per unavailable span that split the selected state, naming the split steps. */
+function stateSupportIssues(manifest: CompositionWindow["manifest"]): Issue[] {
+  const gaps = new Map<
+    string,
+    { clipId: string; unavailable: SelectionRange; stepIds: string[] }
+  >();
+  for (const domain of manifest.state?.domains ?? [])
+    for (const { clipId, range } of domain.supportGaps ?? []) {
+      const key = JSON.stringify([clipId, range]);
+      const gap = gaps.get(key) ?? { clipId, unavailable: range, stepIds: [] };
+      for (const { stepId } of domain.members)
+        if (!gap.stepIds.includes(stepId)) gap.stepIds.push(stepId);
+      gaps.set(key, gap);
+    }
+  return [...gaps.values()].map((evidence) => ({
+    code: "support-gap",
+    message:
+      "Source support is unavailable here, so stateful processing was split: each side was processed as its own state domain",
+    at: { range: evidence.unavailable },
+    evidence: { ...evidence, stepIds: evidence.stepIds.sort() },
+  }));
 }
 
 const implementations = (support: ProjectRenderSupport): ProcessorImplementations => ({
@@ -281,7 +299,10 @@ export function projectCompositionFromRevision(
       }
       return {
         model,
+        /** Issues of the request itself, such as a clamped range. */
         issues: admitted.issues,
+        /** Issues of the output this window produces; its producer publishes them with it. */
+        outputIssues: stateSupportIssues(bound.manifest),
         pointerSources: compositionPointerSources({
           model,
           compiler,

@@ -693,6 +693,46 @@ real(
   30000,
 );
 real(
+  "a source gap splits RNNoise and limiter state: the run after it matches a program that starts there",
+  async () => {
+    const f = await fixture(
+      [{ id: "noise", enabled: true, processor: { type: "rnnoise" } }, limiter],
+      1000000,
+    );
+    let passed = false;
+    try {
+      f.asset.streams[0]!.available = [
+        { startUs: 0, endUs: 250000 },
+        { startUs: 500000, endUs: 1000000 },
+      ];
+      const gapped = await f.render(0, 1000000, "gapped");
+      // The gap stays unavailable, never silence handed to a processor as input.
+      expect(gapped.receipt).toMatchObject({
+        unavailable: [{ clipId: "clip", ranges: [{ start: 12000, end: 24000 }] }],
+      });
+      const clip = f.document.clips[0]!;
+      const late = {
+        ...f.document,
+        clips: [
+          {
+            ...clip,
+            source: { kind: "range" as const, range: { startUs: 500000, endUs: 1000000 } },
+            placement: { kind: "project" as const, range: { startUs: 500000, endUs: 1000000 } },
+          },
+        ],
+      };
+      const fresh = await f.render(0, 1000000, "fresh", late);
+      // State restarts at the gap: nothing learned before it reaches the run after it.
+      expect(gapped.bytes.subarray(24000 * 8).equals(fresh.bytes.subarray(24000 * 8))).toBe(true);
+      passed = true;
+    } finally {
+      if (passed) await rm(f.dir, { recursive: true, force: true });
+      else process.stderr.write(`Unverified audio operands retained: ${f.dir}\n`);
+    }
+  },
+  30000,
+);
+real(
   "gain-only and dynamic normalization retain complete measurements; infeasible gain lets the ceiling win",
   async () => {
     for (const mode of ["gain-only", "dynamic"] as const) {
@@ -889,7 +929,7 @@ real(
 );
 
 real(
-  "complete recipe context refuses program and detector source holes before a late crop",
+  "program and detector source holes split complete recipe context before a late crop",
   async () => {
     const cases: ProcessingStep[][] = [
       [limiter],
@@ -949,12 +989,14 @@ real(
               ],
             }
           : f.document;
-        await expect(f.render(7000000, 7100000, "refused-hole", document)).rejects.toMatchObject({
-          code: "NOT_READY",
-        });
-        await expect(open(join(f.dir, "refused-hole.wav"))).rejects.toMatchObject({
-          code: "ENOENT",
-        });
+        // The crop's whole domain is the run after the hole; nothing before the hole is learned.
+        const cropped = await f.render(7000000, 7100000, "split-hole", document);
+        expect(
+          audioProcessingEvidenceSchema
+            .array()
+            .parse((cropped.receipt as { processingEvidence: unknown[] }).processingEvidence)
+            .map((item) => item.sampleRange),
+        ).toEqual([{ start: 96000, end: 384000 }]);
         expect(await readFile(join(f.dir, "source.wav"))).toEqual(original);
         passed = true;
       } finally {
