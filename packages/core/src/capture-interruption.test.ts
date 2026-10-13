@@ -352,6 +352,40 @@ test("project audio keeps the recorded capture endpoint outside an earlier-endin
   expect((await f.pages({ ...project, limit: 1 })).rows).toEqual([]);
 });
 
+test("capture and timeline event ranges past the stream clamp with range-clamped; wholly outside refuses", async () => {
+  const f = await fixture();
+  const source = await f.importCapture([], interrupted());
+  const events = new SourceEvents({
+    assets: f.assets,
+    acquisitions: f.acquisitions,
+    capture: f.capture,
+  });
+  const clamp = {
+    code: "range-clamped",
+    evidence: {
+      requested: { startUs: 999, endUs: 1500 },
+      applied: { startUs: 999, endUs: 1000 },
+      bounds: { startUs: 0, endUs: 1000 },
+    },
+  };
+  for (const read of [f.capture, events]) {
+    const clamped = read.events({ ...source.video, sourceRange: { startUs: 999, endUs: 1500 } });
+    expect(clamped).toMatchObject({ sourceRange: { startUs: 999, endUs: 1000 }, issues: [clamp] });
+    const applied = read.events({ ...source.video, sourceRange: { startUs: 999, endUs: 1000 } });
+    expect(applied.issues).toEqual([]);
+    expect(clamped.page!.rows).toEqual(applied.page!.rows);
+    expect(clamped.page!.rows.length).toBeGreaterThan(0);
+    expect(() =>
+      read.events({ ...source.video, sourceRange: { startUs: 1000, endUs: 1500 } }),
+    ).toThrow(
+      expect.objectContaining({
+        code: "INVALID_RANGE",
+        details: expect.objectContaining({ bounds: { startUs: 0, endUs: 1000 } }),
+      }),
+    );
+  }
+});
+
 test("an interior interruption uses left-owned query windows while tied ordinary points remain half-open", async () => {
   const f = await fixture();
   const source = await f.importCapture([pause(1000)], interrupted(1000, 2));

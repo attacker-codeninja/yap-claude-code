@@ -762,6 +762,34 @@ test("query clipping preserves editorial partiality and cursors pin history and 
   });
 });
 
+test("an evidence range past the project's end reads the clamped range with range-clamped", async () => {
+  const f = await fixture();
+  const input = f.create([track("a"), clip(f.asset.id, "partial", "a", 2000, 2850, 150)]);
+  const over = { ...input, range: { startUs: 2001, endUs: 4000 } };
+  await f.ready(over);
+  const clamped = await f.evidence.get(over);
+  expect(clamped).toMatchObject({
+    state: "ready",
+    issues: [
+      {
+        code: "range-clamped",
+        evidence: {
+          requested: { startUs: 2001, endUs: 4000 },
+          applied: { startUs: 2001, endUs: 2850 },
+          bounds: { startUs: 0, endUs: 2850 },
+        },
+      },
+    ],
+  });
+  expect(f.evidence.request(over)).toMatchObject({ range: { startUs: 2001, endUs: 2850 } });
+  expect(clamped.page!.rows).toEqual(
+    (await f.evidence.get({ ...input, range: { startUs: 2001, endUs: 2850 } })).page!.rows,
+  );
+  expect(() => f.evidence.request({ ...input, range: { startUs: 2850, endUs: 4000 } })).toThrow(
+    expect.objectContaining({ code: "INVALID_RANGE" }),
+  );
+});
+
 test("empty projects, ready zero-word sources and unavailable models remain distinct", async () => {
   const f = await fixture();
   const empty = f.projects.create({
@@ -777,7 +805,7 @@ test("empty projects, ready zero-word sources and unavailable models remain dist
   await f.ready(emptyInput);
   expect((await f.evidence.get(emptyInput)).page).toEqual({ rows: [], nextCursor: null });
   expect(() => f.evidence.request({ ...emptyInput, range: { startUs: 0, endUs: 0 } })).toThrow(
-    "Evidence range",
+    expect.objectContaining({ code: "INVALID_RANGE" }),
   );
   const zero = f.create([track("a"), clip(f.asset.id, "empty", "a", 0, 1000, 0, 1000, "empty")]);
   await f.ready(zero);

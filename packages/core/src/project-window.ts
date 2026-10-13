@@ -1,5 +1,6 @@
 import type { SignedTimeValue } from "@yap/composition";
 import {
+  admitReadRange,
   createCompiler,
   captionSidecar,
   type CaptionSidecarRequest,
@@ -7,7 +8,6 @@ import {
   isMediaClip,
   isStatefulProcessor,
   processingCapabilities,
-  rangeSchema,
   requireWindowReady,
   validateComposition,
   type ProcessingTap,
@@ -193,6 +193,24 @@ export function projectComposition(
   );
 }
 
+/**
+ * A project read's range is clamped to the pinned project, with `range-clamped`; one with no part
+ * inside it refuses. An omitted range is the whole project.
+ */
+export function admitProjectRange(
+  durationUs: number,
+  range: { startUs: number; endUs: number } | undefined,
+) {
+  const admitted = admitReadRange(range ?? { startUs: 0, endUs: durationUs }, {
+    startUs: 0,
+    endUs: durationUs,
+  });
+  return {
+    range: admitted.range as { startUs: number; endUs: number },
+    issues: admitted.issues,
+  };
+}
+
 /** Staged and catalog revisions share compilation; file publication is not a read prerequisite. */
 export function projectCompositionFromRevision(
   revision: ProjectRevision,
@@ -221,12 +239,7 @@ export function projectCompositionFromRevision(
       component?: "audio" | "video",
       admission: "produced" | "retained" = "produced",
     ) {
-      const parsed = rangeSchema.safeParse(input.range ?? { startUs: 0, endUs: model.durationUs });
-      if (!parsed.success || parsed.data.endUs > model.durationUs)
-        throw new CatalogError(
-          "INVALID_PARAMS",
-          "Rendering requires a nonempty range within the pinned project",
-        );
+      const admitted = admitProjectRange(model.durationUs, input.range);
       const window = (
         component === "audio"
           ? compiler.audioWindow
@@ -234,7 +247,7 @@ export function projectCompositionFromRevision(
             ? compiler.videoWindow
             : compiler.window
       )({
-        range: parsed.data,
+        range: admitted.range,
         rendition: { sampleRate: 48000, channels: 2 },
         tap: input.tap ?? { target: { kind: "output" }, point: { kind: "processed" } },
       });
@@ -268,6 +281,7 @@ export function projectCompositionFromRevision(
       }
       return {
         model,
+        issues: admitted.issues,
         pointerSources: compositionPointerSources({
           model,
           compiler,

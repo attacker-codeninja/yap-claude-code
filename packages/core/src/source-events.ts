@@ -1,4 +1,4 @@
-import { ceil, sourceAvailability } from "@yap/composition";
+import { admitReadRange, ceil, sourceAvailability } from "@yap/composition";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { compare, fromTime, intervalIndex } from "@yap/composition";
@@ -130,16 +130,13 @@ export class SourceEvents {
       ...(input.acquisitionId === undefined ? {} : { acquisitionId: input.acquisitionId }),
     });
     const context = this.resolve(selected.selection, "events", input.cursor === undefined);
-    const range = input.sourceRange ?? { startUs: 0, endUs: ceil(fromTime(selected.durationUs)) },
+    const whole = { startUs: 0, endUs: ceil(fromTime(selected.durationUs)) },
+      requested = input.sourceRange ?? whole,
       limit = input.limit ?? 100;
-    if (
-      !Number.isSafeInteger(range.startUs) ||
-      !Number.isSafeInteger(range.endUs) ||
-      range.startUs < 0 ||
-      range.endUs > ceil(fromTime(selected.durationUs)) ||
-      range.startUs >= range.endUs
-    )
-      throw new CatalogError("INVALID_RANGE", "Event range must be within the selected stream");
+    if (!Number.isSafeInteger(requested.startUs) || !Number.isSafeInteger(requested.endUs))
+      throw new CatalogError("INVALID_RANGE", "Event range must use integer microseconds");
+    const admitted = admitReadRange(requested, whole),
+      range = admitted.range as { startUs: number; endUs: number };
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 500)
       throw new CatalogError("INVALID_PARAMS", "Limit must be 1 to 500");
     const reference = createHash("sha256").update(JSON.stringify({ context, range })).digest("hex");
@@ -183,6 +180,7 @@ export class SourceEvents {
       state: pending ? "not_ready" : ready ? "ready" : "unavailable",
       context,
       sourceRange: range,
+      issues: admitted.issues,
       ...(input.cursor === undefined
         ? {
             available: sourceAvailability(selected.track.available, [range]),

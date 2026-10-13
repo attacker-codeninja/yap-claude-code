@@ -6,6 +6,7 @@ import {
   type OutputSettings,
   type OutputSettingsInput,
   rangeSchema,
+  type Issue,
 } from "@yap/composition";
 import type { PreparedAudioStore, PreparedAudioRead } from "./prepared-audio.js";
 import { AssetStore } from "./assets.js";
@@ -97,6 +98,10 @@ export class ProjectPreviewInspection {
   }
 
   pin(input: ProjectPreviewInput): PinnedProjectPreview {
+    return this.admission(input).pinned;
+  }
+  /** The pinned preview keeps the applied range; a clamp is reported on the request's result. */
+  private admission(input: ProjectPreviewInput) {
     if (input.implementationId !== undefined) this.requireImplementation(input.implementationId);
     const plan = this.plan(input);
     let settings: OutputSettings;
@@ -130,7 +135,7 @@ export class ProjectPreviewInspection {
         },
         true,
       );
-    return {
+    const pinned: PinnedProjectPreview = {
       projectId: input.projectId,
       revisionId: plan.window.manifest.revisionId,
       range: plan.window.manifest.range,
@@ -139,6 +144,7 @@ export class ProjectPreviewInspection {
       ...(retime ? { retimeImplementationId: retime } : {}),
       preparedResourceId: plan.retained?.resourceId ?? null,
     };
+    return { pinned, issues: plan.issues };
   }
   private identity(pinned: PinnedProjectPreview) {
     const { projectId, revisionId, ...options } = pinned;
@@ -151,14 +157,14 @@ export class ProjectPreviewInspection {
 
   /** Native validation finishes before the queue's synchronous catalog admission. */
   async prepare(input: ProjectPreviewInput) {
-    const snapshot = this.pin(input);
+    const { pinned: snapshot, issues } = this.admission(input);
     const plan = this.plan(snapshot);
     const prior = this.jobs.status(this.identity(snapshot));
     if (!plan.retained && !prior.jobId && !prior.published)
       await validateProjectAudio(this.renderer, plan);
     return {
       snapshot: structuredClone(snapshot),
-      submit: (admitted?: () => void) => this.submit(snapshot, plan, admitted),
+      submit: (admitted?: () => void) => this.submit(snapshot, plan, issues, admitted),
     };
   }
   async request(input: ProjectPreviewInput) {
@@ -176,11 +182,12 @@ export class ProjectPreviewInspection {
         },
         true,
       );
-    return this.submit(pinned, this.plan(pinned));
+    return this.submit(pinned, this.plan(pinned), []);
   }
   private submit(
     pinned: PinnedProjectPreview,
     plan: ReturnType<ProjectPreviewInspection["plan"]>,
+    issues: Issue[],
     admitted?: () => void,
   ) {
     const status = submitCachedDerivative<ProjectPreviewArtifact>(
@@ -198,6 +205,7 @@ export class ProjectPreviewInspection {
       revisionId: pinned.revisionId,
       range: structuredClone(pinned.range),
       settings: structuredClone(pinned.settings),
+      issues,
       state: status.state,
       reason: status.reason,
       retryable: status.retryable,

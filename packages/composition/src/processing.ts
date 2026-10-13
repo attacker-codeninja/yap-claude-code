@@ -153,10 +153,25 @@ export function validateProcessing(document: Document, assets: ValidatedComposit
                 : ["rect.width", "rect.height", "crop.width", "crop.height"].includes(slot)
                   ? [Number.MIN_VALUE, Number.MAX_VALUE]
                   : [-Number.MAX_VALUE, Number.MAX_VALUE];
-          if (!parsed.success || !curveValuesWithin(parsed.data, bounds[0]!, bounds[1]!))
-            invalid("Processing curve must match its clock and remain within parameter bounds", {
-              target,
-              stepId: step.id,
+          const at = { target, stepId: step.id, slot };
+          if (!parsed.success && parsed.error.issues.some((issue) => issue.path[2] === "at"))
+            invalid(
+              `Processing curve keys must use the ${domain} clock: ${
+                domain === "clip"
+                  ? "{numerator, denominator} fractions within [0,1]"
+                  : "integer microseconds"
+              }`,
+              { ...at, clock: domain, expectedKey: domain === "clip" ? "fraction" : "microseconds" },
+            );
+          if (!parsed.success)
+            invalid("Processing curve is malformed", {
+              ...at,
+              reason: parsed.error.issues[0]!.message,
+            });
+          if (!curveValuesWithin(parsed.data, bounds[0]!, bounds[1]!))
+            invalid("Processing curve values must remain within parameter bounds", {
+              ...at,
+              bounds,
             });
         }
       if (!definition.targets.some((scope) => scope === target.kind))

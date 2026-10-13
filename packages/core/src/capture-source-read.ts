@@ -12,6 +12,7 @@ import {
   sourceAvailability,
   type TimeValue,
   type SignedTimeValue,
+  admitReadRange,
 } from "@yap/composition";
 import type { AssetStore } from "./assets.js";
 import type { AcquisitionStore } from "./acquisitions.js";
@@ -301,20 +302,14 @@ export class CaptureSourceRead {
       ...(input.acquisitionId === undefined ? {} : { acquisitionId: input.acquisitionId }),
     };
     const context = this.resolve(selection, domain);
-    const range = input.sourceRange ?? { startUs: 0, endUs: ceil(fromTime(context.durationUs)) };
+    const whole = { startUs: 0, endUs: ceil(fromTime(context.durationUs)) },
+      requested = input.sourceRange ?? whole;
     const limit = input.limit ?? (domain === "events" ? 100 : 1000),
       maximum = domain === "events" ? 500 : 5000;
-    if (
-      !Number.isSafeInteger(range.startUs) ||
-      !Number.isSafeInteger(range.endUs) ||
-      range.startUs < 0 ||
-      range.endUs <= range.startUs ||
-      range.endUs > ceil(fromTime(context.durationUs))
-    )
-      throw new CatalogError(
-        "INVALID_RANGE",
-        "Capture evidence range must be within the selected stream",
-      );
+    if (!Number.isSafeInteger(requested.startUs) || !Number.isSafeInteger(requested.endUs))
+      throw new CatalogError("INVALID_RANGE", "Capture evidence range must use integer microseconds");
+    const admitted = admitReadRange(requested, whole),
+      range = admitted.range as { startUs: number; endUs: number };
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > maximum)
       throw new CatalogError("INVALID_PARAMS", `Limit must be 1 to ${maximum}`);
     const reference = digest({ context, range });
@@ -360,6 +355,7 @@ export class CaptureSourceRead {
       state: ready ? "ready" : "unavailable",
       context,
       sourceRange: range,
+      issues: admitted.issues,
       page: ready
         ? {
             rows,

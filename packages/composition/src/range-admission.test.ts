@@ -278,3 +278,50 @@ test("a ripple replacement is sized from the clamped source, so nothing is retim
   expect(clip.placement).toEqual({ kind: "project", range: { startUs: 0, endUs: 3_000_000 } });
   expect(result.issues.map((issue) => issue.code)).toEqual(["range-clamped"]);
 });
+
+test("a trim range past the clip's interval keeps the overlapping part, with range-clamped", () => {
+  const placed = applyBatch(
+    empty,
+    [
+      place(
+        { startUs: 0, endUs: 2_000_000 },
+        { kind: "project", range: { startUs: 1_000_000, endUs: 3_000_000 } },
+      ),
+    ],
+    context,
+  );
+  const trim = (range: { startUs: number; endUs: number }) =>
+    applyBatch(
+      placed.document,
+      [{ operation: "trim", clipId: placed.labels.clip, ripple: "none", range }],
+      { ...context, namespace: "range-admission-trim" },
+    );
+  const result = trim({ startUs: 2_000_000, endUs: 4_000_000 });
+  expect(result.document.clips).toHaveLength(1);
+  expect(result.document.clips[0]!.placement).toEqual({
+    kind: "project",
+    range: { startUs: 2_000_000, endUs: 3_000_000 },
+  });
+  expect(result.issues).toEqual([
+    {
+      code: "range-clamped",
+      message: expect.any(String),
+      at: { range: { startUs: 2_000_000, endUs: 3_000_000 } },
+      evidence: {
+        requested: { startUs: 2_000_000, endUs: 4_000_000 },
+        applied: { startUs: 2_000_000, endUs: 3_000_000 },
+        bounds: { startUs: 1_000_000, endUs: 3_000_000 },
+        operationIndex: 0,
+      },
+    },
+  ]);
+  expect(() => trim({ startUs: 3_000_000, endUs: 4_000_000 })).toThrow(
+    expect.objectContaining({
+      code: "INVALID_EDIT",
+      details: expect.objectContaining({
+        cause: "INVALID_RANGE",
+        bounds: { startUs: 1_000_000, endUs: 3_000_000 },
+      }),
+    }),
+  );
+});

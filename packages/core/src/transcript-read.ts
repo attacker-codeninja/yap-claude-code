@@ -1,4 +1,4 @@
-import { round, fromTime } from "@yap/composition";
+import { admitReadRange, round, fromTime } from "@yap/composition";
 import { z } from "zod";
 import { CatalogError } from "./catalog.js";
 import { comparePageKeys, type PageBound } from "./ordered-pages.js";
@@ -253,18 +253,14 @@ export class SourceTranscriptRead {
       (cursor.range?.startUs !== range?.startUs || cursor.range?.endUs !== range?.endUs)
     )
       throw new CatalogError("ARTIFACT_CHANGED", "Transcript continuation used another range");
-    if (
-      range &&
-      (!Number.isSafeInteger(range.startUs) ||
-        !Number.isSafeInteger(range.endUs) ||
-        range.startUs < 0 ||
-        range.endUs <= range.startUs ||
-        range.endUs > round(fromTime(this.metadata.source.durationUs)))
-    )
-      throw new CatalogError("INVALID_RANGE", "Range must be inside the source duration");
-    const span = range ?? { startUs: 0, endUs: round(fromTime(this.metadata.source.durationUs)) };
+    const whole = { startUs: 0, endUs: round(fromTime(this.metadata.source.durationUs)) };
+    if (range && (!Number.isSafeInteger(range.startUs) || !Number.isSafeInteger(range.endUs)))
+      throw new CatalogError("INVALID_RANGE", "Range must use integer microseconds");
+    // The cursor keeps the requested range, so every page reports the same clamp.
+    const admitted = range ? admitReadRange(range, whole) : null;
+    const span = (admitted?.range as TimeRange | undefined) ?? whole;
     const { records, more, after } = this.traversal.page(
-      range ? [range] : null,
+      admitted ? [span] : null,
       count,
       cursor ? { sourceUs: cursor.afterSourceUs, ordinal: cursor.afterOrdinal } : null,
     );
@@ -289,6 +285,7 @@ export class SourceTranscriptRead {
     });
     return {
       rows,
+      issues: admitted?.issues ?? [],
       nextCursor:
         more && after
           ? ({

@@ -188,6 +188,38 @@ test("duplicates remap local windows and preserve the full function", () => {
   expect(copy.processing[1]!.steps[0]!.id).not.toBe("opacity");
 });
 
+test("receipt 07: integer keys on a clip curve refuse naming the clip clock and its key form", () => {
+  const curveOn = (keys: unknown[]) => [
+    {
+      operation: "processing.set",
+      target: { kind: "clip", id: "c" },
+      steps: [{ id: "opacity", enabled: true, processor: { type: "opacity", opacity: { keys } } }],
+    },
+  ];
+  const caught = (ops: unknown[]) => {
+    try {
+      edit(document, ops);
+    } catch (error) {
+      return error as { code: string; message: string; details: Record<string, unknown> };
+    }
+    throw new Error("expected a refusal");
+  };
+  const clock = caught(curveOn([{ at: 0, value: 0.2, interpolation: "linear" }]));
+  expect(clock.code).toBe("INVALID_EDIT");
+  expect(clock.message).toMatch(/clip clock/);
+  expect(clock.details).toMatchObject({
+    clock: "clip",
+    slot: "opacity",
+    expectedKey: "fraction",
+    target: { kind: "clip", id: "c" },
+    stepId: "opacity",
+  });
+  const bound = caught(curveOn([{ at: fraction(0), value: 2, interpolation: "linear" }]));
+  expect(bound.message).not.toMatch(/clock/);
+  expect(bound.details).toMatchObject({ slot: "opacity", bounds: [0, 1] });
+  expect(bound.details).not.toHaveProperty("clock");
+});
+
 test("sub-frame activation/key boundaries and taps come from the same programs", () => {
   const doc = structuredClone(document);
   doc.processing[0]!.steps = [

@@ -8,7 +8,6 @@ import {
   createSourceRangeProjection,
   createProjectCuts,
   documentAssetIds,
-  rangeSchema,
   validateComposition,
   type TimeValue,
   type SelectionRange,
@@ -31,6 +30,7 @@ import {
   type TranscriptPosition,
 } from "./project-transcript.js";
 import type { EvidenceKey } from "./evidence-merge.js";
+import { admitProjectRange } from "./project-window.js";
 import { boundSourceEvidenceResponse, type CaptureDomain } from "./capture-source-read.js";
 import { initialProjectEvents, mergeEvents, type ProjectEventPosition } from "./project-events.js";
 import { SourceEvents, type SourceEventContext } from "./source-events.js";
@@ -212,18 +212,16 @@ export class ProjectEvidenceInspection {
       model.durationUs === 0 &&
       (input.range === undefined ||
         (allowEmpty && input.range.startUs === 0 && input.range.endUs === 0));
-    const parsed = empty
-      ? { success: true as const, data: { startUs: 0, endUs: 0 } }
-      : rangeSchema.safeParse(input.range ?? { startUs: 0, endUs: model.durationUs });
-    if (!parsed.success || parsed.data.endUs > model.durationUs)
-      throw new CatalogError("INVALID_RANGE", "Evidence range must be within the project");
+    const admitted = empty
+      ? { range: { startUs: 0, endUs: 0 }, issues: [] }
+      : admitProjectRange(model.durationUs, input.range);
     const trackIds = [...new Set(input.trackIds ?? eligible)].sort();
     if (trackIds.some((id) => !eligibleIds.has(id)))
       throw new CatalogError("INVALID_PARAMS", "Tracks are not applicable to this evidence domain");
     const cuts =
       empty || domain !== "events"
         ? []
-        : (context.cuts ??= createProjectCuts(model)).window({ range: parsed.data, trackIds });
+        : (context.cuts ??= createProjectCuts(model)).window({ range: admitted.range, trackIds });
     if (input.text !== undefined) transcriptSearchTerms(input.text);
     const speaker =
       domain === "speakers"
@@ -272,11 +270,11 @@ export class ProjectEvidenceInspection {
       ...(input.text === undefined ? {} : { text: input.text }),
       projectId: input.projectId,
       revisionId,
-      range: parsed.data,
+      range: admitted.range,
       trackIds,
       policy: policy(domain),
     };
-    return { query, queryDigest: digest(query), projection, cuts };
+    return { query, queryDigest: digest(query), projection, cuts, issues: admitted.issues };
   }
   private plan(input: QueryInput, allowEmpty = false) {
     const plan = this.query(input, allowEmpty);
@@ -459,6 +457,7 @@ export class ProjectEvidenceInspection {
     if (pending.length)
       return {
         ...plan.query,
+        issues: plan.issues,
         state: "not_ready",
         reason: "source_evidence_not_ready",
         retryable: pending.some((d) => d.retryable),
@@ -476,7 +475,7 @@ export class ProjectEvidenceInspection {
       },
       "frame",
     );
-    return { ...plan.query, ...status, dependencies };
+    return { ...plan.query, issues: plan.issues, ...status, dependencies };
   }
   retry(input: QueryInput) {
     const status = this.request(input);
@@ -799,6 +798,7 @@ export class ProjectEvidenceInspection {
         projectId: input.projectId,
         revisionId: manifest.query.revisionId,
         state: "ready",
+        issues: plan.issues,
         dependencies,
         ...(coverage ? { coverage } : {}),
         page: { ...merged, nextCursor },

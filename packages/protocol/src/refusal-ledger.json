@@ -12,12 +12,6 @@
  },
  "pendingSites": [
   {
-   "slice": "06",
-   "file": "packages/core/src/project-window.ts",
-   "text": "Rendering requires a nonempty range within the pinned project",
-   "why": "partly valid render range: clamp with range-clamped"
-  },
-  {
    "slice": "07b",
    "file": "packages/core/src/project-window.ts",
    "text": "State processing requires complete verified mono or stereo input",
@@ -824,7 +818,6 @@
     "packages/core/src/project-evidence.ts": 3,
     "packages/core/src/project-index.ts": 1,
     "packages/core/src/project-preview.ts": 2,
-    "packages/core/src/project-window.ts": 1,
     "packages/core/src/projects.ts": 4,
     "packages/core/src/scene-evidence.ts": 3,
     "packages/core/src/scene-processing.ts": 1,
@@ -857,13 +850,12 @@
    "category": "malformed",
    "files": {
     "apps/service/src/delivery.ts": 1,
-    "apps/service/src/portable-speakers.ts": 1,
     "apps/service/src/project-service.ts": 1,
     "helpers/mac/Sources/YapAudio/ExcerptLayout.swift": 6,
     "helpers/mac/Sources/YapFrames/FrameTypes.swift": 6,
     "packages/composition/src/errors.ts": 1,
-    "packages/composition/src/range-admission.ts": 1,
-    "packages/core/src/audio-inspection.ts": 3,
+    "packages/composition/src/range-admission.ts": 2,
+    "packages/core/src/audio-inspection.ts": 2,
     "packages/core/src/audio-spectrum.ts": 1,
     "packages/core/src/audio-wave.ts": 1,
     "packages/core/src/capture-source-read.ts": 1,
@@ -876,7 +868,6 @@
     "packages/core/src/presentation-evidence.ts": 3,
     "packages/core/src/presentation-pointer-history.ts": 2,
     "packages/core/src/presentation-pointer.ts": 2,
-    "packages/core/src/project-evidence.ts": 1,
     "packages/core/src/raw-cursor.ts": 1,
     "packages/core/src/scenes.ts": 3,
     "packages/core/src/source-events.ts": 1,

@@ -5,6 +5,8 @@ import {
   type AudioProcessingEvidence,
 } from "./audio-measurement.js";
 import {
+  admitReadRange,
+  type Issue,
   selectionRangeSchema,
   resolveAudioOutputSettings,
   resolvedAudioOutputSettingsSchema,
@@ -215,14 +217,10 @@ export class MediaAudioInspection {
     const source = selectSource(this.owners.assets, this.owners.acquisitions, selection);
     if (source.stream.kind !== "audio")
       throw new CatalogError("UNSUPPORTED_MEDIA", "Audio inspection requires an audio stream");
-    const parsed = selectionRangeSchema.safeParse(
-      range === undefined ? source.stream.bounds : range,
-    );
-    if (!parsed.success || compare(fromTime(parsed.data.endUs), fromTime(source.durationUs)) > 0)
-      throw new CatalogError(
-        "INVALID_RANGE",
-        "Audio range must lie within the selected source duration",
-      );
+    const admitted = admitReadRange(range === undefined ? source.stream.bounds : range, {
+      startUs: 0,
+      endUs: source.durationUs,
+    });
     const stream = this.owners.assets
       .get(source.selection.assetId)
       .streams.find((value) => value.id === source.selection.streamId)!;
@@ -234,8 +232,8 @@ export class MediaAudioInspection {
       stream.channels !== undefined
     ) {
       const frames =
-        BigInt(sample(parsed.data.endUs, stream.sampleRate)) -
-        BigInt(sample(parsed.data.startUs, stream.sampleRate));
+        BigInt(sample(admitted.range.endUs, stream.sampleRate)) -
+        BigInt(sample(admitted.range.startUs, stream.sampleRate));
       const minimumBytes = frames * BigInt(stream.channels) * 4n + 44n;
       if (minimumBytes > BigInt(Number.MAX_SAFE_INTEGER))
         throw new CatalogError("LIMIT_EXCEEDED", "Audio derivative size exceeds safe accounting");
@@ -243,19 +241,21 @@ export class MediaAudioInspection {
     }
     return {
       source,
+      issues: admitted.issues,
       sampleRate: stream.sampleRate,
       channels: stream.channels,
       options: {
         selection: source.selection,
-        range: parsed.data,
+        range: admitted.range,
         supportDigest: source.supportDigest,
         implementationId: this.owners.sourceRenderer.implementationId,
       },
     };
   }
   private sourceRecipe(input: SourceAudioInput) {
-    const { options, sampleRate: rate, source, channels } = this.plan(input);
+    const { options, sampleRate: rate, source, channels, issues } = this.plan(input);
     return {
+      issues,
       durationUs: source.durationUs,
       fullRange: source.stream.bounds,
       channels,
@@ -334,7 +334,7 @@ export class MediaAudioInspection {
   }
 
   private requestSource(input: SourceAudioInput) {
-    const { options, identity } = this.sourceRecipe(input);
+    const { options, identity, issues } = this.sourceRecipe(input);
     const { assets, acquisitions, jobs, cache } = this.owners;
     const status = submitCachedDerivative<SourceAudioArtifact>(jobs, cache, identity, "heavy", {
       admitted: (job) => {
@@ -347,6 +347,7 @@ export class MediaAudioInspection {
     return {
       ...options.selection,
       range: options.range,
+      issues,
       state: status.state,
       reason: status.reason,
       retryable: status.retryable,
@@ -438,6 +439,7 @@ export class MediaAudioInspection {
       preparedResourceId: retained?.resourceId ?? null,
     };
     return {
+      issues: plan.issues,
       durationUs,
       fullRange: { startUs: 0, endUs: durationUs },
       processingSha256: createHash("sha256")
@@ -464,18 +466,20 @@ export class MediaAudioInspection {
     return (await this.prepareProject(input)).submit();
   }
   private async prepareProject(input: ProjectAudioInput, plan = this.projectPlan(input)) {
-    const { selection, identity, options } = this.projectRecipe(input, plan);
+    const { selection, identity, options, issues } = this.projectRecipe(input, plan);
     const prior = this.owners.jobs.status(identity);
     if (!plan.retained && !prior.jobId && !prior.published)
       await validateProjectAudio(this.owners.project!.renderer, plan);
     return {
       snapshot: { ...selection, ...options },
-      submit: (admitted?: () => void) => this.submitProject(identity, selection, admitted),
+      submit: (admitted?: () => void) =>
+        this.submitProject(identity, selection, issues, admitted),
     };
   }
   private submitProject(
     identity: ReturnType<MediaAudioInspection["projectRecipe"]>["identity"],
     selection: ReturnType<MediaAudioInspection["projectRecipe"]>["selection"],
+    issues: Issue[],
     admitted?: () => void,
   ) {
     const status = submitCachedDerivative<ProjectAudioArtifact>(
@@ -487,6 +491,7 @@ export class MediaAudioInspection {
     );
     return {
       ...selection,
+      issues,
       state: status.state,
       reason: status.reason,
       retryable: status.retryable,
@@ -628,7 +633,7 @@ export class MediaAudioInspection {
         {},
         true,
       );
-    const pcm = this.submitProject(recipe.identity, recipe.selection);
+    const pcm = this.submitProject(recipe.identity, recipe.selection, recipe.issues);
     return pinned.settings.container === "wav" ? pcm : this.submitExport(pinned);
   }
   async retryExport(pinned: PinnedProjectAudioExport) {
@@ -672,7 +677,7 @@ export class MediaAudioInspection {
   admitExport(job: Job): ReturnType<JobAdmission> {
     const pinned = this.encodedSnapshot(job);
     const recipe = this.exportRecipe(pinned);
-    const pcm = this.submitProject(recipe.identity, recipe.selection);
+    const pcm = this.submitProject(recipe.identity, recipe.selection, recipe.issues);
     if (pcm.published) return { state: "ready" };
     if (!pcm.jobId || ["failed", "canceled", "unavailable"].includes(pcm.state))
       throw new CatalogError(
