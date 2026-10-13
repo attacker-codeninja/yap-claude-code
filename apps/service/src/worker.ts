@@ -193,8 +193,15 @@ function ownedProcess(
         ),
       timeoutMs,
     );
-    child.on("error", (error) =>
-      finish(operationError("MEDIA_WORKER_UNAVAILABLE", "Cannot run worker: " + error.message)),
+    child.on("error", (error: NodeJS.ErrnoException) =>
+      finish(
+        operationError(
+          "MEDIA_WORKER_UNAVAILABLE",
+          "Cannot run worker: " + error.message,
+          // Descriptor or process exhaustion drains; a retry can succeed.
+          ["EMFILE", "ENFILE", "EAGAIN"].includes(error.code ?? ""),
+        ),
+      ),
     );
     // A killed wrapper can leave descendants holding pipes. Retire its known group
     // at exit, before waiting for close; close alone would deadlock on those pipes.
@@ -226,6 +233,14 @@ function ownedProcess(
       signal?.removeEventListener("abort", abort);
       settle(result ?? protocol.completed(exitCode));
     });
+    // Node skips stdio setup when spawn itself hits EMFILE or ENFILE; only "error" follows.
+    if (!child.stdio) {
+      child.once("error", () => {
+        signal?.removeEventListener("abort", abort);
+        settle(result!);
+      });
+      return;
+    }
     const completion = child.stdio[3 + descriptors.length];
     if (protocol.completion && completion && "on" in completion) {
       completion.on("data", (chunk: Buffer) => {
