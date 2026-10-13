@@ -15,6 +15,8 @@ import { AcquisitionStore } from "./acquisitions.js";
 import { JobQueue } from "./jobs.js";
 import { DerivedCache } from "./cache.js";
 import { MediaAudioInspection, type ProjectAudioRenderer } from "./audio-inspection.js";
+import { normalizationTolerance } from "./audio-measurement.js";
+import type { ProcessingTap } from "@yap/composition";
 
 const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => {
@@ -70,6 +72,7 @@ async function fixture(
   budget?: number,
   durationUs = 1000000,
   sourceChannels: 1 | 2 | 4 | null = 2,
+  processors?: Record<string, string>,
 ) {
   const home = await mkdtemp("/tmp/project-audio-");
   const catalog = new Catalog(join(home, "catalog.sqlite"));
@@ -112,7 +115,11 @@ async function fixture(
     projects,
     jobs,
     staging: join(home, "prepared"),
-    renderer: { implementationId: "fixture-audio", render: renderer },
+    renderer: {
+      implementationId: "fixture-audio",
+      render: renderer,
+      ...(processors ? { processors, validateAudio: async () => {} } : {}),
+    },
     probe: async () => {
       throw new Error("unused preparation");
     },
@@ -131,7 +138,11 @@ async function fixture(
     project: {
       projects,
       prepared,
-      renderer: { implementationId: "fixture-audio", render: renderer },
+      renderer: {
+        implementationId: "fixture-audio",
+        render: renderer,
+        ...(processors ? { processors, validateAudio: async () => {} } : {}),
+      },
     },
   });
   waveform = new AcousticInspection({ audio: inspection, jobs, cache });
@@ -339,6 +350,107 @@ test("project audio taps bind only their descendants and target-owned processing
   }
 });
 
+test("an unmeetable output normalization never blocks reads; only reads that include it carry its issue", async () => {
+  // The FEEDBACK §4 probe: receipt 05's gain-only request (+6.4 dB on a +0.3 dBTP program).
+  const measured = (integratedLufs: number, truePeakDbtp: number) => ({
+    integratedLufs,
+    loudnessRangeLu: 8,
+    samplePeakDbfs: truePeakDbtp,
+    truePeakDbtp,
+    integratedReason: null,
+    rangeReason: null,
+    algorithm: "meter",
+    version: "1",
+  });
+  const normalizing: Parameters<ProjectAudioRenderer["render"]>[0][] = [];
+  const f = await fixture(
+    async (request, signal) => {
+      const domains = request.window.audioState()?.domains ?? [];
+      const processingEvidence = domains.flatMap((domain, domainIndex) =>
+        domain.recipe.type === "normalization"
+          ? [
+              {
+                domainIndex,
+                recipe: domain.recipe,
+                sampleRange: domain.sampleRange,
+                implementationId: "normalization-v2",
+                normalization: {
+                  before: measured(-20.4, 0.3),
+                  after: measured(-21.7, -1),
+                  attempts: [{ offsetDb: null, after: measured(-21.7, -1) }],
+                  selectedAttempt: 0,
+                  meterImplementationId: "meter",
+                  tolerances: normalizationTolerance,
+                },
+              },
+            ]
+          : [],
+      );
+      if (processingEvidence.length) normalizing.push(request);
+      return {
+        ...((await render(request, signal)) as object),
+        ...(processingEvidence.length ? { processingEvidence } : {}),
+      };
+    },
+    undefined,
+    4000000,
+    2,
+    { normalization: "normalization-v2" },
+  );
+  const mastered = f.projects.apply(f.projectId, {
+    requestId: "master",
+    expectedRevisionId: f.placed.revision.id,
+    operations: [
+      {
+        operation: "processing.set",
+        target: { kind: "output" },
+        steps: [
+          { label: "level", processor: { type: "gain", gain: 0.5 } },
+          {
+            processor: {
+              type: "normalization",
+              mode: "gain-only",
+              targetIntegratedLufs: -14,
+              truePeakCeilingDbtp: -1,
+              maxLoudnessRangeLu: 20,
+            },
+          },
+        ],
+      },
+    ],
+  });
+  const read = async (tap: ProcessingTap, range = { startUs: 0, endUs: 4000000 }) => {
+    const input = { projectId: f.projectId, revisionId: mastered.revision.id, range, tap };
+    await f.inspection.request(input);
+    await f.jobs.idle();
+    const status = await f.inspection.request(input);
+    expect(status).toMatchObject({ state: "ready", reason: null });
+    return status.published!.issues.map((issue) => issue.code);
+  };
+  const output = { kind: "output" } as const;
+  expect(
+    await read({
+      target: { kind: "track", id: f.placed.edit.labels.voice! },
+      point: { kind: "processed" },
+    }),
+  ).toEqual([]);
+  expect(await read({ target: output, point: { kind: "dry" } })).toEqual([]);
+  expect(
+    await read({
+      target: output,
+      point: { kind: "after-step", stepId: mastered.edit.labels.level! },
+    }),
+  ).toEqual([]);
+  expect(normalizing).toHaveLength(0);
+  // A ranged processed read still treats the whole domain, so it carries the domain's issue.
+  expect(
+    await read(
+      { target: output, point: { kind: "processed" } },
+      { startUs: 1000000, endUs: 2000000 },
+    ),
+  ).toEqual(["normalization-target-unmet"]);
+  expect(normalizing).toHaveLength(1);
+});
 test("audio history and cache recovery keep revision, tap and byte source pinned", async () => {
   const f = await fixture();
   const old = await f.inspection.request({ projectId: f.projectId });

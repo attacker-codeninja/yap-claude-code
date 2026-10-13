@@ -20,6 +20,7 @@ import { AcquisitionStore } from "./acquisitions.js";
 import { ResourceReferences } from "./references.js";
 import { JobQueue, type StagedJobResult } from "./jobs.js";
 import { PreparedAudioStore, type PreparedAudio } from "./prepared-audio.js";
+import { normalizationTolerance } from "./audio-measurement.js";
 
 const cleanup: (() => Promise<void>)[] = [];
 afterEach(async () => {
@@ -50,6 +51,7 @@ async function fixture(
   implementationId = "unit-test-native-boundary",
   deferExecution = false,
   processors?: Record<string, string>,
+  processingEvidence?: (window: AudioWindowInput["window"]) => unknown[],
 ) {
   const home = await realpath(await mkdtemp("/tmp/prepared-audio-"));
   let reads = 0;
@@ -136,6 +138,7 @@ async function fixture(
             unavailable: [...window.audio()]
               .filter((clip) => clip.source.kind === "range")
               .map((clip) => ({ clipId: clip.clipId, ranges: gaps })),
+            ...(processingEvidence ? { processingEvidence: processingEvidence(window) } : {}),
           };
         },
       },
@@ -371,6 +374,163 @@ test("renaming the normalization implementation re-keys a failed preparation ins
   await f.current.jobs.idle();
   expect(rerun.jobId).not.toBe(failed.jobId);
   expect(f.reads).toBe(reads + 1);
+});
+const loudness = (integratedLufs: number, loudnessRangeLu: number, truePeakDbtp: number) => ({
+  integratedLufs,
+  loudnessRangeLu,
+  samplePeakDbfs: truePeakDbtp,
+  truePeakDbtp,
+  integratedReason: null,
+  rangeReason: null,
+  algorithm: "meter",
+  version: "1",
+});
+/** Receipt 05's program: −20.4 LUFS, 8 LU range, +0.3 dBTP true peak. */
+const receipt05 = loudness(-20.4, 8, 0.3);
+function normalizedEvidence(after: ReturnType<typeof loudness>) {
+  return (window: AudioWindowInput["window"]) =>
+    window.audioState()!.domains.flatMap((domain, domainIndex) =>
+      domain.recipe.type === "normalization"
+        ? [
+            {
+              domainIndex,
+              recipe: domain.recipe,
+              sampleRange: domain.sampleRange,
+              implementationId: "normalization-v2",
+              normalization: {
+                before: receipt05,
+                after,
+                attempts: [{ offsetDb: null, after }],
+                selectedAttempt: 0,
+                meterImplementationId: "meter",
+                tolerances: normalizationTolerance,
+              },
+            },
+          ]
+        : [],
+    );
+}
+async function normalizedFixture(target: number, after: ReturnType<typeof loudness>) {
+  const f = await fixture(
+    [],
+    "native-window",
+    false,
+    { normalization: "normalization-v2" },
+    normalizedEvidence(after),
+  );
+  const normalized = f.current.projects.apply(f.input.projectId, {
+    requestId: "normalize",
+    expectedRevisionId: f.input.revisionId,
+    operations: [
+      {
+        operation: "processing.set",
+        target: { kind: "output" },
+        steps: [
+          {
+            processor: {
+              type: "normalization",
+              mode: "gain-only",
+              targetIntegratedLufs: target,
+              truePeakCeilingDbtp: -1,
+              maxLoudnessRangeLu: 20,
+            },
+          },
+        ],
+      },
+    ],
+  });
+  const input = { projectId: f.input.projectId, revisionId: normalized.revision.id };
+  await f.current.prepared.request(input);
+  await f.current.jobs.idle();
+  return { f, input };
+}
+test("an unmet loudness target publishes ceiling-limited prepared audio with its issue; a tampered issue fails the read", async () => {
+  // Receipt 05 asked for +6.4 dB on a +0.3 dBTP input; the −1 dBTP ceiling allows −1.3 dB.
+  const { f, input } = await normalizedFixture(-14, loudness(-21.7, 8, -1));
+  const status = await f.current.prepared.request(input);
+  expect(status.state).toBe("ready");
+  expect(status.published!.issues).toEqual([
+    {
+      code: "normalization-target-unmet",
+      message: expect.any(String),
+      evidence: {
+        mode: "gain-only",
+        domainIndex: 0,
+        missed: [
+          {
+            target: "integrated-loudness",
+            requested: -14,
+            achieved: -21.7,
+            excess: expect.closeTo(7.7, 9),
+          },
+        ],
+        requestedGainDb: expect.closeTo(6.4, 9),
+        gainDb: expect.closeTo(-1.3, 9),
+        peakToLoudnessDb: expect.closeTo(20.7, 9),
+        maximumFeasibleTargetLufs: expect.closeTo(-21.7, 9),
+      },
+    },
+  ]);
+  const value = JSON.parse(status.published!.result) as PreparedAudio;
+  expect(f.current.prepared.portable(value.resourceId).issues).toEqual(status.published!.issues);
+  f.current.catalog.catalog
+    .prepare("UPDATE output_issues SET issue=json_set(issue,'$.evidence.gainDb',6.4)")
+    .run();
+  await expect(f.current.prepared.request(input)).rejects.toMatchObject({
+    code: "ARTIFACT_CHANGED",
+  });
+  f.current.catalog.catalog.prepare("DELETE FROM output_issues").run();
+  await expect(f.current.prepared.request(input)).rejects.toMatchObject({
+    code: "ARTIFACT_CHANGED",
+  });
+});
+test("prepared audio packages carry their issues; import re-derives them and still admits 0.1.33 packages", async () => {
+  const unmet = await normalizedFixture(-14, loudness(-21.7, 8, -1));
+  const clean = await normalizedFixture(-21.7, loudness(-21.7, 8, -1));
+  for (const [{ f, input }, issues] of [
+    [unmet, ["normalization-target-unmet"]],
+    [clean, []],
+  ] as const) {
+    const status = await f.current.prepared.request(input);
+    const original = JSON.parse(status.published!.result) as PreparedAudio;
+    const portable = f.current.prepared.portable(original.resourceId);
+    expect(portable.issues!.map((issue) => issue.code)).toEqual(issues);
+    f.current.jobs.forgetJob(status.jobId!);
+    const stage = (value: unknown) =>
+      f.current.prepared.stagePortable(
+        value,
+        projectCompositionFromRevision(
+          f.current.projects.revision(input.projectId, input.revisionId),
+          f.current.assets,
+          [],
+        ),
+        f.current.assets.path(original.assetId),
+        (reference) => reference,
+        new AbortController().signal,
+      );
+    // A 0.1.33 package has no issues field; only a clean one matches what its evidence derives.
+    const { issues: _, ...withoutIssues } = portable;
+    if (issues.length)
+      await expect(stage(withoutIssues)).rejects.toMatchObject({ code: "INVALID_PACKAGE" });
+    else await stage(withoutIssues);
+    await expect(
+      stage({
+        ...portable,
+        issues: issues.length
+          ? []
+          : unmet.f.current.prepared.portable(
+              (
+                JSON.parse(
+                  (await unmet.f.current.prepared.request(unmet.input)).published!.result,
+                ) as PreparedAudio
+              ).resourceId,
+            ).issues,
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_PACKAGE" });
+    const staged = await stage(portable);
+    f.current.catalog.transaction(() => staged.publish());
+    expect((await f.current.prepared.request(input)).published!.issues).toEqual(portable.issues);
+  }
 });
 test("canceling a fully staged result publishes neither asset nor revision binding; startup recovers orphan bytes", async () => {
   const f = await fixture();

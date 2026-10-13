@@ -9,11 +9,10 @@ import { CatalogError } from "@yap/core/catalog";
 import { fileIdentity, O_NOFOLLOW_ANY } from "@yap/core/files";
 import { readAudioWave } from "@yap/core/audio-wave";
 import {
-  normalizationGain,
-  admitNormalization,
+  normalizationGainDb,
+  normalizationStep,
   normalizationTolerance,
-  normalizationCorrectionPolicy,
-  normalizationFailures,
+  selectNormalizationAttempt,
   type AudioProcessingEvidence,
 } from "@yap/core/audio-measurement";
 import type { AudioWindowInput } from "@yap/core/project-window";
@@ -43,7 +42,7 @@ export function processorImplementations(
   return Object.fromEntries(
     externalTypes.map((type) => [
       type,
-      `${type === "limiter" ? "linked-mono-max-limiter-v1" : type === "compressor" ? "peak-maximum-downward-compressor-v1" : "bounded-offset-normalization"}:${toolsReceiptSha256}:${preparationId}`,
+      `${type === "limiter" ? "linked-mono-max-limiter-v2" : type === "compressor" ? "peak-maximum-downward-compressor-v1" : "bounded-offset-normalization-v2"}:${toolsReceiptSha256}:${preparationId}`,
     ]),
   ) as Record<(typeof externalTypes)[number], string>;
 }
@@ -261,7 +260,8 @@ export async function withAudioProcessing<T>(
       let filter: string, before: Awaited<ReturnType<typeof meter.measure>> | undefined;
       let dynamic: { offsetDb: number; filter: (offsetDb: number) => string } | undefined;
       const attempts: NonNullable<AudioProcessingEvidence["normalization"]>["attempts"] = [];
-      let previousErrorLu = Infinity;
+      // Nothing measurable to normalize: the signal passes through at unity, with an issue.
+      const unity = "[0:a]volume=1:precision=double[out]";
       if (recipe.type === "limiter") {
         const ceiling = 10 ** (recipe.ceilingDbfs / 20);
         filter = `[0:a]asetnsamples=n=128:p=1,asplit=2[p][d];[d]aeval=exprs=max(abs(val(0))\\,abs(val(1))):c=mono,asplit=2[m][md];[m]alimiter=limit=${ceiling}:attack=${recipe.lookaheadMs}:release=${recipe.releaseMs}:level_in=1:level_out=1:level=false:asc=false:latency=true,asetnsamples=n=128:p=1[ml];[p][md][ml]amerge=inputs=3,aeval=exprs=if(eq(val(2)\\,0)\\,val(0)\\,val(0)*val(3)/val(2))|if(eq(val(2)\\,0)\\,val(1)\\,val(1)*val(3)/val(2)):c=stereo,atrim=end_sample=${frames}[out]`;
@@ -280,8 +280,10 @@ export async function withAudioProcessing<T>(
           },
           signal,
         );
-        const gain = normalizationGain(recipe, before);
-        if (recipe.mode === "gain-only") filter = `[0:a]volume=${gain}:precision=double[out]`;
+        const gain = normalizationGainDb(recipe, before);
+        if (!gain) filter = unity;
+        else if (recipe.mode === "gain-only")
+          filter = `[0:a]volume=${10 ** (gain.gainDb / 20)}:precision=double[out]`;
         else {
           const base = `loudnorm=I=${recipe.targetIntegratedLufs}:TP=${recipe.truePeakCeilingDbtp}:LRA=${recipe.maxLoudnessRangeLu}:linear=false`;
           const first = nativeResult(
@@ -318,25 +320,28 @@ export async function withAudioProcessing<T>(
               "Dynamic normalization has no first-pass statistics",
             );
           }
-          const finite = (name: string) => {
-            const value = Number(measured[name]);
-            if (typeof measured[name] !== "string" || !Number.isFinite(value))
-              throw new CatalogError(
-                "NORMALIZATION_UNMEASURABLE",
-                "Dynamic normalization has non-finite first-pass statistics",
-              );
-            return value;
-          };
-          const measuredFilter = `${base}:measured_I=${finite("input_i")}:measured_TP=${finite("input_tp")}:measured_LRA=${finite("input_lra")}:measured_thresh=${finite("input_thresh")}`;
-          dynamic = {
-            offsetDb: finite("target_offset"),
-            filter: (offsetDb) => `[0:a]${measuredFilter}:offset=${offsetDb}[out]`,
-          };
-          filter = dynamic.filter(dynamic.offsetDb);
+          const statistics = [
+            "input_i",
+            "input_tp",
+            "input_lra",
+            "input_thresh",
+            "target_offset",
+          ].map((name) => (typeof measured[name] === "string" ? Number(measured[name]) : NaN));
+          if (statistics.every(Number.isFinite)) {
+            const [integrated, truePeak, range, threshold, offsetDb] = statistics as number[];
+            const measuredFilter = `${base}:measured_I=${integrated}:measured_TP=${truePeak}:measured_LRA=${range}:measured_thresh=${threshold}`;
+            dynamic = {
+              offsetDb: offsetDb!,
+              filter: (offsetDb) => `[0:a]${measuredFilter}:offset=${offsetDb}[out]`,
+            };
+            filter = dynamic.filter(dynamic.offsetDb);
+          } else filter = unity;
         }
       } else throw new CatalogError("INVALID_RESPONSE", "Unexpected external audio recipe");
-      type AdmittedCandidate = { errorLu: number; finish: () => Promise<T> };
-      const treat = async (candidate: number, best?: AdmittedCandidate): Promise<T> => {
+      // Each measured candidate's publication; nested artifact lifetimes keep every one held until
+      // correction settles, so the best can be published whichever attempt it was.
+      const candidates: (() => Promise<T>)[] = [];
+      const treat = async (candidate: number): Promise<T> => {
         const filename = `domain-${domainIndex}-treated-${candidate}.wav`;
         return withFfmpegArtifact(
           request.worker,
@@ -377,11 +382,6 @@ export async function withAudioProcessing<T>(
           signal,
           async (file) => {
             const audio = await validateWave(file, frames, signal);
-            if (recipe.type === "limiter" && audio.peak > 10 ** (recipe.ceilingDbfs / 20) + 1e-6)
-              throw new CatalogError(
-                "LIMITER_CEILING_UNMET",
-                "The complete limited signal exceeds its requested sample ceiling",
-              );
             const normalization =
               recipe.type === "normalization"
                 ? {
@@ -406,7 +406,6 @@ export async function withAudioProcessing<T>(
             return { audio, normalization };
           },
           async (artifact) => {
-            const normalization = artifact.evidence.normalization;
             const finish = async (): Promise<T> => {
               held.push({
                 domainIndex,
@@ -433,6 +432,10 @@ export async function withAudioProcessing<T>(
                 ...(artifact.evidence.normalization
                   ? { normalization: artifact.evidence.normalization }
                   : {}),
+                // The limited peak is evidence; a peak over the ceiling becomes an issue.
+                ...(recipe.type === "limiter"
+                  ? { limiter: { samplePeak: artifact.evidence.audio.peak } }
+                  : {}),
               });
               // Retain only completed domain outputs while downstream recipes execute.
               for (const p of prefixes.splice(0)) {
@@ -441,71 +444,16 @@ export async function withAudioProcessing<T>(
               }
               return recurse(ordinal + 1);
             };
-            if (normalization && recipe.type === "normalization") {
-              const after = normalization.after;
-              const errorLu =
-                after.integratedLufs === null
-                  ? Infinity
-                  : Math.abs(recipe.targetIntegratedLufs - after.integratedLufs);
-              const failures = normalizationFailures(recipe, after);
-              const admitted =
-                !Object.values(failures).some(Boolean) && (!best || errorLu < best.errorLu)
-                  ? { errorLu, finish }
-                  : best;
-              const constraints =
-                after.integratedLufs !== null && !failures.range && !failures.peak;
-              const nextOffsetDb =
-                dynamic && after.integratedLufs !== null
-                  ? dynamic.offsetDb + recipe.targetIntegratedLufs - after.integratedLufs
-                  : NaN;
-              const offsetAvailable =
-                Number.isFinite(nextOffsetDb) &&
-                nextOffsetDb >= normalizationCorrectionPolicy.minimumOffsetDb &&
-                nextOffsetDb <= normalizationCorrectionPolicy.maximumOffsetDb;
-              const progress =
-                previousErrorLu - errorLu >=
-                normalizationCorrectionPolicy.minimumErrorImprovementLu;
-              const budget = candidate + 1 < normalizationCorrectionPolicy.maximumCandidates;
-              if (
-                dynamic &&
-                constraints &&
-                errorLu > normalizationCorrectionPolicy.desiredErrorLu &&
-                progress &&
-                budget &&
-                offsetAvailable
-              ) {
-                previousErrorLu = errorLu;
-                dynamic.offsetDb = nextOffsetDb;
-                filter = dynamic.filter(nextOffsetDb);
-                // Nested artifact lifetimes keep the best admitted PCM held until correction settles.
-                return treat(candidate + 1, admitted);
-              }
-              if (admitted) return admitted.finish();
-              try {
-                admitNormalization(recipe, after);
-              } catch (error) {
-                if (!(error instanceof CatalogError)) throw error;
-                throw new CatalogError(
-                  error.code,
-                  error.message,
-                  {
-                    ...error.details,
-                    attempts,
-                    stopReason: !dynamic
-                      ? "single-gain"
-                      : !constraints
-                        ? "constraints"
-                        : !progress
-                          ? "no-progress"
-                          : !budget
-                            ? "budget-exhausted"
-                            : "offset-unavailable",
-                  },
-                  error.retryable,
-                );
-              }
+            if (!dynamic || recipe.type !== "normalization") return finish();
+            candidates.push(finish);
+            const step = normalizationStep(recipe, attempts);
+            if ("offsetDb" in step) {
+              dynamic.offsetDb = step.offsetDb;
+              filter = dynamic.filter(step.offsetDb);
+              return treat(candidate + 1);
             }
-            return finish();
+            // Publish the best measured candidate; a missed target becomes an issue.
+            return candidates[selectNormalizationAttempt(recipe, attempts)]!();
           },
         );
       };

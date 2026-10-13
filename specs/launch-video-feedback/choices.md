@@ -129,6 +129,76 @@ overridden. Each entry: the choice, why, and how confident.
   `NOT_FOUND`, because the package can't carry evidence it can't read. No
   0.1.33 row is unreadable, so this is theoretical. *Confident.*
 
+## Slice 04
+
+- **Issues are derived from the processing evidence alone.**
+  `audioProcessingIssues` in `packages/core/src/audio-measurement.ts` is the one
+  rule. Producers publish exactly its output, and retained reads, imports and
+  movies re-derive it. A stored issue list that differs is `ARTIFACT_CHANGED`
+  (read) or `INVALID_PACKAGE` (import). So 0.1.33 evidence, which only exists
+  because it met its targets, derives no issues and reads as before.
+  *Confident.*
+- **The limiter's sample peak joins its evidence.** A limiter issue can't be
+  derived without the measured peak, so evidence gains an optional
+  `limiter: { samplePeak }` (linear, compared exactly as the old gate did). 0.1.33
+  limiter evidence omits it and derives no issue; its bytes and strict schema are
+  unchanged. This is the one additive field in retained evidence. *Confident.*
+- **One `normalization-target-unmet` issue per domain, listing each missed
+  target.** `missed[]` carries `target`, `requested`, `achieved` and `excess`
+  (distance past the requested value, not past the tolerance; the tolerance only
+  decides whether the target is listed). Gain-only adds `requestedGainDb`,
+  `gainDb`, `peakToLoudnessDb` and `maximumFeasibleTargetLufs`; dynamic adds
+  `attempts`, `selectedAttempt` and `stopReason`. The domain is named by
+  `domainIndex` in evidence, because compiled domains carry no step id.
+  *Confident.*
+- **"Best" keeps the old choice among passing candidates.** The rank is the total
+  miss beyond tolerance, then integrated error, then index. A candidate that meets
+  every target has zero miss, so among those the closest to the loudness target
+  wins, exactly as before; the spec's "smallest total excess, ties by index" only
+  decides among candidates that miss. A literal "ties by index" would have made the
+  correction loop pointless whenever its first candidate already passed. Retained
+  reads check that `selectedAttempt` is this choice. *Confident.*
+- **The correction loop's step is one pure function.** `normalizationStep` decides
+  the next offset or the stop reason; the service loop and the issue derivation
+  both use it, so a stop reason is re-derivable from retained attempts. It adds
+  `target-reached`, which the old chain lacked but never needed to name. Evidence
+  whose last attempt the rule would have continued is `INVALID_RESPONSE`.
+  *Confident.*
+- **Unmeasurable means passing through at unity, in both modes.** A signal with no
+  integrated loudness, range or true peak, or a dynamic first pass with non-finite
+  statistics, renders through `volume=1` and records one attempt with a null
+  offset. `normalization-unmeasurable` names the measurement and reason. Short
+  domains (under 3 s) have no loudness range, so they now pass through instead of
+  refusing. *Confident.*
+- **Jobs without staged files return `{ result, issues }`.** `StagedJobResult`'s
+  `publish` and `close` became optional so the audio inspection, preview (movie),
+  encoded-audio and export jobs can publish issues without staging hooks.
+  *Confident.*
+- **Exports inherit their rendition's issues.** This settles slice 01's open
+  item for video and audio exports: the export intent's pinned rendition
+  (`preview`) records the issues of the preview or PCM it copies, and the export
+  job publishes them. An M4A inherits its PCM's issues. Intents admitted before
+  this change have no `issues` and inherit none. The status reads `committed` as
+  soon as the receipt lands; the issues appear once the export job publishes.
+  *Confident for video and audio; caption and package exports carry none.*
+- **Prepared-audio packages carry `issues`.** `portablePreparedAudioSchema`
+  gains an optional `issues`; an absent field (a 0.1.33 package) means none.
+  Import compares it with the re-derived list and adopts the publication with
+  those issues (`JobQueue.adoptArtifact` takes them). *Confident.*
+- **Audio extraction doesn't carry treatment issues yet.** An extraction of
+  processed project audio (rendered speech) re-renders through the same path but
+  publishes none of the treatment's issues. *Open; it needs a rule for derived
+  artifacts that consume treated audio.*
+- **`SourceChannelPCM` `UNAVAILABLE_SUPPORT` was not converted.** Core admission
+  (`selectSourceChannelRange`, `packages/core/src/source-selection.ts`) refuses
+  the same gap before native runs, so converting only the native sink changes
+  nothing a caller can reach. Its consumers are the speaker model (its admission
+  requires a complete 30 s span) and alignment, which needs a contiguous model
+  input. Publishing supported samples "never as silence" therefore means either
+  shifting alignment timing by concatenating runs or aligning each run
+  separately. That's a design decision for the providers, not a gate flip. The
+  code stays in `pendingConversion`. *Open; needs the owner's call.*
+
 ## Slice 06 (authored ranges, done ahead of the read ranges)
 
 - **The clamp keeps the same fraction of the placement.** A placement maps
@@ -288,3 +358,4 @@ overridden. Each entry: the choice, why, and how confident.
   refusals carry their evidence in `details`: the container declarations and
   FFmpeg's reading, or the codec and inspection facts. The caller can see
   which declarations disagree. *Confident.*
+  by execution.*

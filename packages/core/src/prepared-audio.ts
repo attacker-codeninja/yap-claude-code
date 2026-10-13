@@ -6,6 +6,7 @@ import { basename, dirname, join } from "node:path";
 import {
   audioOutputCapabilities,
   executionWindowManifestSchema,
+  issuesSchema,
   isMediaClip,
   type ProcessingTap,
   type ExecutionWindowManifest,
@@ -34,6 +35,7 @@ import {
   checkProjectAudioResult,
   type ProjectAudioRenderer,
 } from "./audio-inspection.js";
+import { audioProcessingIssues } from "./audio-measurement.js";
 import { fileIdentity, IdentifiedFiles, retainedFileRead, type FileIdentity } from "./files.js";
 import { validateAudioWave } from "./audio-wave.js";
 
@@ -67,6 +69,8 @@ export const portablePreparedAudioSchema = z.strictObject({
         .max(25000),
     })
     .strict(),
+  /** Absent in packages written before audio treatments published their issues: none. */
+  issues: issuesSchema.optional(),
 });
 export type PortablePreparedAudio = z.infer<typeof portablePreparedAudioSchema>;
 export const preparedAudioResource = (projectId: string, attemptId: string) =>
@@ -191,6 +195,16 @@ export class PreparedAudioStore {
           throw new CatalogError(
             "INVALID_STORAGE",
             "Prepared output range differs from its recipe",
+          );
+        if (
+          !isDeepStrictEqual(
+            this.owners.jobs.issues(publication),
+            audioProcessingIssues(read.value.processingEvidence ?? []),
+          )
+        )
+          throw new CatalogError(
+            "ARTIFACT_CHANGED",
+            "Prepared audio issues differ from its processing evidence",
           );
         candidates.push({ resourceId: reference.id, publication, audio: read.value, recipe });
       } finally {
@@ -324,6 +338,7 @@ export class PreparedAudioStore {
       const publication = staged;
       return {
         result: JSON.stringify(value),
+        issues: audioProcessingIssues(value.processingEvidence ?? []),
         publish: () => {
           publication.publish();
           this.retain(value, plan.window.manifest.revisionId);
@@ -395,6 +410,7 @@ export class PreparedAudioStore {
           input: publication.input,
         },
         audio,
+        issues: this.owners.jobs.issues(publication),
       });
     } finally {
       read.release();
@@ -444,6 +460,12 @@ export class PreparedAudioStore {
       throw new CatalogError("INVALID_PACKAGE", "Prepared audio omitted an upstream dependency");
     signal.throwIfAborted();
     checkProjectAudioResult({ ...portable.audio, file: path }, bound, path);
+    const issues = audioProcessingIssues(portable.audio.processingEvidence ?? []);
+    if (!isDeepStrictEqual(portable.issues ?? [], issues))
+      throw new CatalogError(
+        "INVALID_PACKAGE",
+        "Prepared audio issues differ from its processing evidence",
+      );
     const file = await open(path, "r");
     let identity: FileIdentity;
     try {
@@ -462,17 +484,20 @@ export class PreparedAudioStore {
       resourceId: value.resourceId,
       publish: () => {
         signal.throwIfAborted();
-        this.owners.jobs.adoptArtifact({
-          ...portable.publication,
-          target: {
-            kind: "project",
-            projectId: composition.projectId,
-            revisionId: composition.revisionId,
+        this.owners.jobs.adoptArtifact(
+          {
+            ...portable.publication,
+            target: {
+              kind: "project",
+              projectId: composition.projectId,
+              revisionId: composition.revisionId,
+            },
+            artifact: "prepared-audio",
+            input: JSON.stringify({ ...recipe, revisionId: composition.revisionId }),
+            result: JSON.stringify(value),
           },
-          artifact: "prepared-audio",
-          input: JSON.stringify({ ...recipe, revisionId: composition.revisionId }),
-          result: JSON.stringify(value),
-        });
+          issues,
+        );
         this.retain(value, composition.revisionId);
       },
     };
