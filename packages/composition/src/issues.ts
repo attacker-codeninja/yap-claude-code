@@ -327,7 +327,7 @@ export function boundedIssues(issues: readonly Issue[]): Issue[] {
     ...kept,
     {
       code: "issues-truncated",
-      message: `${omitted} more issues were omitted`,
+      message: omitted === 1 ? "1 more issue was omitted" : `${omitted} more issues were omitted`,
       evidence: { omitted },
     },
   ];
