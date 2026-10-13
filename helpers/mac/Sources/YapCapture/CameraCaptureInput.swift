@@ -187,7 +187,6 @@ package final class CameraCaptureInput: CaptureInputSession, CompanionCameraSwit
     private var opened: (any CaptureCameraSession)?
     /// The session acquiring now; nil while the camera is off.
     private var session: (any CaptureCameraSession)?
-    private var sessionFailure: CaptureFailure?
     private var ingress: CaptureClockIngress?
     private var onFailure: (@Sendable (CaptureFailure) -> Void)?
     private var observing = false
@@ -248,12 +247,16 @@ package final class CameraCaptureInput: CaptureInputSession, CompanionCameraSwit
                 // A stop or discard while the session was starting cancels this turn-on. Its
                 // session is released and the camera closes as if it had never been asked.
                 if ended, let session {
-                    await turnOff(session)
-                    throw CaptureFailure("INVALID_STATE", "The take stopped while the camera was turning on.")
+                    throw Self.refusal(CaptureFailure("INVALID_STATE", "The take stopped while the camera was turning on."),
+                        released: await turnOff(session), by: "cancelled turn-on")
                 }
                 meantOn = true
             }
-            if !on, let session { await turnOff(session); meantOn = false }
+            if !on, let session {
+                let released = await turnOff(session)
+                meantOn = false
+                if let released { throw Self.refusal(nil, released: released, by: "turn-off") }
+            }
         }
         switching = Task { _ = await change.result }
         try await change.value
@@ -286,20 +289,33 @@ package final class CameraCaptureInput: CaptureInputSession, CompanionCameraSwit
             // A stop during startup has already taken and stopped this session.
             if let starting, session === starting {
                 session = nil
-                note(await starting.stop())
+                if let released = await starting.stop() {
+                    throw Self.refusal(error as? CaptureFailure ?? CaptureFailure(bounded: error),
+                        released: released, by: "failed turn-on")
+                }
             }
             throw error
         }
     }
     /// Closes acquisition before the session stops, so nothing recorded crosses the turn-off.
-    private func turnOff(_ current: any CaptureCameraSession) async {
+    /// Returns what releasing the session reported.
+    private func turnOff(_ current: any CaptureCameraSession) async -> CaptureFailure? {
         if let ingress, let camera = ingress.companion {
             ingress.writer.queue.sync { camera.stopAcquiring(atHostUs: CaptureHostTime.nowUs()) }
         }
         session = nil
-        note(await current.stop())
+        return await current.stop()
     }
-    private func note(_ failure: CaptureFailure?) { sessionFailure = sessionFailure ?? failure }
+    /// A release that fails during a take belongs to the toggle that released the session: it is
+    /// logged and reported on that toggle's call, never as the take's failure. The toggle's own
+    /// refusal, if it has one, keeps its code and names the release failure too.
+    private static func refusal(_ cause: CaptureFailure?, released: CaptureFailure?, by toggle: String) -> CaptureFailure {
+        guard let released else { return cause! }
+        FileHandle.standardError.write(Data(
+            "camera release: toggle=\(toggle); code=\(released.code); message=\(released.message)\n".utf8))
+        guard let cause else { return released }
+        return CaptureFailure(cause.code, "\(cause.message) Releasing the camera also failed (\(released.code)): \(released.message)")
+    }
     package func startCursorSampling(writer: CaptureWriter) {
         if measurement.samplesCursor { primary.startCursorSampling(writer: writer) }
     }
@@ -311,11 +327,16 @@ package final class CameraCaptureInput: CaptureInputSession, CompanionCameraSwit
     package func stop() async -> CaptureFailure? {
         ended = true
         await switching?.value
-        for open in [session, opened].compactMap({ $0 }) { note(await open.stop()) }
+        // The end-of-take release: a camera still open at stop fails the take if it cannot be released.
+        var releaseFailure: CaptureFailure?
+        for open in [session, opened].compactMap({ $0 }) {
+            let failure = await open.stop()
+            releaseFailure = releaseFailure ?? failure
+        }
         session = nil; opened = nil
         let primaryFailure = await primary.stop()
         if let ingress { ingress.writer.queue.sync {} }
-        return primaryFailure ?? sessionFailure
+        return primaryFailure ?? releaseFailure
     }
     package func closeMedia(clock: CaptureClock, failure: CaptureFailure?) async -> CaptureInputClosure {
         guard let ingress, let camera = ingress.companion else { return CaptureInputClosure() }

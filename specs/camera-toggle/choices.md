@@ -24,12 +24,12 @@ Words used throughout:
   acquisition. It probes the canonical movie and requires the probed intervals to equal the
   receipt's.
 
-**Review these first:** [a turn-off's release failure fails the whole take at stop](#a-device-release-failure-from-any-turn-off-or-failed-turn-on-ends-the-take-interrupted)
-(unsound), [every reserved take logs every callback (KU6)](#ku6-every-take-that-reserves-a-camera-logs-every-screen-and-microphone-callback)
-(needs-user) and [a crashed take whose camera never recorded recovers as `NO_CAMERA`](#a-crashed-take-whose-camera-recorded-nothing-recovers-as-no_camera)
+**Review these first:** [every reserved take logs every callback (KU6)](#ku6-every-take-that-reserves-a-camera-logs-every-screen-and-microphone-callback)
+(needs-user), [a toggle's release failure is reported on that toggle](#a-device-release-failure-from-a-turn-off-or-failed-turn-on-belongs-to-that-toggle)
+(sound, corrected, low confidence) and [a crashed take whose camera never recorded recovers as `NO_CAMERA`](#a-crashed-take-whose-camera-recorded-nothing-recovers-as-no_camera)
 (sound, low confidence).
 
-Counts: needs-user 2, unsound 1, sound 38, plus 9 trivial calls (end of file).
+Counts: needs-user 2, sound 39, plus 9 trivial calls (end of file).
 
 ---
 
@@ -94,42 +94,47 @@ Counts: needs-user 2, unsound 1, sound 38, plus 9 trivial calls (end of file).
 
 ---
 
-## Unsound
-
-### A device-release failure from any turn-off or failed turn-on ends the take interrupted
-
-- **When:** `6a5407f5`.
-- **The choice:** A person records for 40 minutes and turns the camera off at minute 5. Releasing
-  a camera session restores the device's frame-rate settings. If that restore fails, the session
-  reports `DEVICE_RESTORE_FAILED`. Today the companion camera remembers the first such report from
-  any turn-off, or from cleaning up a failed turn-on, and hands it back when the take stops. The
-  take then ends **interrupted** with that failure, 35 minutes after it happened:
-  ```
-  turnOff(session):  stopAcquiring; sessionFailure = sessionFailure ?? session.stop()
-  take stop:         failure = primaryFailure ?? sessionFailure   // becomes the take's failure
-  ```
-  Before this feature the camera was stopped only once, at the end of the take, so this rule
-  covered one release. Now it covers up to 500. The unbuilt alternative: a toggle's release
-  failure is reported where the toggle happens, as the call's answer or as a diagnostic, and
-  never changes how the take ends.
-- **The gap:** Slice 05 said only "drop the session" on turn-off. Folding the result into the
-  take's stop was the shortest path from the old single `camera.stop()`.
-- **The reach:** It contradicts two invariants in the README: "a camera toggle never touches the
-  take lifecycle" and "a failed turn-on leaves the camera off and the take recording". A complete
-  recording can be reported interrupted because of something that happened to the device, not
-  to the recording.
-- **Verdict:** unsound. It carries a one-shot end-of-take rule over to every toggle. **Corrected
-  decision:** what happens when a session is released during a take is a fact about the device
-  and that toggle, never about the take. Report it on the toggle (or as a diagnostic). The take's
-  terminal state is decided only by recording failures. Whether the release at stop should still
-  fail the take is the same question for the last session, and should get the same answer.
-- **Confidence:** low that the user would make this call.
-
----
-
 ## Sound
 
 Ranked least-confident first.
+
+### A device-release failure from a turn-off or failed turn-on belongs to that toggle
+
+- **When:** `6a5407f5`; corrected in the commit that rewrote this entry.
+- **The choice:** A person records for 40 minutes and turns the camera off at minute 5. Releasing
+  a camera session restores the device's frame-rate settings. If that restore fails, the session
+  reports `DEVICE_RESTORE_FAILED`. The camera is off either way, and the failure is answered on
+  that `capture.setCamera` call, never folded into the take:
+  ```
+  turn-off, release fails          -> the call refuses DEVICE_RESTORE_FAILED; camera off
+  failed turn-on, release fails    -> the call refuses with the turn-on's own code; its message
+                                      also names the release failure; camera off
+  turn-on cancelled by stop/discard,
+    release fails                  -> the call refuses INVALID_STATE as before, naming it too
+  every case above                 -> one "camera release:" line on native's stderr; the take
+                                      keeps recording and ends complete
+  camera on at stop, release fails -> unchanged: the take ends interrupted with that failure
+  ```
+  The service passes native refusal codes through unchanged, and the app shows a refused toggle
+  the way it shows any refused action (the menu's failure line, then a status refresh reads the
+  camera off). No wire shape changed. As first built, the companion camera remembered the first
+  release failure from any toggle and handed it back at stop, so the take ended **interrupted**
+  35 minutes after the camera was switched off.
+- **The gap:** Slice 05 said only "drop the session" on turn-off. Folding the result into the
+  take's stop was the shortest path from the old single `camera.stop()`, and it contradicted two
+  README invariants: "a camera toggle never touches the take lifecycle" and "a failed turn-on
+  leaves the camera off and the take recording".
+- **The reach:** A complete recording is never reported interrupted because of something that
+  happened to the device during a toggle. A failed turn-on keeps its own cause as the code,
+  because that is why the camera is off; the release failure is extra and travels in the message.
+  The release at stop still fails the take: the camera was recording until that moment, and that
+  rule is the one the take had before this feature.
+- **Verdict:** sound. A toggle's release is a fact about the device and that toggle, so it is
+  reported on the toggle. Fixture modes `turn-off-release-fails`, `failed-turn-on-release-fails`,
+  `stop-during-turn-on-release-fails` and `stop-release-fails` in `SelectedCameraInputTests` pin
+  all four rows.
+- **Confidence:** medium. The user chose the corrected decision; whether the release at stop
+  should also stop failing the take is left open on purpose.
 
 ### A crashed take whose camera recorded nothing recovers as `NO_CAMERA`
 

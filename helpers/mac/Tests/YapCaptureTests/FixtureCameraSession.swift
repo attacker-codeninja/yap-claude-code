@@ -26,6 +26,8 @@ final class FixtureCameraSession: CaptureCameraSession {
     var equivalentFormat = false
     var holdStart = false
     var holdStop = false
+    /// What releasing the session reports, as a device whose settings cannot be restored does.
+    var releaseFailure: CaptureFailure?
     let stopEntered = InputGate()
     let releaseStop = InputGate()
     let startEntered = InputGate()
@@ -78,7 +80,7 @@ final class FixtureCameraSession: CaptureCameraSession {
         if starting { stopsDuringStart += 1 }
         observing = false
         if holdStop { stopEntered.release(); await releaseStop.wait() }
-        return nil
+        return releaseFailure
     }
 
     private static func equivalentlyDescribed(_ sample: CMSampleBuffer) throws -> CMSampleBuffer {

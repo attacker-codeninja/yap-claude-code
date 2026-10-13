@@ -469,12 +469,15 @@ private final class SwitchTake {
             outputDirectory: folder.appendingPathComponent("screen").path, microphone: false, systemAudio: false))
     }
     func stop() async throws -> CaptureResult { try await capture.stop() }
-    func refused(_ on: Bool, _ code: String) async {
+    @discardableResult
+    func refused(_ on: Bool, _ code: String) async -> CaptureFailure {
+        var refusal: CaptureFailure!
         do { try await capture.setCamera(on: on); preconditionFailure("Turning the camera \(on) must refuse \(code)") }
-        catch let error as CaptureFailure { precondition(error.code == code, "Expected \(code), got \(error.code): \(error.message)") }
+        catch let error as CaptureFailure { refusal = error; precondition(error.code == code, "Expected \(code), got \(error.code): \(error.message)") }
         catch { preconditionFailure("Unexpected \(error)") }
         precondition(capture.deviceState == "recording" && capture.companionCamera?.on == false,
-            "A refused turn-on leaves the camera off and the take recording")
+            "A refused toggle leaves the camera off and the take recording")
+        return refusal
     }
     /// Lets the pictures a session stamped from its start become past, so a turn-off follows them.
     func record() async throws { try await Task.sleep(for: .milliseconds(350)) }
@@ -554,9 +557,15 @@ private func verifyCameraSwitch(root: URL, screenSource: URL, cameraSource: URL)
 
     // Stop or discard cancels a turn-on in flight: the turn-on is refused, its session is still
     // released once, and the camera publishes as if that turn-on never happened.
-    for mode in ["stop-during-turn-on", "stop-during-second-turn-on", "discard-during-turn-on"] {
+    // A cancelled turn-on whose release fails still keeps the take: the failure is the toggle's.
+    for mode in ["stop-during-turn-on", "stop-during-second-turn-on", "discard-during-turn-on",
+        "stop-during-turn-on-release-fails"] {
         let earlierRun = mode == "stop-during-second-turn-on"
-        t = try take(mode, startsOn: earlierRun) { $0.holdStart = !earlierRun }
+        let releaseFails = mode.hasSuffix("release-fails")
+        t = try take(mode, startsOn: earlierRun) {
+            $0.holdStart = !earlierRun
+            if releaseFails { $0.releaseFailure = CaptureFailure("DEVICE_RESTORE_FAILED", "Fixture camera settings not restored") }
+        }
         if earlierRun { t.reopen { $0.holdStart = true } }
         try await t.start()
         if earlierRun { try await t.record(); try await t.capture.setCamera(on: false) }
@@ -632,6 +641,47 @@ private func verifyCameraSwitch(root: URL, screenSource: URL, cameraSource: URL)
     result = try await t.stop()
     precondition(result.state == "interrupted" && result.failure?.code == "SOURCE_LOST")
     print("PASS device-loss-while-on: whole-take interruption")
+
+    // A release failure belongs to the toggle that released the session: the call reports it, the
+    // camera is off, and the take still completes with everything it recorded.
+    let notRestored = CaptureFailure("DEVICE_RESTORE_FAILED", "Fixture camera settings not restored")
+    t = try take("turn-off-release-fails", startsOn: true) { $0.releaseFailure = notRestored }
+    try await t.start()
+    try await t.record()
+    await t.refused(false, "DEVICE_RESTORE_FAILED")
+    result = try await t.stop()
+    precondition(t.device.opens == 1 && t.device.session.stops == 1)
+    precondition(result.state == "complete" && result.failure == nil,
+        "A turn-off's release failure never becomes the take's: \(String(describing: result.failure))")
+    precondition(result.camera?.state == "complete" && result.camera?.tracks.first?.samples == 3)
+    print("PASS turn-off-release-fails: the turn-off refuses DEVICE_RESTORE_FAILED, camera off, take complete")
+
+    // A failed turn-on reports its own cause; the release of its session failing too is named in
+    // that refusal and never becomes the take's failure.
+    t = try take("failed-turn-on-release-fails", startsOn: false) {
+        $0.failureAfterDelivery = CaptureFailure("INPUT_START_FAILED", "Fixture camera startup failed")
+        $0.releaseFailure = notRestored
+    }
+    try await t.start()
+    let startRefusal = await t.refused(true, "INPUT_START_FAILED")
+    precondition(startRefusal.message.contains("DEVICE_RESTORE_FAILED"),
+        "The refusal names the release failure too: \(startRefusal.message)")
+    result = try await t.stop()
+    precondition(t.device.opens == 1 && t.device.session.stops == 1)
+    precondition(result.state == "complete" && result.failure == nil,
+        "A failed turn-on's release failure never becomes the take's: \(String(describing: result.failure))")
+    print("PASS failed-turn-on-release-fails: refused with its cause, camera off, take complete")
+
+    // The one release at the end of the take is unchanged: a camera on at stop whose release fails
+    // ends the take with that failure.
+    t = try take("stop-release-fails", startsOn: true) { $0.releaseFailure = notRestored }
+    try await t.start()
+    try await t.record()
+    result = try await t.stop()
+    precondition(t.device.session.stops == 1)
+    precondition(result.state == "interrupted" && result.failure?.code == "DEVICE_RESTORE_FAILED",
+        "The end-of-take release keeps its rule: \(result.state) \(String(describing: result.failure))")
+    print("PASS stop-release-fails: the end-of-take release failure ends the take, as before")
 
     // Setting the current state changes nothing.
     t = try take("idempotent-set", startsOn: true)
