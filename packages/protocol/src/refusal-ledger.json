@@ -1,10 +1,6 @@
 {
  "rules": "Owned by packages/protocol/src/refusal-ledger.test.ts; see specs/launch-video-feedback/slices/01-issues-contract.md. codes: every UPPER_SNAKE string literal in product source, with a category and per-file counts. Refusal categories: malformed, ambiguous, conflict, resource-bound, missing-prerequisite, destructive, execution-failure. issue-code: already an output diagnostic (migrates to issues). not-a-refusal: another constant. pending-conversion: a quality gate the spec converts; its slice removes it. pendingSites: quality gates hiding behind generic codes, keyed by message text. refusedStatus: files using a 'refused' status literal. messageCodes: UPPER_SNAKE codes embedded in messages.",
  "pendingConversion": {
-  "NORMALIZATION_NOT_FEASIBLE": "04",
-  "NORMALIZATION_TARGETS_UNMET": "04",
-  "LIMITER_CEILING_UNMET": "04",
-  "NORMALIZATION_UNMEASURABLE": "04",
   "TRANSCRIPT_BOUNDARY_DISAGREEMENT": "03",
   "INVALID_SPEECH_TIMING": "03",
   "UNAVAILABLE_SUPPORT": "04",
@@ -118,7 +114,7 @@
     "packages/core/src/index-processing.ts": 11,
     "packages/core/src/index-read.ts": 3,
     "packages/core/src/pointer-preparation.ts": 1,
-    "packages/core/src/prepared-audio.ts": 3,
+    "packages/core/src/prepared-audio.ts": 4,
     "packages/core/src/project-evidence.ts": 1,
     "packages/core/src/project-index-materialization.ts": 1,
     "packages/core/src/raw-cursor.ts": 1,
@@ -795,7 +791,7 @@
     "packages/core/src/index-processing.ts": 6,
     "packages/core/src/jobs.ts": 3,
     "packages/core/src/package-archive.ts": 1,
-    "packages/core/src/prepared-audio.ts": 4,
+    "packages/core/src/prepared-audio.ts": 5,
     "packages/core/src/project-package.ts": 2,
     "packages/core/src/projects.ts": 5,
     "packages/core/src/scene-processing.ts": 4,
@@ -1006,11 +1002,12 @@
     "packages/core/src/acoustic-image.ts": 1,
     "packages/core/src/audio-extraction.ts": 4,
     "packages/core/src/audio-inspection.ts": 1,
+    "packages/core/src/audio-measurement.ts": 1,
     "packages/core/src/audio-spectrum.ts": 2,
     "packages/core/src/audio-wave.ts": 1,
     "packages/core/src/frame-inspection.ts": 15,
     "packages/core/src/pointer-preparation.ts": 3,
-    "packages/core/src/project-preview.ts": 3,
+    "packages/core/src/project-preview.ts": 4,
     "packages/core/src/rendered-movie.ts": 2,
     "packages/core/src/transcript.ts": 2,
     "packages/core/src/voice-generation.ts": 5,
@@ -1172,12 +1169,6 @@
    "category": "execution-failure",
    "files": {
     "packages/client/src/discovery.ts": 2
-   }
-  },
-  "LIMITER_CEILING_UNMET": {
-   "category": "pending-conversion",
-   "files": {
-    "apps/service/src/audio-processing.ts": 1
    }
   },
   "LIMIT_EXCEEDED": {
@@ -1424,25 +1415,6 @@
    "category": "execution-failure",
    "files": {
     "helpers/mac/Sources/YapMedia/NativeFailure.swift": 1
-   }
-  },
-  "NORMALIZATION_NOT_FEASIBLE": {
-   "category": "pending-conversion",
-   "files": {
-    "packages/core/src/audio-measurement.ts": 1
-   }
-  },
-  "NORMALIZATION_TARGETS_UNMET": {
-   "category": "pending-conversion",
-   "files": {
-    "packages/core/src/audio-measurement.ts": 1
-   }
-  },
-  "NORMALIZATION_UNMEASURABLE": {
-   "category": "pending-conversion",
-   "files": {
-    "apps/service/src/audio-processing.ts": 1,
-    "packages/core/src/audio-measurement.ts": 1
    }
   },
   "NOTES_REFERENCE_UNAVAILABLE": {

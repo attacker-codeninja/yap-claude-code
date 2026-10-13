@@ -22,7 +22,8 @@ import {
 export type { CompositionWindow, CompositionAssetBinding } from "./project-window.js";
 import { CatalogError } from "./catalog.js";
 import { ProjectStore } from "./projects.js";
-import type { Job, JobAdmission, JobExecution, JobQueue } from "./jobs.js";
+import type { Job, JobAdmission, JobExecution, JobQueue, StagedJobResult } from "./jobs.js";
+import { audioProcessingEvidenceSchema, audioProcessingIssues } from "./audio-measurement.js";
 import type { DerivedCache } from "./cache.js";
 import { submitCachedDerivative } from "./cached-derivative.js";
 import { checkRenderedMovie, type RenderedMovie } from "./rendered-movie.js";
@@ -41,7 +42,13 @@ export type ProjectPreviewInput = {
 export type CompositionMovie = RenderedMovie & {
   settings: OutputSettings;
   encodedVideo: { profile: OutputSettings["video"]["profile"]; level: string };
-  audio?: { frames: number; sampleRate: number; channels: number };
+  audio?: {
+    frames: number;
+    sampleRate: number;
+    channels: number;
+    /** Validated as audio processing evidence before the movie publishes. */
+    processingEvidence?: unknown[];
+  };
 };
 export type ProjectMovieRenderer = ProjectRenderSupport & {
   render(
@@ -258,7 +265,7 @@ export class ProjectPreviewInspection {
     };
   }
 
-  async execute({ job, signal }: JobExecution): Promise<string> {
+  async execute({ job, signal }: JobExecution): Promise<StagedJobResult> {
     const options = optionsSchema.safeParse(JSON.parse(job.input));
     if (job.target.kind !== "project" || job.artifact !== "preview" || !options.success)
       throw new CatalogError("UNSUPPORTED_JOB", "Composition preview cannot execute this job");
@@ -306,6 +313,14 @@ export class ProjectPreviewInspection {
         movie.height !== plan.window.manifest.canvas.height
       )
         throw new CatalogError("INVALID_RESPONSE", "Renderer changed the pinned canvas");
+      const evidence = audioProcessingEvidenceSchema
+        .array()
+        .optional()
+        .safeParse(movie.audio?.processingEvidence);
+      if (!evidence.success)
+        throw new CatalogError("INVALID_RESPONSE", "Renderer returned malformed audio evidence");
+      // The movie's audio postconditions are issues on the movie, never a refusal.
+      const issues = audioProcessingIssues(evidence.data ?? []);
       const cached = await this.cache.publish(output.id);
       signal.throwIfAborted();
       if (cached.bytes !== movie.bytes)
@@ -317,7 +332,7 @@ export class ProjectPreviewInspection {
         revisionId: job.target.revisionId,
         cacheId: output.id,
       };
-      return JSON.stringify(result);
+      return { result: JSON.stringify(result), issues };
     } catch (error) {
       this.cache.remove(output.id);
       throw error;

@@ -11,7 +11,13 @@ import { fileURLToPath } from "node:url";
 import { createHash, randomUUID } from "node:crypto";
 import { open, realpath } from "node:fs/promises";
 import { readAudioWave } from "@yap/core/audio-wave";
-import { audioProcessingEvidenceSchema, normalizationTolerance } from "@yap/core/audio-measurement";
+import {
+  audioProcessingEvidenceSchema,
+  audioProcessingIssues,
+  normalizationTolerance,
+  selectNormalizationAttempt,
+} from "@yap/core/audio-measurement";
+import { checkProjectAudioResult } from "@yap/core/audio-inspection";
 import { mkdtemp, mkdir, writeFile, readFile, rm, copyFile } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
@@ -173,6 +179,10 @@ async function fixture(
       return {
         receipt,
         bytes: bytes.subarray(audio.dataOffset, audio.dataOffset + audio.dataBytes),
+        // What a prepared or inspected publication of this receipt carries.
+        issues: audioProcessingIssues(
+          checkProjectAudioResult(receipt, window, output).processingEvidence ?? [],
+        ),
       };
     } finally {
       await file.close();
@@ -186,6 +196,41 @@ const limiter = {
   processor: { type: "limiter" as const, ceilingDbfs: -6, lookaheadMs: 5, releaseMs: 50 },
 };
 const real = test.runIf(Boolean(native && installation));
+/** The real meter over a published WAV, so a test checks the PCM itself and not only its evidence. */
+async function measureWave(
+  path: string,
+  analyzer: typeof ffmpegLoudnessAnalyzer = ffmpegLoudnessAnalyzer,
+) {
+  const source = await open(path);
+  try {
+    const bytes = Number((await source.stat()).size);
+    const audio = readAudioWave({
+      bytes,
+      read: (buffer, position) => readSync(source.fd, buffer, 0, buffer.length, position),
+    });
+    return await analyzer(
+      { directory: installation!, receiptSha256: receiptSha256() },
+      native,
+    ).measure(
+      { source: { fd: source.fd, bytes }, audio, channelInterpretation: "native", truePeak: true },
+      new AbortController().signal,
+    );
+  } finally {
+    await source.close();
+  }
+}
+function receiptSha256() {
+  return (
+    process.env.YAP_FFMPEG_RECEIPT ??
+    "27350ff2f953bbd4d6ca8bfe0f6808b99b9752192657d289146b50319099f66a"
+  );
+}
+function normalizationOf(receipt: unknown) {
+  return audioProcessingEvidenceSchema
+    .array()
+    .parse((receipt as { processingEvidence: unknown[] }).processingEvidence)
+    .find((item) => item.normalization)!.normalization!;
+}
 function peakyDialogue(frame: number, peakLimited = false): [number, number] {
   const t = frame / 48000,
     phase = t % 0.6;
@@ -288,7 +333,7 @@ real(
   30000,
 );
 real(
-  "dynamic mastering refuses a stalled meter without publishing a candidate",
+  "dynamic mastering publishes its best candidate with an issue when the meter stalls",
   async () => {
     // Controlled scanner output proves progress/lifetime; the peaky case proves actual accuracy.
     const actualAnalyzer = loudnessModule.ffmpegLoudnessAnalyzer;
@@ -321,20 +366,33 @@ real(
         12000000,
       );
       await writeFile(join(f.dir, "source.wav"), wave(576000, peakyDialogue));
-      let failure: unknown;
-      try {
-        await f.render(0, 12000000, "stalled");
-      } catch (error) {
-        failure = error;
-      }
-      expect(failure).toMatchObject({
-        code: "NORMALIZATION_TARGETS_UNMET",
-        details: {
-          stopReason: "no-progress",
-          attempts: [{ after: { integratedLufs: -14.9 } }, { after: { integratedLufs: -14.9 } }],
-        },
+      const stalled = await f.render(0, 12000000, "stalled");
+      expect(normalizationOf(stalled.receipt)).toMatchObject({
+        selectedAttempt: 0,
+        attempts: [{ after: { integratedLufs: -14.9 } }, { after: { integratedLufs: -14.9 } }],
       });
-      await expect(readFile(join(f.dir, "stalled.wav"))).rejects.toMatchObject({ code: "ENOENT" });
+      expect(stalled.issues).toEqual([
+        {
+          code: "normalization-target-unmet",
+          message: expect.any(String),
+          evidence: {
+            mode: "dynamic",
+            domainIndex: 0,
+            missed: [
+              {
+                target: "integrated-loudness",
+                requested: -14.5,
+                achieved: -14.9,
+                excess: expect.closeTo(0.4, 9),
+              },
+            ],
+            attempts: 2,
+            selectedAttempt: 0,
+            stopReason: "no-progress",
+          },
+        },
+      ]);
+      expect(stalled.bytes.length).toBe(576000 * 8);
     } finally {
       spy.mockRestore();
       if (f) await rm(f.dir, { recursive: true, force: true });
@@ -394,6 +452,7 @@ real(
         ],
       });
       expect(output.bytes.length).toBe(576000 * 8);
+      expect(output.issues).toEqual([]);
     } finally {
       spy.mockRestore();
       if (f) await rm(f.dir, { recursive: true, force: true });
@@ -402,7 +461,7 @@ real(
   30000,
 );
 real(
-  "peak-limited dynamic mastering refuses bounded correction without delivery",
+  "peak-limited dynamic mastering publishes its best bounded correction with an issue",
   async () => {
     const f = await fixture(
       [
@@ -423,31 +482,50 @@ real(
     try {
       const source = wave(576000, (i) => peakyDialogue(i, true));
       await writeFile(join(f.dir, "source.wav"), source);
-      let failure: unknown;
-      try {
-        await f.render(0, 12000000, "peak-limited");
-      } catch (error) {
-        failure = error;
-      }
-      expect(failure).toMatchObject({
-        code: "NORMALIZATION_TARGETS_UNMET",
-        details: {
-          stopReason: "budget-exhausted",
-          attempts: [
-            { after: { integratedLufs: expect.any(Number) } },
-            { after: { integratedLufs: expect.any(Number) } },
-            { after: { integratedLufs: expect.any(Number) } },
-          ],
+      const limited = await f.render(0, 12000000, "peak-limited");
+      const evidence = normalizationOf(limited.receipt);
+      expect(evidence.attempts).toHaveLength(3);
+      expect(evidence.selectedAttempt).toBe(
+        selectNormalizationAttempt(
+          {
+            type: "normalization",
+            mode: "dynamic",
+            targetIntegratedLufs: -14.5,
+            truePeakCeilingDbtp: 0,
+            maxLoudnessRangeLu: 7,
+          },
+          evidence.attempts,
+        ),
+      );
+      expect(limited.issues).toEqual([
+        {
+          code: "normalization-target-unmet",
+          message: expect.any(String),
+          evidence: {
+            mode: "dynamic",
+            domainIndex: 0,
+            missed: expect.arrayContaining([
+              expect.objectContaining({
+                target: "integrated-loudness",
+                achieved: evidence.after.integratedLufs,
+              }),
+            ]),
+            attempts: 3,
+            selectedAttempt: evidence.selectedAttempt,
+            stopReason: "budget-exhausted",
+          },
         },
-      });
+      ]);
+      // The published PCM is the selected candidate, as the meter reads it.
+      expect(await measureWave(join(f.dir, "peak-limited.wav"))).toEqual(evidence.after);
       expect(await readFile(join(f.dir, "source.wav"))).toEqual(source);
-      await expect(readFile(join(f.dir, "peak-limited.wav"))).rejects.toMatchObject({
-        code: "ENOENT",
-      });
       if (acceptanceEvidence) {
         const retained = join(acceptanceEvidence, "peak-limited");
         await mkdir(retained, { recursive: true });
-        await writeFile(join(retained, "refusal.json"), JSON.stringify(failure, null, 2));
+        await writeFile(
+          join(retained, "issues.json"),
+          JSON.stringify({ evidence, issues: limited.issues }, null, 2),
+        );
       }
     } finally {
       await rm(f.dir, { recursive: true, force: true });
@@ -615,7 +693,7 @@ real(
   30000,
 );
 real(
-  "gain-only and dynamic normalization retain complete measurements and refuse infeasible gain",
+  "gain-only and dynamic normalization retain complete measurements; infeasible gain lets the ceiling win",
   async () => {
     for (const mode of ["gain-only", "dynamic"] as const) {
       const f = await fixture(
@@ -656,9 +734,37 @@ real(
             truePeakCeilingDbtp: -9,
             maxLoudnessRangeLu: 7,
           };
-          await expect(f.render(0, 8000000, "refused", impossible)).rejects.toMatchObject({
-            code: "NORMALIZATION_NOT_FEASIBLE",
-          });
+          const limited = await f.render(0, 8000000, "ceiling", impossible);
+          const { before, after } = normalizationOf(limited.receipt);
+          expect(limited.issues).toEqual([
+            {
+              code: "normalization-target-unmet",
+              message: expect.any(String),
+              evidence: {
+                mode: "gain-only",
+                domainIndex: 0,
+                missed: [
+                  {
+                    target: "integrated-loudness",
+                    requested: -5,
+                    achieved: after.integratedLufs,
+                    excess: Math.abs(after.integratedLufs! + 5),
+                  },
+                ],
+                requestedGainDb: -5 - before.integratedLufs!,
+                gainDb: -9 - before.truePeakDbtp!,
+                peakToLoudnessDb: before.truePeakDbtp! - before.integratedLufs!,
+                maximumFeasibleTargetLufs: -9 - before.truePeakDbtp! + before.integratedLufs!,
+              },
+            },
+          ]);
+          // The ceiling won: the published PCM meets the peak ceiling and misses loudness.
+          const published = await measureWave(join(f.dir, "ceiling.wav"));
+          expect(published).toEqual(after);
+          expect(published.truePeakDbtp!).toBeLessThanOrEqual(
+            -9 + normalizationTolerance.meterSpecificTruePeakExcessDb,
+          );
+          expect(published.integratedLufs!).toBeLessThan(-5 - 1);
         }
         passed = true;
       } finally {
@@ -671,7 +777,7 @@ real(
 );
 
 real(
-  "dynamic normalization refuses the stepped whole-domain LRA miss before delivery",
+  "dynamic normalization publishes a stepped whole-domain LRA miss to excerpts with its issue",
   async () => {
     const f = await fixture(
       [
@@ -704,11 +810,32 @@ real(
           return [v, v];
         }),
       );
-      await expect(f.render(11000000, 11100000, "refused")).rejects.toMatchObject({
-        code: "NORMALIZATION_TARGETS_UNMET",
-        details: { after: { loudnessRangeLu: expect.any(Number) } },
-      });
-      await expect(open(join(f.dir, "refused.wav"))).rejects.toMatchObject({ code: "ENOENT" });
+      const full = await f.render(0, 12000000, "full");
+      const excerpt = await f.render(11000000, 11100000, "excerpt");
+      const { after } = normalizationOf(full.receipt);
+      expect(after.loudnessRangeLu!).toBeGreaterThan(
+        7 + normalizationTolerance.rangeMaximumExcessLu,
+      );
+      expect(await measureWave(join(f.dir, "full.wav"))).toEqual(after);
+      // A ranged read treats the whole domain, so it carries the same issue as the full read.
+      expect(excerpt.issues).toEqual(full.issues);
+      expect(excerpt.issues).toMatchObject([
+        {
+          code: "normalization-target-unmet",
+          evidence: {
+            mode: "dynamic",
+            missed: expect.arrayContaining([
+              {
+                target: "loudness-range",
+                requested: 7,
+                achieved: after.loudnessRangeLu,
+                excess: expect.closeTo(after.loudnessRangeLu! - 7, 9),
+              },
+            ]),
+          },
+        },
+      ]);
+      expect(excerpt.bytes.equals(full.bytes.subarray(528000 * 8, 532800 * 8))).toBe(true);
       passed = true;
     } finally {
       if (passed) await rm(f.dir, { recursive: true, force: true });
@@ -719,7 +846,7 @@ real(
 );
 
 real(
-  "an unmeasurable complete signal refuses normalization without delivery",
+  "an unmeasurable complete signal passes through normalization at unity with an issue",
   async () => {
     const f = await fixture(
       [
@@ -743,10 +870,15 @@ real(
         join(f.dir, "source.wav"),
         wave(384000, () => [0, 0]),
       );
-      await expect(f.render(0, 8000000, "refused")).rejects.toMatchObject({
-        code: "NORMALIZATION_UNMEASURABLE",
-      });
-      await expect(open(join(f.dir, "refused.wav"))).rejects.toMatchObject({ code: "ENOENT" });
+      const silent = await f.render(0, 8000000, "unity");
+      expect(silent.issues).toEqual([
+        {
+          code: "normalization-unmeasurable",
+          message: expect.any(String),
+          evidence: { domainIndex: 0, measurement: "integrated-loudness", reason: "below-gate" },
+        },
+      ]);
+      expect(silent.bytes.equals(wave(384000, () => [0, 0]).subarray(44))).toBe(true);
       passed = true;
     } finally {
       if (passed) await rm(f.dir, { recursive: true, force: true });
@@ -1010,7 +1142,7 @@ real(
 );
 
 real(
-  "movie preflight refuses impossible gain before native picture encoding",
+  "a movie with an impossible gain target renders ceiling-limited audio whose evidence carries the issue",
   async () => {
     const f = await fixture(
       [
@@ -1028,8 +1160,7 @@ real(
       ],
       8000000,
     );
-    let pictures = 0,
-      passed = false;
+    let passed = false;
     try {
       const model = validateComposition(f.document, [f.asset]);
       const compiled = createCompiler(model, "revision").window({
@@ -1053,13 +1184,7 @@ real(
         },
       };
       const renderer = projectMovieRenderer(
-        async (operation, ...args) => {
-          if (operation === "media.renderCompositionMovie") {
-            pictures++;
-            throw new Error("Picture encoding started before known audio refusal");
-          }
-          return f.worker(operation, ...args);
-        },
+        f.worker,
         join(f.dir, "render"),
         undefined,
         f.capabilities,
@@ -1067,37 +1192,188 @@ real(
         {},
         f.runtime,
       );
-      const output = join(f.dir, "refused.mp4");
-      await expect(
-        renderer.render(
-          {
-            model,
-            window,
-            assets: [
-              {
-                assetId: f.asset.id,
-                streamId: "track:1",
-                path: join(f.dir, "source.wav"),
-                originUs: 0,
-              },
-            ],
-            fonts: [],
-            luts: [],
-            output,
-            settings: resolveOutputSettings(),
-          },
-          new AbortController().signal,
+      const output = join(f.dir, "delivered.mp4");
+      const movie = await renderer.render(
+        {
+          model,
+          window,
+          assets: [
+            {
+              assetId: f.asset.id,
+              streamId: "track:1",
+              path: join(f.dir, "source.wav"),
+              originUs: 0,
+            },
+          ],
+          fonts: [],
+          luts: [],
+          output,
+          settings: resolveOutputSettings(),
+        },
+        new AbortController().signal,
+      );
+      expect(movie).toMatchObject({ file: output, audio: { frames: 384000 } });
+      expect(
+        audioProcessingIssues(
+          audioProcessingEvidenceSchema.array().parse(movie.audio!.processingEvidence),
         ),
-      ).rejects.toMatchObject({ code: "NORMALIZATION_NOT_FEASIBLE" });
-      expect(pictures).toBe(0);
-      await expect(open(output)).rejects.toMatchObject({ code: "ENOENT" });
+      ).toMatchObject([
+        {
+          code: "normalization-target-unmet",
+          evidence: {
+            mode: "gain-only",
+            missed: [{ target: "integrated-loudness", requested: -5 }],
+          },
+        },
+      ]);
       passed = true;
     } finally {
       if (passed) await rm(f.dir, { recursive: true, force: true });
-      else process.stderr.write(`Unverified preflight operands retained: ${f.dir}\n`);
+      else process.stderr.write(`Unverified movie operands retained: ${f.dir}\n`);
     }
   },
   30000,
+);
+real(
+  "a movie export with an unmet loudness target commits, and its status and prepared audio carry the issue",
+  async () => {
+    const home = await realpath(await mkdtemp(join(tmpdir(), "unmet-export-")));
+    let service: Awaited<ReturnType<typeof startProjectService>> | undefined;
+    let passed = false;
+    try {
+      const path = join(home, "source.wav");
+      await writeFile(path, wave(384000));
+      service = await startProjectService({
+        home,
+        nativeExecutable: native!,
+        worker: mediaWorker({ YAP_NATIVE: native }),
+        ffmpeg: { directory: installation!, receiptSha256: receiptSha256() },
+      });
+      const call = async <T>(operation: string, params: Record<string, unknown>) => {
+        const result = await callLocal(service!.socketPath, { id: "unmet", operation, params });
+        if (!result.ok) throw Error(JSON.stringify(result));
+        return result.data as T;
+      };
+      const settled = async <T extends { state: string }>(
+        read: () => Promise<T>,
+        done: (value: T) => boolean,
+      ) => {
+        const deadline = performance.now() + 20000;
+        for (;;) {
+          const value = await read();
+          if (done(value)) return value;
+          if (
+            ["failed", "canceled", "unavailable", "conflicted"].includes(value.state) ||
+            performance.now() > deadline
+          )
+            throw Error(JSON.stringify(value));
+          await delay(10);
+        }
+      };
+      const imported = await call<{ jobId: string }>("asset.import", { requestId: "source", path });
+      const importedJob = await settled(
+        () =>
+          call<{ state: string; published: { output: { assetId: string } } | null }>("job.get", {
+            jobId: imported.jobId,
+          }),
+        (value) => value.state === "ready",
+      );
+      const created = await call<{ project: { projectId: string }; revision: { id: string } }>(
+        "project.create",
+        {
+          requestId: "project",
+          canvas: {
+            width: 16,
+            height: 16,
+            fps: { numerator: 30, denominator: 1 },
+            background: "#000000ff",
+          },
+        },
+      );
+      const edited = await call<{ revision: { id: string } }>("edit.apply", {
+        projectId: created.project.projectId,
+        expectedRevisionId: created.revision.id,
+        requestId: "media",
+        operations: [
+          { operation: "track.add", track: { kind: "audio", order: 0 }, label: "audio" },
+          {
+            operation: "place",
+            clip: {
+              trackId: { label: "audio" },
+              assetId: importedJob.published!.output.assetId,
+              streamId: "track:1",
+              source: { kind: "range", range: { startUs: 0, endUs: 8000000 } },
+              placement: { kind: "project", range: { startUs: 0, endUs: 8000000 } },
+            },
+          },
+          {
+            operation: "processing.set",
+            target: { kind: "output" },
+            steps: [
+              {
+                processor: {
+                  type: "normalization",
+                  mode: "gain-only",
+                  targetIntegratedLufs: -5,
+                  truePeakCeilingDbtp: -9,
+                  maxLoudnessRangeLu: 7,
+                },
+              },
+            ],
+          },
+        ],
+      });
+      const selection = { projectId: created.project.projectId, revisionId: edited.revision.id };
+      const exportId = randomUUID();
+      await call("export.create", {
+        ...selection,
+        exportId,
+        kind: "video",
+        directory: home,
+        leaf: "delivered.mp4",
+      });
+      const committed = await settled(
+        () => call<{ state: string; jobId: string }>("export.status", { exportId }),
+        (value) => value.state === "committed",
+      );
+      // The receipt commits before the export job publishes the issues it carries.
+      await settled(
+        () => call<{ state: string }>("job.get", { jobId: committed.jobId }),
+        (value) => value.state === "ready",
+      );
+      const exported = await call<{ issues: { code: string; evidence: unknown }[] }>(
+        "export.status",
+        { exportId },
+      );
+      expect(exported.issues).toMatchObject([
+        {
+          code: "normalization-target-unmet",
+          evidence: {
+            mode: "gain-only",
+            missed: [{ target: "integrated-loudness", requested: -5 }],
+          },
+        },
+      ]);
+      expect((await readFile(join(home, "delivered.mp4"))).length).toBeGreaterThan(0);
+      type Prepared = {
+        state: string;
+        jobId: string;
+        published: { issues: unknown[] } | null;
+      };
+      const pending = await call<Prepared>("audio.prepare", selection);
+      const prepared = await settled(
+        () => call<Prepared>("audio.prepare", selection),
+        (value) => value.state === "ready" && value.jobId === pending.jobId,
+      );
+      expect(prepared.published!.issues).toEqual(exported.issues);
+      passed = true;
+    } finally {
+      await service?.close();
+      if (passed) await rm(home, { recursive: true, force: true });
+      else process.stderr.write(`Unverified export operands retained: ${home}\n`);
+    }
+  },
+  60000,
 );
 real.each([
   { mode: "gain-only" as const, target: -6, peak: -1, duration: 8000000, peaky: false },

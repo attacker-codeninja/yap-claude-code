@@ -2,6 +2,7 @@ import {
   normalizeOutputRequest,
   normalizeAudioOutputRequest,
   type AudioOutputSettingsInput,
+  type Issue,
   type OutputSettingsInput,
 } from "@yap/composition";
 import { ResourceReferences, resourceKinds } from "@yap/core/references";
@@ -24,6 +25,7 @@ import {
   type JobAdmission,
   type JobExecution,
   type JobQueue,
+  type StagedJobResult,
 } from "@yap/core/jobs";
 import type { ProjectStore } from "@yap/core/projects";
 import type { ProjectPreviewInspection, PinnedProjectPreview } from "@yap/core/project-preview";
@@ -58,6 +60,8 @@ type ReadyRendition = {
   cacheId: string;
   bytes: number;
   generation: number;
+  /** The rendition's issues, which the export inherits; intents admitted before issues have none. */
+  issues?: Issue[];
 };
 type Intent = {
   kind: Request["kind"];
@@ -411,7 +415,11 @@ export class MediaExports {
       reason: string | null;
       retryable: boolean;
       jobId: string | null;
-      published: { generation: number; preview: { cacheId: string; bytes: number } } | null;
+      published: {
+        generation: number;
+        issues: Issue[];
+        preview: { cacheId: string; bytes: number };
+      } | null;
     };
     if (intent.kind === "processed-package" || intent.kind === "srt" || intent.kind === "vtt")
       return { state: "ready" };
@@ -420,7 +428,11 @@ export class MediaExports {
       ready = {
         ...audio,
         published: audio.published
-          ? { generation: audio.published.generation, preview: audio.published.audio }
+          ? {
+              generation: audio.published.generation,
+              issues: audio.published.issues,
+              preview: audio.published.audio,
+            }
           : null,
       };
     } else ready = this.owners.project.preview.resume(intent.snapshot as PinnedProjectPreview);
@@ -429,6 +441,7 @@ export class MediaExports {
       cacheId: ready.published.preview.cacheId,
       bytes: ready.published.preview.bytes,
       generation: ready.published.generation,
+      issues: ready.published.issues,
     };
     this.owners.catalog.catalog
       .prepare("UPDATE export_intents SET preview=? WHERE exportId=?")
@@ -1081,7 +1094,7 @@ export class MediaExports {
         "Export cannot replace an original imported source",
       );
   }
-  async execute({ job, signal }: JobExecution): Promise<string> {
+  async execute({ job, signal }: JobExecution): Promise<string | StagedJobResult> {
     if (job.artifact === recoveryArtifact) return this.reconcile({ job, signal });
     if (job.artifact !== artifact)
       throw new CatalogError("UNSUPPORTED_JOB", "Media exporter cannot execute this job");
@@ -1089,9 +1102,11 @@ export class MediaExports {
     this.requireActive(intent);
     if (!this.matches(job, intent))
       throw new CatalogError("INVALID_JOB", "Export job does not match its pinned intent");
+    // A delivered rendition carries the issues of the output it copies.
+    const issues = intent.preview?.issues ?? [];
     if (intent.receipt) {
       await this.cleanupAssembly(intent);
-      return JSON.stringify(intent.receipt);
+      return { result: JSON.stringify(intent.receipt), issues };
     }
     signal.throwIfAborted();
     let publication = await this.open(intent);
@@ -1179,7 +1194,7 @@ export class MediaExports {
         );
       await this.settleCommit(intent, publication, observed.receipt, signal);
       await this.cleanupAssembly(intent);
-      return JSON.stringify(observed.receipt);
+      return { result: JSON.stringify(observed.receipt), issues };
     } finally {
       await publication.close();
     }

@@ -173,6 +173,8 @@ export {
   issueLimit,
   issueSchema,
   issuesSchema,
+  normalizationStopReasonSchema,
+  normalizationTargetMissSchema,
   type Issue,
   type IssueCode,
 } from "./issues.js";

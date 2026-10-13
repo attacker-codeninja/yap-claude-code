@@ -1,7 +1,8 @@
 import {
   audioProcessingEvidenceSchema,
-  admitNormalization,
-  normalizationGain,
+  audioProcessingIssues,
+  normalizationPassedThrough,
+  selectNormalizationAttempt,
   type AudioProcessingEvidence,
 } from "./audio-measurement.js";
 import {
@@ -42,6 +43,7 @@ import {
   type JobAdmission,
   type JobExecution,
   type JobQueue,
+  type StagedJobResult,
 } from "./jobs.js";
 import type { DerivedCache } from "./cache.js";
 import { CatalogError } from "./catalog.js";
@@ -683,7 +685,7 @@ export class MediaAudioInspection {
       );
     return { state: "waiting", dependency: pcm.jobId };
   }
-  private async executeEncoded({ job, signal }: JobExecution): Promise<string> {
+  private async executeEncoded({ job, signal }: JobExecution): Promise<StagedJobResult> {
     const pinned = this.encodedSnapshot(job);
     const recipe = this.exportRecipe(pinned);
     const status = this.owners.jobs.status(recipe.identity);
@@ -734,7 +736,7 @@ export class MediaAudioInspection {
       const cached = await this.owners.cache.publish(output.id);
       signal.throwIfAborted();
       if (cached.bytes !== value.bytes) invalid("Encoded audio size differs from its file");
-      return JSON.stringify({
+      const result = JSON.stringify({
         ...value,
         ...pinned,
         mediaType: "audio/mp4",
@@ -747,6 +749,8 @@ export class MediaAudioInspection {
         },
         cacheId: output.id,
       });
+      // The encoded file carries the issues of the PCM it encodes.
+      return { result, issues: status.published.issues };
     } catch (error) {
       this.owners.cache.remove(output.id);
       if (error instanceof CatalogError && error.code === "ARTIFACT_EXPIRED")
@@ -871,7 +875,7 @@ export class MediaAudioInspection {
       implementationId: options.implementationId,
     } satisfies Omit<SourceAudioArtifact, "cacheId">;
   }
-  async execute({ job, signal }: JobExecution): Promise<string> {
+  async execute({ job, signal }: JobExecution): Promise<string | StagedJobResult> {
     if (job.artifact === "audio-file") return this.executeEncoded({ job, signal });
     if (job.target.kind !== "project" && job.target.kind !== "asset")
       throw new CatalogError("UNSUPPORTED_JOB", "Audio requires a project or asset selection");
@@ -882,7 +886,13 @@ export class MediaAudioInspection {
       const cached = await this.owners.cache.publish(output.id);
       signal.throwIfAborted();
       if (cached.bytes !== value.bytes) invalid("Published audio size differs from its receipt");
-      return JSON.stringify({ ...value, cacheId: output.id });
+      return {
+        result: JSON.stringify({ ...value, cacheId: output.id }),
+        // A processed project window carries its treatments' issues to every read of it.
+        issues: audioProcessingIssues(
+          ("processingEvidence" in value ? value.processingEvidence : undefined) ?? [],
+        ),
+      };
     } catch (error) {
       this.owners.cache.remove(output.id);
       throw error;
@@ -944,20 +954,24 @@ export function checkProjectAudioResult(
         if (!item.normalization)
           invalid("Normalization omitted complete before/after measurements");
         const attempts = item.normalization.attempts;
+        const single = attempts.length === 1 && attempts[0]!.offsetDb === null;
         if (
           !isDeepStrictEqual(
             attempts[item.normalization.selectedAttempt]?.after,
             item.normalization.after,
           ) ||
-          (item.recipe.mode === "gain-only"
-            ? attempts.length !== 1 || attempts[0]!.offsetDb !== null
+          item.normalization.selectedAttempt !==
+            selectNormalizationAttempt(item.recipe, attempts) ||
+          (item.recipe.mode === "gain-only" ||
+          normalizationPassedThrough(item.recipe, item.normalization)
+            ? !single
             : attempts.some((attempt) => attempt.offsetDb === null))
         )
           invalid("Normalization candidate evidence differs from its final signal or mode");
-        normalizationGain(item.recipe, item.normalization.before);
-        admitNormalization(item.recipe, item.normalization.after);
       } else if (item.normalization)
         invalid("Non-normalization domain supplied normalization measurements");
+      if (item.limiter && item.recipe.type !== "limiter")
+        invalid("Non-limiter domain supplied a limited peak");
       expected.delete(item.domainIndex);
     }
     if (expected.size) invalid("Audio processing omitted a complete prepared domain");

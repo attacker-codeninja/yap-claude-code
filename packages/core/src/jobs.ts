@@ -126,13 +126,14 @@ type Settlement =
 export type JobExecution = Readonly<{ job: Job; signal: AbortSignal }>;
 /**
  * File work finishes before settlement; only synchronous catalog writes join the queue fence. Issues
- * describe this result and publish in the same transaction.
+ * describe this result and publish in the same transaction. A result with nothing staged omits
+ * `publish` and `close`.
  */
 export type StagedJobResult = {
   result: string;
   issues?: readonly Issue[];
-  publish(): undefined;
-  close(): Promise<void>;
+  publish?(): undefined;
+  close?(): Promise<void>;
 };
 /**
  * Does the actual work and resolves with the artifact result to publish. An ordinary rejection is a
@@ -833,8 +834,11 @@ export class JobQueue {
     return row ? { ...toArtifact(row), attemptId } : null;
   }
 
-  /** The dependency owner validates the result; its publication joins the caller's catalog transaction. */
-  adoptArtifact(receipt: RetainedArtifact): void {
+  /**
+   * The dependency owner validates the result and its issues; the publication joins the caller's
+   * catalog transaction.
+   */
+  adoptArtifact(receipt: RetainedArtifact, issues: readonly Issue[] = []): void {
     this.requireOpen();
     this.targets.pin(receipt.target);
     const existing = this.publication(receipt);
@@ -879,6 +883,11 @@ export class JobQueue {
         receipt.result,
         inputDigest(receipt.input),
       );
+    writeOutputIssues(
+      this.store,
+      { outputKind: "artifact", outputId: receipt.attemptId, generation: receipt.generation },
+      issues,
+    );
   }
 
   /** Recover frozen work by an explicit business-request key before execution readiness.
@@ -1413,7 +1422,7 @@ export class JobQueue {
       )
       .finally(async () => {
         try {
-          await staged?.close();
+          await staged?.close?.();
         } finally {
           this.attempts.delete(job.attemptId);
           if ("target" in owner)

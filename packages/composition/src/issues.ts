@@ -41,6 +41,29 @@ export const framingConstraintSchema = z.enum([
 ]);
 
 const boundsSchema = z.object({ startUs: timeValueSchema, endUs: timeValueSchema }).strict();
+const domainIndexSchema = z.int().nonnegative().max(Number.MAX_SAFE_INTEGER);
+const finite = z.number().finite();
+
+/** One requested normalization target the published signal misses beyond its tolerance. */
+export const normalizationTargetMissSchema = z
+  .object({
+    target: z.enum(["integrated-loudness", "loudness-range", "true-peak"]),
+    requested: finite,
+    /** Null when the published signal has no measurable value for this target. */
+    achieved: finite.nullable(),
+    /** How far past the requested value the published signal lands; null when unmeasured. */
+    excess: finite.nonnegative().nullable(),
+  })
+  .strict();
+
+/** Why a dynamic correction loop stopped at the candidate it measured last. */
+export const normalizationStopReasonSchema = z.enum([
+  "constraints",
+  "target-reached",
+  "no-progress",
+  "budget-exhausted",
+  "offset-unavailable",
+]);
 
 export const issueSchema = z.discriminatedUnion("code", [
   issue(
@@ -87,6 +110,60 @@ export const issueSchema = z.discriminatedUnion("code", [
         applied: selectionRangeSchema,
         bounds: boundsSchema,
         operationIndex: z.int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
+      })
+      .strict(),
+  ),
+  issue(
+    "normalization-target-unmet",
+    z.discriminatedUnion("mode", [
+      z
+        .object({
+          mode: z.literal("gain-only"),
+          domainIndex: domainIndexSchema,
+          missed: z.array(normalizationTargetMissSchema).min(1).max(3),
+          /** The gain the loudness target asked for, and the gain applied once the peak ceiling won. */
+          requestedGainDb: finite,
+          gainDb: finite,
+          /** The input's true peak minus its integrated loudness. */
+          peakToLoudnessDb: finite,
+          /** The loudest integrated target a gain could reach without passing the peak ceiling. */
+          maximumFeasibleTargetLufs: finite,
+        })
+        .strict(),
+      z
+        .object({
+          mode: z.literal("dynamic"),
+          domainIndex: domainIndexSchema,
+          missed: z.array(normalizationTargetMissSchema).min(1).max(3),
+          attempts: z.int().positive().max(Number.MAX_SAFE_INTEGER),
+          selectedAttempt: z.int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+          stopReason: normalizationStopReasonSchema,
+        })
+        .strict(),
+    ]),
+  ),
+  issue(
+    "normalization-unmeasurable",
+    z
+      .object({
+        domainIndex: domainIndexSchema,
+        measurement: z.enum([
+          "integrated-loudness",
+          "loudness-range",
+          "true-peak",
+          "dynamic-first-pass",
+        ]),
+        reason: z.enum(["insufficient-duration", "below-gate", "silent", "non-finite"]),
+      })
+      .strict(),
+  ),
+  issue(
+    "limiter-ceiling-unmet",
+    z
+      .object({
+        domainIndex: domainIndexSchema,
+        ceilingDbfs: finite,
+        samplePeakDbfs: finite,
       })
       .strict(),
   ),
