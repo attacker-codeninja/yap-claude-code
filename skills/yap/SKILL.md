@@ -66,8 +66,10 @@ it. Never delete it yourself.
 When advertised, `yap service.tools` returns the selected app's bundled Node
 path and verified media tools. Use that Node for the [consumer helpers](scripts/);
 no separate Node installation is needed. Helpers use the installed CLI contracts.
-For extra media tasks outside core operations, use bundled FFmpeg through
-`yap ffmpeg`, following [direct-tool checks](references/media-workflows.md#extra-media-tasks).
+Levels, loudness, waveforms and PCM are core operations (`audio.measure`,
+`waveform.get`, `audio.get`), bounded to the range you ask for. For extra media
+tasks outside core operations, use bundled FFmpeg through `yap ffmpeg`,
+following [direct-tool checks](references/media-workflows.md#extra-media-tasks).
 
 For skill installation, comparison or explicit refresh, read
 [skill lifecycle](references/skill-lifecycle.md). The public lifecycle operations
