@@ -681,6 +681,7 @@ final class RecordingControls: NSObject {
             updateProgress?()
         }
         let shortcuts = ShortcutDefaults(bindings: bindings, registered: held)
+        if !capturePopover.isShown { forgetSourcePreviewRequests() }
         capturePopover.update(captureInput())
         libraryWindow.update(state: state, exports: exports.state)
         overlay.update(RecordingOverlay.presentation(for: state) ?? observedOverlay)
@@ -926,7 +927,7 @@ final class RecordingControls: NSObject {
 
     private func sourcePreview(display id: Int) -> NSImage? {
         sourcePreview(key: "display:\(id)") { content in
-            content.displays.first { Int($0.displayID) == id }.map { SCContentFilter(display: $0, excludingWindows: []) }
+            content.displays.first { Int($0.displayID) == id }.map { CaptureExclusion.displayFilter($0, in: content) }
         }
     }
 
@@ -936,28 +937,36 @@ final class RecordingControls: NSObject {
         }
     }
 
-    /// A source's thumbnail, or nil until ScreenCaptureKit answers; the answer redraws the menu.
+    /// A source's picture. Pictures are taken only while the capture panel is open, once per source
+    /// each time it opens: current when it opens, not retaken on every status poll, and a source
+    /// that cannot be taken is not retried until the next opening. The last opening's picture shows
+    /// until the new one answers, and the answer redraws the panel.
     private func sourcePreview(key: String, filter: @escaping (SCShareableContent) -> SCContentFilter?) -> NSImage? {
-        if let cached = sourcePreviews[key] { return cached }
-        guard sourcePreviewRequests.insert(key).inserted else { return nil }
+        guard capturePopover.isShown, sourcePreviewRequests.insert(key).inserted else { return sourcePreviews[key] }
         Task { [weak self] in
-            let image = try? await Self.thumbnail(filter)
-            guard let self else { return }
-            sourcePreviewRequests.remove(key)
-            guard let image else { return }
-            sourcePreviews[key] = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
+            guard let picture = try? await Self.thumbnail(filter), let self else { return }
+            sourcePreviews[key] = NSImage(cgImage: picture, size: NSSize(width: picture.width, height: picture.height))
             render()
         }
-        return nil
+        return sourcePreviews[key]
     }
 
+    /// Called while the capture panel is closed: the next opening takes every picture again, and
+    /// only the pictures of sources the last opening listed are kept until then.
+    private func forgetSourcePreviewRequests() {
+        guard !sourcePreviewRequests.isEmpty else { return }
+        sourcePreviews = sourcePreviews.filter { sourcePreviewRequests.contains($0.key) }
+        sourcePreviewRequests.removeAll()
+    }
+
+    /// A picture sized for the source chooser's cards, at the source's own pixel scale.
     private static func thumbnail(_ filter: (SCShareableContent) -> SCContentFilter?) async throws -> CGImage? {
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         guard let filter = filter(content) else { return nil }
         let config = SCStreamConfiguration()
-        let scale = min(1, 480 / max(filter.contentRect.width, 1))
-        config.width = max(1, Int(filter.contentRect.width * scale * CGFloat(filter.pointPixelScale)))
-        config.height = max(1, Int(filter.contentRect.height * scale * CGFloat(filter.pointPixelScale)))
+        let scale = min(1, 180 / max(filter.contentRect.width, 1)) * CGFloat(filter.pointPixelScale)
+        config.width = max(1, Int(filter.contentRect.width * scale))
+        config.height = max(1, Int(filter.contentRect.height * scale))
         config.showsCursor = false
         return try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
     }

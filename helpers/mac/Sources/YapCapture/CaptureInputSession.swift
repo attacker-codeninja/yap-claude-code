@@ -139,7 +139,7 @@ package final class ScreenCaptureInput: CaptureInputSession {
             else {
                 throw CaptureFailure("SOURCE_UNAVAILABLE", "The selected display is unavailable.")
             }
-            filter = Self.displayFilter(display, in: content)
+            filter = CaptureExclusion.displayFilter(display, in: content)
             requestedSourceRect = CGDisplayBounds(display.displayID)
             if request.source.kind == "region" {
                 guard let region = request.source.region else {
@@ -243,22 +243,6 @@ package final class ScreenCaptureInput: CaptureInputSession {
         let failure = await acquisition.stop().value
         delegate = nil
         return failure
-    }
-
-    /// A whole display, minus this application's own windows, so nothing this app is showing ends
-    /// up inside a take of the screen it is showing it on.
-    ///
-    /// Shareable content only names applications that have something on screen, so an app showing
-    /// nothing has nothing here to exclude; the panels a take floats over the screen keep
-    /// themselves out of every capture instead.
-    private static func displayFilter(_ display: SCDisplay, in content: SCShareableContent)
-        -> SCContentFilter
-    {
-        let own = CaptureExclusion.ownApplications(
-            among: content.applications, bundleIdentifier: Bundle.main.bundleIdentifier,
-            identity: \.bundleIdentifier)
-        guard !own.isEmpty else { return SCContentFilter(display: display, excludingWindows: []) }
-        return SCContentFilter(display: display, excludingApplications: own, exceptingWindows: [])
     }
 }
 
