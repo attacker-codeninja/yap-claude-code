@@ -1445,14 +1445,9 @@ export function applyBatch(
               }));
             } else {
               const target = model.clips.find((value) => value.clip.id === ids[0])!.range;
-              const keep = {
-                start: fromTime(operation.range.startUs),
-                end: fromTime(operation.range.endUs),
-              };
-              if (compare(keep.start, target.start) < 0 || compare(keep.end, target.end) > 0)
-                invalid("Trim range must stay within the clip's resolved interval", {
-                  clipId: ids[0],
-                });
+              const requested = interval(operation.range);
+              const { range: keep, clamped } = admitRange(requested, target);
+              if (clamped) issues.push(rangeClampedIssue(requested, keep, target, operationIndex));
               ranges = [];
               if (compare(target.start, keep.start) < 0)
                 ranges.push({ start: target.start, end: keep.start });

@@ -584,20 +584,7 @@ test("trim keeps the requested project interval and applies only its removed win
   expect(result.document.syncGroups).toEqual([
     { id: first.labels.av, clipIds: [first.labels.video, first.labels.audio] },
   ]);
-  expect(() =>
-    applyBatch(
-      first.document,
-      [
-        {
-          operation: "trim",
-          clipId: first.labels.video,
-          range: { startUs: 0, endUs: 3000000 },
-          ripple: "none",
-        },
-      ],
-      context,
-    ),
-  ).toThrow(/within the clip/);
+  // A trim past the clip's interval clamps: range-admission.test.ts owns that contract.
 });
 
 test("fresh allocation cannot reuse an identity deleted earlier in the same batch", () => {
