@@ -14,37 +14,51 @@ turns what cost it time into contracts. Sources:
 
 ## Next Agent Prompt
 
-You are resuming this spec. Status: the plan is final (four independent
-drafts synthesized, fog-audited, refactor-cleaned). No code yet.
-1. Start at [slice 01](slices/01-issues-contract.md): the `issues` type, the
-   storage table, the surfaces, and the refusal ledger test (written red
-   first). Every later slice emits issues through it, and the ledger's
-   `pendingConversion` list is how you know what's left.
-2. Then [slice 02](slices/02-stale-derived-self-recovery.md). It must land
-   before any identity bump: today a recipe bump crashes reads of retained
-   rows, and a failed 0.1.33 job keeps answering "failed" for its input.
-3. Slices 03, 04, 06 and 07 convert gates. Each removes its codes from
-   `pendingConversion` and rewrites its own doc lines. 05 and 09 are
-   independent.
-4. Follow [`write-tests`](../../.agents/skills/write-tests/SKILL.md): each
-   slice names its red test first. Run the narrowest check per slice, and the
-   full suite once, after slice 10.
-5. **The acceptance criterion is [slice 11](slices/11-replay-acceptance.md).**
-   A fresh Claude Opus 5.5 agent edits the same launch video, from the same
-   inputs and prompts, on the built product, and its transcript is read
-   against the baseline issue by issue. The spec isn't done until that replay
-   passes.
-6. Before ending your pass, update this section: the status line, the
-   checklist, and the next pickup point.
+You are resuming this spec. Status (2026-10-13): slices 01a–d, 02 and 09
+are merged, along with the authored-range half of 06 and sub-slices 07c, 07g
+and 07h. The refusal ledger (`packages/protocol/src/refusal-ledger.json`) is
+the live to-do list: `pendingConversion`, `pendingSites`,
+`refusedStatus.pending` and `messageCodes.pending` name every gate still to
+convert, each with its owning slice.
+
+Next pickup, in priority order (03, 04 and 06b can run in parallel
+worktrees):
+1. [03](slices/03-transcription-publishes.md): Swift seam and timing. Needs
+   the native build and real inference on `fixtures/launch-video/narration.mov`.
+2. [04](slices/04-audio-treatments-publish.md): normalization and limiter
+   publish their best result. Un-skip slice 02's failed-job test
+   (`apps/service/src/audio-processing.test.ts`).
+3. 06b: the read ranges, synchronous render admission, and the CLI `--wait`
+   render mapping. The authored ranges (06a) are done.
+4. 07: (a) fonts and (b) gaps are native; (d) SRT and (k) caption vocabulary
+   touch `apps/service/src/exports.ts`; (f), (i) and (j) are vocabulary only.
+5. 05, then 10. Then the full suite, then 11.
+
+Open integration items:
+- Slice 02 returns `stale` lists from package export and import
+  (`PinnedProjectPackage.stale`, `ValidatedProjectPackage.stale`). They aren't
+  yet surfaced as issues, because export tests need the native binary.
+- 01e docs (`AGENTS.md` after audit-agents, root `README.md`, the archive
+  pointer) are not written.
+- The spec's synchronous `data.issues` is done only for `edit.apply`.
+
+Rules for every pass:
+- Follow [`write-tests`](../../.agents/skills/write-tests/SKILL.md): red
+  first, narrowest checks.
+- **The acceptance criterion is [slice 11](slices/11-replay-acceptance.md):**
+  a fresh Claude Opus 5.5 agent replays the launch-video edit on the built
+  product, and its transcript is read against the baseline.
+- Log each decision the spec left open in [choices.md](choices.md).
+- Update this section before ending a pass.
 
 Checklist:
-- [ ] [01 Output by default: one `issues` contract and a refusal ledger](slices/01-issues-contract.md)
-- [ ] [02 Stale derived generations self-recover](slices/02-stale-derived-self-recovery.md)
+- [ ] [01 Output by default: one `issues` contract and a refusal ledger](slices/01-issues-contract.md) (a–d done; 01e docs open)
+- [x] [02 Stale derived generations self-recover](slices/02-stale-derived-self-recovery.md)
 - [ ] [03 Long-media transcription always publishes](slices/03-transcription-publishes.md)
 - [ ] [04 Audio treatments publish their best result](slices/04-audio-treatments-publish.md)
 - [ ] [05 Short-window level for word-sized ranges](slices/05-short-window-level.md)
-- [ ] [06 Ranges and messages](slices/06-ranges-and-messages.md)
-- [ ] [07 The remaining gates: publish, or justify the refusal](slices/07-remaining-quality-gates.md)
+- [ ] [06 Ranges and messages](slices/06-ranges-and-messages.md) (authored ranges done)
+- [ ] [07 The remaining gates: publish, or justify the refusal](slices/07-remaining-quality-gates.md) (c, g, h done)
 - [x] [08 Multicam sync: no new primitive (closed by decision)](slices/08-sync-estimate.md)
 - [x] [09 View-shot fixtures](slices/09-view-shot-fixtures.md)
 - [ ] [10 Skill guidance](slices/10-skill-guidance.md)
