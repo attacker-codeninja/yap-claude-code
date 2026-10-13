@@ -129,6 +129,73 @@ overridden. Each entry: the choice, why, and how confident.
   `NOT_FOUND`, because the package can't carry evidence it can't read. No
   0.1.33 row is unreadable, so this is theoretical. *Confident.*
 
+## Slice 03
+
+- **No seam shift.** Probe 1 decoded both seams shifted ±0.25 s and ±0.5 s.
+  Only −0.25 s resolved both, and a shift changes the recognized words
+  themselves, so it re-rolls evidence instead of settling it. A shifted
+  boundary would also need a 28.25 s decode or a new ownership plan.
+  Unresolved words go straight to start ownership. *Confident.*
+- **Every unresolved guarded observation gets an issue, published or not.** A
+  published one carries `at: { word }`. One that its own window doesn't
+  publish (it starts in the other core) carries `at: { range }` and
+  `published: false`, because that is where a word could be lost. Points that
+  aren't published have no `at`. *Moderately confident; it doubles the issue
+  count at a lexical disagreement such as "video"/"videos".*
+- **A pair with an ambiguous member, or one that crosses an accepted pair, is
+  unresolved on both sides**, rather than accepted. That keeps the old
+  refusal's uniqueness rule as the line between pairing and flagging.
+  *Confident.*
+- **The end-of-media expectation was wrong.** The overruns in receipts 02 and
+  04 are the trailing `.` token, and the published word is timed by its
+  speech-bearing tokens, so nothing published is clamped. The old refusal came
+  from a check on every raw token, which is deleted. Clamping applies to the
+  published spoken extent, and an issue is raised only when a published word
+  was clamped. The end-to-end run shows no `timing-clamped`. *Confident: probe
+  2 and the run agree.*
+- **A malformed token drops its whole word, not just the token.** Dropping one
+  token would publish altered text. The issue names the first malformed token;
+  `at` is the window's owned range, because the word's own time may be
+  nonfinite. Raw JSON spells nonfinite values `"NaN"`/`"Infinity"`
+  (`nonConformingFloatEncodingStrategy`); finite output is byte-identical.
+  *Confident.*
+- **`INVALID_SPEECH_TIMING` stays as `malformed` for two invariants.** One is
+  an unrepresentable raw line. The other is a merged word without a span,
+  which the merger can't produce. *Confident.*
+- **Issue codes are `boundary-unresolved`, `timing-clamped` and
+  `word-dropped`.** Their evidence names `window` (the decoded window's
+  ordinal) and `observation` or `token`, so a caller can find the candidate in
+  `raw.jsonl`. *Confident.*
+- **Raw lines carry `issues`, with `word` local to the line.** Core turns
+  `word` into the transcript ordinal at index time and validates the result
+  against the composition `issueSchema`. A malformed raw issue fails the
+  attempt as `INVALID_RESPONSE` ("Raw transcript issue is malformed"), like
+  any other malformed raw line. *Confident.*
+- **Word rows read issues by transcript generation.** A transcript generation
+  is the `attemptId` that published it, both for asset jobs and for rendered
+  recognition, so `TranscriptStore.wordRecords` looks up `output_issues` by
+  that id and `json_extract(issue,'$.at.word')`. The rows then reach
+  `transcript.get`, `transcript.review`, `transcript.render.get` and project
+  rows, which spread source rows. `TranscriptStore` creates the
+  `output_issues` table itself (table only; the retirement triggers stay with
+  the job queue), so stores that run without a queue can read it.
+  *Moderately confident; it couples the transcript store to the publication
+  key rule from 01c.*
+- **`TranscriptStore.ingest` returns `{ transcript, issues }`.** The issues
+  must reach `StagedJobResult.issues`, and the store has no job generation to
+  write them itself. The transcript job now returns a `StagedJobResult`.
+  Rendered recognition reports the transcript's issues as its own.
+  *Confident.*
+- **Package import re-derives issues.** `stagePortable` returns the issues it
+  indexed, and `adoptArtifact` takes them, so the package format is
+  unchanged. A generation the recipient already holds isn't re-indexed, so it
+  contributes none; its local publication, if any, already has them. *Open:
+  untested through a real package round trip.*
+- **Harness literals.** `editing/synchronization/recognition.mjs` sends a
+  fresh native request, so it now names recipe v3. The retained protocol
+  assertion in `full-domain-lexical-replay.mjs` keeps v2 as historical
+  evidence. *Syntax-checked only.*
+
 ## Slice 06 (authored ranges, done ahead of the read ranges)
 
 - **The clamp keeps the same fraction of the placement.** A placement maps

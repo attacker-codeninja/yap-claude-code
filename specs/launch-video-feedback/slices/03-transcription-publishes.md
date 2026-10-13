@@ -60,6 +60,55 @@ becomes an issue on the affected word, using slice 01's contract.
    engine's frame duration in this slice. Clamping is unconditional; this is
    only context for the issue's `details`.
 
+**Probe results (2026-10-13, yap-native at 37a3e487, real inference on
+`narration.mov`).** Each window was decoded alone through `speech.transcribe`
+with an `executionRange` that reproduces the plan's decoded window, so no seam
+or overrun could discard its `raw.jsonl`. The four seam windows (two runs each)
+are retained in [`assets/03-seams`](../assets/03-seams/boundary-cases.json).
+
+1. **Seams.** `YapSpeechTests --boundary-cases` on the retained windows
+   reproduces both disagreements twice with the old matcher, and resolves both
+   twice with the new one.
+   - **Determinism.** The raw SHA-256s differ between runs, but only in
+     `result.processingTime`. Observations, tokens and text are identical, so
+     seam acceptance uses retained observations only.
+   - **120 s.** The right window (decoded from 116 s) hears nothing before
+     "We" at 119.28 s. The left window's "I" [119.12, 119.20] and "mean,"
+     [119.20, 119.28] have no peer; the agreeing run "we could just go now. It's"
+     pairs. Both unresolved words start in the left core, so the left publishes
+     them once, flagged.
+   - **219 s** (ranged plan from 119 s). The left hears "video" [218.60, 219.00],
+     the right "videos" [218.52, 218.92]: a lexical disagreement, not a timing
+     one. Both start in the left core, so the left's "video" publishes, flagged;
+     the right's "videos" stays in raw evidence with an unpublished
+     `boundary-unresolved` issue.
+   - **Shifts (±0.25 s, ±0.5 s, each window kept at 20 s).** 120 s resolves at
+     −0.25, +0.25 and +0.5 but not −0.5. 219 s resolves only at −0.25; −0.5 and
+     +0.25 still disagree, and +0.5 overran the decoded edge. A shift changes the
+     recognized text itself (the left window says "videos" at −0.25 and "video"
+     unshifted), so it re-rolls the evidence rather than settling it. **No fixed
+     shift set resolves both seams in a way worth trusting, so there is no shift:
+     unresolved words fall back to start ownership directly.**
+2. **Overruns.** Token timings sit on the engine's **80 ms encoder frame** (every
+   token start is a multiple of 0.08 s). Every overrun was the frame-rounded end
+   of the last token, at most one frame:
+
+   | Window | Decoded | Overrunning token | Past the edge |
+   | --- | --- | --- | --- |
+   | Full plan, last | [216, 231.701333) | `.` [15.60, 15.76] | 58.7 ms |
+   | Ranged from 119 s, last (receipt 02) | [215, 231.701333) | `.` [16.56, 16.72] | 18.7 ms |
+   | Caller window to 231.5 s (receipt 04) | [219, 231.5) | `.` [12.40, 12.56] | 60.0 ms |
+   | 219 s seam shifted +0.5 s, left | [195.5, 223.5) | ` a` [27.84, 28.08] | 80.0 ms |
+
+   At the end of media and at the caller's window end, the overrunning token is
+   the sentence's trailing `.`. The published word "down." is timed by its
+   speech-bearing tokens, which end 181–221 ms inside the window, so **nothing
+   published is clamped there**: the old refusal came from validating every raw
+   token, and the raw token stays in evidence as reported. A speech-bearing
+   overrun (the last row) is clamped; that one was context-only, so it published
+   nothing. The full end-to-end run therefore shows no `timing-clamped` issue
+   on the final word.
+
 **Red tests first (`helpers/mac/Tests/YapSpeechTests/main.swift`).**
 - The refusal loop (~L190–203) becomes "the disagreement publishes, marked
   `boundary-unresolved`".
@@ -76,6 +125,19 @@ becomes an issue on the affected word, using slice 01's contract.
 **One expensive run at the end:** `transcript.review` over the full
 `narration.mov` publishes 3:52, with issues near 119.1 s and 218.6 s and a
 clamped final word. Also the 119 s → `695104000/3` range.
+
+**End-to-end result (2026-10-13,
+[`assets/03-seams/end-to-end.json`](../assets/03-seams/end-to-end.json)).** A
+fresh library, the built service and the new `yap-native`:
+- `transcript.review` over full support publishes in 24 s: 524 words, the last
+  "down." ending at 231.52 s of 231.70 s. Its issues are `boundary-unresolved`
+  on "I" (119.12 s) and "mean," (119.20 s) at the 120 s seam, and on "video"
+  (218.64 s) at the 220 s seam. Each reaches its `transcript.get` row.
+- `transcript.prepare` from 119 s to `695104000/3` publishes 354 words. Its
+  issues are `boundary-unresolved` on the published "video" (218.60 s) and an
+  unpublished one on the right window's "videos" (218.52 s), at the 219 s seam.
+- No `timing-clamped` issue: as probe 2 found, the overrunning end token is
+  punctuation, and the published final word lies inside the window.
 
 **Docs:**
 - `packages/protocol/src/operations.ts:1049`: explicit ranges are windowed in
