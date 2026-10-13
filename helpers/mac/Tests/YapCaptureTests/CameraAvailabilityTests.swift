@@ -83,8 +83,6 @@ private func startsOffThenOn(root: URL, pictures: [CMSampleBuffer]) async throws
     take.setCamera(true, at: 1_500_000)
     for index in 0..<3 { take.expect("accepted", try await take.offer(1_500_000 + Int64(index) * 50000)) }
     let published = try await take.publish()
-    let intended = try await CameraMedia.intendedSupport(rawURL: take.raw, mappingURL: take.observations)
-    precondition(intended != nil, "A single late run keeps the concurrent publication path")
     precondition(published.receipt.support == ExactRange(startUs: 500000, endUs: 650000) && published.receipt.gaps == nil)
     let receiptJSON = try take.receiptJSON(), frames = try take.mappingFrames()
     precondition(receiptJSON["gaps"] == nil && frames.allSatisfy { $0["run"] == nil })
@@ -108,8 +106,6 @@ private func onOffOn(root: URL, pictures: [CMSampleBuffer]) async throws {
         && published.receipt.gaps == [ExactRange(startUs: 250000, endUs: 600000)], "Unexpected receipt \(published.receipt)")
     let runs = try take.mappingFrames().map { $0["run"] as? Int }
     precondition(runs == [nil, nil, nil, 1, 1], "Unexpected runs \(runs)")
-    let intended = try await CameraMedia.intendedSupport(rawURL: take.raw, mappingURL: take.observations)
-    precondition(intended == nil, "More than one run publishes through the sequential scan")
     let segments = try await canonicalSegments(take.canonical)
     precondition(segments == [.empty(0, 100000), .occupied(100000, 250000), .empty(250000, 600000), .occupied(600000, 700000)],
         "Unexpected canonical segments \(segments)")

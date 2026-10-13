@@ -227,7 +227,7 @@ package enum CameraMedia {
             }
         }
     }
-    struct Source: Sendable {
+    fileprivate struct Source: Sendable {
         let input: MediaInput
         let track: AVAssetTrack
         let segments: [SourceSegment]
@@ -532,14 +532,14 @@ package enum CameraMedia {
     /// Room for the most gaps a receipt may state, each with fractional endpoints.
     private static let receiptLimit = Int64(65536)
 
-    struct IntendedSupport: Sendable {
+    fileprivate struct IntendedSupport: Sendable {
         let source: Source
         let support: CMTimeRange
         let represented: Int
     }
     /// Metadata qualifies scheduling only; both complete pixel scans still own acceptance. Only a
     /// single run qualifies: more runs publish through the sequential scan.
-    static func intendedSupport(rawURL: URL, mappingURL: URL) async throws -> IntendedSupport? {
+    private static func intendedSupport(rawURL: URL, mappingURL: URL) async throws -> IntendedSupport? {
         do {
             let source = try await Source(url: rawURL)
             guard source.segments.count == 1 else { return nil }
