@@ -6,6 +6,13 @@ The capture menu keeps its dark appearance after selecting a recording area and
 shows the latest recording below the action buttons with Play and Copy agent prompt
 actions. Screen recordings now include the pointer in the captured video.
 
+## 0.1.35
+
+The capture menu's window and display chooser is fixed. It now matches the menu's
+dark look, shows each source's picture at its own shape with its name beneath, and
+scrolls when there are many windows. The window list shows only the app windows you
+work in, leaving out the menu bar, status items, the Dock and other system surfaces.
+
 ## 0.1.34
 
 Turn the camera off and back on while recording your screen, from the floating

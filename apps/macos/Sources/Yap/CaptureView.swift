@@ -476,7 +476,7 @@ private final class SourceChooserView: NSView {
     override var isFlipped: Bool { true }
 }
 
-/// One source in the chooser: its picture drawn whole at its own shape, its full title beneath.
+/// One source in the chooser: its picture drawn whole at its own shape, its name beneath.
 @MainActor
 private final class SourceCard: NSButton {
     private let value: CaptureViewInput.Choice
