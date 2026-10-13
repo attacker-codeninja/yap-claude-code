@@ -218,22 +218,26 @@ compiler's existing plan bounds and worker/job admission still apply; this cost
 is not a global concurrency guarantee, and descriptor exhaustion refuses work
 without publishing a partial signal.
 
-Normalization retains whole-domain before/after meter evidence and admits its
-requested postconditions before publication. Gain-only feasibility is explicit;
-a dynamic request also refuses a missed target. Prepared reads retain those full
-measurements even when a consumer requests a short excerpt. Native and bundled
+Normalization and the limiter always publish their best result. Whole-domain
+before/after meter evidence is retained, and measured postconditions become
+issues on the published audio, derived from that evidence alone. When a gain-only
+loudness target and the peak ceiling conflict, the ceiling wins and loudness is
+reported unmet; an unmeasurable signal passes through at unity. Prepared reads
+retain those full measurements, and their issues, even when a consumer requests a
+short excerpt. Native and bundled
 implementation identities bind the prepared recipe; neither discovery nor an
 empty measurement authorizes another treatment. Audio preparation settles the
 complete selected processing tap without picture work. Movie rendering resolves
-matching retained final audio, or executes its full audio processing and strict
-postconditions, before starting expensive picture encoding. A prepared dry signal
+matching retained final audio, or executes its full audio processing, before
+starting expensive picture encoding; the movie and its export carry the audio's
+issues. A prepared dry signal
 or intermediate step never substitutes for that final mix.
 
 Dynamic normalization rerenders the original complete prefix with fixed first-pass
 statistics and unchanged requested targets. The shared correction policy bounds
 candidate count, offset and measurable progress. Every candidate's measured result
-is retained; an admitted candidate stays held through correction, and the delivered
-selection is explicit. Final strict admission still owns publication. Scheduling budgets
+is retained and stays held through correction. The delivered selection is explicit:
+the smallest miss beyond tolerance, then the closest loudness, then the earliest. Scheduling budgets
 account for these bounded traversals; retained final audio skips recomputation.
 AAC delivery is measured separately after decoding, because a compliant PCM master
 does not establish an encoded true-peak ceiling.

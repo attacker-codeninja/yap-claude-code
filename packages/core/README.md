@@ -32,8 +32,9 @@ Integrated loudness requires complete admitted support; a hole cannot become
 measured silence or concatenate neighboring material. A null gate result is
 evidence of measurement limits, never an instruction to normalize. Explicit
 normalization publication retains complete before/after measurements and every
-bounded candidate offset/result, and refuses
-infeasible or missed requested targets. Prepared excerpts preserve that complete
+bounded candidate offset/result, and publishes the selected candidate with an
+issue naming each missed target. Retained reads and imports re-derive those issues
+from the evidence and refuse stored issues that differ. Prepared excerpts preserve that complete
 processing evidence rather than relabeling it as an excerpt measurement. An explicit
 prepared signal pin must match its complete tap, ordered processing recipe and revision
 inputs. Selected taps retain the same whole state domains as ordinary inspection;

@@ -58,6 +58,26 @@ target, and measure four reads:
 All four succeed after this slice. Record what the FEEDBACK track-tap claim
 turned out to be.
 
+**Probe result (2026-10-13).** `packages/core/src/project-audio.test.ts`, "an
+unmeetable output normalization never blocks reads…", run against the code
+before and after this slice. The output stack is receipt 05's gain-only request
+(−14 LUFS, −1 dBTP, 20 LU on a −20.4 LUFS / +0.3 dBTP program) after a gain step.
+The renderer is a fixture; the compiler that decides which state domains a read
+includes is the real one.
+
+| Read | Before | After |
+| --- | --- | --- |
+| Track tap (processed) | ready | ready, no issues |
+| Output `dry` | ready | ready, no issues |
+| Output after the step before normalization | ready | ready, no issues |
+| Ranged processed output (1–2 s) | failed, `NORMALIZATION_NOT_FEASIBLE` | ready, `normalization-target-unmet` |
+
+**The FEEDBACK track-tap claim is disproved.** No read upstream of the output
+stack includes the output normalization domain, so none of them ever ran its
+gate. Only reads of the processed output failed, ranged ones included, because
+normalization is whole-domain state. The session's failing reads were all on
+the default output tap, as the corrections in FEEDBACK.md already suspected.
+
 **Red tests first.**
 - `apps/service/src/audio-processing.test.ts`: the refusal assertions near
   L331, L405, L433, L618, L660, L674, L708, L747, L1013 and L1091 become
