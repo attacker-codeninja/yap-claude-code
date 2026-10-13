@@ -14,26 +14,21 @@ turns what cost it time into contracts. Sources:
 
 ## Next Agent Prompt
 
-You are resuming this spec. Status (2026-10-13): slices 01–06, 08 and 09 are merged on `t3code/create-launch-video`, as are 07c–07k. The refusal
-ledger (`packages/protocol/src/refusal-ledger.json`) is the live to-do list:
-`pendingConversion`, `pendingSites` and `messageCodes.pending` name every gate
-still to convert, with its owning slice.
-
-In flight, each in its own worktree `../lvf-<slice>` on branch `lvf/<slice>`:
-- 07a: font fallback publishes with issues; `FONT_UNAVAILABLE` becomes a real
-  code.
-- 07b: support gaps. Stateful processing and source-channel reads
-  (`UNAVAILABLE_SUPPORT`) treat each available run as its own domain, with
-  `unavailable` ranges and a `support-gap` issue. Alignment and the speaker
-  model work per run. This is the user-side decision recorded in choices.md.
+You are resuming this spec. Status (2026-10-13): slices 01–09 are merged on
+`t3code/create-launch-video`, and slice 10's guidance is written. The refusal
+ledger (`packages/protocol/src/refusal-ledger.json`) has an empty
+`pendingConversion`: every gate is converted or classified with a reason.
+`UNAVAILABLE_SUPPORT` stays a refusal that names the supported runs (see
+choices.md, "Slice 07b").
 
 Next pickup, in order:
-1. Merge 07a and 07b: rerun the touched packages' checks on the merged
-   tree, then remove each worktree and branch.
-2. [10](slices/10-skill-guidance.md): skill guidance, written against what
-   shipped (read each slice's choices).
-3. Full suite run. The ledger's `pendingConversion` must be empty.
-4. [11](slices/11-replay-acceptance.md): replay acceptance. Then the
+1. Full suite run (check-types, lint, format:check, test). Fix what it finds.
+2. Build and install the product at that commit (slice 11 "Environment"),
+   then slice 10's two evals: the "this 3:52 narration won't transcribe" case
+   with `eval-skills`, and the recording-sync recipe on the fixture pair
+   (expect narration = excerpt + 149.94 s).
+3. [11](slices/11-replay-acceptance.md): replay acceptance with
+   `packages/test-harness/acceptance/launch-video-replay.mjs`. Then the
    whole-spec review, a rewritten choices.md, and close-spec.
 
 Known before this spec, not caused by it:
@@ -63,11 +58,11 @@ Checklist:
 - [x] [04 Audio treatments publish their best result](slices/04-audio-treatments-publish.md) (`UNAVAILABLE_SUPPORT` moved to 07b)
 - [x] [05 Short-window level for word-sized ranges](slices/05-short-window-level.md) (closed by probe: no new field)
 - [x] [06 Ranges and messages](slices/06-ranges-and-messages.md)
-- [ ] [07 The remaining gates: publish, or justify the refusal](slices/07-remaining-quality-gates.md) (a, b open)
+- [x] [07 The remaining gates: publish, or justify the refusal](slices/07-remaining-quality-gates.md)
 - [x] [08 Multicam sync: no new primitive (closed by decision)](slices/08-sync-estimate.md)
 - [x] [09 View-shot fixtures](slices/09-view-shot-fixtures.md)
-- [ ] [10 Skill guidance](slices/10-skill-guidance.md)
-- [ ] Full suite run; the ledger's `pendingConversion` is empty
+- [ ] [10 Skill guidance](slices/10-skill-guidance.md) (written; evals wait on the installed build)
+- [ ] Full suite run (the ledger's `pendingConversion` is empty)
 - [ ] [11 Replay acceptance](slices/11-replay-acceptance.md), then [close-spec](../../.agents/skills/close-spec/SKILL.md)
 
 ## Slice graph
