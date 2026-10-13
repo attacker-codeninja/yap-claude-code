@@ -39,9 +39,7 @@ export class ControllerJourneyService extends JourneyService {
         ...process.env,
         YAP_CONTROLLER_HOME: this.home,
         ...(this.fixture.evidence ? { YAP_CONTROLLER_EVIDENCE: this.fixture.evidence } : {}),
-        ...(this.fixture.recoveryHold
-          ? { YAP_CONTROLLER_RECOVERY_HOLD: this.fixture.recoveryHold }
-          : {}),
+        ...(this.fixture.replyHold ? { YAP_CONTROLLER_REPLY_HOLD: this.fixture.replyHold } : {}),
         ...(this.fixture.importFault
           ? { YAP_CONTROLLER_IMPORT_FAULT: this.fixture.importFault }
           : {}),

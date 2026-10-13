@@ -30,7 +30,7 @@ z.object({
 Reply: the `capture.status` shape `{device, recording}`.
 Errors: `INVALID_STATE` (settled or not recording/paused), `CAMERA_NOT_RESERVED`
 (`recording.camera === null`, includes camera-only; refused by the service before native),
-`CAMERA_PERMISSION_REQUIRED`, `SOURCE_UNAVAILABLE`, `CAMERA_FORMAT_CHANGED`. Any refusal while
+`CAMERA_PERMISSION_REQUIRED`, `SOURCE_UNAVAILABLE`, `CAMERA_FORMAT_CHANGED`, `CAMERA_TOGGLE_LIMIT`. Any refusal while
 turning on leaves the camera off and the take recording.
 
 Status (`captureDeviceSchema`, strict, `capture.ts:126-135`) gains a required field:

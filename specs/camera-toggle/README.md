@@ -7,14 +7,15 @@ never shows a held picture across it, and a held picture is never certified as r
 
 ## Next Agent Prompt
 
-Status (2026-10-12): planned; slice 00 is implemented and uncommitted in this checkout,
-nothing else is started.
+Status (2026-10-12): slice 00 is committed; slice 01 is implemented and uncommitted. The
+preservation gate passed against the pre-change build on corpora A and B and on `~/.yap`
+(0 recordings). Next pickup: slice 02.
 
 You are resuming this feature. Do this:
 
-1. Read this README, then [slice 01](slices/01-preservation-baseline.md). Build slice 01 from
-   the current `main` behaviour **before** any format code changes; its corpus must be
-   produced by the pre-change build.
+1. Read this README, then [slice 02](slices/02-availability-intervals.md). The pre-change
+   corpus and its first gate run are in [assets/pre-toggle-corpus](assets/pre-toggle-corpus/README.md);
+   its README holds the build steps and the exact gate commands.
 2. Work the slices in the order of the graph below: 01, 02, then 04 and 05 (in parallel), 06,
    07, 08. Slice 03 is optional and blocks nothing. Write each test first (`write-tests`), run the narrowest check, and run
    the full suite once, only in slice 08.
@@ -33,10 +34,20 @@ Warnings:
   settled by design in slice 05; fixtures and mocks prove the behaviour. This Mac lists no camera
   (`system_profiler SPCameraDataType`); the user's camera is probably Continuity Camera. A
   real-device run is an optional extra in slice 08, done only if a camera happens to be present.
+- The preservation gate runs the built `dist/` and `YAP_NATIVE`: rebuild both from the code
+  under test first. A fresh checkout needs the prepared RNNoise model
+  (`node helpers/denoise/prepare.mjs`) before any native build.
+- The gate asserts the camera receipt has no `gaps` key anywhere. That holds for the pre-change
+  takes and must stay true for continuous takes after 02 (`gaps` omitted when empty).
+- Gate frames use `maxLongEdge: 144` so old cached renders cannot answer for new code. The
+  [baseline frames](assets/pre-toggle-corpus/baseline/) are the before picture for
+  compare-screenshots.
+- A library closed mid-admission cannot be checked on a clone: a reserved capture intent pins
+  absolute paths and inodes ([choices](choices.md)). Corpus A is fenced before reservation.
 
 TODO:
-- [x] 00 Floating controls redesign: preview card, minimize/restore — [slice](slices/00-overlay-redesign.md) (uncommitted)
-- [ ] 01 Preservation baseline corpus and gate — [slice](slices/01-preservation-baseline.md)
+- [x] 00 Floating controls redesign: preview card, minimize/restore — [slice](slices/00-overlay-redesign.md)
+- [x] 01 Preservation baseline corpus and gate — [slice](slices/01-preservation-baseline.md) (uncommitted)
 - [ ] 02 Camera availability intervals (writer → receipt → canonical → recovery) — [slice](slices/02-availability-intervals.md)
 - [ ] 03 (optional, non-blocking) Physical session cycle measurement — [slice](slices/03-session-cycle-spike.md)
 - [ ] 04 Admission of gapped camera proof — [slice](slices/04-admission.md)

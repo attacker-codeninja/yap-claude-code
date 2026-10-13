@@ -8,8 +8,8 @@ import { setTimeout as delay } from "node:timers/promises";
 // The actual private channel and project service share the production app host's pipes.
 const native = mediaWorker();
 const evidence = process.env.YAP_CONTROLLER_EVIDENCE;
-const hold = process.env.YAP_CONTROLLER_RECOVERY_HOLD
-  ? JSON.parse(await readFile(process.env.YAP_CONTROLLER_RECOVERY_HOLD, "utf8"))
+const hold = process.env.YAP_CONTROLLER_REPLY_HOLD
+  ? JSON.parse(await readFile(process.env.YAP_CONTROLLER_REPLY_HOLD, "utf8"))
   : null;
 const fault = process.env.YAP_CONTROLLER_IMPORT_FAULT
   ? JSON.parse(await readFile(process.env.YAP_CONTROLLER_IMPORT_FAULT, "utf8"))
@@ -61,7 +61,12 @@ const worker = async (operation, params, options) => {
     await replacement?.close();
   }
   if (prefix) await writeFile(prefix + "-response.json", JSON.stringify(response, null, 2));
-  if (hold && operation === "media.recover" && params.sourceAuthority?.kind === hold.kind) {
+  // Holds one actual native reply: recovery of one source kind, or any named operation.
+  if (
+    hold &&
+    operation === (hold.operation ?? "media.recover") &&
+    (hold.kind === undefined || params.sourceAuthority?.kind === hold.kind)
+  ) {
     await writeFile(
       join(hold.directory, "entered.json"),
       JSON.stringify({ operation, params, response }, null, 2),
@@ -73,7 +78,7 @@ const worker = async (operation, params, options) => {
         () => false,
       ))
     ) {
-      if (performance.now() >= deadline) throw new Error("Recovery reply fixture deadline");
+      if (performance.now() >= deadline) throw new Error("Reply hold fixture deadline");
       await delay(20, undefined, { signal: options.signal });
     }
   }

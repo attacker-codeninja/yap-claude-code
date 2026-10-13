@@ -12,7 +12,8 @@ sibling reusing `ControllerJourneyService` with `productionCamera: true`). Journ
    acquisition, primary admitted.
 3. Kill the app after on, off, on; the service reconciles; the recovered camera has gaps.
 4. Camera-only take: `setCamera` → `CAMERA_NOT_RESERVED`.
-Also measure mapping bytes per minute on a reserved-off take (KU6). If a long take would exceed
+Also measure a real 500-run receipt against the 32 KiB normalized-receipt and 64 KiB
+`camera.publication.json` caps (slice 05's `CAMERA_TOGGLE_LIMIT`). Also measure mapping bytes per minute on a reserved-off take (KU6). If a long take would exceed
 the 256 MiB mapping read budget, raise it with the user before closing; the follow-up would make
 the companion ingress log only camera rows (owner `CaptureClockIngress`).
 

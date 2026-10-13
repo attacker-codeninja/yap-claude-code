@@ -40,6 +40,10 @@ off any number of times, and end cleanly if it was never turned on.
   `.notTurnedOn` → camera publication `unavailable`, code `CAMERA_NOT_TURNED_ON`, and
   `CaptureResult.camera = nil`, so `withCamera` (`CaptureTypes.swift:234-238`) folds no failure
   and the take completes. Add the code to the terminal list (`CaptureTypes.swift:152`).
+- Toggle limit: the receipt files are size-capped (normalized receipt 32 KiB, `camera.publication.json`
+  64 KiB), which fits about 700 gaps (slice 04 finding). A turn-on that would start run 500 is
+  refused with `CAMERA_TOGGLE_LIMIT`; the camera stays off and the take keeps recording. Test:
+  `toggle-limit` mode. Slice 08 measures a real 500-run receipt against both caps.
 - Device lost while off: mark lost, no interruption; the next turn-on throws `SOURCE_UNAVAILABLE`.
   Lost while on: whole-take interruption, unchanged.
 

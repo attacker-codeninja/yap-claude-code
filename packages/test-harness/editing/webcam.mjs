@@ -17,6 +17,8 @@ const { values } = parseArgs({
     pixels: { type: "string" },
     out: { type: "string" },
     controller: { type: "string" },
+    // Optional new directory that keeps the closed library before relocation deletes it.
+    "keep-home": { type: "string" },
   },
 });
 assert.equal(values.case, "capture-to-project");
@@ -735,6 +737,14 @@ try {
   const packagePath = join(out, "relocated-project.zip");
   await rename(exported.output, packagePath);
   await stop();
+  if (values["keep-home"]) {
+    await mkdir(resolve(values["keep-home"]));
+    await cp(join(home, "library"), join(resolve(values["keep-home"]), "library"), {
+      recursive: true,
+      errorOnExist: true,
+      force: false,
+    });
+  }
   await rm(home, { recursive: true });
   service = startAt(receiver);
   await service.start();
