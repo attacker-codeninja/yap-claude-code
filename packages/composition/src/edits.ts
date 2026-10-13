@@ -24,7 +24,6 @@ import {
   interpolationSchema,
   signedTimeValueSchema,
   synchronizationEvidenceSchema,
-  type Anchor,
   type MediaClip,
   type TimeValue,
 } from "./schema.js";
