@@ -845,7 +845,7 @@ final class RecordingControls: NSObject {
             else { selectedSource = -1 }
         case .window:
             sources = state.sources.windows.map { window in
-                .init(title: window.application.isEmpty ? window.title : "\(window.application) — \(window.title)",
+                .init(title: window.label,
                       intent: .controls(.selectWindow(window.id)), preview: sourcePreview(window: window.id))
             }
             if case .window(let window) = state.selection.source { selectedSource = state.sources.windows.firstIndex { $0.id == window.id } ?? -1 }

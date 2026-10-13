@@ -33,7 +33,7 @@ public enum CapturePresentation {
         case .display(let display):
             display.width > 0 ? "\(display.name) (\(display.width)×\(display.height))" : display.name
         case .window(let window):
-            window.application.isEmpty ? window.title : "\(window.application) — \(window.title)"
+            window.label
         case .region(let region):
             "Region \(Int(region.width))×\(Int(region.height)) of \(region.displayName)"
         case .camera:

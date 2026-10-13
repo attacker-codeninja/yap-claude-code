@@ -2,6 +2,7 @@ import AppKit
 import AVFoundation
 import ScreenCaptureKit
 import YapCapture
+import YapControls
 
 /**
  The app's half of capture control. The service allocates a take's identity and directory and asks
@@ -169,7 +170,13 @@ final class CaptureController {
         try await Self.discoverSources(screenAuthorized: NativeCapture.screenPermission, screens: {
             let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
             let windows = content.windows.filter { window in
-                self.fixtureWindow.map { UInt32($0.windowNumber) == window.windowID } ?? true
+                if let fixture = self.fixtureWindow { return UInt32(fixture.windowNumber) == window.windowID }
+                return WindowSource(
+                    layer: window.windowLayer, title: window.title ?? "",
+                    application: window.owningApplication?.applicationName ?? "",
+                    bundleIdentifier: window.owningApplication?.bundleIdentifier,
+                    width: window.frame.width, height: window.frame.height
+                ).isRecordable(ownBundle: Bundle.main.bundleIdentifier)
             }
             return (
                 displays: self.fixtureWindow != nil ? [] : content.displays.map {

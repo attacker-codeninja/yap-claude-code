@@ -143,6 +143,12 @@ public struct ControlsState: Equatable, Sendable {
         public let id: Int
         public let title: String
         public let application: String
+        /// What the chooser calls this window: its app, and its title when it has one.
+        public var label: String {
+            let named = title.trimmingCharacters(in: .whitespaces)
+            if application.isEmpty { return named }
+            return named.isEmpty ? application : "\(application) — \(named)"
+        }
     }
 
     public struct Microphone: Equatable, Sendable {

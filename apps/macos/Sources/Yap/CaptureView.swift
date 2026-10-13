@@ -415,7 +415,7 @@ final class SourcePickerButton: NSButton {
         let text = value?.title ?? title
         let attributes: [NSAttributedString.Key: Any] = [.font: font ?? NSFont.systemFont(ofSize: 12), .foregroundColor: isEnabled ? NSColor.labelColor : NSColor.secondaryLabelColor]
         let imageRect = NSRect(x: 6, y: 4, width: 32, height: max(1, bounds.height - 8))
-        if let preview = value?.preview { preview.draw(in: imageRect, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: [.interpolation: NSImageInterpolation.high]) }
+        if let preview = value?.preview { drawSourcePicture(preview, in: imageRect, cornerRadius: 2) }
         (text as NSString).draw(at: NSPoint(x: value?.preview == nil ? 8 : 45, y: (bounds.height - 14) / 2), withAttributes: attributes)
         if let chevron = captureSymbol("chevron.down", color: .secondaryLabelColor) { chevron.draw(in: NSRect(x: bounds.width - 16, y: bounds.midY - 3, width: 8, height: 6)) }
         if isHighlighted {
@@ -426,22 +426,40 @@ final class SourcePickerButton: NSButton {
 
     @objc private func openChooser() {
         guard !values.isEmpty else { return }
-        let content = NSView(frame: NSRect(x: 0, y: 0, width: 370, height: CGFloat(max(1, (values.count + 1) / 2)) * 124 + 16))
-        content.wantsLayer = true
-        content.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
-        for (index, value) in values.enumerated() {
-            let button = NSButton(title: value.title, target: self, action: #selector(selectCard(_:)))
-            button.tag = index; button.identifier = .init("source.card.\(index)")
-            button.bezelStyle = .texturedRounded; button.alignment = .center
-            button.font = .systemFont(ofSize: 11, weight: index == selected ? .semibold : .regular)
-            button.image = value.preview ?? NSImage(systemSymbolName: "rectangle.on.rectangle", accessibilityDescription: nil)
-            button.imageScaling = .scaleAxesIndependently; button.imagePosition = .imageAbove
-            button.frame = NSRect(x: 8 + CGFloat(index % 2) * 181, y: content.bounds.height - 116 - CGFloat(index / 2) * 124, width: 173, height: 108)
-            content.addSubview(button)
-        }
-        let controller = NSViewController(); controller.view = content
+        let controller = NSViewController(); controller.view = chooserView()
         let popover = NSPopover(); popover.contentViewController = controller; popover.behavior = .transient; popover.animates = true
+        popover.appearance = NSAppearance(named: .darkAqua)
         chooser = popover; popover.show(relativeTo: bounds, of: self, preferredEdge: .maxY)
+    }
+
+    /// The cards the chooser shows, one per source, on the menu's dark surface. Past four and a half
+    /// rows they scroll, opened at the chosen source.
+    func chooserView() -> NSView {
+        let columns = 2, width: CGFloat = 173, height: CGFloat = 132, gap: CGFloat = 8
+        let rows = (values.count + columns - 1) / columns
+        let content = SourceChooserView(frame: NSRect(x: 0, y: 0, width: gap + CGFloat(columns) * (width + gap),
+                                                      height: gap + CGFloat(max(1, rows)) * (height + gap)))
+        content.appearance = NSAppearance(named: .darkAqua)
+        for (index, value) in values.enumerated() {
+            let card = SourceCard(value: value, selected: index == selected)
+            card.tag = index; card.identifier = .init("source.card.\(index)")
+            card.target = self; card.action = #selector(selectCard(_:))
+            card.frame = NSRect(x: gap + CGFloat(index % columns) * (width + gap),
+                                y: gap + CGFloat(index / columns) * (height + gap), width: width, height: height)
+            content.addSubview(card)
+        }
+        let visible = gap + 4.5 * (height + gap)
+        guard content.frame.height > visible else { return content }
+        let scroller = NSScrollView(frame: NSRect(x: 0, y: 0, width: content.frame.width, height: visible))
+        scroller.appearance = content.appearance
+        scroller.drawsBackground = false
+        scroller.hasVerticalScroller = true
+        scroller.scrollerStyle = .overlay
+        scroller.documentView = content
+        if values.indices.contains(selected) {
+            content.scrollToVisible(content.subviews[selected].frame.insetBy(dx: 0, dy: -gap))
+        }
+        return scroller
     }
 
     @objc private func selectCard(_ sender: NSButton) { choose(at: sender.tag) }
@@ -451,6 +469,80 @@ final class SourcePickerButton: NSButton {
         guard values.indices.contains(index) else { return }
         chooser?.close(); chooser = nil; perform?(values[index].intent)
     }
+}
+
+@MainActor
+private final class SourceChooserView: NSView {
+    override var isFlipped: Bool { true }
+}
+
+/// One source in the chooser: its picture drawn whole at its own shape, its full title beneath.
+@MainActor
+private final class SourceCard: NSButton {
+    private let value: CaptureViewInput.Choice
+    private let selected: Bool
+    override var isFlipped: Bool { true }
+    override class var cellClass: AnyClass? {
+        get { CaptureButtonCell.self }
+        set {}
+    }
+
+    init(value: CaptureViewInput.Choice, selected: Bool) {
+        self.value = value
+        self.selected = selected
+        super.init(frame: .zero)
+        title = value.title
+        isBordered = false
+        setButtonType(.momentaryChange)
+        toolTip = value.title
+        setAccessibilityLabel(value.title)
+        setAccessibilityRole(.radioButton)
+        setAccessibilityValue(NSNumber(value: selected))
+    }
+    required init?(coder: NSCoder) { nil }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let card = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.75, dy: 0.75), xRadius: 9, yRadius: 9)
+        (selected ? NSColor.systemBlue.withAlphaComponent(0.14) : captureRaisedColor()).setFill()
+        card.fill()
+        if selected {
+            NSColor.systemBlue.withAlphaComponent(0.6).setStroke()
+            card.lineWidth = 1
+            card.stroke()
+        }
+        let picture = NSRect(x: 8, y: 8, width: bounds.width - 16, height: bounds.height - 40)
+        NSColor.black.withAlphaComponent(0.28).setFill()
+        NSBezierPath(roundedRect: picture, xRadius: 5, yRadius: 5).fill()
+        if let preview = value.preview {
+            drawSourcePicture(preview, in: picture.insetBy(dx: 2, dy: 2), cornerRadius: 4)
+        } else if let symbol = captureSymbol("macwindow", color: .secondaryLabelColor) {
+            symbol.draw(in: NSRect(x: picture.midX - 18, y: picture.midY - 15, width: 36, height: 30))
+        }
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        paragraph.lineBreakMode = .byTruncatingTail
+        (value.title as NSString).draw(
+            in: NSRect(x: 8, y: bounds.height - 27, width: bounds.width - 16, height: 16),
+            withAttributes: [.font: NSFont.systemFont(ofSize: 11, weight: selected ? .semibold : .regular),
+                             .foregroundColor: NSColor.labelColor, .paragraphStyle: paragraph])
+        if isHighlighted {
+            capturePressedColor().setFill()
+            card.fill()
+        }
+    }
+}
+
+/// Draws a source's picture whole inside `box`, centred, at its own shape.
+private func drawSourcePicture(_ image: NSImage, in box: NSRect, cornerRadius: CGFloat) {
+    guard image.size.width > 0, image.size.height > 0 else { return }
+    let scale = min(box.width / image.size.width, box.height / image.size.height)
+    let size = NSSize(width: image.size.width * scale, height: image.size.height * scale)
+    let fitted = NSRect(x: box.midX - size.width / 2, y: box.midY - size.height / 2, width: size.width, height: size.height)
+    NSGraphicsContext.saveGraphicsState()
+    NSBezierPath(roundedRect: fitted, xRadius: cornerRadius, yRadius: cornerRadius).addClip()
+    image.draw(in: fitted, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true,
+               hints: [.interpolation: NSImageInterpolation.high])
+    NSGraphicsContext.restoreGraphicsState()
 }
 
 @MainActor

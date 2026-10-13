@@ -113,6 +113,94 @@ import YapControls
         precondition(pixels(sourcePopup) == restingSource, "A released source chooser returns to rest")
         sourcePopup.choose(at: 0)
         precondition(recorded.last == .controls(.selectDisplay(1)), "Choosing a source card sends that source's intent")
+        // The chooser draws each source's picture whole, at its own shape, with its title, on the
+        // menu's dark surface. A portrait window is red so its drawn shape can be measured.
+        let portrait = NSImage(size: NSSize(width: 60, height: 160), flipped: false) { rect in
+            NSColor(srgbRed: 1, green: 0, blue: 0, alpha: 1).setFill(); rect.fill(); return true
+        }
+        func redBox(_ bitmap: NSBitmapImageRep) -> NSRect? {
+            var box: NSRect?
+            for y in 0..<bitmap.pixelsHigh { for x in 0..<bitmap.pixelsWide {
+                guard let c = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB),
+                      c.redComponent > 0.85, c.greenComponent < 0.2, c.blueComponent < 0.2 else { continue }
+                box = box.map { $0.union(NSRect(x: x, y: y, width: 1, height: 1)) } ?? NSRect(x: x, y: y, width: 1, height: 1)
+            } }
+            return box
+        }
+        // Drawn over the dark material a dark popover puts behind its content, so a chooser that
+        // paints its own light sheet shows up as one.
+        func render(_ view: NSView) -> NSBitmapImageRep {
+            let stage = NSView(frame: NSRect(origin: .zero, size: view.frame.size))
+            stage.wantsLayer = true
+            stage.layer?.backgroundColor = NSColor(white: 0.16, alpha: 1).cgColor
+            view.frame.origin = .zero
+            stage.addSubview(view)
+            let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: view.frame.width, height: view.frame.height),
+                                  styleMask: .borderless, backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            window.appearance = NSAppearance(named: .darkAqua)
+            window.contentView = stage
+            window.orderBack(nil)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+            let bitmap = stage.bitmapImageRepForCachingDisplay(in: stage.bounds)!
+            stage.cacheDisplay(in: stage.bounds, to: bitmap)
+            window.orderOut(nil)
+            view.removeFromSuperview()
+            return bitmap
+        }
+        let chooserSources: [CaptureViewInput.Choice] = [
+            .init(title: "Notes — Portrait window", intent: .controls(.selectWindow(7)), preview: portrait),
+            .init(title: "Studio Display", intent: .controls(.selectDisplay(2)), preview: fixture().sourceChoices[0].preview),
+            .init(title: "Untitled window", intent: .controls(.selectWindow(8))),
+        ]
+        sourcePopup.configure(values: chooserSources, selected: 0) { recorded.append($0) }
+        let chooser = sourcePopup.chooserView()
+        precondition(chooser.appearance?.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua,
+                     "The source chooser uses the menu's dark appearance")
+        let drawn = render(chooser)
+        try! drawn.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: "\(CommandLine.arguments[1])/source-chooser.png"))
+        var luminance: CGFloat = 0
+        for y in stride(from: 0, to: drawn.pixelsHigh, by: 4) { for x in stride(from: 0, to: drawn.pixelsWide, by: 4) {
+            let c = drawn.colorAt(x: x, y: y)!.usingColorSpace(.sRGB)!
+            luminance += 0.2126 * c.redComponent + 0.7152 * c.greenComponent + 0.0722 * c.blueComponent
+        } }
+        luminance /= CGFloat((drawn.pixelsHigh / 4 + 1) * (drawn.pixelsWide / 4 + 1))
+        precondition(luminance < 0.35, "The source chooser is dark like the menu, not a light sheet: \(luminance)")
+        guard let card = redBox(drawn) else { preconditionFailure("The portrait source's picture must be drawn") }
+        precondition(card.height >= 40 && abs(card.width / card.height - 60.0 / 160.0) < 0.08,
+                     "A source picture keeps its shape: \(card.size)")
+        let cards = chooser.subviews.compactMap { $0 as? NSButton }
+        precondition(cards.map(\.title) == chooserSources.map(\.title), "Every source card carries its title")
+        for card in cards {
+            let lower = card.convert(NSRect(x: 0, y: card.bounds.height - 24, width: card.bounds.width, height: 20), to: chooser)
+            var bright = 0
+            let scale = CGFloat(drawn.pixelsWide) / chooser.bounds.width
+            for y in Int(lower.minY * scale)..<Int(lower.maxY * scale) { for x in Int(lower.minX * scale)..<Int(lower.maxX * scale) {
+                let row = chooser.isFlipped ? y : drawn.pixelsHigh - 1 - y
+                if let c = drawn.colorAt(x: x, y: row)?.usingColorSpace(.sRGB), c.redComponent > 0.75, c.greenComponent > 0.75, c.blueComponent > 0.75 { bright += 1 }
+            } }
+            precondition(bright > 20, "Source card \(card.title) shows its title: \(bright) light pixels")
+        }
+        // Many windows scroll inside a chooser no taller than four and a half rows, opened at the
+        // chosen one; a long name is shortened on its card rather than spilling over.
+        let many: [CaptureViewInput.Choice] = (0..<12).map {
+            .init(title: $0 == 11 ? "Google Chrome — A very long document title that cannot fit on one card at all" : "Window \($0)",
+                  intent: .controls(.selectWindow($0)), preview: portrait)
+        }
+        sourcePopup.configure(values: many, selected: 11) { recorded.append($0) }
+        guard let scroller = sourcePopup.chooserView() as? NSScrollView, let cardsView = scroller.documentView else {
+            preconditionFailure("A long source list scrolls")
+        }
+        precondition(scroller.frame.height <= 4.5 * 140 + 8, "The chooser stays a bounded height: \(scroller.frame.height)")
+        precondition(cardsView.subviews.count == 12, "Every source is in the scrolling chooser")
+        let longCard = cardsView.subviews.last!
+        precondition(scroller.contentView.documentVisibleRect.intersects(longCard.frame), "The chooser opens showing the chosen source")
+        let longDrawn = render(scroller)
+        try! longDrawn.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: "\(CommandLine.arguments[1])/source-chooser-many.png"))
+        sourcePopup.configure(values: chooserSources, selected: 0) { recorded.append($0) }
+        let field = render({ sourcePopup.frame = NSRect(x: 0, y: 0, width: 306, height: 28); return sourcePopup }())
+        guard let thumb = redBox(field) else { preconditionFailure("The source field shows the chosen source's picture") }
+        precondition(abs(thumb.width / thumb.height - 60.0 / 160.0) < 0.15, "The field's thumbnail keeps its shape: \(thumb.size)")
         // Source pictures arrive after the menu is drawn. The chooser shows them when they do, and
         // the field it replaces leaves instead of staying behind it.
         func sourceFields(_ capture: CaptureView) -> Int {
