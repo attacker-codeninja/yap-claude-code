@@ -202,13 +202,17 @@ struct RecordingOverlayView: View {
                 .foregroundStyle(paused ? AnyShapeStyle(.primary) : AnyShapeStyle(Color.red))
                 .frame(width: 15)
                 .accessibilityLabel(paused ? "Paused" : "Recording")
-            Text(model.presentation.elapsed)
-                .font(.system(size: 15, weight: .medium))
-                .monospacedDigit()
-                .foregroundStyle(paused ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
-                .frame(minWidth: 62, alignment: .leading)
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
+            // The clock keeps the width of the longest one a take shows, so the row does not change
+            // shape as a take passes an hour, or ten.
+            ZStack(alignment: .leading) {
+                Text("00:00:00").hidden().accessibilityHidden(true)
+                Text(model.presentation.elapsed)
+                    .foregroundStyle(paused ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
+            }
+            .font(.system(size: 15, weight: .medium))
+            .monospacedDigit()
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
             separator
             HStack(spacing: 2) {
                 button(paused ? "play.fill" : "pause.fill",
