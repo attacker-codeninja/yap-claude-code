@@ -855,7 +855,7 @@ test.each([
 test("a 0.1.33 camera proof admits unchanged", async () => {
   const f = await fixture();
   // Proof stored by release 0.1.33 for corpus B's camera take
-  // (specs/camera-toggle/assets/pre-toggle-corpus/b.tar.gz, acquisitions table); only the canonical
+  // (specs/done/camera-toggle/assets/pre-toggle-corpus/b.tar.gz, acquisitions table); only the canonical
   // identity is replaced by this fixture's movie.
   const retained = {
     mapping: {

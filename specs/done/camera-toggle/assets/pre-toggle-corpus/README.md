@@ -1,9 +1,10 @@
 # Pre-toggle library corpus
 
 Two Yap libraries recorded by the build before camera on/off existed. The
-[preservation gate](../../../../packages/test-harness/editing/camera-library-preservation.mjs)
+[preservation gate](../../../../../packages/test-harness/editing/camera-library-preservation.mjs)
 opens each one with the code under test and checks that its recordings still work
-([slice 01](../../slices/01-preservation-baseline.md) lists the assertions). Each archive holds
+(the [feature record](../../README.md#existing-recordings-keep-working) says what it holds; the
+script owns the assertions). Each archive holds
 `library/` at its root; it is stored as a tar because library members carry modes (read-only
 acquisition members, private directories) that git does not keep. [manifest.json](manifest.json)
 lists every member's type, mode, size and SHA-256, and each archive's own hash.
@@ -89,9 +90,9 @@ is refused (`LIMIT_EXCEEDED`) before it reserves anything. The library then clos
 ```sh
 export YAP_NATIVE=$PWD/helpers/mac/.build/debug/yap-native   # built from the code under test
 node packages/test-harness/editing/camera-library-preservation.mjs \
-  --library specs/camera-toggle/assets/pre-toggle-corpus/a.tar.gz --out /tmp/<new>/a
+  --library specs/done/camera-toggle/assets/pre-toggle-corpus/a.tar.gz --out /tmp/<new>/a
 node packages/test-harness/editing/camera-library-preservation.mjs \
-  --library specs/camera-toggle/assets/pre-toggle-corpus/b.tar.gz --out /tmp/<new>/b
+  --library specs/done/camera-toggle/assets/pre-toggle-corpus/b.tar.gz --out /tmp/<new>/b
 node packages/test-harness/editing/camera-library-preservation.mjs --library ~/.yap --out /tmp/<new>/home
 ```
 
