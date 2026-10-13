@@ -28,9 +28,11 @@ Physical camera corpus C was not made.
 Native, service, CLI and controller-journey sources are those of `a8adbab2`, unchanged through
 `054c6d09`. Builds started on `a8adbab2` with the slice 00 floating-controls UI uncommitted; that UI
 and this spec were committed (`967b6479`..`054c6d09`) while the corpus was produced. None of those
-files is compiled into the native worker, service or controller journey. Harness changes made
-for this corpus: `webcam.mjs --keep-home`, the generalized reply hold in `controller-service.mjs`,
-and the new `camera-library-corpus.mjs`.
+files is compiled into the native worker, service or controller journey. The producer
+(`camera-library-corpus.mjs`, `webcam.mjs --keep-home` and a reply hold in
+`controller-service.mjs` that can hold any operation) exists only at commit `55b98661`, the last
+whose product code is pre-toggle: run the recipe below from a checkout of that commit. Later
+code cannot make this corpus, so the producer is not kept beside the code under test.
 
 Inputs and binaries (scratch paths, 2026-10-12):
 

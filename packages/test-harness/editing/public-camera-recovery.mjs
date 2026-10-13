@@ -82,7 +82,7 @@ try {
     service = new ControllerJourneyService(home, report, {
       ...fixture,
       evidence: join(caseRoot, "recovery-worker"),
-      replyHold: holdConfig,
+      recoveryHold: holdConfig,
     });
     await service.start();
     const committed = await poll(
