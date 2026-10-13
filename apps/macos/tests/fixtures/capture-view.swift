@@ -91,8 +91,8 @@ import YapControls
         window.orderOut(nil)
         window.close()
         let selectedSource = CaptureView(appIcon: appIcon, input: fixture(secondSource: true)) { recorded.append($0) }
-        let sourcePopup = selectedSource.control(identifier: "source.device") as! NSPopUpButton
-        precondition(sourcePopup.titleOfSelectedItem == "Studio Display", "Rebuilding preserves the owner-selected source device")
+        let sourcePopup = selectedSource.control(identifier: "source.device") as! SourcePickerButton
+        precondition(sourcePopup.title == "Studio Display", "Rebuilding preserves the owner-selected source device")
         let duplicate = CaptureView(appIcon: appIcon, input: fixture(duplicateNames: true)) { recorded.append($0) }
         let duplicateCamera = duplicate.control(identifier: "camera.device") as! NSPopUpButton
         duplicateCamera.selectItem(at: duplicateCamera.numberOfItems - 1)
@@ -253,7 +253,16 @@ import YapControls
     }
 
     @MainActor static func fixture(locked: Bool = false, cameraOnly: Bool = false, longNames: Bool = false, duplicateNames: Bool = false, microphoneOn: Bool = true, secondSource: Bool = false, startEnabled: Bool? = nil, status: String = "Ready to record", lastRecording: Bool = false) -> CaptureViewInput {
-        var input = CaptureViewInput(selectedSource: cameraOnly ? .cameraOnly : .display, selectedSourceChoice: secondSource ? 1 : 0, sourceChoices: [.init(title: longNames ? "A very long external display name for a conference studio · 5120 × 2880" : "Built-in Retina Display · 3024 × 1964", intent: .controls(.selectDisplay(1)))] + (secondSource ? [.init(title: "Studio Display", intent: .controls(.selectDisplay(2)))] : []),
+        let preview = NSImage(size: NSSize(width: 160, height: 90), flipped: false) { rect in
+            NSColor(calibratedWhite: 0.12, alpha: 1).setFill(); rect.fill()
+            NSColor(calibratedRed: 0.24, green: 0.48, blue: 0.78, alpha: 1).setFill()
+            NSBezierPath(rect: rect.insetBy(dx: 10, dy: 9)).fill()
+            NSColor.white.withAlphaComponent(0.65).setFill()
+            NSBezierPath(rect: NSRect(x: 20, y: 47, width: 54, height: 5)).fill()
+            NSBezierPath(rect: NSRect(x: 20, y: 36, width: 92, height: 4)).fill()
+            return true
+        }
+        var input = CaptureViewInput(selectedSource: cameraOnly ? .cameraOnly : .display, selectedSourceChoice: secondSource ? 1 : 0, sourceChoices: [.init(title: longNames ? "A very long external display name for a conference studio · 5120 × 2880" : "Built-in Retina Display · 3024 × 1964", intent: .controls(.selectDisplay(1)), preview: preview)] + (secondSource ? [.init(title: "Studio Display", intent: .controls(.selectDisplay(2)), preview: preview)] : []),
             cameraChoices: (cameraOnly ? [] : [.init(title: "No camera", intent: .camera(nil))]) + [.init(title: longNames ? "Conference room camera with an unusually long name" : "FaceTime HD Camera", intent: .camera("fixture-camera"))] + (duplicateNames ? [.init(title: "FaceTime HD Camera", intent: .camera("fixture-camera-second")), .init(title: "Another camera", intent: .camera("fixture-camera-third"))] : []),
             selectedCamera: cameraOnly ? 0 : longNames ? 1 : 0, cameraOn: cameraOnly || longNames,
             microphoneChoices: [.init(title: longNames ? "Conference room microphone with an unusually long name" : "MacBook Pro Microphone", intent: .controls(.selectMicrophone("fixture-mic")))],

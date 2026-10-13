@@ -18,6 +18,15 @@ struct CaptureViewInput: Equatable {
     struct Choice: Equatable {
         let title: String
         let intent: CaptureViewIntent
+        let preview: NSImage?
+
+        init(title: String, intent: CaptureViewIntent, preview: NSImage? = nil) {
+            self.title = title; self.intent = intent; self.preview = preview
+        }
+
+        static func == (lhs: Choice, rhs: Choice) -> Bool {
+            lhs.title == rhs.title && lhs.intent == rhs.intent
+        }
     }
     struct LastRecording: Equatable {
         let recordingId: String
@@ -170,6 +179,18 @@ final class CaptureView: NSView {
     }
 
     private func popup(_ values: [CaptureViewInput.Choice], selected: Int, id: String, frame: NSRect) {
+        if id == "source.device" && values.contains(where: { $0.preview != nil }) {
+            usedControls.insert(id)
+            let picker = controls[id] as? SourcePickerButton ?? SourcePickerButton()
+            picker.frame = frame
+            picker.configure(values: values, selected: selected) { [weak self] intent in self?.perform(intent) }
+            picker.isEnabled = input.inputsEnabled && input.screenSourcesEnabled
+            picker.identifier = .init(id)
+            picker.setAccessibilityLabel("Capture source")
+            if picker.superview !== document { document.addSubview(picker, positioned: .above, relativeTo: nil) }
+            controls[id] = picker
+            return
+        }
         usedControls.insert(id)
         let popup = controls[id] as? CapturePopup ?? CapturePopup(frame: frame, pullsDown: false)
         popup.frame = frame
@@ -356,6 +377,63 @@ final class CaptureView: NSView {
     @objc private func selectChoice(_ sender: NSPopUpButton) {
         guard sender.isEnabled, let values = choices[ObjectIdentifier(sender)], values.indices.contains(sender.indexOfSelectedItem) else { return }
         perform(values[sender.indexOfSelectedItem].intent)
+    }
+}
+
+/// A source chooser that keeps the existing source field contract while presenting recognizable
+/// snapshots for displays and windows instead of an opaque text-only menu.
+final class SourcePickerButton: NSButton {
+    private var values: [CaptureViewInput.Choice] = []
+    private var selected = -1
+    private var chooser: NSPopover?
+    private var choose: ((CaptureViewIntent) -> Void)?
+
+    func configure(values: [CaptureViewInput.Choice], selected: Int,
+                   choose: @escaping (CaptureViewIntent) -> Void) {
+        self.values = values; self.selected = selected; self.choose = choose
+        title = values.indices.contains(selected) ? values[selected].title : (values.first?.title ?? "Choose source")
+        alignment = .left; font = .systemFont(ofSize: 12); isBordered = false
+        image = nil
+        target = self; action = #selector(openChooser)
+        needsDisplay = true
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        captureRaisedColor().setFill()
+        NSBezierPath(roundedRect: bounds, xRadius: 7, yRadius: 7).fill()
+        let value = values.indices.contains(selected) ? values[selected] : nil
+        let text = value?.title ?? title
+        let attributes: [NSAttributedString.Key: Any] = [.font: font ?? NSFont.systemFont(ofSize: 12), .foregroundColor: isEnabled ? NSColor.labelColor : NSColor.secondaryLabelColor]
+        let imageRect = NSRect(x: 6, y: 4, width: 32, height: max(1, bounds.height - 8))
+        if let preview = value?.preview { preview.draw(in: imageRect, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: [.interpolation: NSImageInterpolation.high]) }
+        (text as NSString).draw(at: NSPoint(x: value?.preview == nil ? 8 : 45, y: (bounds.height - 14) / 2), withAttributes: attributes)
+        if let chevron = captureSymbol("chevron.down", color: .secondaryLabelColor) { chevron.draw(in: NSRect(x: bounds.width - 16, y: bounds.midY - 3, width: 8, height: 6)) }
+    }
+
+    @objc private func openChooser() {
+        guard !values.isEmpty else { return }
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 370, height: CGFloat(max(1, (values.count + 1) / 2)) * 124 + 16))
+        content.wantsLayer = true
+        content.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        for (index, value) in values.enumerated() {
+            let button = NSButton(title: value.title, target: self, action: #selector(selectCard(_:)))
+            button.tag = index; button.identifier = .init("source.card.\(index)")
+            button.bezelStyle = .texturedRounded; button.alignment = .center
+            button.font = .systemFont(ofSize: 11, weight: index == selected ? .semibold : .regular)
+            button.image = value.preview ?? NSImage(systemSymbolName: "rectangle.on.rectangle", accessibilityDescription: nil)
+            button.imageScaling = .scaleAxesIndependently; button.imagePosition = .imageAbove
+            button.frame = NSRect(x: 8 + CGFloat(index % 2) * 181, y: content.bounds.height - 116 - CGFloat(index / 2) * 124, width: 173, height: 108)
+            content.addSubview(button)
+        }
+        let controller = NSViewController(); controller.view = content
+        let popover = NSPopover(); popover.contentViewController = controller; popover.behavior = .transient; popover.animates = true
+        chooser = popover; popover.show(relativeTo: bounds, of: self, preferredEdge: .maxY)
+    }
+
+    @objc private func selectCard(_ sender: NSButton) {
+        guard values.indices.contains(sender.tag) else { return }
+        let intent = values[sender.tag].intent
+        chooser?.close(); chooser = nil; choose?(intent)
     }
 }
 

@@ -39,6 +39,7 @@ final class RecordingControls: NSObject {
     private var updateFenced = false
     private var permissionRequests = 0
     private var lastUpdateBlockers: [String] = []
+    private var sourcePreviews: [String: NSImage] = [:]
     private lazy var preview = PreviewController(
         call: { [weak self] operation, params in
             guard let self else { throw Self.noService }
@@ -771,6 +772,10 @@ final class RecordingControls: NSObject {
         guard let view = captureView else { return false }
         let nativeID = identifier == ControlsAction.startOrStop.id ? "capture.start" : identifier == ControlsAction.openLibrary.id ? "header.library" : identifier == ControlsAction.toggleSystemAudio.id ? "systemAudio.toggle" : identifier
         if let control = view.control(identifier: nativeID), control.isEnabled {
+            if let picker = control as? SourcePickerButton {
+                picker.performClick(nil)
+                return true
+            }
             control.performClick(nil)
             return true
         }
@@ -815,11 +820,17 @@ final class RecordingControls: NSObject {
         let selectedSource: Int
         switch mode {
         case .display:
-            sources = state.sources.displays.map { .init(title: $0.name, intent: .controls(.selectDisplay($0.id))) }
+            sources = state.sources.displays.map { display in
+                .init(title: display.name, intent: .controls(.selectDisplay(display.id)),
+                      preview: sourcePreview(display: display.id))
+            }
             if case .display(let display) = state.selection.source { selectedSource = state.sources.displays.firstIndex { $0.id == display.id } ?? -1 }
             else { selectedSource = -1 }
         case .window:
-            sources = state.sources.windows.map { .init(title: $0.application.isEmpty ? $0.title : "\($0.application) — \($0.title)", intent: .controls(.selectWindow($0.id))) }
+            sources = state.sources.windows.map { window in
+                .init(title: window.application.isEmpty ? window.title : "\(window.application) — \(window.title)",
+                      intent: .controls(.selectWindow(window.id)), preview: sourcePreview(window: window.id))
+            }
             if case .window(let window) = state.selection.source { selectedSource = state.sources.windows.firstIndex { $0.id == window.id } ?? -1 }
             else { selectedSource = -1 }
         case .area:
@@ -893,6 +904,23 @@ final class RecordingControls: NSObject {
                 canCopyPrompt: !pending)
         }
         return input
+    }
+
+    private func sourcePreview(display id: Int) -> NSImage? {
+        if let cached = sourcePreviews["display:\(id)"] { return cached }
+        guard let image = CGDisplayCreateImage(CGDirectDisplayID(id)) else { return nil }
+        let preview = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
+        sourcePreviews["display:\(id)"] = preview
+        return preview
+    }
+
+    private func sourcePreview(window id: Int) -> NSImage? {
+        if let cached = sourcePreviews["window:\(id)"] { return cached }
+        guard let image = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(id),
+                                                   [.bestResolution, .boundsIgnoreFraming]) else { return nil }
+        let preview = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
+        sourcePreviews["window:\(id)"] = preview
+        return preview
     }
 
     private func showStatusItem() {

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Yap source picker mock</title>
+<style>
+  :root { color-scheme: dark; --bg:#17181b; --panel:#24262b; --panel2:#2d3036; --text:#f4f4f5; --muted:#a8abb4; --line:#3b3e46; --blue:#6aa8ff; --blue2:#255ea9; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background: radial-gradient(circle at 70% 5%,#354157 0,#1b1d22 34%,#111216 100%); color:var(--text); font:13px -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif; display:grid; place-items:center; }
+  .app { width:920px; height:610px; border:1px solid #50535b; border-radius:18px; background:rgba(25,26,30,.96); box-shadow:0 28px 80px #0008; overflow:hidden; display:flex; }
+  .sidebar { width:226px; padding:26px 18px; border-right:1px solid #373941; background:#1d1f23; }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:700; font-size:18px; margin:2px 8px 38px; }
+  .mark { width:25px;height:25px;border-radius:8px;background:linear-gradient(135deg,#67adff,#956dff); box-shadow:0 0 18px #6b9dff55; }
+  .nav { color:var(--muted); padding:10px 12px; border-radius:9px; margin:4px 0; }
+  .nav.active { background:#343841;color:#fff; }
+  .main { flex:1; padding:34px 40px; }
+  .eyebrow { color:var(--muted); font-size:12px; letter-spacing:.08em; text-transform:uppercase; }
+  h1 { font-size:26px; margin:8px 0 26px; letter-spacing:-.03em; }
+  .source-tabs { display:flex; gap:8px; margin:0 0 22px; }
+  .source-tab { width:78px; height:64px; border:1px solid #4b4f59; border-radius:10px; background:#292c32; color:#b9bdc7; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; font:12px -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif; }
+  .source-tab span { font-weight:600; }
+  .source-tab.active { color:#fff; border-color:#6aa8ff; background:#263c5a; box-shadow:0 0 0 2px #478cf833; }
+  .source-tab:first-letter { font-size:17px; }
+  .field-label { color:var(--muted); margin-bottom:8px; }
+  .select { width:450px; border:1px solid #565a65; border-radius:10px; background:#2a2d34; padding:12px 14px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 0 0 1px #111; }
+  .selected { display:flex; gap:10px; align-items:center; }
+  .mini { width:40px;height:25px; border-radius:4px; background:linear-gradient(135deg,#ebf4ff,#6e9dda 45%,#2d4165); border:1px solid #9eb6da66; }
+  .chev { color:#aeb4c0; font-size:16px; }
+  .popover { width:670px; margin-top:8px; padding:16px; border:1px solid #60646d; border-radius:14px; background:rgba(38,40,46,.98); box-shadow:0 22px 60px #000b; }
+  .pophead { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .pophead strong { font-size:14px; }
+  .hint { color:var(--muted); font-size:12px; }
+  .section { color:#c5c8d0; font-size:11px; text-transform:uppercase; letter-spacing:.08em; margin:14px 2px 8px; }
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .card { border:1px solid var(--line); background:#2c2f35; border-radius:10px; padding:7px; cursor:pointer; }
+  .card:hover,.card.selected { border-color:var(--blue); box-shadow:0 0 0 2px #478cf833; }
+  .thumb { height:82px; border-radius:6px; overflow:hidden; position:relative; background:#111; }
+  .thumb.chrome { background:linear-gradient(#e8edf5 0 16%,#f8fafc 16% 100%); }
+  .thumb.chrome:before { content:""; position:absolute; left:7px; right:7px; top:22px; bottom:8px; border-radius:3px; background:linear-gradient(135deg,#f4e2ca,#b4d2f3 48%,#6e83bd); }
+  .thumb.slack { background:linear-gradient(135deg,#42245f,#1d375c); }
+  .thumb.slack:before { content:""; position:absolute; inset:13px 20px; border-radius:4px; background:repeating-linear-gradient(0deg,#ffffff18 0 5px,transparent 5px 12px); }
+  .thumb.code { background:linear-gradient(135deg,#151d2c,#284361); }
+  .thumb.code:before { content:"⌘  YapCapture.swift\A\A  func startRecording()"; white-space:pre; position:absolute; inset:12px; color:#b9d6ff; font:9px ui-monospace; line-height:1.55; }
+  .thumb.display { background:linear-gradient(135deg,#b8c9e3,#657b9e 44%,#202833); }
+  .thumb.display:before { content:""; position:absolute; inset:10px 14px 16px; border-radius:3px; border:1px solid #fff7; background:linear-gradient(135deg,#eff4fb,#8fb0df 40%,#394965); }
+  .cardname { display:flex; align-items:center; justify-content:space-between; gap:4px; margin-top:7px; font-weight:600; font-size:12px; }
+  .meta { color:var(--muted); font-size:11px; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .check { color:#79b1ff; font-size:15px; }
+  .footer { margin-top:14px; display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size:11px; }
+  .kbd { border:1px solid #555963; border-radius:4px; padding:2px 5px; color:#d7dae2; }
+</style>
+</head>
+<body>
+  <main class="app">
+    <aside class="sidebar">
+      <div class="brand"><span class="mark"></span> Yap</div>
+      <div class="nav active">Record</div><div class="nav">Library</div><div class="nav">Settings</div>
+    </aside>
+    <section class="main">
+      <div class="eyebrow">Capture setup</div>
+      <h1>What should Yap record?</h1>
+      <div class="source-tabs"><button class="source-tab active">▣<span>Display</span></button><button class="source-tab">▤<span>Window</span></button><button class="source-tab">●<span>Area</span></button><button class="source-tab">◉<span>Camera</span></button></div>
+      <div class="field-label">Display</div>
+      <div class="select"><div class="selected"><span class="mini"></span><div><strong>Display 1</strong><div class="meta">Built-in display · 2560 × 1664</div></div></div><span class="chev">⌄</span></div>
+      <div class="popover">
+        <div class="pophead"><strong>Choose a source</strong><span class="hint">Click a preview to select</span></div>
+        <div class="section" id="display-section">Displays</div>
+        <div class="grid">
+          <div class="card selected" onclick="select(this,'Display 1','Built-in display · 2560 × 1664')"><div class="thumb display"></div><div class="cardname">Display 1 <span class="check">✓</span></div><div class="meta">Built-in · 2560 × 1664</div></div>
+          <div class="card" onclick="select(this,'Studio Display','External display · 5120 × 2880')"><div class="thumb display" style="background:linear-gradient(135deg,#f5eee2,#b69d82 44%,#35393e)"></div><div class="cardname">Studio Display</div><div class="meta">External · 5120 × 2880</div></div>
+        </div>
+        <div class="section" id="window-section">Windows</div>
+        <div class="grid" id="window-grid">
+          <div class="card" onclick="select(this,'Chrome — AI Gateway','Google Chrome · 1440 × 900')"><div class="thumb chrome"></div><div class="cardname">Chrome — AI Gateway</div><div class="meta">Google Chrome · 1440 × 900</div></div>
+          <div class="card" onclick="select(this,'Yap Capture','Yap · 920 × 610')"><div class="thumb code"></div><div class="cardname">Yap Capture</div><div class="meta">Yap · 920 × 610</div></div>
+          <div class="card" onclick="select(this,'Grok Bot','Grok Bot · 1200 × 800')"><div class="thumb slack"></div><div class="cardname">Grok Bot</div><div class="meta">Grok Bot · 1200 × 800</div></div>
+        </div>
+        <div class="footer"><span>Previews update when windows change</span><span><span class="kbd">Esc</span> close</span></div>
+      </div>
+    </section>
+  </main>
+<script>
+function select(card,title,meta){ document.querySelectorAll('.card').forEach(x=>x.classList.remove('selected')); card.classList.add('selected'); card.querySelector('.cardname').insertAdjacentHTML('beforeend',' <span class="check">✓</span>'); document.querySelector('.select strong').textContent=title; document.querySelector('.select .meta').textContent=meta; document.querySelector('.popover').style.display='none'; document.querySelector('.mini').style.background=getComputedStyle(card.querySelector('.thumb')).background; }
+document.querySelectorAll('.source-tab').forEach((tab,i)=>tab.addEventListener('click',()=>{document.querySelectorAll('.source-tab').forEach(x=>x.classList.remove('active'));tab.classList.add('active'); const display=i===0; document.getElementById('display-section').style.display=display?'block':'none'; document.querySelector('#display-section + .grid').style.display=display?'grid':'none'; document.getElementById('window-section').style.display=i===1?'block':'none'; document.getElementById('window-grid').style.display=i===1?'grid':'none'; document.querySelector('.field-label').textContent=['Display','Window','Area','Camera'][i];}));
+</script>
+</body>
+</html>
