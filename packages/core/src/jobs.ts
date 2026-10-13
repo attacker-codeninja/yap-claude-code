@@ -833,8 +833,11 @@ export class JobQueue {
     return row ? { ...toArtifact(row), attemptId } : null;
   }
 
-  /** The dependency owner validates the result; its publication joins the caller's catalog transaction. */
-  adoptArtifact(receipt: RetainedArtifact): void {
+  /**
+   * The dependency owner validates the result; its publication joins the caller's catalog
+   * transaction. `issues` are what the producer reported, re-derived locally by that owner.
+   */
+  adoptArtifact(receipt: RetainedArtifact, issues: readonly Issue[] = []): void {
     this.requireOpen();
     this.targets.pin(receipt.target);
     const existing = this.publication(receipt);
@@ -879,6 +882,11 @@ export class JobQueue {
         receipt.result,
         inputDigest(receipt.input),
       );
+    writeOutputIssues(
+      this.store,
+      { outputKind: "artifact", outputId: receipt.attemptId, generation: receipt.generation },
+      issues,
+    );
   }
 
   /** Recover frozen work by an explicit business-request key before execution readiness.

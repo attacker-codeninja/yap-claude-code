@@ -200,7 +200,7 @@ export class RenderedSpeech {
       generation: job.attemptId,
     });
     this.owners.jobs.retainInputs(job.jobId, "transcript-generation", [resourceId]);
-    const transcript = await this.owners.transcripts.recognizeSource(
+    const { transcript, issues } = await this.owners.transcripts.recognizeSource(
       { assetId: pcm.assetId, streamId: pcm.streamId },
       job.attemptId,
       signal,
@@ -215,6 +215,8 @@ export class RenderedSpeech {
     let published = false;
     return {
       result: JSON.stringify(speech),
+      // Rendered recognition publishes the transcript it measured, so it reports that transcript's issues.
+      issues,
       publish: () => {
         this.references.retain("transcript-generation", { kind: "job", id: job.jobId }, [
           resourceId,

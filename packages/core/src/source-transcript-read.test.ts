@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, expect, test } from "vitest";
 import { Catalog } from "./catalog.js";
+import { writeOutputIssues } from "./issues.js";
 import { speechExecution, TranscriptStore, type TranscriptMetadata } from "./transcript.js";
 import { SourceTranscriptRead, type SourceTranscriptRow } from "./transcript-read.js";
 import { portHistoricalSpeechRaw } from "../../test-harness/speech/reference-raw.mjs";
@@ -70,7 +71,7 @@ async function fixture(
   }));
   const raw = retainedRaw ?? lines.map((line) => JSON.stringify(line) + "\n").join("");
   await writeFile(output, raw);
-  const metadata = await store.ingest({
+  const { transcript: metadata, issues } = await store.ingest({
     identity,
     source: {
       kind: "asset",
@@ -111,7 +112,7 @@ async function fixture(
     pins,
     signal: new AbortController().signal,
   });
-  return { store, metadata, read: new SourceTranscriptRead(store, metadata) };
+  return { catalog, store, metadata, issues, read: new SourceTranscriptRead(store, metadata) };
 }
 
 test("source pages preserve words and raw acquisition gaps across one-row continuations", async () => {
@@ -142,6 +143,92 @@ test("source pages preserve words and raw acquisition gaps across one-row contin
       .page({ range: { startUs: 200, endUs: 225 } })
       .rows.map((row) => [row.sourceRange, row.partial]),
   ).toEqual([[{ startUs: 100, endUs: 250 }, true]]);
+});
+
+test("word issues in raw evidence round-trip to their rows through one-row continuations and range reads", async () => {
+  const unresolved = {
+    code: "boundary-unresolved",
+    message:
+      "'last' has no unique peer across the 0.000 s seam; the window whose core holds its start publishes it.",
+    word: 2,
+    evidence: { boundaryUs: 500, window: 0, observation: 2, text: "last", published: true },
+  };
+  const clamped = {
+    code: "timing-clamped",
+    message:
+      "The engine estimate [0.000, 0.001] s runs past its decoded window; it is clamped to the window edge.",
+    word: 1,
+    evidence: {
+      window: 1,
+      observation: 1,
+      decoded: { startUs: 700, endUs: 900 },
+      startSeconds: 0.0001,
+      endSeconds: 0.00021,
+    },
+  };
+  const raw = [
+    { startUs: 100, endUs: 500, texts: ["Hello,", "WORLD!", "last"], issues: [unresolved] },
+    { startUs: 700, endUs: 900, texts: ["first", "hello"], issues: [clamped] },
+  ]
+    .map(({ startUs, endUs, texts, issues }, ordinal) => {
+      const spans = ordinal
+        ? [
+            [700, 750],
+            [800, 900],
+          ]
+        : [
+            [100, 250],
+            [250, 300],
+            [400, 500],
+          ];
+      return (
+        JSON.stringify({
+          ordinal,
+          source: { startUs, endUs },
+          owned: { startUs, endUs },
+          state: "transcribed",
+          words: texts.map((text, index) => ({
+            text,
+            source: { startUs: spans[index]![0], endUs: spans[index]![1] },
+            confidence: 0.75,
+          })),
+          issues,
+        }) + "\n"
+      );
+    })
+    .join("");
+  const { catalog, issues, metadata, read } = await fixture(undefined, 1000, raw);
+  expect(issues.map((issue) => [issue.code, issue.at])).toEqual([
+    ["boundary-unresolved", { word: 2 }],
+    ["timing-clamped", { word: 4 }],
+  ]);
+  // What the job queue does when the attempt that produced this generation publishes it.
+  writeOutputIssues(
+    catalog,
+    { outputKind: "artifact", outputId: metadata.generation, generation: 1 },
+    issues,
+  );
+  const rows: SourceTranscriptRow[] = [];
+  let cursor: unknown;
+  do {
+    const page = read.page({ limit: 1, cursor });
+    rows.push(...page.rows);
+    cursor = page.nextCursor;
+  } while (cursor);
+  expect(
+    rows.flatMap((row) =>
+      row.type === "word" ? [[row.text, row.issues?.map((issue) => issue.code) ?? []]] : [],
+    ),
+  ).toEqual([
+    ["Hello,", []],
+    ["WORLD!", []],
+    ["last", ["boundary-unresolved"]],
+    ["first", []],
+    ["hello", ["timing-clamped"]],
+  ]);
+  expect(read.page({ range: { startUs: 850, endUs: 900 } }).rows).toMatchObject([
+    { text: "hello", issues: [issues[1]] },
+  ]);
 });
 
 test("coincident and overlapping estimates retain every word and instant point through bounded pages", async () => {

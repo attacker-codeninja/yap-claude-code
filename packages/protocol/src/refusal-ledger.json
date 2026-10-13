@@ -5,8 +5,6 @@
   "NORMALIZATION_TARGETS_UNMET": "04",
   "LIMITER_CEILING_UNMET": "04",
   "NORMALIZATION_UNMEASURABLE": "04",
-  "TRANSCRIPT_BOUNDARY_DISAGREEMENT": "03",
-  "INVALID_SPEECH_TIMING": "03",
   "UNAVAILABLE_SUPPORT": "04",
   "FONT_GLYPH_MISSING": "07a"
  },
@@ -1030,10 +1028,9 @@
    }
   },
   "INVALID_SPEECH_TIMING": {
-   "category": "pending-conversion",
+   "category": "malformed",
    "files": {
-    "helpers/mac/Sources/YapSpeech/SourceTranscript.swift": 3,
-    "helpers/mac/Sources/YapSpeech/WordTimingMerger.swift": 1
+    "helpers/mac/Sources/YapSpeech/SourceTranscript.swift": 2
    }
   },
   "INVALID_STATE": {
@@ -1942,12 +1939,6 @@
     "helpers/mac/Sources/YapSpeech/ParakeetEngine.swift": 2,
     "helpers/mac/Sources/YapWire/SpeechOperation.swift": 1,
     "helpers/mac/Sources/YapWire/Wire.swift": 1
-   }
-  },
-  "TRANSCRIPT_BOUNDARY_DISAGREEMENT": {
-   "category": "pending-conversion",
-   "files": {
-    "helpers/mac/Sources/YapSpeech/SpeechWindows.swift": 1
    }
   },
   "TRUNCATED_FRAME": {

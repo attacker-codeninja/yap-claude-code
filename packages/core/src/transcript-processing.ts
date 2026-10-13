@@ -1,4 +1,4 @@
-import { fromTime, compare, type SelectionRange, omit } from "@yap/composition";
+import { fromTime, compare, type SelectionRange, omit, type Issue } from "@yap/composition";
 import { z } from "zod";
 import { setImmediate } from "node:timers/promises";
 import { isDeepStrictEqual } from "node:util";
@@ -6,7 +6,12 @@ import type { AssetStore } from "./assets.js";
 import type { AcquisitionStore } from "./acquisitions.js";
 import { selectSource, sourceSelectionSchema, type SourceSelection } from "./source-selection.js";
 import { CatalogError } from "./catalog.js";
-import { retainedPublicationSchema, type JobExecution, type JobQueue } from "./jobs.js";
+import {
+  retainedPublicationSchema,
+  type JobExecution,
+  type JobQueue,
+  type StagedJobResult,
+} from "./jobs.js";
 import type { Models } from "./models.js";
 import {
   transcriptPolicy,
@@ -22,6 +27,7 @@ import {
   type TranscriptMetadata,
   type SpeechExecution,
   type TranscriptExecutionSelection,
+  type IndexedTranscript,
 } from "./transcript.js";
 
 const artifact = "transcript";
@@ -178,6 +184,7 @@ export class TranscriptProcessing {
     metadata: TranscriptMetadata,
     available: SelectionRange[],
     publication: PortableTranscriptPublication | null,
+    issues: readonly Issue[],
   ): void {
     const value = portableTranscript(metadata),
       selected = this.portableSelection(value);
@@ -229,7 +236,10 @@ export class TranscriptProcessing {
         "INVALID_PACKAGE",
         "Transcript publication differs from source or engine identity",
       );
-    this.jobs.adoptArtifact({ ...identity, ...publication, result: JSON.stringify(metadata) });
+    this.jobs.adoptArtifact(
+      { ...identity, ...publication, result: JSON.stringify(metadata) },
+      issues,
+    );
   }
   sourceStatus(selection: TranscriptPreparation & { generation?: string | undefined }) {
     const selected = selectedAudio(this.asset, selection);
@@ -364,7 +374,7 @@ export class TranscriptProcessing {
     );
   }
 
-  async execute({ job, signal }: JobExecution): Promise<string> {
+  async execute({ job, signal }: JobExecution): Promise<StagedJobResult> {
     if (job.target.kind !== "asset" || job.artifact !== artifact)
       throw new CatalogError("UNSUPPORTED_JOB", "Transcript processor cannot execute this job");
     const selection = sourceSelectionSchema.parse(JSON.parse(job.input).selection);
@@ -380,19 +390,23 @@ export class TranscriptProcessing {
     if (this.models.status().state !== "ready")
       throw new CatalogError("MODEL_NOT_PREPARED", "Speech models are not prepared", {}, true);
     await this.cleanupAsset(selection.assetId, signal);
-    return JSON.stringify(
-      await this.transcribeSource(
-        {
-          owner: { kind: "asset", assetId: selection.assetId },
-          sourceId: selection.assetId,
-          generation: job.attemptId,
-        },
-        sourceDescriptor(selected),
-        selected.track,
-        scope,
-        signal,
-      ),
+    const { transcript, issues } = await this.transcribeSource(
+      {
+        owner: { kind: "asset", assetId: selection.assetId },
+        sourceId: selection.assetId,
+        generation: job.attemptId,
+      },
+      sourceDescriptor(selected),
+      selected.track,
+      scope,
+      signal,
     );
+    return {
+      result: JSON.stringify(transcript),
+      issues,
+      publish: () => undefined,
+      close: async () => {},
+    };
   }
 
   private async transcribeSource(
@@ -401,14 +415,14 @@ export class TranscriptProcessing {
     track: Parameters<SpeechTranscriber>[0]["track"],
     execution: SpeechExecution,
     signal: AbortSignal,
-  ) {
+  ): Promise<IndexedTranscript> {
     signal.throwIfAborted();
     const output = await this.transcripts.reserve(identity);
     try {
       const request = { models: await this.models.nativeRequest(), track, output, execution };
       const receipt = await this.transcribe(request, signal);
       signal.throwIfAborted();
-      const metadata = await this.transcripts.ingest({
+      const indexed = await this.transcripts.ingest({
         identity,
         source,
         request,
@@ -417,7 +431,7 @@ export class TranscriptProcessing {
         signal,
       });
       signal.throwIfAborted();
-      return metadata;
+      return indexed;
     } catch (error) {
       await this.transcripts.remove(identity);
       throw error;

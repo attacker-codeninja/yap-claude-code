@@ -71,7 +71,7 @@ try {
   };
   const output = await records.reserve(identity);
   await writeFile(output, admitted.body);
-  const metadata = await records.ingest({
+  const { transcript: metadata } = await records.ingest({
     identity,
     source: {
       kind: "asset",
