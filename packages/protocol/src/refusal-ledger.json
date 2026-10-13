@@ -177,13 +177,34 @@
   "CAMERA_FORMAT_CHANGED": {
    "category": "conflict",
    "files": {
-    "helpers/mac/Sources/YapCapture/CameraWriter.swift": 1
+    "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 1,
+    "helpers/mac/Sources/YapCapture/CameraWriter.swift": 2
+   }
+  },
+  "CAMERA_NOT_RESERVED": {
+   "category": "missing-prerequisite",
+   "files": {
+    "apps/service/src/capture.ts": 1,
+    "helpers/mac/Sources/YapCapture/NativeCapture.swift": 1
+   }
+  },
+  "CAMERA_NOT_TURNED_ON": {
+   "category": "missing-prerequisite",
+   "files": {
+    "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
+    "helpers/mac/Sources/YapCapture/NativeCapture.swift": 1
    }
   },
   "CAMERA_PERMISSION_REQUIRED": {
    "category": "missing-prerequisite",
    "files": {
     "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 2
+   }
+  },
+  "CAMERA_TOGGLE_LIMIT": {
+   "category": "resource-bound",
+   "files": {
+    "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 1
    }
   },
   "CAPTURE_BUSY": {
@@ -1016,11 +1037,12 @@
    "category": "malformed",
    "files": {
     "apps/service/src/capture-cleanup.ts": 1,
-    "apps/service/src/capture.ts": 9,
+    "apps/service/src/capture.ts": 10,
     "apps/service/src/exports.ts": 3,
     "apps/service/src/project-service.ts": 1,
     "apps/service/src/publication.ts": 1,
-    "helpers/mac/Sources/YapCapture/NativeCapture.swift": 7,
+    "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 3,
+    "helpers/mac/Sources/YapCapture/NativeCapture.swift": 8,
     "packages/core/src/acquisitions.ts": 3,
     "packages/core/src/capture-publication.ts": 7,
     "packages/core/src/capture-store.ts": 7,
@@ -1139,7 +1161,7 @@
    "files": {
     "helpers/mac/Sources/YapCapture/CaptureJournal.swift": 2,
     "helpers/mac/Sources/YapCapture/CaptureJournalLease.swift": 1,
-    "helpers/mac/Sources/YapWire/MediaRecovery.swift": 3,
+    "helpers/mac/Sources/YapWire/MediaRecovery.swift": 4,
     "helpers/mac/Sources/YapWire/SourceEvidenceExport.swift": 1,
     "helpers/mac/Sources/YapWire/Wire.swift": 2
    }
@@ -1504,7 +1526,8 @@
    "files": {
     "helpers/mac/Sources/YapCapture/CameraWriter.swift": 1,
     "helpers/mac/Sources/YapCapture/CaptureTypes.swift": 1,
-    "helpers/mac/Sources/YapCapture/NativeCapture.swift": 1
+    "helpers/mac/Sources/YapCapture/NativeCapture.swift": 1,
+    "helpers/mac/Sources/YapWire/MediaRecovery.swift": 1
    }
   },
   "NO_NARRATION": {
