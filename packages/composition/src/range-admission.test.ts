@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { applyBatch, validateComposition, type Composition } from "./index.js";
 
-// Receipt 08 (specs/launch-video-feedback): an 11.46 s placement from an 11.444 s movie was refused.
+// Receipt 08 (specs/done/launch-video-feedback): an 11.46 s placement from an 11.444 s movie was refused.
 const movieEndUs = 11_444_000;
 const assets = [
   {

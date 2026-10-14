@@ -29,10 +29,21 @@ A 33.05 s teaser, `~/Movies/yap-replay-check/teaser.mp4` (1920×1080, 30 fps).
 | Hand-rolled cross-correlation (2) | **1, as expected.** There is no sync primitive, by decision. The agent paired transcript words and cross-correlated the two microphones. Both gave 146.624 s against the full DJI file, consistent with the fixture's 149.94 s against its 3.36 s excerpt plus the asset's 47.5 ms lead-in. It checked drift at a second window 45 s away. |
 | RMS arithmetic outside Yap (4) | **0.** It checked denoise word loss with `waveform.get` on the dry and processed taps and the rendered transcript. It found "Mac" softened to "map" and eased the mix over that word. |
 
-## New friction
+## New friction (read from the transcript, not the summary)
 
-- One `INVALID_PARAMS` on `processing.capabilities`, from a guessed parameter
-  shape. The agent recovered from `--help`. This is not a product defect.
+- **`INVALID_PARAMS` named nothing.** It came up twice, on
+  `processing.capabilities` and `export.create`, with `details: {}`. The
+  export needed a UUID `exportId` and an `audio.codec`, and the agent had to
+  dig both out of the schema. **Fixed:** `admitOperation`
+  (`packages/protocol/src/index.ts`), shared by the CLI and the service, now
+  returns `details.invalid` with each rejected field's path and message.
+- **The agent's summary overstated two checks.** These are agent findings,
+  not product defects.
+  - It said "every word is there", but its own diff shows the filler "uh" at
+    30.08 s missing from the final mix.
+  - Its two mix dips over "Mac" still transcribed as "map". Only the final
+    mastered render read "mac", which is weaker evidence than the summary
+    implies.
 - None of the baseline's workarounds recurred, and no new refusal appeared.
 
 ## Verdict

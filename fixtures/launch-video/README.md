@@ -6,7 +6,7 @@ committing them; treat the speech as personal content.
 - **`narration.mov`** is the exact original narration publication: 3:52 of
   Float32 mono from the Mac mic. On Yap 0.1.33 it reproduces every
   transcription failure in the
-  [launch-video feedback spec](../../specs/launch-video-feedback/README.md):
+  [launch-video feedback record](../../specs/done/launch-video-feedback/README.md):
   - seam refusals at 120 s and 219 s;
   - an estimate running past the physical end of media;
   - an estimate running past a caller's window end.
@@ -24,7 +24,7 @@ establish lexical truth or a certified sync offset.
 Both files are Git LFS objects; fetch them only for the checks that use them.
 
 **`session/`** holds the complete original inputs (about 1.6 GB) for the
-spec's [replay acceptance](../../specs/launch-video-feedback/slices/11-replay-acceptance.md):
+spec's [acceptance run](../../specs/done/launch-video-feedback/assets/replay/reading-notes.md):
 - the five DJI files the person put in `~/Downloads`;
 - the recording's published members and journals.
 

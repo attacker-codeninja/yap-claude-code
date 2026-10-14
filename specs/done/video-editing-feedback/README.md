@@ -6,7 +6,7 @@ real-video evidence did not justify promotion.
 
 > Superseded in part (2026-10-13): for cheap, undoable work, quality and target
 > gates now publish their output with issues instead of refusing. See
-> [launch-video feedback](../../launch-video-feedback/README.md). This record
+> [launch-video feedback](../launch-video-feedback/README.md). This record
 > keeps its original wording.
 
 ## Purpose

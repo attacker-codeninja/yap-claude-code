@@ -42,6 +42,12 @@ bundled media tools, explicit offline treatments and task-side agent workflows.
 companion camera leaves real gaps rather than held pictures, how pre-toggle recordings keep
 working without migration, and the open long-take mapping question.
 
+[Launch-video feedback](done/launch-video-feedback/README.md) records the product's
+governing principle, **output by default**: an operation that can produce output
+does, and reports what fell short as typed issues. It came from an agent making
+Yap's own launch video, and it keeps the refusal ledger, the dead ends and the
+fresh-agent acceptance run.
+
 ## Archived plans
 
 The [reliable autonomous video editing rationale](done/video-editing-feedback/README.md)
@@ -55,20 +61,6 @@ the mechanics; the archived document owns the reasons and explicit evidence limi
 [App-managed install](app-managed-install/README.md) makes agents the only install
 route: the agent places the app, and the app installs and keeps current the `yap`
 command, the skill and the PATH line. It is built and awaiting its release-day checks.
-
-[Launch-video feedback](launch-video-feedback/README.md) turns an agent's
-end-to-end session making Yap's own launch video into a slice ladder. It sets
-the product's governing principle, **output by default**: if an operation can
-produce an output, it does, and it reports problems as issues. Refusal is kept
-for malformed, conflicting, over-budget, missing or destructive requests. The
-ladder then applies that principle to:
-- transcription;
-- audio treatments;
-- ranges;
-- every other quality gate a refusal audit found.
-
-It is planned, not started. The real session inputs are retained under
-[fixtures](../fixtures/launch-video/README.md).
 
 ## Future proposals
 

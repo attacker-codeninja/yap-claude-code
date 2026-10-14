@@ -228,7 +228,7 @@ or an automatic edit. Original media remains intact.
 **Output by default.** If an operation can produce its output, it does, and
 reports every problem as an issue on that output. Refusal is for malformed or
 ambiguous input, identity or revision conflicts, resource bounds, missing
-prerequisites, and destructive actions. Each clamp, fallback or unmet target
+prerequisites, destructive actions, and execution that failed. Each clamp, fallback or unmet target
 names what was requested and what was produced. The
 [protocol guide](packages/protocol/README.md#issues) describes the contract.
 
