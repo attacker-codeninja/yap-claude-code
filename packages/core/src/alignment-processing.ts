@@ -381,7 +381,7 @@ export class AlignmentProcessing {
         "INVALID_PACKAGE",
         "Alignment publication differs from its source and generation",
       );
-    // An asset alignment publishes no issues; only a project request's clamp does.
+    // Alignment publishes no issues; a project request reports its own clamp.
     this.options.jobs.adoptArtifact(
       { ...identity, ...publication, result: JSON.stringify(metadata) },
       [],
