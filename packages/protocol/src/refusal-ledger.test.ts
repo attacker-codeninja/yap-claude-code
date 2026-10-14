@@ -28,20 +28,12 @@ const refusalCategories = new Set([
   "destructive",
   "execution-failure",
 ]);
-const categories = new Set([
-  ...refusalCategories,
-  "issue-code",
-  "not-a-refusal",
-  "pending-conversion",
-]);
+const categories = new Set([...refusalCategories, "issue-code", "not-a-refusal"]);
 const gateWords = /UNMET|FEASIBLE|DISAGREEMENT|TOLERANCE|THRESHOLD|QUALITY/;
 
 type Ledger = {
   rules: string;
-  pendingConversion: Record<string, string>;
-  pendingSites: { slice: string; file: string; text: string; why: string }[];
-  refusedStatus: { allowed: Record<string, string>; pending: Record<string, string> };
-  messageCodes: { pending: Record<string, string> };
+  refusedStatus: Record<string, string>;
   codes: Record<string, { category: string | null; files: Record<string, number> }>;
 };
 
@@ -136,39 +128,9 @@ describe("refusal ledger", () => {
 
   it("never names a quality gate as a refusal", () => {
     const gates = Object.entries(ledger.codes)
-      .filter(([code, entry]) => gateWords.test(code) && entry.category !== "pending-conversion")
+      .filter(([code]) => gateWords.test(code))
       .map(([code]) => code);
     expect(gates).toEqual([]);
-  });
-
-  it("keeps pending conversions exactly in step with the source", () => {
-    for (const [code, slice] of Object.entries(ledger.pendingConversion)) {
-      expect(
-        ledger.codes[code]?.category,
-        `${code} (slice ${slice}) was converted: drop it from pendingConversion`,
-      ).toBe("pending-conversion");
-    }
-    const pending = Object.entries(ledger.codes).filter(
-      ([, entry]) => entry.category === "pending-conversion",
-    );
-    expect(pending.map(([code]) => code).sort()).toEqual(
-      Object.keys(ledger.pendingConversion).sort(),
-    );
-    for (const site of ledger.pendingSites) {
-      expect(
-        text.get(site.file)?.includes(site.text),
-        `${site.file}: "${site.text}" (slice ${site.slice}) was converted: drop it`,
-      ).toBe(true);
-    }
-  });
-
-  it("has nothing left to convert: a new quality-gate refusal is a regression, not a backlog item", () => {
-    expect({
-      pendingConversion: ledger.pendingConversion,
-      pendingSites: ledger.pendingSites,
-      messageCodes: ledger.messageCodes.pending,
-      refusedStatus: ledger.refusedStatus.pending,
-    }).toEqual({ pendingConversion: {}, pendingSites: [], messageCodes: {}, refusedStatus: {} });
   });
 
   it("hides no code inside a message", () => {
@@ -177,7 +139,7 @@ describe("refusal ledger", () => {
       for (const [, code] of source.matchAll(/"([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+): /g))
         embedded.add(code!);
     }
-    expect([...embedded].sort()).toEqual(Object.keys(ledger.messageCodes.pending).sort());
+    expect([...embedded]).toEqual([]);
   });
 
   it("produces every registered issue code in product source and asserts it in a test", () => {
@@ -201,8 +163,6 @@ describe("refusal ledger", () => {
     const users = [...text]
       .filter(([, source]) => source.includes('"refused"'))
       .map(([file]) => file);
-    expect(users.sort()).toEqual(
-      Object.keys({ ...ledger.refusedStatus.allowed, ...ledger.refusedStatus.pending }).sort(),
-    );
+    expect(users.sort()).toEqual(Object.keys(ledger.refusedStatus).sort());
   });
 });
