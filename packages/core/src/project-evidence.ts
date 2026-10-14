@@ -177,6 +177,7 @@ export class ProjectEvidenceInspection {
       model: ReturnType<typeof validateComposition>;
       projection: ReturnType<typeof createSourceRangeProjection>;
       cuts?: ReturnType<typeof createProjectCuts>;
+      speakerCorrections: import("./speaker-attribution.js").SpeakerCorrection[];
       tracks: readonly { id: string; kind: string }[];
     }
   >();
@@ -198,6 +199,7 @@ export class ProjectEvidenceInspection {
         model,
         projection: createSourceRangeProjection(model),
         tracks: model.document.tracks,
+        speakerCorrections: revision.speakerCorrections ?? [],
       };
     }
     this.revisions.delete(key);
@@ -742,7 +744,7 @@ export class ProjectEvidenceInspection {
                   this.options.records,
                   this.options.speakers?.records,
                   this.options.speakers?.labels,
-                  this.options.projects.revision(input.projectId, manifest.query.revisionId).speakerCorrections ?? [],
+                  this.revisions.get(JSON.stringify([input.projectId, manifest.query.revisionId]))?.speakerCorrections ?? [],
                 ),
                 events: [],
                 speakers: [],
