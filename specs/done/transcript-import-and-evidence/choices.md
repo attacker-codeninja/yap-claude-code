@@ -38,7 +38,7 @@ what the caller asked for. **Verdict: sound. Confidence: high.**
 
 A package must still be useful after the original caption path disappears. The
 package therefore carries the raw source member, digest and size, parser and
-metadata, cue rows, timing policy, and source asset/acquisition dependencies.
+metadata, cue rows, timing policy, alignment recipe when selected, and source asset/acquisition dependencies.
 Adoption verifies the bytes and cues before restoring the same generation. This
 keeps package recovery evidence-only and avoids rerunning a model. **Verdict:
 sound. Confidence: high.**
