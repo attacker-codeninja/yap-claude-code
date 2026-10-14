@@ -2,6 +2,15 @@
 
 ## Sound
 
+### Speaker corrections live on project revisions
+
+When an agent corrects a speaker assignment, the correction is stored with the
+project revision and displayed beside the acoustic base attribution. Undo and
+restore therefore recover it with the ordinary revision history. Imported source
+cue reads keep their supplied labels unchanged; the correction applies when that
+evidence is projected into a project occurrence. **Verdict: sound for the
+project-owned contract. Confidence: high.**
+
 ### Convenience review reports missing models instead of acquiring them
 
 The transcript review convenience operation now returns the same missing-model
