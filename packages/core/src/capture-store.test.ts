@@ -764,3 +764,9 @@ test("a discarded take leaves discovery while its restart request still names on
   });
   expect(store.isAvailable(abandoned.recordingId)).toBe(false);
 });
+
+test("the catalog stays at the format 0.1.33 libraries use, so their recordings keep opening", () => {
+  // Every format refuses every other (above), so a bump would orphan existing libraries. Derived
+  // data self-recovers through producer identities and additive tables instead.
+  expect(catalogFormat).toBe(29);
+});

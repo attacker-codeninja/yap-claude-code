@@ -162,6 +162,15 @@ describe("refusal ledger", () => {
     }
   });
 
+  it("has nothing left to convert: a new quality-gate refusal is a regression, not a backlog item", () => {
+    expect({
+      pendingConversion: ledger.pendingConversion,
+      pendingSites: ledger.pendingSites,
+      messageCodes: ledger.messageCodes.pending,
+      refusedStatus: ledger.refusedStatus.pending,
+    }).toEqual({ pendingConversion: {}, pendingSites: [], messageCodes: {}, refusedStatus: {} });
+  });
+
   it("hides no code inside a message", () => {
     const embedded = new Set<string>();
     for (const source of text.values()) {
