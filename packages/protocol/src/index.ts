@@ -92,8 +92,8 @@ export function operationError(
 }
 
 /**
- * Schema admission shared by every peer. A rejection names each rejected field, so a caller can
- * fix the request in one step instead of re-reading the whole schema.
+ * Schema admission shared by every peer. A rejection names its first 20 rejected fields (and how
+ * many more there were), so a caller can fix the request without re-reading the whole schema.
  */
 export function admitOperation(
   request: unknown,
@@ -104,6 +104,7 @@ export function admitOperation(
     invalid: parsed.error.issues
       .slice(0, 20)
       .map((issue) => ({ path: issue.path.join("."), message: issue.message })),
+    ...(parsed.error.issues.length > 20 ? { omitted: parsed.error.issues.length - 20 } : {}),
   });
 }
 
@@ -137,6 +138,8 @@ export const appMessageSchema = z.discriminatedUnion("event", [
 export type ControlResponse = z.infer<typeof controlResponseSchema>;
 export type ControlMessage = z.infer<typeof controlMessageSchema>;
 
+// The CLI combines and counts issue lists from several reads by the same rules as the service.
+export { boundedIssues, issueCount, type Issue } from "@yap/composition";
 export * from "./capture.js";
 export * from "./framing.js";
 export * from "./layout.js";

@@ -175,6 +175,8 @@ export {
 } from "./range-admission.js";
 export {
   boundedIssues,
+  issueCount,
+  truncatedIssue,
   issueCodes,
   issueLimit,
   issueSchema,

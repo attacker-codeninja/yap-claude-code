@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { CompositionError } from "./errors.js";
-import { boundedIssues, issueLimit, type Issue } from "./issues.js";
+import { boundedIssues, issueLimit, truncatedIssue, type Issue } from "./issues.js";
 import type { ValidatedComposition } from "./model.js";
 import { ceil, compare, divide, floor, rational, toTime } from "./rational.js";
 import type { SelectionRange } from "./schema.js";
@@ -151,12 +151,7 @@ export function captionSidecar(model: ValidatedComposition, input: CaptionSideca
       }
     }
   }
-  if (omittedOverlaps)
-    issues.push({
-      code: "issues-truncated",
-      message: `${omittedOverlaps} more issues were omitted`,
-      evidence: { omitted: omittedOverlaps },
-    });
+  if (omittedOverlaps) issues.push(truncatedIssue(omittedOverlaps));
   const cues = exactCues.map(({ cue }) => cue);
   const blocks = [request.kind === "vtt" ? "WEBVTT\n\n" : ""];
   let bytes = new TextEncoder().encode(blocks[0]).length;

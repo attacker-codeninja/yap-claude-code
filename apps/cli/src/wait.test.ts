@@ -422,6 +422,44 @@ test("a clamped transcript preparation keeps its range-clamped issue through the
   expect(output.stderr).toContain("transcript.prepare: ready (1 issues)");
 });
 
+test("a clamp joined to a full read page stays within the issue bound", async () => {
+  const generation = "c6df7efc-a023-4c40-aa08-3b8b1c0b1b90";
+  const selection = { assetId: "a", streamId: "s" };
+  const clamp = { code: "range-clamped", message: "clamped", evidence: {} };
+  const word = { code: "timing-clamped", message: "clamped", evidence: {} };
+  const full = [
+    ...Array.from({ length: 1000 }, () => word),
+    { code: "issues-truncated", message: "5 more issues were omitted", evidence: { omitted: 5 } },
+  ];
+  const f = await fixture((request) => {
+    if (request.operation === "transcript.prepare")
+      return {
+        ok: true,
+        data: { ...selection, state: "processing", jobId: "job", issues: [clamp] },
+      };
+    if (request.operation === "job.get")
+      return {
+        ok: true,
+        data: { ...job("ready"), attemptId: generation, target: { kind: "asset", assetId: "a" } },
+      };
+    return {
+      ok: true,
+      data: { ...selection, state: "ready", generation, issues: full, page: { rows: [] } },
+    };
+  });
+  const output = await f.run(
+    "transcript.prepare",
+    { ...selection, executionRange: { startUs: 0, endUs: 5000 } },
+    ["--wait", "--timeout-ms", "1000"],
+  );
+  expect(output.code, output.stdout + output.stderr).toBe(0);
+  const issues = JSON.parse(output.stdout).data.issues;
+  expect(issues).toHaveLength(1001);
+  expect(issues[0]).toEqual(clamp);
+  expect(issues.at(-1)).toMatchObject({ code: "issues-truncated", evidence: { omitted: 6 } });
+  expect(output.stderr).toContain("transcript.prepare: ready (1006 issues)");
+});
+
 test.each(["processing", "ready"])(
   "a %s transcript preparation reports the published transcript's issues once it settles",
   async (acknowledged) => {

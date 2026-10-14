@@ -2,8 +2,11 @@ import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
 import { isDeepStrictEqual } from "node:util";
 import {
+  boundedIssues,
+  issueCount,
   operationSchema,
   waitJobSchema,
+  type Issue,
   type OperationRequest,
   type OperationResponse,
   type WaitMetadata,
@@ -261,7 +264,10 @@ export async function waitForWork(options: {
             ...result,
             data: {
               ...read,
-              issues: [...admission, ...(Array.isArray(read.issues) ? read.issues : [])],
+              issues: boundedIssues([
+                ...(admission as Issue[]),
+                ...((Array.isArray(read.issues) ? read.issues : []) as Issue[]),
+              ]),
             },
           }
         : result;
@@ -306,19 +312,11 @@ export async function waitForWork(options: {
           ? data.dependencies.map((dependency) => record(dependency).issues)
           : []),
       ].flatMap((value) => (Array.isArray(value) ? value : []));
-      // A final issues-truncated entry stands for the issues it omitted.
-      const issueCount = issues.reduce(
-        (count: number, issue) =>
-          count +
-          (record(issue).code === "issues-truncated"
-            ? Number(record(record(issue).evidence).omitted ?? 0)
-            : 1),
-        0,
-      );
+      const count = issueCount(issues as Issue[]);
       const suffix = current ? `(${current.jobId}, generation ${current.generation})` : "";
       const marker =
-        work.state === "ready" && issueCount > 0
-          ? `${request.operation}: ready (${issueCount} issues)${suffix ? ` ${suffix}` : ""}`
+        work.state === "ready" && count > 0
+          ? `${request.operation}: ready (${count} issues)${suffix ? ` ${suffix}` : ""}`
           : `${request.operation}: ${String(work.state ?? "batch")} ${suffix}`;
       if (marker !== progress) {
         progress = marker;

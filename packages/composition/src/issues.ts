@@ -386,6 +386,23 @@ export const issuesSchema = z
     "Only a final issues-truncated entry may follow the issue limit",
   );
 
+/** The one marker that stands for issues left out of a bounded list. */
+export function truncatedIssue(omitted: number): Issue {
+  return {
+    code: "issues-truncated",
+    message: omitted === 1 ? "1 more issue was omitted" : `${omitted} more issues were omitted`,
+    evidence: { omitted },
+  };
+}
+
+/** How many issues a list stands for: a truncation marker counts as the issues it omitted. */
+export function issueCount(issues: readonly Issue[]): number {
+  return issues.reduce(
+    (count, issue) => count + (issue.code === "issues-truncated" ? issue.evidence.omitted : 1),
+    0,
+  );
+}
+
 /**
  * The first `issueLimit` issues, then one `issues-truncated` counting every issue left out —
  * including those an earlier bound already folded into a marker. Bounding is idempotent, so lists
@@ -399,13 +416,5 @@ export function boundedIssues(issues: readonly Issue[]): Issue[] {
     else if (kept.length < issueLimit) kept.push(issue);
     else omitted++;
   }
-  if (!omitted) return kept;
-  return [
-    ...kept,
-    {
-      code: "issues-truncated",
-      message: omitted === 1 ? "1 more issue was omitted" : `${omitted} more issues were omitted`,
-      evidence: { omitted },
-    },
-  ];
+  return omitted ? [...kept, truncatedIssue(omitted)] : kept;
 }
