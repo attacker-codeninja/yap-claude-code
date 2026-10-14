@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
+import { issueCodes } from "@yap/composition";
 import { describe, expect, it } from "vitest";
 
 // Output by default: a refusal is legitimate only for malformed or ambiguous input, conflicts,
@@ -64,6 +65,25 @@ function productFiles(): string[] {
   };
   for (const dir of sourceRoots) walk(join(root, dir));
   return out.sort();
+}
+
+/** Test sources beside product source, the repo's script tests and the native helper tests. */
+function testFiles(): string[] {
+  const out: string[] = [];
+  const walk = (dir: string) => {
+    for (const name of readdirSync(dir)) {
+      const path = join(dir, name);
+      if (name === "node_modules" || name === "dist") continue;
+      if (statSync(path).isDirectory()) walk(path);
+      else if (
+        /\.test\.(ts|mjs)$/.test(name) ||
+        (dir.includes("/Tests") && name.endsWith(".swift"))
+      )
+        out.push(relative(root, path));
+    }
+  };
+  for (const dir of [...sourceRoots, "scripts", "helpers/mac/Tests"]) walk(join(root, dir));
+  return out.filter((file) => file !== relative(root, import.meta.filename));
 }
 
 const files = productFiles();
@@ -149,6 +169,23 @@ describe("refusal ledger", () => {
         embedded.add(code!);
     }
     expect([...embedded].sort()).toEqual(Object.keys(ledger.messageCodes.pending).sort());
+  });
+
+  it("produces every registered issue code in product source and asserts it in a test", () => {
+    // Registration in the registry is not production: strip each `issue("code", …)` call first.
+    const registry = "packages/composition/src/issues.ts";
+    const produced = [...text]
+      .map(([file, source]) =>
+        file === registry ? source.replaceAll(/\bissue\(\s*"[a-z0-9-]+"/g, "") : source,
+      )
+      .join("\n");
+    const asserted = testFiles()
+      .map((file) => readFileSync(join(root, file), "utf8"))
+      .join("\n");
+    const quoted = (code: string) => new RegExp(`["'\`]${code}["'\`]`);
+    expect(issueCodes.filter((code) => !quoted(code).test(produced))).toEqual([]);
+    expect(issueCodes.filter((code) => !quoted(code).test(asserted))).toEqual([]);
+    expect(issueCodes.filter((code) => code in ledger.codes)).toEqual([]);
   });
 
   it("uses a refused status only for caller-authored verdicts", () => {
