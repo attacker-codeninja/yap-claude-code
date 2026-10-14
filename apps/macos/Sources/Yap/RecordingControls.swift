@@ -143,7 +143,10 @@ final class RecordingControls: NSObject {
 
     /// Service-initiated inspect.open uses the same PreviewController as Library actions.
     /// The service has already validated the project/revision pin before asking the app to show it.
-    func openInspect(_ params: [String: Any]) -> Result<Data, ServiceFailure> {
+    func openInspect(_ data: Data) -> Result<Data, ServiceFailure> {
+        guard let params = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return .failure(ServiceFailure(code: "INVALID_PARAMS", message: "inspect.open parameters must be a JSON object"))
+        }
         guard let projectId = params["projectId"] as? String, !projectId.isEmpty else {
             return .failure(ServiceFailure(code: "INVALID_PARAMS", message: "inspect.open needs projectId"))
         }
