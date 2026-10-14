@@ -37,15 +37,11 @@
   collision cannot overwrite an unrelated file. The plan delegated punctuation
   and progress wording. **Verdict: sound. Confidence: medium.**
 
-## Needs-user
-
-- **The public caption proposal request carries compact transcript evidence.**
-  The service validates the project/revision pin and passes the bounded entry to
-  the existing `caption-proposals.mjs` pure helper. This keeps the operation
-  read-only and avoids a second transcript pagination owner, but it means an
-  agent that has not already read compact evidence must make that read first.
-  The plan said to reuse the helper but did not settle whether the service should
-  assemble the entry. Provisional call: keep the explicit evidence input until a
-  measured workflow shows that a server-side compact read saves more calls;
-  reversing it would add a read-only transcript assembly step without changing
-  `text.seed`. **Verdict: needs-user. Confidence: medium.**
+- **The public caption proposal request owns transcript assembly.** The service
+  validates the project/revision pin, performs one bounded `transcript.get` and
+  passes that complete page to the existing `caption-proposals.mjs` pure helper.
+  The agent supplies the selection, style and constraints rather than carrying a
+  large transcript entry over the wire. The operation remains read-only and
+  never calls `transcript.transcribe`; when the page is incomplete, the caller
+  narrows the selection or uses `transcript.review` first. **Verdict: sound.
+  Confidence: high.**

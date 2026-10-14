@@ -7,7 +7,9 @@ for CLI use.
 
 MCP tool names are the operation names. When advertised, `transcript.review` and
 `cursor.render` therefore have the same schemas and retry/readiness behavior as
-the CLI. Call `transcript.review` directly to enqueue bounded transcription. If it
+the CLI. `transcript.review` is the convenience combination of
+`transcript.transcribe` and `transcript.get`; call it directly to enqueue bounded
+transcription and read its first page. If it
 returns `MODEL_NOT_PREPARED`, ask the user before acquiring the optional
 model/runtime, then prepare and retry the same request. Rendered cursor frames use the normal media delivery and
 `artifact.read`/`artifact.close` flow; replay the identical pinned params after a

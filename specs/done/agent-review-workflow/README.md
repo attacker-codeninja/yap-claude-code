@@ -18,9 +18,9 @@ refresh never silently changes a historical selection.
 
 Inspection operations are deliberately read-only. `inspect.open` and its `inspect`
 alias resolve a project/revision and return bounded history plus an app-open
-acknowledgement. `caption.propose` reuses the existing pure
-`skills/yap/scripts/caption-proposals.mjs` helper over explicit compact transcript
-evidence; `text.seed` remains the only caption mutation. `layout.diagnostics`
+acknowledgement. `caption.propose` reads one bounded project transcript page
+internally and reuses the existing pure `skills/yap/scripts/caption-proposals.mjs`
+helper; `text.seed` remains the only caption mutation. `layout.diagnostics`
 reports sampled clipping, off-canvas, overlap, glyph and fallback evidence and
 marks coverage as sampled rather than claiming continuous readability. These
 operations add no catalog columns because all of their facts are derived.

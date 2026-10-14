@@ -844,12 +844,11 @@ it("admits the read-only review workflow operations", () => {
       params: {
         projectId: "p",
         revisionId: "r",
-        entry: { identity: { projectId: "p", revisionId: "r" }, rows: [] },
-        rowIndexes: [0],
+        range: { startUs: 0, endUs: 10 },
         trackId: "track",
         canvas: { width: 100, height: 100 },
-        style: {},
-        constraints: {},
+        style: { font: { assetId: "font", postScriptName: "Fixture" } },
+        constraints: { widthGraphemes: 30, maxLines: 2, minDwellUs: 1, maxDwellUs: 100, maxCps: 30, pauseUs: 1, breakOnPunctuation: true, separator: " ", safeArea: { x: 0, y: 0, width: 100, height: 100 } },
       },
     }).operation,
   ).toBe("caption.propose");

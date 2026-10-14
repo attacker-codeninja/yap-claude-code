@@ -198,11 +198,11 @@ const inspectParams = project
     historyLimit: z.int().min(1).max(100).optional(),
   })
   .strict();
-const captionProposalParams = project
+const captionProposalParams = projectTranscriptParams
+  .omit({ cursor: true })
   .extend({
     revisionId: id,
-    entry: z.record(z.string(), z.unknown()),
-    rowIndexes: z.array(z.int().nonnegative()).min(1).max(10000),
+    limit: z.int().min(1).max(1000).default(1000),
     trackId: id,
     canvas: z.record(z.string(), z.unknown()),
     style: z.record(z.string(), z.unknown()),
@@ -410,7 +410,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
     .object({ operation: z.literal("inspect.open"), params: inspectParams })
     .strict()
     .describe(
-      "Open a read-only native inspection session for a pinned project revision. Returns the resolved revision, bounded history and an app-open acknowledgement; it never edits, exports or starts capture.",
+      "Open a read-only native inspection session for a pinned project revision. This convenience operation combines revision resolution, bounded revision.history and native preview opening; it returns the resolved revision and app-open acknowledgement without editing, exporting or starting capture.",
     ),
   z
     .object({ operation: z.literal("inspect"), params: inspectParams })
@@ -420,7 +420,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
     .object({ operation: z.literal("caption.propose"), params: captionProposalParams })
     .strict()
     .describe(
-      "Produce bounded transcript-pinned caption drafts from supplied compact evidence. This read-only operation never prepares a model, calls text.seed or mutates a project.",
+      "Produce bounded transcript-pinned caption drafts from a pinned project selection. This convenience operation combines a bounded transcript.get with pure caption drafting; it never calls transcript.transcribe, calls text.seed or mutates a project. Narrow the range or track set when the transcript page is not complete.",
     ),
   z
     .object({ operation: z.literal("layout.diagnostics"), params: layoutDiagnosticParams })
@@ -793,7 +793,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
     })
     .strict()
     .describe(
-      "Request a retained screenshot index for a project or selected asset video stream. Projects select the whole revision and an optional video tap, defaulting to processed output; maxLongEdge controls picture size. Source selectors use assetId/streamId and optional acquisitionId. Scene preparation precedes index preparation. Returns readiness until complete, then paged metadata with selection reasons and stable frame references. An empty index may be ready. Project coverage marks only delivered frame visibility as sampled; intervening ranges remain unproven. Continue with the returned cursor to pin identity; use index.frame or index.frames for image bytes. Optional observations participates in index identity and retains the sampled frame measurements; it does not prove intervening pixels.",
+      "Request a retained screenshot index for a project or selected asset video stream. This convenience operation handles the required scene/index preparation and then returns paged metadata; it does not make a continuous visual-readability claim. Projects select the whole revision and an optional video tap, defaulting to processed output; maxLongEdge controls picture size. Source selectors use assetId/streamId and optional acquisitionId. An empty index may be ready. Project coverage marks only delivered frame visibility as sampled; intervening ranges remain unproven. Continue with the returned cursor to pin identity; use index.frame or index.frames for image bytes. Optional observations participates in index identity and retains the sampled frame measurements; it does not prove intervening pixels.",
     ),
   z
     .object({
@@ -891,7 +891,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
     })
     .strict()
     .describe(
-      "Read one to eight retained selected PNGs in order from the same published index. Each ordinal returns its own image or error; duplicates remain ordered.",
+      "Read one to eight retained selected PNGs in order from the same published index. This batch convenience operation is equivalent to repeated index.frame calls while preserving order and per-image errors; duplicates remain ordered.",
     ),
 
   z
@@ -1144,7 +1144,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
       params: renderedSpeechPreparation,
     })
     .describe(
-      "Recognize actual rendered PCM for an explicit project revision, processing tap, range and PCM rendition. A range that runs past the revision is clamped to it, shares the applied range's generation and reports range-clamped in the result's issues; one with no part inside refuses before any job. One project job chains immutable audio extraction and fresh Parakeet inference; it never depends on source transcript readiness or reuses projected source text. Missing source support refuses before recognition rather than treating unavailable samples as silence. Published output retains the PCM asset, conversion/origin, exact sample bounds, transcript and fresh generation. Repeat the same request to join/reuse work; models must be prepared through model.prepare. Reads stay offline. Use transcript.render.retry for failed/canceled extraction dependencies, or job.cancel to cancel the parent; shared extraction remains independently reusable.",
+      "Recognize actual rendered PCM for an explicit project revision, processing tap, range and PCM rendition. This convenience preparation combines immutable audio extraction with fresh Parakeet inference in one project job; it never depends on source transcript readiness or reuses projected source text. A range that runs past the revision is clamped to it, shares the applied range's generation and reports range-clamped in the result's issues; one with no part inside refuses before any job. Missing source support refuses before recognition rather than treating unavailable samples as silence. Published output retains the PCM asset, conversion/origin, exact sample bounds, transcript and fresh generation. Repeat the same request to join/reuse work; models must be prepared through model.prepare. Reads stay offline. Use transcript.render.retry for failed/canceled extraction dependencies, or job.cancel to cancel the parent; shared extraction remains independently reusable.",
     ),
   z
     .strictObject({
@@ -1218,7 +1218,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
     .object({ operation: z.literal("transcript.review"), params: transcriptReviewParams })
     .strict()
     .describe(
-      "Review a bounded source or pinned-project transcript in one agent-friendly call. Call it directly; if the optional model/runtime is unavailable, return retryable MODEL_NOT_PREPARED details so the agent can ask the user before model.prepare. The operation returns readiness, exact transcript rows, generation, continuation and, like transcript.get, the issues published with the transcript it reads. Poll the same request while transcription work is pending. It never invents words or edits a project.",
+      "Review a bounded source or pinned-project transcript in one agent-friendly call. This convenience operation combines transcript.transcribe when retained evidence is missing with transcript.get for the bounded page; it may return pending while transcription runs. If the optional model/runtime is unavailable, return retryable MODEL_NOT_PREPARED details so the agent can ask the user before model.prepare. The operation returns readiness, exact transcript rows, generation, continuation and the issues published with the transcript it reads. It never invents words or edits a project.",
     ),
   z
     .object({
@@ -1234,7 +1234,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
     })
     .strict()
     .describe(
-      "Read observed filler and vocalization evidence from a pinned source transcript. The lexical method reports only emitted words, preserves transcript generation and coverage, and never invents a missed filler or authorizes an edit.",
+      "Read observed filler and vocalization evidence from a pinned source transcript. This filtered convenience read is equivalent to transcript.get plus lexical filtering; it reports only emitted words, preserves transcript generation and coverage, and never invents a missed filler or authorizes an edit.",
     ),
   z
     .object({
@@ -1258,7 +1258,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
     })
     .strict()
     .describe(
-      "Search a project, selected source or ready narration transcript for literal, case-folded text over consecutive words, ignoring outer punctuation. Project matches follow consecutive whole words on each selected audio track, may cross contiguous clips, and stop at gaps or partial words. Each match carries all contributing word/clip identities and the widest exact projectRange across its word estimates; simultaneous speakers never form a shared phrase. Source entries carry word IDs and source range; phrases can cross accepted inference seams but stop at unavailable, unobserved or skipped support. Returns readiness like transcript.get until complete. Continue while nextCursor exists, even if entries is empty, to keep the same revision, generation and text.",
+      "Search a project, selected source or ready narration transcript for literal, case-folded text over consecutive words, ignoring outer punctuation. This filtered convenience read searches retained transcript evidence without requiring the caller to page every word through transcript.get. Project matches follow consecutive whole words on each selected audio track, may cross contiguous clips, and stop at gaps or partial words. Each match carries all contributing word/clip identities and the widest exact projectRange across its word estimates; simultaneous speakers never form a shared phrase. Source entries carry word IDs and source range; phrases can cross accepted inference seams but stop at unavailable, unobserved or skipped support. Returns readiness like transcript.get until complete. Continue while nextCursor exists, even if entries is empty, to keep the same revision, generation and text.",
     ),
   z
     .object({
@@ -1315,13 +1315,13 @@ export const operationSchema = z.discriminatedUnion("operation", [
     })
     .strict()
     .describe(
-      "Request one to eight ordered frames pinned to one revision. Each item retains its own readiness/error; duplicates reuse work. Poll the returned revision and retry individual failures with frame.retry. Optional observations measures the same delivered upright raster; rectangles use delivered top-left pixels and metrics include only fully opaque pixels.",
+      "Request one to eight ordered frames pinned to one revision. This batch convenience operation is equivalent to repeated frame.get calls while preserving order, per-item readiness/errors and shared work for duplicates. Poll the returned revision and retry individual failures with frame.retry. Optional observations measure the same delivered upright raster; rectangles use delivered top-left pixels and metrics include only fully opaque pixels.",
     ),
   z
     .object({ operation: z.literal("cursor.render"), params: cursorRenderParams })
     .strict()
     .describe(
-      "Render one to eight source or pinned-project frames with an explicit capture cursor trail using an ephemeral review plan. Trail duration is 0 through 10 seconds. Reuse frame delivery, per-item readiness/errors and pinned timing; this never edits or persists a project processing step. Source selections require captured-video authority for cursor evidence. Use cursor.raw for exact observations and frame.get for clean overlay-free pictures.",
+      "Render one to eight source or pinned-project frames with an explicit capture cursor trail using an ephemeral review plan. This convenience operation combines cursor.raw observations with frame.get delivery and overlays the trail for review; it does not persist a project processing step. Trail duration is 0 through 10 seconds. Reuse per-item readiness/errors and pinned timing. Source selections require captured-video authority for cursor evidence. Use cursor.raw for exact observations and frame.get for clean overlay-free pictures.",
     ),
   z
     .object({ operation: z.literal("cursor.render.retry"), params: cursorRenderParams })
@@ -1414,7 +1414,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
     .object({ operation: z.literal("audio.measure"), params: loudnessParams })
     .strict()
     .describe(
-      "Measure the exact selected source PCM or pinned project processing tap without treatment. Uses audio.get selectors and range; optional preparedResourceId pins an existing prepared project signal. Omitted range means the full selected signal; an explicit smaller range is an excerpt. Returns readiness/jobId then published measurement with exact clock, source/revision/tap, PCM generation, recipe and meter identities, integrated LUFS, loudness range in LU, sample peak in dBFS and true peak in dBTP. Native channel interpretation is default; dual-mono is explicit and requires mono. True-peak libswresample analysis defaults on; false requests sample peak only. Missing support refuses with available/unavailable ranges; authored silence remains signal. Silence/below-gate or insufficient duration returns null loudness with a reason; never use the scanner's empty-gate sentinel as a finite measurement. Pin returned revision/range while polling; explicit job.retry recovers failed work. This does not normalize, edit, acquire tools or choose targets.",
+      "Measure the exact selected source PCM or pinned project processing tap without treatment. This convenience operation combines the audio.get selection with loudness analysis; optional preparedResourceId pins an existing prepared project signal. Omitted range means the full selected signal; an explicit smaller range is an excerpt. Returns readiness/jobId then published measurement with exact clock, source/revision/tap, PCM generation, recipe and meter identities, integrated LUFS, loudness range in LU, sample peak in dBFS and true peak in dBTP. Native channel interpretation is default; dual-mono is explicit and requires mono. True-peak libswresample analysis defaults on; false requests sample peak only. Missing support refuses with available/unavailable ranges; authored silence remains signal. Silence/below-gate or insufficient duration returns null loudness with a reason; never use the scanner's empty-gate sentinel as a finite measurement. Pin returned revision/range while polling; explicit job.retry recovers failed work. This does not normalize, edit, acquire tools or choose targets.",
     ),
   z
     .object({ operation: z.literal("audio.retry"), params: audioParams })
@@ -1437,7 +1437,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
     .object({ operation: z.literal("waveform.get"), params: waveformParams })
     .strict()
     .describe(
-      "Inspect a selected audio source or project processing tap as per-channel min/max/RMS JSON or a labeled image with format:image. Uses audio.get selectors and range in the selected time domain. Omit bucketFrames for an automatic overview; set a positive sample count for finer inspection (maximum 4096 buckets). Returned sample bounds and resolution are exact; unavailable support is not proof of silence. CLI writes JSON to --output; MCP returns its JSON text or image. Pin the returned project revision while polling. This measures audio and never edits it.",
+      "Inspect a selected audio source or project processing tap as per-channel min/max/RMS JSON or a labeled image with format:image. This convenience operation combines the audio.get selection with waveform aggregation. Omit bucketFrames for an automatic overview; set a positive sample count for finer inspection (maximum 4096 buckets). Returned sample bounds and resolution are exact; unavailable support is not proof of silence. CLI writes JSON to --output; MCP returns its JSON text or image. Pin the returned project revision while polling. This measures audio and never edits it.",
     ),
   z
     .object({ operation: z.literal("waveform.retry"), params: waveformParams })
@@ -1449,7 +1449,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
     .object({ operation: z.literal("spectrogram.get"), params: spectrogramParams })
     .strict()
     .describe(
-      "Inspect a bounded selected-source or project audio tap as a time/frequency image. Uses audio selectors and the selected clock. Defaults to fftFrames:1024 and hopFrames:512; FFT must be a power of two, hop no larger than FFT. Narrow the range when the 262144 channel/time/frequency-cell limit is exceeded. Surrounding PCM preserves range/full alignment; unavailable support is distinct from silence. Channels remain separate. Labels report density in dB relative to full-scale squared per Hz, with a fixed display floor; the image cannot establish speech quality. Pin revision while polling.",
+      "Inspect a bounded selected-source or project audio tap as a time/frequency image. This convenience operation combines the audio.get selection with spectrogram analysis. Defaults to fftFrames:1024 and hopFrames:512; FFT must be a power of two, hop no larger than FFT. Narrow the range when the 262144 channel/time/frequency-cell limit is exceeded. Surrounding PCM preserves range/full alignment; unavailable support is distinct from silence. Channels remain separate. Labels report density in dB relative to full-scale squared per Hz, with a fixed display floor; the image cannot establish speech quality. Pin revision while polling.",
     ),
   z
     .object({ operation: z.literal("spectrogram.retry"), params: spectrogramParams })
@@ -1461,7 +1461,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
     .object({ operation: z.literal("audio.pause.get"), params: pauseParams })
     .strict()
     .describe(
-      "Measure low-energy pause candidates for the selected source or pinned project audio without editing it. Omit detector settings to use the tested RMS technical default; thresholdRMS, minDurationUs and channel override it explicitly. The ready receipt exposes the resolved threshold, window, hop, channel, algorithm and version, and separates unavailable support from measured low energy. Continue with cursor while nextCursor exists; results are evidence only and do not authorize a cut.",
+      "Measure low-energy pause candidates for the selected source or pinned project audio without editing it. This convenience operation combines the audio.get selection with pause detection. Omit detector settings to use the tested RMS technical default; thresholdRMS, minDurationUs and channel override it explicitly. The ready receipt exposes the resolved threshold, window, hop, channel, algorithm and version, and separates unavailable support from measured low energy. Continue with cursor while nextCursor exists; results are evidence only and do not authorize a cut.",
     ),
   z
     .object({

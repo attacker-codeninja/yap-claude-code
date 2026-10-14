@@ -86,34 +86,12 @@ test("inspect, caption proposal and layout diagnostics stay pinned and read-only
   const proposed = await f.call("caption.propose", {
     projectId: f.project.projectId,
     revisionId: f.revision.id,
-    entry: {
-      identity: { projectId: f.project.projectId, revisionId: f.revision.id },
-      generation: "g1",
-      state: "ready",
-      complete: true,
-      rows: [
-        {
-          rowIndex: 0,
-          type: "word",
-          text: "Hello",
-          clipId: "clip",
-          trackId: "audio",
-          assetId: "asset",
-          streamId: "stream",
-          generation: "g1",
-          ordinal: 0,
-          sourceRange: { startUs: 0, endUs: 1 },
-          fragments: [{ source: { startUs: 0, endUs: 1 }, project: { startUs: 0, endUs: 1 } }],
-        },
-      ],
-    },
-    rowIndexes: [0],
     trackId: "captions",
     canvas: { width: 100, height: 100 },
     style: { font: { assetId: "font", postScriptName: "Fixture" }, width: 100, height: 100, size: 20, color: "#ffffffff", alignment: "left", wrap: true },
     constraints: { widthGraphemes: 30, maxLines: 2, minDwellUs: 1, maxDwellUs: 100, maxCps: 30, pauseUs: 1, breakOnPunctuation: true, separator: " ", safeArea: { x: 0, y: 0, width: 100, height: 100 } },
   });
-  expect(proposed).toMatchObject({ ok: true, data: { identity: { revisionId: f.revision.id }, proposals: [{ text: "Hello" }] } });
+  expect(proposed).toMatchObject({ ok: false, error: { code: "NOT_READY" } });
   const diagnostics = await f.call("layout.diagnostics", {
     projectId: f.project.projectId,
     revisionId: f.revision.id,
@@ -127,14 +105,6 @@ test("inspect, caption proposal and layout diagnostics stay pinned and read-only
   }
   expect(await f.state()).toEqual(before);
   expect(await f.call("inspect.open", { projectId: f.project.projectId, revisionId: "missing" })).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
-  expect(await f.call("caption.propose", {
-    projectId: f.project.projectId,
-    revisionId: f.revision.id,
-    entry: { identity: { projectId: f.project.projectId, revisionId: f.revision.id }, state: "not_ready", complete: false, rows: [{}] },
-    rowIndexes: [0], trackId: "captions", canvas: { width: 100, height: 100 },
-    style: { font: { assetId: "font", postScriptName: "Fixture" }, width: 100, height: 100, size: 20, color: "#ffffffff", alignment: "left", wrap: true },
-    constraints: { widthGraphemes: 30, maxLines: 2, minDwellUs: 1, maxDwellUs: 100, maxCps: 30, pauseUs: 1, breakOnPunctuation: true, separator: " ", safeArea: { x: 0, y: 0, width: 100, height: 100 } },
-  })).toMatchObject({ ok: false, error: { code: "NOT_READY" } });
 });
 async function sendRaw(socketPath: string, bytes: Buffer) {
   await new Promise<void>((resolve, reject) => {
@@ -682,6 +652,49 @@ test("selected-source transcript preserves filler, phrase and ready retry throug
     },
   });
   expect(await readFile(requests[0]!.track.source, "utf8")).toBe("image bytes");
+  let projectTranscript = await f.call("transcript.get", projectSelection);
+  for (let poll = 0; projectTranscript.ok && (projectTranscript.data as { state: string }).state !== "ready"; poll++) {
+    if (poll > 300) throw new Error(JSON.stringify(projectTranscript));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    projectTranscript = await f.call("transcript.get", projectSelection);
+  }
+  expect(projectTranscript).toMatchObject({ ok: true, data: { state: "ready" } });
+  const proposed = await f.call("caption.propose", {
+    ...projectSelection,
+    range: { startUs: 0, endUs: 2_000_000 },
+    trackId: "captions",
+    canvas: { width: 640, height: 360 },
+    style: {
+      font: { assetId: "font", postScriptName: "Fixture" },
+      width: 640,
+      height: 120,
+      size: 32,
+      color: "#ffffffff",
+      alignment: "center",
+      wrap: true,
+    },
+    constraints: {
+      widthGraphemes: 30,
+      maxLines: 2,
+      minDwellUs: 1,
+      maxDwellUs: 3_600_000_000,
+      maxCps: 30,
+      pauseUs: 400_000,
+      breakOnPunctuation: true,
+      separator: " ",
+      safeArea: { x: 0, y: 0, width: 640, height: 360 },
+    },
+  });
+  if (!proposed.ok) throw new Error(JSON.stringify(proposed));
+  expect(proposed).toMatchObject({
+    ok: true,
+    data: {
+      identity: { projectId: projectSelection.projectId, revisionId: projectSelection.revisionId },
+      proposals: [
+        { text: "Open the Settings panel." },
+      ],
+    },
+  });
   expect(await f.call("project.list", {})).toMatchObject({
     ok: true,
     data: {

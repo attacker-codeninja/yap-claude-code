@@ -191,24 +191,25 @@ and line wrapping at the intended viewing size. Try two-word chunks for brief
 emphasis or four to seven words for explanatory phrases, then adjust to meaning
 and reading speed. Merge cues that would flash too quickly.
 
-Read `transcript.get` for the pinned project revision, then group explicit word
-occurrences for `text.seed`. Preserve generation, source ranges and occurrence IDs;
-project projection accounts for repeats, trims and retiming. Use `text.set` for
-requested display corrections while preserving the seed's source evidence.
+For bounded draft grouping, call `caption.propose` first. It is the convenience
+combination of a bounded `transcript.get` for the pinned project revision and the
+pure caption-drafting helper; supply the selected range/tracks, caption track,
+style and constraints. It returns ordinary text clip and geometry drafts with
+exact raw word pins and projected fragments, plus `issues` on the output and on
+each draft. It never calls `transcript.transcribe` or applies edits. Narrow the
+selection if the transcript page is not complete, then apply chosen drafts
+separately against the pinned revision. If an older installed release does not
+advertise `caption.propose`, use the bundled Node runtime to run
+[`caption-proposals.mjs`](../scripts/caption-proposals.mjs) (`--help` describes
+the fallback JSON input) after reading a complete project entry with
+`transcript.get`.
 
-For bounded draft grouping, use the bundled Node runtime to run
-[`caption-proposals.mjs`](../scripts/caption-proposals.mjs) (`--help` describes the
-JSON input). Supply one complete pinned project entry from the compact transcript
-helper, explicitly selected row indexes, any requested display corrections, and
-caller-chosen limits/style/safe area. It returns ordinary text clip and geometry
-drafts with exact raw word pins and projected fragments, plus `issues` on the
-output and on each draft; it does not transcribe or apply edits. Apply chosen
-drafts separately against the pinned revision. Grapheme counts constrain
-proposals, not pixel fit: no draft is checked against pixels, so actual applied
-frames establish glyph coverage, clipping and readability. Dwell and reading
-speed describe the word support envelope; partial and discontinuous word issues
-must remain visible. Instant words retain point evidence with `clip: null` and
-`caption-instant-word`; they have no invented placeable duration.
+Grapheme counts constrain proposals, not pixel fit: no draft is checked against
+pixels, so actual applied frames establish glyph coverage, clipping and
+readability. Dwell and reading speed describe the word support envelope; partial
+and discontinuous word issues must remain visible. Instant words retain point
+evidence with `clip: null` and `caption-instant-word`; they have no invented
+placeable duration.
 
 For requested word highlighting, choose explicit active/inactive colors in the
 draft style. The helper maps each corrected literal word to its retained source

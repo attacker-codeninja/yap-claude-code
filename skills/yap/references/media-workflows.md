@@ -63,13 +63,24 @@ the engine timed impossibly. Check those words against the audio or the raw
 evidence; never repair word timestamps.
 
 When the installed release advertises `transcript.review`, use it as the
-agent-friendly bounded review operation. Call it directly to enqueue the selected
-transcription and preserve the normal rows, generation and continuation it
-returns. If it reports `MODEL_NOT_PREPARED`, ask the user before acquiring the
+agent-friendly bounded review operation. It is the convenience combination of
+`transcript.transcribe` and `transcript.get`: call it directly to request the
+selected transcription and preserve the normal rows, generation and continuation
+it returns. If it reports `MODEL_NOT_PREPARED`, ask the user before acquiring the
 optional model/runtime, then prepare and retry as described above. It never invents
-words or edits a project. `transcript.get` remains strictly read-only, while
-`model.prepare` remains the explicit, user-approved model download and
-verification control; `transcript.transcribe` is the inference operation.
+words or edits a project. `transcript.get` remains the strictly read-only half of
+that combination, while `model.prepare` remains the explicit, user-approved model
+download and verification control.
+
+The other convenience operations follow the same pattern. `caption.propose`
+combines bounded `transcript.get` with caption drafting; `inspect.open` combines
+revision resolution, history and native preview opening; `cursor.render` combines
+`cursor.raw` with `frame.get`; `frame.batch` and `index.frames` batch repeated
+frame/index reads; `index.get` handles scene/index preparation and the paged index
+read; `transcript.disfluency.get` and `transcript.search` are filtered/search
+transcript reads; and `audio.measure`, `waveform.get`, `spectrogram.get` and
+`audio.pause.get` combine `audio.get` with their analysis. Call these directly
+unless you need to control one of their lower-level stages.
 
 Call the requested feature directly. If it returns
 `unavailable:model_not_prepared`, read its model ID, purpose, download scope and
@@ -120,7 +131,8 @@ failed source dependency using its returned selection. Use project phrase search
 only when advertised; source search cannot stand in for edited speech order.
 
 For fresh recognition of what an edit produced, discover `transcript.render.prepare` and
-select the exact revision, tap, range and PCM rendition. Prepare required first-class
+select the exact revision, tap, range and PCM rendition. This convenience operation
+combines `audio.extract` with fresh rendered-speech recognition; prepare required first-class
 speech models through the advertised model operation. Keep the returned rendered
 generation and read it with `transcript.render.get`; preserve PCM origin, model
 provenance and both PCM/project ranges. These reads need no inference. Diagnose

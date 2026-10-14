@@ -187,8 +187,9 @@ unavailable; do not claim it reopened or retry writes blindly.
    operations. When advertised, use `transcript.review` for a bounded,
    read-only transcript page and `cursor.render` for the same source or pinned
    project times with a visible pointer trail. `transcript.review` is the
-   agent-friendly convenience call: call it directly to request the selected
-   bounded range. If it reports `MODEL_NOT_PREPARED`, use the returned details to
+   agent-friendly convenience call: it is the combination of
+   `transcript.transcribe` and `transcript.get` for the selected bounded range.
+   Call it directly instead of assembling those two calls yourself. If it reports `MODEL_NOT_PREPARED`, use the returned details to
    ask the user before downloading an optional model/runtime; do not make the
    agent discover `model.prepare` as a preflight. Pin the returned generation, revision,
    acquisition and continuation exactly as returned. It never invents words or
@@ -196,6 +197,21 @@ unavailable; do not claim it reopened or retry writes blindly.
    `transcript.transcribe`/`transcript.get` and `cursor.raw` plus `frame.get` path
    below. `model.prepare` is only the user-approved download and
    verification recovery described above.
+
+   Use the same convenience-first rule for the other review helpers.
+   `caption.propose` combines a bounded `transcript.get` with caption drafting
+   and returns exact word pins; it never starts `transcript.transcribe`.
+   `inspect.open` combines revision resolution, history and native preview
+   opening. `cursor.render` combines `cursor.raw` evidence with `frame.get`
+   delivery. `frame.batch` and `index.frames` batch repeated `frame.get` and
+   `index.frame` reads; `index.get` handles scene/index preparation and the
+   paged index read. `transcript.disfluency.get` and `transcript.search` are
+   filtered/search transcript reads. The audio views (`audio.measure`, `waveform.get`,
+   `spectrogram.get` and `audio.pause.get`) combine the selected `audio.get`
+   signal with their measurement. `transcript.render.prepare` combines
+   `audio.extract` with rendered-speech recognition. Use a lower-level operation only when you
+   need control over one stage or the installed release does not advertise the
+   convenience form.
 
 5. **Edit.** Inspect uncertain cut boundaries using bounded audio excerpts and
    nearby frames. Choose narration, system audio, or mix intentionally. Transcript

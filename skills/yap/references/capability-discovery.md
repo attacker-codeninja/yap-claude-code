@@ -34,7 +34,8 @@ assets.
 
 For feedback review, discover `transcript.review`, `cursor.render` and their
 advertised retry/readiness behavior in the installed operation help. `transcript.review`
-is the convenience owner for bounded transcription; call it directly. If it
+is the convenience combination of `transcript.transcribe` and `transcript.get`
+for bounded transcription; call it directly. If it
 reports `MODEL_NOT_PREPARED`, use the returned model purpose, download scope and
 size to ask the user before calling `model.prepare`. Record whether each
 operation is present and its exact CLI/service version. Newer skill text must not

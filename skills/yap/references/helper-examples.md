@@ -16,9 +16,11 @@ failed jobs and partial coverage remain facts to inspect, not success claims.
 ## Feedback review
 
 When the installed CLI advertises the first-class review operations, use this
-short path before the lower-level helpers. `transcript.review` may download the
-registered local speech model and prepare bounded transcription; poll the same
-params while pending. `cursor.render` is read-only. Save complete responses and
+short path before the lower-level helpers. `transcript.review` is the convenience
+combination of `transcript.transcribe` and `transcript.get`: it may download the
+registered local speech model and prepare bounded transcription, then returns the
+bounded rows; poll the same params while pending. `cursor.render` combines
+`cursor.raw` evidence with `frame.get` delivery and is read-only. Save complete responses and
 preserve generations, revisions, acquisitions and continuations.
 
 ```json
@@ -102,9 +104,10 @@ console.log(JSON.stringify({
 }));
 ```
 
-## Caption proposals
+## Caption proposals fallback
 
-For `caption-proposals.mjs`, save a complete ready **project** compact entry as
+Use this helper only when the installed release does not advertise
+`caption.propose`. Save a complete ready **project** compact entry as
 `entry.json`. Save chosen `rowIndexes`, caption `trackId`, `canvas`, `style` and
 `constraints` in `caption-settings.json`; the helper's help owns the fields.
 Use the actual admitted font asset/face and caption track ID from current receipts.

@@ -2552,16 +2552,75 @@ export async function startProjectService(options: {
           case "caption.propose":
             projects.requireRevision(operation.params.projectId, operation.params.revisionId);
             try {
+              const {
+                projectId,
+                revisionId,
+                range,
+                trackIds,
+                sourceGenerations,
+                speakerGenerations,
+                limit,
+                trackId,
+                canvas,
+                style,
+                constraints,
+                corrections,
+              } = operation.params;
+              const transcript = await projectEvidence.get({
+                projectId,
+                revisionId,
+                ...(range === undefined ? {} : { range }),
+                ...(trackIds === undefined ? {} : { trackIds }),
+                ...(sourceGenerations === undefined ? {} : { sourceGenerations }),
+                ...(speakerGenerations === undefined ? {} : { speakerGenerations }),
+                limit,
+                prepare: false,
+              });
+              if (transcript.state !== "ready" || !transcript.page) {
+                throw new CatalogError(
+                  "NOT_READY",
+                  "The selected project transcript is not ready",
+                  {
+                    state: transcript.state,
+                    reason: "reason" in transcript ? transcript.reason : null,
+                    dependencies: transcript.dependencies,
+                  },
+                  "retryable" in transcript && transcript.retryable === true,
+                );
+              }
+              if (transcript.page.nextCursor !== null) {
+                throw new CatalogError(
+                  "LIMIT_EXCEEDED",
+                  "Caption proposals need a complete bounded transcript range; narrow the range or lower the selected track set",
+                  { limit: operation.params.limit },
+                );
+              }
+              const rowIndexes = transcript.page.rows.flatMap((row, index) =>
+                row.type === "word" ? [index] : [],
+              );
+              if (!rowIndexes.length) {
+                throw new CatalogError(
+                  "NOT_READY",
+                  "The selected project transcript contains no word evidence",
+                  { state: transcript.state },
+                );
+              }
               return {
                 ok: true,
                 data: captionProposals({
-                  ...operation.params,
+                  trackId,
+                  canvas,
+                  style,
+                  constraints,
+                  ...(corrections === undefined ? {} : { corrections }),
+                  rowIndexes,
                   entry: {
-                    ...operation.params.entry,
+                    state: transcript.state,
+                    complete: true,
+                    rows: transcript.page.rows,
                     identity: {
-                      projectId: operation.params.projectId,
-                      revisionId: operation.params.revisionId,
-                      ...(operation.params.entry.identity as Record<string, unknown> | undefined),
+                      projectId,
+                      revisionId,
                     },
                   },
                 }),
