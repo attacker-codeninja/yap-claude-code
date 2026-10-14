@@ -43,6 +43,19 @@ test("refusals count tool results by code or message, not files the agent wrote"
   assert.equal(counts.ended, false);
 });
 
+test("a cross-correlation script counts as correlation, not as RMS outside Yap", () => {
+  const counts = countSession(
+    session(
+      bash(
+        "a",
+        "cat > /tmp/s-xcorr.mjs <<'EOF'\nconst r=Math.sqrt(e1*e2); x[i]=b.readFloatLE(o)\nEOF\nnode /tmp/s-xcorr.mjs",
+      ),
+    ),
+  );
+  assert.equal(counts.effort.cross_correlation, 1);
+  assert.equal(counts.effort.rms_outside_yap, 0);
+});
+
 test("counting stops where the editing phase ends", () => {
   const counts = countSession(
     session(

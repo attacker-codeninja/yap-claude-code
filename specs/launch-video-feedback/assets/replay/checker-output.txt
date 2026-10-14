@@ -1,0 +1,16 @@
+Focused acceptance run (session 53752101, Claude Opus 5.5, commit d8fd9fe5 skill and build)
+transcript: 371 lines, SHA-256 1693631714d04f79…; 86 agent turns, 13.5 min, not rate-limited
+  signature                  results  occurrences
+  seam_disagreement                0  0
+  speech_timing_overrun            0  0
+  normalization_infeasible         0  0
+  normalization_unmet              0  0
+  curve_clock_error                0  0
+  source_bounds_error              0  0
+  render_range_job_fail            0  0
+  effort signal              commands
+  transcript_calls                  3
+  chunked_transcription             0
+  measure_calls                     0
+  cross_correlation                 1
+  rms_outside_yap                   0

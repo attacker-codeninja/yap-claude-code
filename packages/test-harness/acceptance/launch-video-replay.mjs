@@ -22,13 +22,16 @@ export const refusals = {
 
 const decodesPcm =
   /frombuffer|array\.array\(|array\('[hf]'\)|struct\.unpack|readFloatLE|readInt16LE/;
+const correlates = /\bfor lag\b|correlat|\bxc(?:orr)?\.(?:py|m?js)\b/i;
 export const effort = {
   transcript_calls: (command) => /\btranscript\.(?:prepare|review)\b/.test(command),
   chunked_transcription: (command) =>
     /\btranscript\.(?:prepare|review)\b/.test(command) && /executionRange/.test(command),
   measure_calls: (command) => /\baudio\.measure\b/.test(command),
-  cross_correlation: (command) => /\bfor lag\b|correlat|\bxc(?:orr)?\.py\b/i.test(command),
-  rms_outside_yap: (command) => decodesPcm.test(command) && /sqrt/.test(command),
+  cross_correlation: (command) => correlates.test(command),
+  // A correlation score also uses sqrt; only level arithmetic counts here.
+  rms_outside_yap: (command) =>
+    decodesPcm.test(command) && /sqrt/.test(command) && !correlates.test(command),
 };
 
 const texts = (content) =>
