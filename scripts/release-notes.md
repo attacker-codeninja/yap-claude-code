@@ -6,6 +6,15 @@ The capture menu keeps its dark appearance after selecting a recording area and
 shows the latest recording below the action buttons with Play and Copy agent prompt
 actions. Screen recordings now include the pointer in the captured video.
 
+## 0.1.39
+
+The native review workflow now gives agents and people one pinned inspection
+surface with revision history, bounded transcript and layout evidence, and
+Downloads export. Convenience operations explain the lower-level work they
+bundle: `transcript.review` combines transcription with transcript reading, and
+`caption.propose` reads the selected project transcript internally before
+drafting captions. Existing launch catalogs remain readable at format 29.
+
 ## 0.1.38
 
 `package.adopt` and the skill now say to close a package once it's adopted.
