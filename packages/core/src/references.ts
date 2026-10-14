@@ -7,6 +7,7 @@ export const resourceKinds = [
   "speaker-generation",
   "alignment-generation",
   "transcript-generation",
+  "imported-transcript-generation",
   "prepared-audio",
   "index-generation",
 ] as const;

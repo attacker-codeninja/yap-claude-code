@@ -38,10 +38,9 @@ test("parses VTT cues without inventing word timings and preserves source metada
 });
 
 test("parses SRT cue timing as supplied cue evidence", () => {
-  const parsed = parseImportedTranscript(
-    "1\n00:00:01,000 --> 00:00:02,500\nHello, world\n",
-    { format: "srt" },
-  );
+  const parsed = parseImportedTranscript("1\n00:00:01,000 --> 00:00:02,500\nHello, world\n", {
+    format: "srt",
+  });
   expect(parsed.cues[0]).toMatchObject({
     id: "1",
     text: "Hello, world",
@@ -92,6 +91,10 @@ test("stores an imported generation with replay identity and raw bytes", async (
   expect(replay).toEqual(first);
   expect(first.origin.raw.bytes).toBeGreaterThan(0);
   expect(store.get(source, first.generation).cues[0]?.text).toBe("hello");
+  expect(first.timingPolicy).toBe("supplied");
+  const portable = store.portableGenerations(source.assetId)[0]!;
+  expect(portable.generation).toBe(first.generation);
+  expect(store.portableFile(portable).bytes).toBe(first.origin.raw.bytes);
   catalog.close();
   await rm(home, { recursive: true, force: true });
 });

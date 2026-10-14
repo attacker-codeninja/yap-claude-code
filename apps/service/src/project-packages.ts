@@ -40,6 +40,7 @@ import {
   resourceIdentity,
   sceneMemberPath,
   transcriptMemberPath,
+  importedTranscriptMemberPath,
   indexMemberPath,
   type PortableDependency,
   type PortableResource,
@@ -51,6 +52,11 @@ import {
   validateProjectPackage,
   type ValidatedProjectPackage,
 } from "@yap/core/project-package";
+import {
+  importedTranscriptGenerationResource,
+  type ImportedTranscriptStore,
+  type PortableImportedTranscript,
+} from "@yap/core/imported-transcript";
 import type { ProjectStore, ProjectSnapshot } from "@yap/core/projects";
 import type { AssetStore } from "@yap/core/assets";
 import type {
@@ -102,6 +108,7 @@ export type PinnedProjectPackage = {
   resources: PortableDependency[];
   acquisitionFiles: Record<string, ReturnType<AcquisitionImporter["portable"]>["files"]>;
   transcriptFiles: Record<string, IdentifiedFile>;
+  importedTranscriptFiles: Record<string, IdentifiedFile>;
   /** Stale derived transcripts the package leaves out; the recipient regenerates them on request. */
   stale: ResourceReference[];
 };
@@ -122,6 +129,7 @@ type Owners = {
   alignmentRecords: AlignmentEvidenceStore;
   alignments: AlignmentProcessing;
   transcriptRecords: TranscriptStore;
+  importedTranscripts: ImportedTranscriptStore;
   transcripts: TranscriptProcessing;
   indexRecords: ScreenshotIndexStore<SourceIndexRecords>;
   indexes: IndexProcessing;
@@ -480,10 +488,30 @@ export class ProjectPackages {
       members = snapshot.revisions.length;
     const acquisitionFiles: PinnedProjectPackage["acquisitionFiles"] = {};
     const transcriptFiles: PinnedProjectPackage["transcriptFiles"] = {};
+    const importedTranscriptFiles: PinnedProjectPackage["importedTranscriptFiles"] = {};
     const transcriptInventory = new Map<
       string,
       Extract<PortableDependency, { kind: "transcript-generation" }>
     >();
+    const importedTranscriptInventory = new Map<
+      string,
+      Extract<PortableDependency, { kind: "imported-transcript-generation" }>
+    >();
+    const importedTranscriptsForAsset = (assetId: string) =>
+      this.owners.importedTranscripts.portableGenerations(assetId).map((value) => {
+        const resource = { kind: "imported-transcript-generation" as const, ...value } as Extract<
+          PortableDependency,
+          { kind: "imported-transcript-generation" }
+        >;
+        const identity = resourceIdentity(resource);
+        if (!importedTranscriptInventory.has(identity.id)) {
+          importedTranscriptFiles[identity.id] = this.owners.importedTranscripts.portableFile(
+            value as unknown as PortableImportedTranscript,
+          );
+          importedTranscriptInventory.set(identity.id, resource);
+        }
+        return identity;
+      });
     const sceneInventory = new Map<
       string,
       Extract<PortableDependency, { kind: "scene-generation" }>
@@ -650,6 +678,7 @@ export class ProjectPackages {
           ...asset.dependencies,
           ...scenesForAsset(identity.id),
           ...transcriptsForAsset(identity.id),
+          ...importedTranscriptsForAsset(identity.id),
           ...indexesForAsset(identity.id),
           ...speakersForAsset(identity.id),
           ...alignmentsForAsset(identity.id),
@@ -675,6 +704,7 @@ export class ProjectPackages {
             "index-generation",
             "speaker-generation",
             "alignment-generation",
+            "imported-transcript-generation",
           ].includes(identity.kind)
         )
           throw new CatalogError(
@@ -690,7 +720,9 @@ export class ProjectPackages {
                 ? sceneInventory
                 : identity.kind === "transcript-generation"
                   ? transcriptInventory
-                  : indexInventory;
+                  : identity.kind === "imported-transcript-generation"
+                    ? importedTranscriptInventory
+                    : indexInventory;
         if (!inventory.has(identity.id)) {
           let tuple: unknown;
           try {
@@ -698,7 +730,14 @@ export class ProjectPackages {
           } catch {
             throw new CatalogError("INVALID_STORAGE", "Invalid retained-generation identity");
           }
-          if (
+          if (identity.kind === "imported-transcript-generation") {
+            if (!tuple || typeof tuple !== "object" || !("source" in tuple))
+              throw new CatalogError("INVALID_STORAGE", "Invalid imported transcript identity");
+            const source = (tuple as { source?: { assetId?: unknown } }).source;
+            if (!source || typeof source.assetId !== "string")
+              throw new CatalogError("INVALID_STORAGE", "Invalid imported transcript identity");
+            importedTranscriptsForAsset(source.assetId);
+          } else if (
             !Array.isArray(tuple) ||
             tuple.length !== 3 ||
             tuple[0] !== "asset" ||
@@ -706,22 +745,25 @@ export class ProjectPackages {
             typeof tuple[2] !== "string"
           )
             throw new CatalogError("INVALID_STORAGE", "Invalid retained-generation identity");
-          if (identity.kind === "alignment-generation") alignmentsForAsset(tuple[1]);
-          else if (identity.kind === "speaker-generation") speakersForAsset(tuple[1]);
-          else if (identity.kind === "scene-generation") scenesForAsset(tuple[1]);
-          else if (identity.kind === "transcript-generation") {
-            transcriptsForAsset(tuple[1]);
-            // A stale transcript a revision pins travels as historical evidence.
-            if (!transcriptInventory.has(identity.id) && staleTranscripts.has(identity.id))
-              addTranscript(
-                portableTranscript(
-                  this.owners.transcriptRecords.retainedGeneration(
-                    { owner: { kind: "asset", assetId: tuple[1] }, generation: tuple[2] },
-                    { historical: true },
+          if (identity.kind !== "imported-transcript-generation") {
+            const retained = tuple as [string, string, string];
+            if (identity.kind === "alignment-generation") alignmentsForAsset(retained[1]);
+            else if (identity.kind === "speaker-generation") speakersForAsset(retained[1]);
+            else if (identity.kind === "scene-generation") scenesForAsset(retained[1]);
+            else if (identity.kind === "transcript-generation") {
+              transcriptsForAsset(retained[1]);
+              // A stale transcript a revision pins travels as historical evidence.
+              if (!transcriptInventory.has(identity.id) && staleTranscripts.has(identity.id))
+                addTranscript(
+                  portableTranscript(
+                    this.owners.transcriptRecords.retainedGeneration(
+                      { owner: { kind: "asset", assetId: retained[1] }, generation: retained[2] },
+                      { historical: true },
+                    ),
                   ),
-                ),
-              );
-          } else indexesForAsset(tuple[1]);
+                );
+            } else indexesForAsset(retained[1]);
+          }
         }
         const scene = inventory.get(identity.id);
         if (!scene)
@@ -754,6 +796,7 @@ export class ProjectPackages {
       resources,
       acquisitionFiles,
       transcriptFiles,
+      importedTranscriptFiles,
       stale: [...staleTranscripts.values()].filter(({ id }) => !transcriptInventory.has(id)),
     };
   }
@@ -769,6 +812,10 @@ export class ProjectPackages {
         this.owners.sceneRecords.sourcePage({ identity: resource.metadata, limit: 1 });
       if (resource.kind === "transcript-generation")
         this.owners.transcriptRecords.portableFile(resource.metadata);
+      if (resource.kind === "imported-transcript-generation")
+        this.owners.importedTranscripts.portableFile(
+          resource as unknown as PortableImportedTranscript,
+        );
       if (resource.kind === "index-generation")
         this.owners.indexRecords.metadata(resource.metadata);
       if (resource.kind === "project-index-generation")
@@ -983,6 +1030,12 @@ export class ProjectPackages {
               raw.close();
             }
           }
+          const importedResources = manifest.resources.filter(
+            (
+              value,
+            ): value is Extract<PortableResource, { kind: "imported-transcript-generation" }> =>
+              value.kind === "imported-transcript-generation",
+          );
           const portableAssets = new Map(
             manifest.resources.flatMap((value) =>
               value.kind === "asset" ? [[value.asset.id, value.asset] as const] : [],
@@ -1240,6 +1293,14 @@ export class ProjectPackages {
               },
             },
           );
+          for (const resource of importedResources) {
+            signal.throwIfAborted();
+            await this.owners.importedTranscripts.adoptPortable(
+              resource as unknown as PortableImportedTranscript,
+              context.files.path(importedTranscriptMemberPath(resource)),
+              signal,
+            );
+          }
           return JSON.stringify({
             projectId: result.project.projectId,
             revisionId: result.revision.id,
@@ -1319,6 +1380,7 @@ export class ProjectPackages {
     const declared = pinned.resources.flatMap((resource) =>
       resource.kind === "scene-generation" ||
       resource.kind === "transcript-generation" ||
+      resource.kind === "imported-transcript-generation" ||
       resource.kind === "index-generation" ||
       resource.kind === "project-index-generation"
         ? []
@@ -1444,6 +1506,25 @@ export class ProjectPackages {
             sha256: createHash("sha256").update(body).digest("hex"),
           },
         });
+        continue;
+      }
+      if (entry.kind === "imported-transcript-generation") {
+        const rawPath = importedTranscriptMemberPath(entry);
+        const raw = pinned.importedTranscriptFiles[resourceIdentity(entry).id]!;
+        await mkdir(dirname(join(input.directory, rawPath)), { recursive: true, mode: 0o700 });
+        const copied = await copyImportedFile(
+          raw.path,
+          join(input.directory, rawPath),
+          signal,
+          raw,
+        );
+        if (copied.bytes !== entry.origin.raw.bytes || copied.sha256 !== entry.origin.raw.sha256)
+          throw new CatalogError(
+            "INVALID_STORAGE",
+            "Imported transcript source bytes changed after package pin",
+          );
+        await add(rawPath, copied.bytes, copied.sha256);
+        resources.push(entry);
         continue;
       }
       if (entry.kind === "index-generation") {

@@ -33,6 +33,10 @@ import { retainedPublicationSchema } from "./jobs.js";
 import { acquisitionContext, portableAcquisitionSchema } from "./acquisitions.js";
 import { resourceKinds, type ResourceReference } from "./references.js";
 import { checkProjectJsonBytes, type ArchiveLimits } from "./package-archive.js";
+import {
+  importedTranscriptGenerationResource,
+  type PortableImportedTranscript,
+} from "./imported-transcript.js";
 
 import {
   speakerEvidenceMetadataSchema,
@@ -132,6 +136,30 @@ const resourceSchema = z.discriminatedUnion("kind", [
       sha256: digest,
     }),
   }),
+  z.strictObject({
+    kind: z.literal("imported-transcript-generation"),
+    generation: z.string().min(1).max(2048),
+    source: z.strictObject({
+      assetId: z.string().min(1),
+      streamId: z.string().min(1),
+      acquisitionId: z.string().min(1).optional(),
+    }),
+    origin: z.strictObject({
+      format: z.enum(["srt", "vtt", "json"]),
+      parser: z.strictObject({ name: z.string(), version: z.string() }),
+      timingBasis: z.literal("supplied"),
+      raw: z.strictObject({
+        bytes: z
+          .int()
+          .nonnegative()
+          .max(256 * 1024 * 1024),
+        sha256: digest,
+      }),
+      metadata: z.record(z.string(), z.unknown()),
+    }),
+    timingPolicy: z.enum(["supplied", "align"]),
+    cues: z.array(z.unknown()).max(100000),
+  }),
 ]);
 const serializedResourceSchema = z.strictObject({
   identity: z.strictObject({ kind: z.enum(resourceKinds), id: z.string().min(1).max(2048) }),
@@ -163,12 +191,14 @@ export type PortableDependency =
         kind:
           | "scene-generation"
           | "transcript-generation"
+          | "imported-transcript-generation"
           | "index-generation"
           | "project-index-generation";
       }
     >
   | Omit<Extract<PortableResource, { kind: "scene-generation" }>, "chunks">
   | Omit<Extract<PortableResource, { kind: "transcript-generation" }>, "receipt">
+  | Extract<PortableResource, { kind: "imported-transcript-generation" }>
   | Omit<Extract<PortableResource, { kind: "index-generation" }>, "records" | "images">
   | Omit<Extract<PortableResource, { kind: "project-index-generation" }>, "records" | "images">;
 export function resourceIdentity(resource: PortableDependency): ResourceReference {
@@ -206,6 +236,11 @@ export function resourceIdentity(resource: PortableDependency): ResourceReferenc
       return { kind: "scene-generation", id: sceneGenerationResource(resource.metadata) };
     case "transcript-generation":
       return { kind: "transcript-generation", id: transcriptGenerationResource(resource.metadata) };
+    case "imported-transcript-generation":
+      return {
+        kind: "imported-transcript-generation",
+        id: importedTranscriptGenerationResource(resource as unknown as PortableImportedTranscript),
+      };
   }
 }
 const key = (identity: ResourceReference) => `${identity.kind}:${identity.id}`;
@@ -241,6 +276,13 @@ export function resourceDependencies(resource: PortableDependency): ResourceRefe
         { kind: "asset", id: resource.metadata.owner.assetId },
         ...(resource.metadata.source.acquisitionId
           ? [{ kind: "acquisition" as const, id: resource.metadata.source.acquisitionId }]
+          : []),
+      ];
+    case "imported-transcript-generation":
+      return [
+        { kind: "asset", id: resource.source.assetId },
+        ...(resource.source.acquisitionId
+          ? [{ kind: "acquisition" as const, id: resource.source.acquisitionId }]
           : []),
       ];
   }
@@ -282,6 +324,14 @@ export function resourceMembers(
     return [
       { path: transcriptMemberPath(resource, "raw.jsonl"), ...resource.metadata.raw },
       { path: transcriptMemberPath(resource, "receipt.json"), ...resource.receipt },
+    ];
+  if (resource.kind === "imported-transcript-generation")
+    return [
+      {
+        path: importedTranscriptMemberPath(resource),
+        bytes: resource.origin.raw.bytes,
+        sha256: resource.origin.raw.sha256,
+      },
     ];
   const acquisition = resource.acquisition;
   return [
@@ -329,6 +379,14 @@ export function transcriptMemberPath(
     .update(key(resourceIdentity(resource)))
     .digest("hex");
   return `transcripts/${id}/${leaf}`;
+}
+export function importedTranscriptMemberPath(
+  resource: Extract<PortableResource, { kind: "imported-transcript-generation" }>,
+): string {
+  const id = createHash("sha256")
+    .update(key(resourceIdentity(resource)))
+    .digest("hex");
+  return `transcripts/imported/${id}/source.${resource.origin.format}`;
 }
 const projectPackageVersion = 6;
 const manifestSchema = z.strictObject({

@@ -158,6 +158,56 @@ function sameTranscriptSpeakerRequest(
   );
 }
 
+function importedAlignmentView(
+  imported: Awaited<ReturnType<ImportedTranscriptStore["importPath"]>>,
+  alignments: AlignmentProcessing,
+  records: AlignmentEvidenceStore,
+  channel = 0,
+  modelId = "nemo-ctc110",
+) {
+  const cues = imported.cues.map((cue) => {
+    const input = {
+      assetId: imported.source.assetId,
+      streamId: imported.source.streamId,
+      ...(imported.source.acquisitionId === undefined
+        ? {}
+        : { acquisitionId: imported.source.acquisitionId }),
+      channel,
+      sourceRange: cue.source,
+      text: cue.text,
+      modelId,
+    };
+    const status = alignments.sourceStatus(input);
+    if (status.state === "not_requested") return cue;
+    if (!status.published)
+      return {
+        ...cue,
+        alignment: {
+          state: status.state,
+          reason: status.reason,
+          retryable: status.retryable,
+          modelId: input.modelId,
+          channel: input.channel,
+          sourceRange: cue.source,
+        },
+      };
+    const evidence = status.published.evidence;
+    return {
+      ...cue,
+      alignment: {
+        state: "ready" as const,
+        generation: evidence.generation,
+        modelId: input.modelId,
+        channel: input.channel,
+        sourceRange: cue.source,
+        evidence,
+        words: records.page(evidence, "words", -1, 1000).rows,
+      },
+    };
+  });
+  return { ...imported, cues };
+}
+
 export async function startProjectService(options: {
   home: string;
   worker?: MediaWorker;
@@ -949,6 +999,7 @@ export async function startProjectService(options: {
       alignmentRecords,
       alignments,
       transcriptRecords: transcriptStore,
+      importedTranscripts,
       transcripts,
       indexRecords: sourceIndex,
       indexes,
@@ -1728,6 +1779,7 @@ export async function startProjectService(options: {
               source,
               operation.params.path,
               operation.params.format,
+              operation.params.timingPolicy,
             );
             const alignment =
               operation.params.timingPolicy === "align"
@@ -1745,7 +1797,13 @@ export async function startProjectService(options: {
             return {
               ok: true,
               data: {
-                ...imported,
+                ...importedAlignmentView(
+                  imported,
+                  alignments,
+                  alignmentRecords,
+                  operation.params.channel ?? 0,
+                  operation.params.modelId ?? "nemo-ctc110",
+                ),
                 ...(alignment === undefined ? {} : { alignment }),
                 published: { generation: imported.generation, issues: [] },
               },
@@ -1767,7 +1825,9 @@ export async function startProjectService(options: {
             const source: ImportedTranscriptSource = {
               assetId: selection.assetId,
               streamId: selection.streamId,
-              ...(selection.acquisitionId === undefined ? {} : { acquisitionId: selection.acquisitionId }),
+              ...(selection.acquisitionId === undefined
+                ? {}
+                : { acquisitionId: selection.acquisitionId }),
             };
             const imported =
               generation === undefined
@@ -1781,17 +1841,23 @@ export async function startProjectService(options: {
                     }
                   })();
             if (imported) {
-              const rows = imported.cues.flatMap((cue) =>
-                cue.words
-                  .filter((word) => !range || (word.source.endUs > range.startUs && word.source.startUs < range.endUs))
-                  .filter((word) => ["filler", "vocalization"].includes(wordKind(word.text)))
-                  .map((word) => ({
-                    type: "word" as const,
-                    text: word.text,
-                    sourceRange: word.source,
-                    kind: wordKind(word.text),
-                  })),
-              ).slice(cursor ? Number(cursor) : 0, (cursor ? Number(cursor) : 0) + limit);
+              const rows = imported.cues
+                .flatMap((cue) =>
+                  cue.words
+                    .filter(
+                      (word) =>
+                        !range ||
+                        (word.source.endUs > range.startUs && word.source.startUs < range.endUs),
+                    )
+                    .filter((word) => ["filler", "vocalization"].includes(wordKind(word.text)))
+                    .map((word) => ({
+                      type: "word" as const,
+                      text: word.text,
+                      sourceRange: word.source,
+                      kind: wordKind(word.text),
+                    })),
+                )
+                .slice(cursor ? Number(cursor) : 0, (cursor ? Number(cursor) : 0) + limit);
               return {
                 ok: true,
                 data: {
@@ -1803,12 +1869,20 @@ export async function startProjectService(options: {
                 },
               };
             }
-            const current = transcripts.sourceStatus({ ...selection, ...(generation ? { generation } : {}) });
-            if (!current.published)
-              return { ok: true, data: { ...current, page: null } };
+            const current = transcripts.sourceStatus({
+              ...selection,
+              ...(generation ? { generation } : {}),
+            });
+            if (!current.published) return { ok: true, data: { ...current, page: null } };
             const read = new SourceTranscriptRead(transcriptStore, current.published.transcript);
-            const page = read.page({ range, limit: Math.max(limit, 1000), ...(cursor ? { cursor: JSON.parse(cursor) } : {}) });
-            const rows = page.rows.filter((row) => row.type === "word" && ["filler", "vocalization"].includes(row.kind));
+            const page = read.page({
+              range,
+              limit: Math.max(limit, 1000),
+              ...(cursor ? { cursor: JSON.parse(cursor) } : {}),
+            });
+            const rows = page.rows.filter(
+              (row) => row.type === "word" && ["filler", "vocalization"].includes(row.kind),
+            );
             return {
               ok: true,
               data: {
@@ -1816,7 +1890,10 @@ export async function startProjectService(options: {
                 generation: current.published.transcript.generation,
                 method: "word-kind-v1",
                 coverage: "complete",
-                page: { rows: rows.slice(0, limit), nextCursor: rows.length > limit ? JSON.stringify(page.nextCursor) : null },
+                page: {
+                  rows: rows.slice(0, limit),
+                  nextCursor: rows.length > limit ? JSON.stringify(page.nextCursor) : null,
+                },
               },
             };
           }
@@ -1893,7 +1970,12 @@ export async function startProjectService(options: {
                     }
                   })();
             if (imported) {
-              if ("text" in params)
+              if ("text" in params) {
+                const terms = params.text
+                  .trim()
+                  .split(/\s+/)
+                  .map((term) => term.toLowerCase().replace(/^[\p{P}\s]+|[\p{P}\s]+$/gu, ""))
+                  .filter(Boolean);
                 return {
                   ok: true,
                   data: {
@@ -1901,11 +1983,32 @@ export async function startProjectService(options: {
                     generation: imported.generation,
                     origin: imported.origin,
                     page: {
-                      entries: [],
+                      entries: imported.cues
+                        .filter((cue) => {
+                          const words = (
+                            cue.words.length
+                              ? cue.words.map((word) => word.text)
+                              : cue.text.split(/\s+/)
+                          ).map((word) =>
+                            word.toLowerCase().replace(/^[\p{P}\s]+|[\p{P}\s]+$/gu, ""),
+                          );
+                          return (
+                            terms.length > 0 &&
+                            words.some((_, index) =>
+                              terms.every((term, offset) => words[index + offset] === term),
+                            )
+                          );
+                        })
+                        .slice(0, params.limit ?? 100)
+                        .map((cue) => ({
+                          wordIds: cue.words.map((_, index) => `imported:${cue.ordinal}:${index}`),
+                          sourceRange: cue.source,
+                        })),
                       nextCursor: null,
                     },
                   },
                 };
+              }
               const rows = imported.cues
                 .filter(
                   (cue) =>
@@ -2328,9 +2431,10 @@ export async function startProjectService(options: {
           case "audio.pause.get": {
             const { limit = 100, cursor, ...selection } = operation.params;
             const status = await acoustics.request({ ...selection, kind: "pause" });
-            const allIntervals = status.published?.artifact.analysis.kind === "pause"
-              ? status.published.artifact.analysis.intervals
-              : [];
+            const allIntervals =
+              status.published?.artifact.analysis.kind === "pause"
+                ? status.published.artifact.analysis.intervals
+                : [];
             const published = status.published
               ? {
                   ...status.published,
@@ -2344,8 +2448,7 @@ export async function startProjectService(options: {
                       ),
                     },
                     nextCursor:
-                      (cursor?.offset ?? 0) + limit <
-                      allIntervals.length
+                      (cursor?.offset ?? 0) + limit < allIntervals.length
                         ? { offset: (cursor?.offset ?? 0) + limit }
                         : null,
                   },

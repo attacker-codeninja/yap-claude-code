@@ -1,22 +1,17 @@
 # Transcript import and agent evidence
 
-**Status:** proposal. This spec is the next planning unit for the agent-facing
+**Status:** implementation complete; review and archival are in progress. This spec is the planning unit for the agent-facing
 media toolkit. It does not add a UI editor, a human approval flow or professional
 editor interchange.
 
 ## Next Agent Prompt
 
-**Last updated:** 2026-10-14. **Status:** implementation in progress. Slices 01,
-02, 03, 04, 05 and 07 have code and focused checks. Slice 06 remains the final
-integration/closeout pass.
+**Last updated:** 2026-10-14. **Status:** implementation complete. All slices
+have code and focused checks; closeout review and archival remain.
 
-You are picking up the transcript-import-and-evidence spec. The next slice is
-**02-explicit-alignment**. First read this README, `DEVELOPMENT.md`, the owning
-package READMEs and the current operation schemas. Wire `timingPolicy: "align"`
-to the existing alignment owner while preserving supplied text/timing beside the
-derived result. Do not make the default supplied branch align or download a model.
-Run focused protocol/core/service checks, update this handoff with results and
-the next pickup point, then continue to slice 05.
+The implementation pass is complete. Run the whole-spec review, consolidate the
+choices ledger against the final tree, then archive this spec under
+`specs/done/transcript-import-and-evidence/`.
 
 Global TODO:
 
@@ -26,7 +21,7 @@ Global TODO:
 - [x] 03 — Add missed-filler/disfluency evidence.
 - [x] 04 — Add pause/dead-air evidence with named detector policies.
 - [x] 05 — Add reversible speaker-attribution corrections.
-- [ ] 06 — Integrate project/package persistence and CLI/MCP parity; run the full suite.
+- [x] 06 — Integrate project/package persistence and CLI/MCP parity; run the full suite.
 - [x] 07 — Rename analysis operations and finish optional-model consent/error details.
 
 Before ending any implementation pass, update this prompt with the current
@@ -175,17 +170,17 @@ feature.
   cue shape with fatal UTF-8 validation, raw digest, parser identity, cue timing,
   speakers and optional supplied word timing.
 - `packages/core/src/imported-transcript.ts` stores imported generations and raw
-  source bytes; the service exposes them through `transcript.get`. Package export
-  and adoption still use the ASR transcript resource owner and do not yet carry
-  imported cue generations.
+  source bytes; the service exposes them through `transcript.get` and search.
+  Package manifests carry imported cue data, raw source bytes, provenance,
+  timing policy and source dependencies; adoption restores the generation
+  without rerunning inference.
 - `audio.pause.get` uses the retained acoustic inspection/cache owner and exposes
   resolved RMS settings and unavailable support.
 - `transcript.disfluency.get` reports emitted lexical filler/vocalization rows;
   missed-disfluency measurement remains unsupported until a provider exists.
-- Slice 06 package/project integration remains open. The correction operation
-  targets project evidence rows; direct imported cue reads
-  retain their source labels and are not rewritten. See `choices.md` for known
-  gaps and decisions made during this pass.
+- The correction operation targets project evidence rows; direct imported cue
+  reads retain their source labels and are not rewritten. See `choices.md` for
+  final decisions.
 
 Focused verification for the implemented passes: core import, audio waveform/
 pause, protocol operation schemas and service build all pass. The service test

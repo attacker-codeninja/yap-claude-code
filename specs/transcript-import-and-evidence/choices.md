@@ -1,84 +1,91 @@
-# Choices ledger
+# Final choices ledger
 
-## Sound
-
-### Speaker corrections live on project revisions
-
-When an agent corrects a speaker assignment, the correction is stored with the
-project revision and displayed beside the acoustic base attribution. Undo and
-restore therefore recover it with the ordinary revision history. Imported source
-cue reads keep their supplied labels unchanged; the correction applies when that
-evidence is projected into a project occurrence. **Verdict: sound for the
-project-owned contract. Confidence: high.**
-
-### Convenience review reports missing models instead of acquiring them
-
-The transcript review convenience operation now returns the same missing-model
-details as direct transcription. It does not silently start a download; the
-agent can ask the user and then call `model.prepare`. This preserves the
-explicit-download rule across both convenience and low-level paths. **Verdict:
-sound. Confidence: high.**
-
-### Imported transcripts use a separate source-owned store
-
-When an agent imports a caption file, the existing ASR transcript tables cannot
-represent cue-only timing without inventing word timings. The implementation
-therefore keeps imported generations in a dedicated store while exposing them
-through the transcript service read path. This preserves the existing ASR owner
-and makes cue evidence honest. The choice was forced by the current schema and
-the spec's cue-level timing rule. **Verdict: sound. Confidence: high.**
-
-### Pause detection reuses the acoustic inspection owner
-
-The pause operation reads the same retained PCM and job/cache lifecycle as
-waveforms and spectra. It adds one technical RMS detector and returns intervals
-as evidence. It does not create an editing operation or a second audio reader.
-That keeps support gaps and cache identity under one owner. **Verdict: sound.
-Confidence: high.**
-
-### Explicit import alignment schedules one observer per cue
-
-When an agent chooses `timingPolicy: "align"`, the import call keeps the
-supplied cue generation and schedules the existing alignment observer for each
-cue's literal text and range. The default supplied path schedules no observer.
-This keeps alignment explicit and lets the existing model readiness/error
-contract apply. **Verdict: sound. Confidence: medium.**
-
-### Alignment is returned as per-cue job status before package joining
-
-The current import response includes one existing alignment job/status per cue;
-the imported generation remains readable immediately with supplied timing. The
-unbuilt alternative would add a new combined imported-alignment database owner.
-Keeping alignment jobs separate avoids a second evidence engine, but slice 06
-must make those dependencies durable in package export/adoption. **Verdict:
-sound as an incremental seam. Confidence: medium.**
-
-## Open integration
-
-### Imported alignment is returned as scheduled evidence
-
-The service now invokes the existing alignment owner for each imported cue when
-the agent explicitly selects `timingPolicy: "align"`, while keeping supplied
-cue data in the import receipt. A later integration pass still needs to join the
-published alignment generations back into imported reads. **Verdict: sound for
-explicit scheduling; remaining join work is slice 06. Confidence: medium.**
-
-### Imported cue reads return empty literal search results
-
-The imported read path returns cue rows but does not search cue text or supplied
-word rows. The unbuilt alternative would make `transcript.search` traverse the
-same imported generation and preserve its provenance. This is a functional gap
-for agents using imported evidence. **Verdict: unsound. Corrected decision:
-search must share the imported generation reader and return pinned cue/word
-matches. Confidence: high.**
+This ledger records decisions that shape the shipped transcript-import and evidence
+contract. It is intentionally separate from test results and implementation
+history.
 
 ## Needs user
 
-### First imported JSON schema is `{ cues: [...] }`
+### Keep the first JSON import schema deliberately small
 
-The parser accepts a deliberately small JSON shape with cue timing, text,
-speakers and optional word timing. A broader editor-export schema could also be
-supported, but the prompt did not choose one. The provisional call is to keep
-this schema and add formats only when a real source requires them; it is
-reversible because the parser is isolated. **Verdict: needs-user. Recommended
-provisional call: keep the small schema. Confidence: medium.**
+An agent can import JSON shaped as `{ cues: [...] }`, where each cue carries its
+text, timing, optional speaker, and optional word timing; other top-level fields
+are preserved as metadata. A broad editor-export schema could accept many more
+variants, but would make the first contract harder to explain and validate. The
+provisional call is to keep this small schema and add a format only when a real
+source requires it. **Verdict: needs-user; provisional call is reversible.
+Confidence: medium.**
+
+## Sound
+
+### Imported transcripts are a separate source-owned evidence type
+
+A caption file can have cue timing without word timing. The existing speech
+transcript tables assume word observations, so putting captions there would
+invent timing or lose cue boundaries. Yap therefore stores imported generations
+in their own durable tables and exposes them through the normal transcript read
+operations. **Verdict: sound. Confidence: high.**
+
+### Timing policy is explicit and persisted
+
+When an agent imports a caption file, supplied timing is trusted by default. If
+the agent chooses `timingPolicy: "align"`, the service schedules the existing
+alignment owner while retaining the supplied cue and timing. The selected policy
+is stored with the generation so a restart or package transfer does not change
+what the caller asked for. **Verdict: sound. Confidence: high.**
+
+### Package resources retain imported bytes and provenance
+
+A package must still be useful after the original caption path disappears. The
+package therefore carries the raw source member, digest and size, parser and
+metadata, cue rows, timing policy, and source asset/acquisition dependencies.
+Adoption verifies the bytes and cues before restoring the same generation. This
+keeps package recovery evidence-only and avoids rerunning a model. **Verdict:
+sound. Confidence: high.**
+
+### Imported generation identity is source plus generation
+
+A generation is identified by its source selection and durable generation ID.
+That identity is used in package references and dependency closure, so two
+assets can use the same caption content without colliding and an adopted package
+can replay the same generation idempotently. **Verdict: sound. Confidence: high.**
+
+### Imported search matches whole phrases within each cue
+
+For an imported read, search folds case and outer punctuation, then looks for the
+requested consecutive words inside one cue. Cue-only imports match their cue
+text and return the cue range; word-timed imports also return the supplied word
+identifiers. Search never joins separate cues or invents word timing. **Verdict:
+sound. Confidence: medium.**
+
+### Alignment remains a separate evidence owner
+
+The import operation does not create a second alignment database. Explicit
+alignment requests schedule the existing alignment jobs per cue, and reads can
+join those retained results later. This preserves one owner for alignment model
+readiness, receipts and evidence semantics. **Verdict: sound. Confidence:
+medium.**
+
+### Speaker corrections stay on project revisions
+
+A caller-authored speaker correction changes the project evidence projection and
+is recovered with ordinary revision history, undo and restore. The imported
+source cue keeps its supplied label and is never rewritten by a project edit.
+This keeps source evidence immutable and gives corrections one mutation owner.
+**Verdict: sound. Confidence: high.**
+
+### Detection is evidence, never permission to edit
+
+Filler, pause and speaker observations report what was measured, including method,
+settings and coverage. They do not silently remove words, cut silence, or repair
+attribution. An agent must make a separate explicit reversible edit request.
+**Verdict: sound. Confidence: high.**
+
+### Optional model acquisition is an error-directed user decision
+
+Agents call the requested analysis directly. If an optional model is missing, the
+error explains that `model.prepare` will download and verify it, names the
+purpose and scope, and marks the failure retryable. The agent can ask the user,
+prepare only after a yes, and retry the original operation. The consumer skill
+explains this recovery but does not tell agents to preflight every call.
+**Verdict: sound. Confidence: high.**
