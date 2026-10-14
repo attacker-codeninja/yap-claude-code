@@ -1,7 +1,5 @@
 name: Tagged release
 on:
-  push:
-    tags: ["v*"]
   workflow_dispatch:
     inputs:
       tag:
@@ -66,7 +64,7 @@ jobs:
           node scripts/release.mjs package "$RELEASE_TAG"
           node scripts/release-smoke.mjs
           node scripts/release-media-smoke.mjs
-          cp scripts/release-notes.md dist/release/NOTES.md
+          node scripts/release-notes.mjs "$RELEASE_TAG" > dist/release/NOTES.md
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release
@@ -74,6 +72,7 @@ jobs:
             dist/release/*.zip
             dist/release/appcast.xml
             scripts/release-publish.mjs
+            scripts/release-kit.mjs
             dist/release/SHA256SUMS
             dist/release/release.json
             dist/release/NOTES.md

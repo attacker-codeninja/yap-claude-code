@@ -58,19 +58,23 @@ Update the manifest, commit the source, and push an annotated tag whose name is 
 followed by that version. Push the source branch as well. Never move a published tag or silently replace
 its assets; a correction receives a new version.
 
-On an available Apple Silicon release machine, build and package locally before
-pushing the version tag. Run `node scripts/release.mjs prepare`,
+On an available Apple Silicon release machine, build, package and publish locally
+before pushing the version tag. Run `node scripts/release.mjs prepare`,
 `node scripts/release.mjs package vX.Y.Z`, `node scripts/release-smoke.mjs` and
 `node scripts/release-media-smoke.mjs`; `releaseSigningInputs()` reads the
-ignored `.release-signing/` folder automatically. Only after those gates pass
-should the annotated tag be pushed. The tag workflow is a fallback for a
-genuinely unavailable local release machine or an explicit request, because
-pushing a tag starts it immediately.
+ignored `.release-signing/` folder automatically. Generate the GitHub body with
+`node scripts/release-notes.mjs vX.Y.Z > dist/release/NOTES.md`, then publish
+through `node scripts/release-publish.mjs dist/release vX.Y.Z REVISION`.
+Only after the local package and smoke gates pass should the annotated tag be
+pushed. The tag workflow is manual fallback infrastructure for an unavailable
+local release machine or an explicit request; it is not the normal build path.
 
-The [tag workflow](../.github/workflows/release.yml) validates version agreement,
-prepares pinned inputs, builds on macOS, checks the relocated package and publishes
-only verified assets. Its manual retry runs the selected source with an explicit
-version tag validated by the same release owner; published assets remain immutable.
+The [tag workflow](../.github/workflows/release.yml) is a manual fallback. It
+validates version agreement, prepares pinned inputs, builds on macOS, checks the
+relocated package and publishes only verified assets. It is deliberately not
+triggered by a tag push, because the normal release is built and published from
+the local signed package. Its manual run takes an explicit version tag validated
+by the same release owner; published assets remain immutable.
 An unpublished release must come from the tag's exact source. Rebuilding a
 published release checks repaired tooling without changing delivered bytes.
 Relocation smoke checks CLI version agreement and loads schema help and the native
@@ -124,8 +128,10 @@ matching Sparkle even when `HOME`
 selects another default app location. The account lock persists across bundle
 replacement; neither launcher nor updater may unlink it. Neither is a notarization
 claim. The
-[recipient guide](release-notes.md) is also the release-notes template and links
-to [agent setup](../README.md#agent-setup). The consumer skill's
+[recipient guide](release-notes.md) is the cumulative project-facing history
+and links to [agent setup](../README.md#agent-setup). The release publisher uses
+`release-notes.mjs` to extract only the selected version section for a GitHub
+release body, so historical entries do not repeat in every release. The consumer skill's
 [installation procedure](../skills/yap/references/installation.md) owns
 executable release-install commands and readiness checks.
 

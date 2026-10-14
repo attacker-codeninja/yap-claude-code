@@ -24,12 +24,13 @@ for the process; use its linked code as the authority for commands and packaging
 4. Validate version/tag agreement through the release tool. Push main first, then
    push an annotated version tag only after the local package gates pass. Never
    force-push main, move a published tag or replace published assets.
-5. Build on an available Apple Silicon Mac and upload directly to
-   GitHub Releases through the publication owner. Use the
-   [tag workflow](../../../.github/workflows/release.yml) as the checklist for
-   preparation, signing, packaging and relocated smoke/media checks; local builds
-   must satisfy the same gates. Use Actions only when no suitable local Mac is
-   available or the user explicitly requests it.
+5. Build on the available Apple Silicon Mac and upload the verified package
+   directly to GitHub Releases through the local publication owner. Generate the
+   per-version `NOTES.md` with `node scripts/release-notes.mjs TAG`, then run
+   `node scripts/release-publish.mjs dist/release TAG REVISION`. A tag push must
+   not be used to select a competing GitHub build. The tag workflow is manual
+   fallback infrastructure only, for an unavailable local Mac or an explicit
+   request to use Actions.
 6. Build from the tag's exact commit. If main advances, use a temporary checkout
    pinned to the tag; preserve unrelated work. Reuse valid prepared dependencies,
    keep build output private to its source checkout, and verify the package receipt
@@ -45,8 +46,8 @@ for the process; use its linked code as the authority for commands and packaging
 ## Signing credentials
 
 - The local release path reads `.release-signing/` automatically when environment
-  variables are unset. This path is the default on a suitable local Mac; Actions
-  is not an automatic substitute.
+  variables are unset. This path is the normal release path on a suitable local
+  Mac; GitHub Actions is a manual fallback, not an automatic substitute.
 - Reuse the production signing certificate and Sparkle key. A product or repository
   rename does not require rotating either, even if the certificate subject carries
   the old name. Missing local credentials are a restore task, not a reason to
