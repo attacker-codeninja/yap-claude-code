@@ -47,6 +47,10 @@ final class RecordingControls: NSObject {
             return try await self.service().call(operation, params)
         },
         changed: { [weak self] in self?.render() },
+        export: { [weak self] projectId, revisionId in
+            self?.exports.exportToDownloads(projectId, revisionId: revisionId)
+        },
+        timelineEnabled: true,
         failure: { [weak self] message in
             self?.state.libraryFailure = message
             self?.render()
@@ -135,6 +139,26 @@ final class RecordingControls: NSObject {
     /// Every `skill.*` and `cli.*` operation, answered by the one home owner.
     func handleHome(_ operation: String) -> Result<Data, ServiceFailure> {
         homeLifecycle.handle(operation)
+    }
+
+    /// Service-initiated inspect.open uses the same PreviewController as Library actions.
+    /// The service has already validated the project/revision pin before asking the app to show it.
+    func openInspect(_ params: [String: Any]) -> Result<Data, ServiceFailure> {
+        guard let projectId = params["projectId"] as? String, !projectId.isEmpty else {
+            return .failure(ServiceFailure(code: "INVALID_PARAMS", message: "inspect.open needs projectId"))
+        }
+        let revisionId = params["revisionId"] as? String
+        let range = params["range"] as? [String: Any]
+        preview.open(projectId, revisionId: revisionId, range: range)
+        let payload: [String: Any] = [
+            "opened": true,
+            "projectId": projectId,
+            "revisionId": revisionId as Any,
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: payload, options: [.fragmentsAllowed]) else {
+            return .failure(ServiceFailure(code: "INVALID_RESPONSE", message: "Could not encode inspect.open acknowledgement"))
+        }
+        return .success(data)
     }
 
     /// Opt-out remains usable while the child service is closing or unavailable.

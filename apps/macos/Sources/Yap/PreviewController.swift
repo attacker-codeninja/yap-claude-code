@@ -6,7 +6,21 @@ protocol PreviewPresenting: AnyObject {
     func open(title: String, retry: @escaping @MainActor () -> Void, closed: @escaping @MainActor () -> Void)
     func show(title: String, message: String, canRetry: Bool)
     func play(title: String, file: String, mediaType: String, failed: @escaping @MainActor (String) -> Void)
+    func showTimeline(_ items: [PreviewTimelineItem], selected: String, select: @escaping @MainActor (String) -> Void)
+    func showExport(_ action: @escaping @MainActor () -> Void)
     func close()
+}
+
+struct PreviewTimelineItem: Sendable {
+    let id: String
+    let ordinal: Int
+    let label: String
+    let operation: String
+}
+
+extension PreviewPresenting {
+    func showTimeline(_ items: [PreviewTimelineItem], selected: String, select: @escaping @MainActor (String) -> Void) {}
+    func showExport(_ action: @escaping @MainActor () -> Void) {}
 }
 
 /// One native view of a pinned service derivative. The delivery lease owns the cache file;
@@ -19,9 +33,12 @@ final class PreviewController {
     private let now: @MainActor () -> Date
     private let failure: (String) -> Void
     private let changed: () -> Void
+    private let export: @MainActor (String, String) -> Void
+    private let timelineEnabled: Bool
     private var generation = UUID()
     private var target: MediaTarget?
     private var revisionId: String?
+    private var range: [String: Any]?
     private var lease: Lease?
     private var renewAt = Date.distantPast
     private var reading = false
@@ -30,6 +47,8 @@ final class PreviewController {
 
     init(call: @escaping Call, presentation: any PreviewPresenting = PreviewWindow(),
         now: @escaping @MainActor () -> Date = Date.init, changed: @escaping () -> Void = {},
+        export: @escaping @MainActor (String, String) -> Void = { _, _ in },
+        timelineEnabled: Bool = false,
         failure: @escaping (String) -> Void)
     {
         self.call = call
@@ -37,16 +56,19 @@ final class PreviewController {
         self.now = now
         self.failure = failure
         self.changed = changed
+        self.export = export
+        self.timelineEnabled = timelineEnabled
     }
 
     var isOpen: Bool { target != nil }
 
-    func open(_ projectId: String, revisionId: String? = nil) {
+    func open(_ projectId: String, revisionId: String? = nil, range: [String: Any]? = nil) {
         let target = MediaTarget.project(projectId)
         finishClose()
         self.target = target
         changed()
         self.revisionId = revisionId
+        self.range = range
         polling = true
         requestOperation = "preview.get"
         let current = generation
@@ -57,7 +79,31 @@ final class PreviewController {
             guard let self, self.generation == current else { return }
             self.close()
         })
+        presentation.showExport { [weak self] in
+            guard let self, let revisionId = self.revisionId ?? revisionId else { return }
+            self.export(target.id, revisionId)
+        }
+        if timelineEnabled { loadTimeline(for: target, generation: current) }
         tick()
+    }
+
+    private func loadTimeline(for target: MediaTarget, generation: UUID) {
+        Task { @MainActor in
+            guard self.generation == generation else { return }
+            do {
+                let data = try await call("revision.history", ["projectId": target.id, "limit": 100])
+                let page = try JSONDecoder().decode(History.self, from: data)
+                guard self.generation == generation else { return }
+                presentation.showTimeline(page.revisions.reversed().map {
+                    PreviewTimelineItem(id: $0.id, ordinal: $0.ordinal, label: "Revision \($0.ordinal + 1)", operation: $0.operation)
+                }, selected: revisionId ?? page.revisions.last?.id ?? "", select: { [weak self] id in
+                    guard let self, self.generation == generation, self.target?.id == target.id else { return }
+                    self.open(target.id, revisionId: id, range: self.range)
+                })
+            } catch {
+                // Preview remains usable when historical metadata is temporarily unavailable.
+            }
+        }
     }
 
     func close(target: MediaTarget? = nil) {
@@ -70,6 +116,7 @@ final class PreviewController {
         generation = UUID()
         self.target = nil
         revisionId = nil
+        range = nil
         polling = false
         reading = false
         presentation.close()
@@ -109,6 +156,7 @@ final class PreviewController {
                 } else {
                     var params: [String: Any] = target.parameters
                     if let pinnedRevision { params["revisionId"] = pinnedRevision }
+                    if let range { params["range"] = range }
                     let data = try await call(requestOperation, params)
                     // Decode the lease separately so a late or otherwise invalid ready answer
                     // releases the service pin rather than leaving it until expiration.
@@ -189,6 +237,10 @@ final class PreviewController {
         let expiresAt: Double
     }
     private struct Delivery: Decodable { let delivery: Lease? }
+    private struct History: Decodable {
+        let revisions: [Revision]
+        struct Revision: Decodable { let id: String; let ordinal: Int; let operation: String }
+    }
     private struct Answer: Decodable {
         let target: MediaTarget
         let revisionId: String

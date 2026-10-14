@@ -1,6 +1,6 @@
 {
   "base": "886c24f5",
-  "purpose": "Frozen real prior catalog with caller-authored edit history, for refusal without migration or byte mutation",
+  "purpose": "Frozen real pre-launch catalog with caller-authored edit history, for refusal without migration or byte mutation",
   "format": {
     "user_version": 22
   },

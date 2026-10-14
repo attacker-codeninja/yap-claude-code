@@ -249,6 +249,12 @@ loudness-matching or mastering request.
 
 ## Checks
 
+The review surface is owned here as service routing over existing owners:
+`inspect.open`/`inspect` resolves revision history and asks the native app to
+show its shared preview, while `caption.propose` and `layout.diagnostics` stay
+read-only and bounded. Native rendering, preview leases and export publication
+remain with their existing owners.
+
 The package test script runs every node test in [`tests/`](tests) against the repo's
 debug native worker unless `YAP_NATIVE` names another. [`capture-source-lifetime`](tests/capture-source-lifetime.mjs)
 is a lab, not a test: it certifies a pinned native build from `YAP_NATIVE_PINS` and

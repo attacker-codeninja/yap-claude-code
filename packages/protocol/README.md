@@ -19,6 +19,12 @@ retained output identities must not be conflated. Named operations define the
 payload meaning. Synchronous read pages and committed export receipts keep their
 own contracts rather than inventing asynchronous work.
 
+Review operations are intentionally read-only: `inspect.open` resolves a pinned
+project revision for the native preview owner, `caption.propose` consumes an
+explicit compact transcript entry, and `layout.diagnostics` reports sampled
+geometry evidence. They do not create revisions or infer editorial decisions;
+`text.seed` remains the explicit caption mutation.
+
 ## Issues
 
 Output by default: an operation that can produce its output does, and reports

@@ -82,6 +82,39 @@ final class ExportController {
         }
     }
 
+    /// Inspector action: deterministic, collision-safe delivery to the user's Downloads folder.
+    func exportToDownloads(_ projectId: String, revisionId: String, kind: ExportsState.Kind = .video) {
+        let target = MediaTarget.project(projectId)
+        guard state.choosing == nil else { return }
+        let exportId = UUID().uuidString.lowercased()
+        Task { @MainActor in
+            do throws(ServiceFailure) {
+                let answer = try await call("project.get", target.parameters)
+                guard let owner = try? JSONDecoder().decode(Owner.self, from: answer) else {
+                    throw ServiceFailure(code: "INVALID_RESPONSE", message: "The service returned an unreadable project")
+                }
+                guard owner.target == target else { throw ServiceFailure(code: "INVALID_RESPONSE", message: "The service returned a different project") }
+                let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+                    ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Downloads")
+                do { try FileManager.default.createDirectory(at: downloads, withIntermediateDirectories: true) }
+                catch { throw ServiceFailure(code: "INVALID_DESTINATION", message: error.localizedDescription) }
+                let stem = "Project \((owner.title ?? projectId).replacingOccurrences(of: "/", with: "-")) \(revisionId)"
+                let ext = kind == .audio ? "wav" : kind == .package ? "zip" : "mp4"
+                var index = 0
+                var leaf = "\(stem).\(ext)"
+                while FileManager.default.fileExists(atPath: downloads.appendingPathComponent(leaf).path) {
+                    index += 1; leaf = "\(stem) (\(index)).\(ext)"
+                }
+                let directory = downloads.path
+                let request = ExportsState.Request(exportId: exportId, target: target, kind: kind,
+                    revisionId: revisionId, directory: directory, leaf: leaf)
+                state.send(request)
+                changed()
+                await send(request)
+            } catch { failure(error.localizedDescription) }
+        }
+    }
+
     func resend(_ exportId: String) {
         guard let request = state.resend(exportId) else { return }
         changed()

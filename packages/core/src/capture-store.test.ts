@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, readFileSync, copyFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { catalogFormat } from "./catalog.js";
+import { catalogFormat, minimumSupportedCatalogFormat } from "./catalog.js";
 import { CaptureStore } from "./capture-store.js";
 
 const roots: string[] = [];
@@ -526,7 +526,7 @@ test("an allocation request is a durable receipt that replays and refuses differ
   ).toThrow(expect.objectContaining({ code: "REQUEST_CONFLICT" }));
 });
 
-test("a catalog in another format, or unstamped with tables, is refused without migrating its data", () => {
+test("a pre-launch catalog is refused without mutating its legacy rows", () => {
   const { store, path, providers } = fixture();
   const { recording } = store.allocate();
   store.registerSource(recording.recordingId, 20);
@@ -769,4 +769,5 @@ test("the catalog stays at the format 0.1.33 libraries use, so their recordings 
   // Every format refuses every other (above), so a bump would orphan existing libraries. Derived
   // data self-recovers through producer identities and additive tables instead.
   expect(catalogFormat).toBe(29);
+  expect(minimumSupportedCatalogFormat).toBe(catalogFormat);
 });

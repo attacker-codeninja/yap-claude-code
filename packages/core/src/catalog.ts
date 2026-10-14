@@ -1,10 +1,12 @@
 import { DatabaseSync } from "node:sqlite";
 /**
  * The persisted contract shared by catalog owners. Additive tables are created idempotently.
- * Changes to existing shapes or required ownership records need a bump: old catalogs cannot
- * reconstruct missing semantic inputs and are refused, never migrated.
+ * Changes to existing shapes or required ownership records need a bump and an explicit
+ * migration owner. Launch version 0.1.33 is the compatibility floor and already uses 29;
+ * earlier catalogs are refused until a deliberately tested migration is added.
  */
 export const catalogFormat = 29;
+export const minimumSupportedCatalogFormat = 29;
 export class CatalogError extends Error {
   constructor(
     readonly code: string,

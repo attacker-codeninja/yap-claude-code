@@ -132,6 +132,10 @@
       "types": "./dist/catalog.d.ts",
       "default": "./dist/catalog.js"
     },
+    "./layout-diagnostics": {
+      "types": "./dist/layout-diagnostics.d.ts",
+      "default": "./dist/layout-diagnostics.js"
+    },
     "./assets": {
       "types": "./dist/assets.d.ts",
       "default": "./dist/assets.js"

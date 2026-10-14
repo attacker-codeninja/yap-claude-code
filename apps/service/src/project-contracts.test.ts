@@ -64,6 +64,77 @@ async function emptyProject() {
   }
   return { ...f, project, revision, request, state };
 }
+
+test("inspect, caption proposal and layout diagnostics stay pinned and read-only", async () => {
+  const f = await emptyProject();
+  const before = await f.state();
+  const opened = await f.call("inspect.open", {
+    projectId: f.project.projectId,
+    revisionId: f.revision.id,
+    range: { startUs: 0, endUs: 1 },
+  });
+  expect(opened).toMatchObject({
+    ok: true,
+    data: {
+      projectId: f.project.projectId,
+      headRevisionId: f.revision.id,
+      revision: { id: f.revision.id },
+      history: [{ id: f.revision.id, ordinal: 0 }],
+      native: { opened: false },
+    },
+  });
+  const proposed = await f.call("caption.propose", {
+    projectId: f.project.projectId,
+    revisionId: f.revision.id,
+    entry: {
+      identity: { projectId: f.project.projectId, revisionId: f.revision.id },
+      generation: "g1",
+      state: "ready",
+      complete: true,
+      rows: [
+        {
+          rowIndex: 0,
+          type: "word",
+          text: "Hello",
+          clipId: "clip",
+          trackId: "audio",
+          assetId: "asset",
+          streamId: "stream",
+          generation: "g1",
+          ordinal: 0,
+          sourceRange: { startUs: 0, endUs: 1 },
+          fragments: [{ source: { startUs: 0, endUs: 1 }, project: { startUs: 0, endUs: 1 } }],
+        },
+      ],
+    },
+    rowIndexes: [0],
+    trackId: "captions",
+    canvas: { width: 100, height: 100 },
+    style: { font: { assetId: "font", postScriptName: "Fixture" }, width: 100, height: 100, size: 20, color: "#ffffffff", alignment: "left", wrap: true },
+    constraints: { widthGraphemes: 30, maxLines: 2, minDwellUs: 1, maxDwellUs: 100, maxCps: 30, pauseUs: 1, breakOnPunctuation: true, separator: " ", safeArea: { x: 0, y: 0, width: 100, height: 100 } },
+  });
+  expect(proposed).toMatchObject({ ok: true, data: { identity: { revisionId: f.revision.id }, proposals: [{ text: "Hello" }] } });
+  const diagnostics = await f.call("layout.diagnostics", {
+    projectId: f.project.projectId,
+    revisionId: f.revision.id,
+    samples: [{ atUs: 0, canvas: { width: 100, height: 100 }, texts: [{ id: "caption", bounds: { x: 99, y: 0, width: 5, height: 5 } }] }],
+  });
+  expect(diagnostics.ok).toBe(true);
+  if (diagnostics.ok) {
+    expect(diagnostics.data).toMatchObject({ revisionId: f.revision.id });
+    expect((diagnostics.data as any).issues.map((issue: any) => issue.code)).toContain("text-off-canvas");
+  }
+  expect(await f.state()).toEqual(before);
+  expect(await f.call("inspect.open", { projectId: f.project.projectId, revisionId: "missing" })).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
+  expect(await f.call("caption.propose", {
+    projectId: f.project.projectId,
+    revisionId: f.revision.id,
+    entry: { identity: { projectId: f.project.projectId, revisionId: f.revision.id }, state: "not_ready", complete: false, rows: [{}] },
+    rowIndexes: [0], trackId: "captions", canvas: { width: 100, height: 100 },
+    style: { font: { assetId: "font", postScriptName: "Fixture" }, width: 100, height: 100, size: 20, color: "#ffffffff", alignment: "left", wrap: true },
+    constraints: { widthGraphemes: 30, maxLines: 2, minDwellUs: 1, maxDwellUs: 100, maxCps: 30, pauseUs: 1, breakOnPunctuation: true, separator: " ", safeArea: { x: 0, y: 0, width: 100, height: 100 } },
+  })).toMatchObject({ ok: false, error: { code: "NOT_READY" } });
+});
 async function sendRaw(socketPath: string, bytes: Buffer) {
   await new Promise<void>((resolve, reject) => {
     const socket = createConnection(socketPath, () => socket.write(bytes));

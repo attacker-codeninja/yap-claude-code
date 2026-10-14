@@ -123,6 +123,8 @@ import { evaluateSpeakerContinuity } from "@yap/core/speaker-continuity";
 import { admitCorrespondence, verifyCorrespondenceReceipt } from "@yap/core/correspondence";
 import type { CorrespondenceReceipt } from "@yap/protocol";
 import { buildFaceTrajectory } from "@yap/core/face-trajectory";
+import { layoutDiagnostics } from "@yap/core/layout-diagnostics";
+import { captionProposals } from "../../../skills/yap/scripts/caption-proposals.mjs";
 
 type TranscriptSpeakerRequest = {
   streamId: string;
@@ -142,6 +144,7 @@ type TranscriptSpeakerCursor = TranscriptSpeakerRequest & { bindingDigest?: stri
 function sourceTranscriptPublication(published: { generation: number | string; issues: Issue[] }) {
   return { generation: published.generation, issues: published.issues };
 }
+
 
 function sameTranscriptSpeakerRequest(
   a: TranscriptSpeakerRequest,
@@ -2509,6 +2512,82 @@ export async function startProjectService(options: {
           }
           case "storage.usage":
             return { ok: true, data: await managedStorage.usage() };
+          case "inspect.open":
+          case "inspect": {
+            const params = operation.params;
+            const project = projects.get(params.projectId);
+            const revision = projects.revision(params.projectId, params.revisionId);
+            const history = projects.history(
+              params.projectId,
+              null,
+              params.historyLimit ?? 50,
+            );
+            let native: unknown = { opened: false, reason: "native_app_unavailable" };
+            if (controller) {
+              const answer = await controller.call("inspect.open", {
+                projectId: params.projectId,
+                revisionId: revision.id,
+                ...(params.range === undefined ? {} : { range: params.range }),
+              });
+              native = answer.ok ? answer.data : { opened: false, error: answer.error };
+            }
+            return {
+              ok: true,
+              data: {
+                projectId: project.projectId,
+                headRevisionId: project.currentRevisionId,
+                revision,
+                history: history.revisions.map((item) => ({
+                  id: item.id,
+                  ordinal: item.ordinal,
+                  createdAt: item.createdAt,
+                  operation: item.operation,
+                })),
+                nextCursor: history.nextCursor,
+                range: params.range ?? null,
+                native,
+              },
+            };
+          }
+          case "caption.propose":
+            projects.requireRevision(operation.params.projectId, operation.params.revisionId);
+            try {
+              return {
+                ok: true,
+                data: captionProposals({
+                  ...operation.params,
+                  entry: {
+                    ...operation.params.entry,
+                    identity: {
+                      projectId: operation.params.projectId,
+                      revisionId: operation.params.revisionId,
+                      ...(operation.params.entry.identity as Record<string, unknown> | undefined),
+                    },
+                  },
+                }),
+              };
+            } catch (error) {
+              if (error && typeof error === "object" && "code" in error && "message" in error)
+                throw new CatalogError(
+                  String(error.code),
+                  String(error.message),
+                  "details" in error && error.details && typeof error.details === "object"
+                    ? (error.details as Record<string, unknown>)
+                    : {},
+                  "retryable" in error && error.retryable === true,
+                );
+              throw error;
+            }
+          case "layout.diagnostics":
+            projects.requireRevision(operation.params.projectId, operation.params.revisionId);
+            return {
+              ok: true,
+              data: {
+                projectId: operation.params.projectId,
+                revisionId: operation.params.revisionId,
+                ...layoutDiagnostics(operation.params.samples, operation.params.maxIssues ?? 100),
+              },
+            };
           case "project.create":
             return {
               ok: true,

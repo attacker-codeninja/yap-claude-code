@@ -12,6 +12,9 @@ final class PreviewWindow: NSObject, PreviewPresenting, NSWindowDelegate {
     private var retry: NSButton?
     private var onRetry: (@MainActor () -> Void)?
     private var onClose: (@MainActor () -> Void)?
+    private var timelineBar: NSStackView?
+    private var timelineActions: [ObjectIdentifier: @MainActor () -> Void] = [:]
+    private var exportAction: (@MainActor () -> Void)?
 
     /// Checks that intentionally exercise real windows keep them behind the person's work.
     private static let observed = !(ProcessInfo.processInfo.environment["YAP_FIXTURE_CONTROLS"] ?? "")
@@ -35,6 +38,16 @@ final class PreviewWindow: NSObject, PreviewPresenting, NSWindowDelegate {
         view.showsSharingServiceButton = false
         view.allowsVideoFrameAnalysis = false
         window.contentView = view
+        let bar = NSStackView(frame: NSRect(x: 12, y: view.bounds.height - 38, width: view.bounds.width - 24, height: 28))
+        bar.autoresizingMask = [.width, .minYMargin]
+        bar.orientation = .horizontal
+        bar.alignment = .centerY
+        bar.spacing = 6
+        bar.distribution = .fillProportionally
+        bar.wantsLayer = true
+        bar.layer?.backgroundColor = NSColor.windowBackgroundColor.withAlphaComponent(0.9).cgColor
+        view.addSubview(bar)
+        timelineBar = bar
         let label = NSTextField(wrappingLabelWithString: "Preparing preview…")
         label.frame = NSRect(x: 24, y: 220, width: 752, height: 60)
         label.autoresizingMask = [.width, .minYMargin, .maxYMargin]
@@ -65,6 +78,37 @@ final class PreviewWindow: NSObject, PreviewPresenting, NSWindowDelegate {
         self.message?.stringValue = message
         self.message?.isHidden = false
         retry?.isHidden = !canRetry
+    }
+
+    func showTimeline(_ items: [PreviewTimelineItem], selected: String, select: @escaping @MainActor (String) -> Void) {
+        guard let bar = timelineBar else { return }
+        for view in bar.arrangedSubviews {
+            bar.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+        timelineActions.removeAll()
+        for item in items {
+            let button = NSButton(title: item.label, target: self, action: #selector(selectTimeline(_:)))
+            button.bezelStyle = .texturedRounded
+            button.controlSize = .small
+            button.toolTip = item.operation
+            button.identifier = .init("timeline.\(item.id)")
+            button.state = item.id == selected ? .on : .off
+            timelineActions[ObjectIdentifier(button)] = { select(item.id) }
+            bar.addArrangedSubview(button)
+        }
+    }
+
+    func showExport(_ action: @escaping @MainActor () -> Void) {
+        exportAction = action
+        guard let view = playerView else { return }
+        let button = NSButton(title: "Export", target: self, action: #selector(exportPreview(_:)))
+        button.bezelStyle = .rounded
+        button.controlSize = .small
+        button.identifier = .init("inspector.export")
+        button.frame = NSRect(x: view.bounds.width - 92, y: view.bounds.height - 38, width: 80, height: 26)
+        button.autoresizingMask = [.minXMargin, .minYMargin]
+        view.addSubview(button)
     }
 
     func play(title: String, file: String, mediaType: String,
@@ -150,6 +194,9 @@ final class PreviewWindow: NSObject, PreviewPresenting, NSWindowDelegate {
         retry = nil
         onRetry = nil
         onClose = nil
+        timelineBar = nil
+        timelineActions.removeAll()
+        exportAction = nil
     }
 
     func windowWillClose(_ notification: Notification) {
@@ -158,4 +205,6 @@ final class PreviewWindow: NSObject, PreviewPresenting, NSWindowDelegate {
     }
 
     @objc private func retryPreview() { onRetry?() }
+    @objc private func selectTimeline(_ sender: NSButton) { timelineActions[ObjectIdentifier(sender)]?() }
+    @objc private func exportPreview(_ sender: NSButton) { exportAction?() }
 }

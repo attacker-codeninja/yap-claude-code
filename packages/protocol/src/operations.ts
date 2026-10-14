@@ -189,6 +189,56 @@ const previewParams = project
       .optional(),
   })
   .strict();
+const inspectParams = project
+  .extend({
+    revisionId: id.optional(),
+    range: range
+      .refine(({ startUs, endUs }) => endUs > startUs, { message: "Inspection range must be positive" })
+      .optional(),
+    historyLimit: z.int().min(1).max(100).optional(),
+  })
+  .strict();
+const captionProposalParams = project
+  .extend({
+    revisionId: id,
+    entry: z.record(z.string(), z.unknown()),
+    rowIndexes: z.array(z.int().nonnegative()).min(1).max(10000),
+    trackId: id,
+    canvas: z.record(z.string(), z.unknown()),
+    style: z.record(z.string(), z.unknown()),
+    constraints: z.record(z.string(), z.unknown()),
+    corrections: z.array(z.record(z.string(), z.unknown())).max(10000).optional(),
+  })
+  .strict();
+const layoutDiagnosticParams = project
+  .extend({
+    revisionId: id,
+    samples: z
+      .array(
+        z
+          .object({
+            atUs: time,
+            canvas: z.object({ width: z.number().positive(), height: z.number().positive() }).strict(),
+            texts: z
+              .array(
+                z
+                  .object({
+                    id,
+                    bounds: z.object({ x: z.number(), y: z.number(), width: z.number().nonnegative(), height: z.number().nonnegative() }).strict(),
+                    glyphs: z.array(z.string()).optional(),
+                    fallback: z.string().optional(),
+                  })
+                  .strict(),
+              )
+              .max(256),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(32),
+    maxIssues: z.int().min(1).max(100).optional(),
+  })
+  .strict();
 const historyPosition = {
   afterOrdinal: z.int().min(-1),
   throughOrdinal: z.int().min(-1),
@@ -356,6 +406,28 @@ export const operationSchema = z.discriminatedUnion("operation", [
     })
     .strict()
     .describe("Read a bounded page of managed projects."),
+  z
+    .object({ operation: z.literal("inspect.open"), params: inspectParams })
+    .strict()
+    .describe(
+      "Open a read-only native inspection session for a pinned project revision. Returns the resolved revision, bounded history and an app-open acknowledgement; it never edits, exports or starts capture.",
+    ),
+  z
+    .object({ operation: z.literal("inspect"), params: inspectParams })
+    .strict()
+    .describe("Alias for inspect.open for the CLI and MCP adapters."),
+  z
+    .object({ operation: z.literal("caption.propose"), params: captionProposalParams })
+    .strict()
+    .describe(
+      "Produce bounded transcript-pinned caption drafts from supplied compact evidence. This read-only operation never prepares a model, calls text.seed or mutates a project.",
+    ),
+  z
+    .object({ operation: z.literal("layout.diagnostics"), params: layoutDiagnosticParams })
+    .strict()
+    .describe(
+      "Report bounded sampled text-layout evidence for a pinned revision. Issues are advisory and never authorize edits or certify continuous readability.",
+    ),
   z
     .object({
       operation: z.literal("edit.apply"),

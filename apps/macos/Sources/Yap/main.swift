@@ -237,6 +237,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                         return
                                     }
                                     answer(controls.handleHome(operation))
+                                } else if operation == "inspect.open" {
+                                    guard let controls = self?.controls else {
+                                        answer(.failure(ServiceFailure(code: "INSPECT_UNAVAILABLE", message: "The native inspector is not available.")))
+                                        return
+                                    }
+                                    answer(controls.openInspect(params))
                                 } else {
                                     answer(await capture.handle(operation, params))
                                 }

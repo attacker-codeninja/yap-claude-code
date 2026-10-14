@@ -830,3 +830,39 @@ it("admits exact, caller-authored speaker corrections", () => {
     }),
   ).toMatchObject({ operation: "speaker.correct" });
 });
+
+it("admits the read-only review workflow operations", () => {
+  expect(
+    operationSchema.parse({
+      operation: "inspect.open",
+      params: { projectId: "p", revisionId: "r", range: { startUs: 0, endUs: 10 } },
+    }).operation,
+  ).toBe("inspect.open");
+  expect(
+    operationSchema.parse({
+      operation: "caption.propose",
+      params: {
+        projectId: "p",
+        revisionId: "r",
+        entry: { identity: { projectId: "p", revisionId: "r" }, rows: [] },
+        rowIndexes: [0],
+        trackId: "track",
+        canvas: { width: 100, height: 100 },
+        style: {},
+        constraints: {},
+      },
+    }).operation,
+  ).toBe("caption.propose");
+  expect(
+    operationSchema.parse({
+      operation: "layout.diagnostics",
+      params: {
+        projectId: "p",
+        revisionId: "r",
+        samples: [
+          { atUs: 0, canvas: { width: 100, height: 100 }, texts: [] },
+        ],
+      },
+    }).operation,
+  ).toBe("layout.diagnostics");
+});
