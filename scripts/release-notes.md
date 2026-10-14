@@ -6,6 +6,13 @@ The capture menu keeps its dark appearance after selecting a recording area and
 shows the latest recording below the action buttons with Play and Copy agent prompt
 actions. Screen recordings now include the pointer in the captured video.
 
+## 0.1.36
+
+Opening Yap at macOS login is now an explicit, consent-based CLI operation. The
+installer asks before enabling it; `login.status` and `login.setEnabled` expose
+the same setting used by the app. The CLI continues to start Yap on demand when
+the app is not already open.
+
 ## 0.1.35
 
 The capture menu's window and display chooser matches the menu's dark look, shows

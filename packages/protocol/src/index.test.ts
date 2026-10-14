@@ -50,6 +50,16 @@ it("keeps app capture controls in the public catalog and decodes lifecycle recei
   }
 });
 
+it("advertises login-item control as callable public operations", () => {
+  for (const [operation, params] of [
+    ["login.status", {}],
+    ["login.setEnabled", { enabled: true }],
+  ] as const) {
+    expect(operationNames.has(operation), operation).toBe(true);
+    expect(operationSchema.safeParse({ operation, params }).success, operation).toBe(true);
+  }
+});
+
 it("advertises the account skill lifecycle as callable public operations", () => {
   for (const operation of ["skill.status", "skill.install", "skill.uninstall", "skill.update"]) {
     expect(operationSchema.safeParse({ operation, params: {} }), operation).toMatchObject({

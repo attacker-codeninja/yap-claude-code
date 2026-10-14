@@ -158,7 +158,9 @@ minimum macOS version and signing status.
 Extract with `ditto -x -k <zip-path> <new-directory>`. If `Yap.app` is already in
 `/Applications` or `~/Applications`, quit it and replace that copy; otherwise install
 at `~/Applications/Yap.app`. The app runs only from one of those two folders. Node is
-bundled; consumers do not need Bun, Node or Swift.
+bundled; consumers do not need Bun, Node or Swift. Opening Yap at macOS login
+is opt-in: the installing agent asks the user, then uses `yap login.setEnabled`
+only after an explicit yes.
 
 The skill's [installation procedure](skills/yap/references/installation.md) holds the
 executable commands. Releases are not notarized: a download made with `curl` is never
