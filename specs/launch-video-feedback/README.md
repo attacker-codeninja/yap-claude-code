@@ -35,7 +35,7 @@ duration; the 0.1.35 copy is in `~/.yap-replay/skill-backup-0.1.35` and must
 be moved back afterwards. `~/Movies/yap-launch` is backed up in
 `~/.yap-replay/movies-backup`. The replay worktree (`../lvf-replay`) is this
 commit without the spec, fixtures or replay checker. `~/.yap-replay/replay.sh`
-sends the turns in `acceptance/prompts.md` verbatim.
+sends slice 11's focused task (the owner scoped the three-turn replay down).
 
 The whole-spec review ran (two independent reviewers) and its fixes are
 merged; see choices.md "Whole-spec review fixes".

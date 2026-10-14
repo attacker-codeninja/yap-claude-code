@@ -1,53 +1,47 @@
-# 11 Replay acceptance: a fresh agent edits the same launch video
+# 11 Acceptance: a fresh agent does one focused task on the real inputs
 
 **This is the spec's acceptance criterion, set by the person who owns the
-product.** After slices 01–10 ship:
-1. A fresh Claude Code agent on **Claude Opus 5.5** (`claude-opus-5-5`, the
-   model of the baseline session) edits the same launch video, from the same
-   inputs and prompts, on the built product.
-2. Its transcript is read against the baseline, issue by issue.
+product, and scoped down by them on 2026-10-13.** The original plan replayed
+the whole three-turn launch-video edit. The owner narrowed it: a fresh Claude
+Code agent on **Claude Opus 5.5** (`claude-opus-5-5`, the baseline's model)
+does one concrete task that crosses every fixed path, and its transcript is
+read against the baseline, issue by issue. A whole re-edit isn't needed to
+prove the product no longer fails where the baseline did.
 
-The spec is accepted only when none of the fixed issues recurs, and every
-remaining difference is explained.
+## The task
 
-## Inputs (exactly the baseline's)
+Sent verbatim, with no hint of what was broken:
 
-- **Recording `d0e524d3-fa76-4556-aab3-04aeed386a48`**, made by Yap 0.1.33.
-  The replay uses the person's existing library, where it lives today, as
-  the 0.1.33 compatibility check: the new build must open and edit it.
-  - If the library copy is gone, restore it from
-    `fixtures/launch-video/session/recording/` with `acquisition.import`,
-    after `git lfs pull --include="fixtures/launch-video/session/**"`.
-  - Record that deviation: the recording ID changes.
-- **The five DJI files**, placed in `~/Downloads` before turn 1, from
-  `fixtures/launch-video/session/downloads/`. Hashes are in
-  [provenance](../../../fixtures/launch-video/provenance.json); the asset IDs
-  equal the SHA-256s.
-- **The prompts** in [acceptance/prompts.md](../acceptance/prompts.md), with
-  their recorded deviations.
+```
+Using the yap CLI, cut a ~30-second teaser from recording d0e524d3-fa76-4556-aab3-04aeed386a48, starting at my pitch ("So, introducing Yap…"). ~/Downloads/DJI_20261013075219_0117_D.MP4 is the same take from a farther camera: line it up and cut to it for a few seconds in the middle. Put the B-roll clip ~/Downloads/DJI_20261013080249_0122_D.MP4 in as an 8-second cutaway near the end. Fade the first shot in from black. Clean up the room noise without losing any words, master the audio to -14 LUFS with peaks under -1 dBTP, and export it to ~/Movies/yap-replay-check/teaser.mp4. Tell me anything I should know about the result.
+```
+
+What each part crosses:
+- **Transcript of the 3:52 narration, to find the pitch:** seam disagreement,
+  timing overrun and hand-chunking.
+- **Lining up the far camera:** cross-correlation by hand (no sync primitive,
+  by decision).
+- **An 8 s cutaway from a 7.3 s clip:** the source-bounds refusal.
+- **A fade from black:** the curve-clock error.
+- **Denoise without losing words:** RMS arithmetic outside Yap.
+- **-14 LUFS under -1 dBTP on this peaky narration:** normalization
+  infeasible or unmet.
+- **The export:** delivery of the mastered result.
 
 ## Environment
 
-- **Build and install.** Build the product at the spec's final commit and
-  install it the normal way, so the global `yap` command and consumer skill
-  match that commit. Record the `yap --version`, `cli.status` and
-  `skill.status` receipts.
-- **Agent.** A fresh worktree of this repository at that commit, matching the
-  baseline's working directory (the baseline ran inside a t3code worktree of
-  this repo), then:
-
-  ```
-  claude -p --model claude-opus-5-5 "<turn 1>"
-  claude -p --resume <session-id> "<turn 2>"
-  ```
-
-  and so on for each turn. Keep the agent's own skills and tools as installed.
-- **Isolation.** Don't seed the agent with this spec, `FEEDBACK.md`, the
-  baseline transcript, or any hint about the issues. It must meet the product
-  the way the first agent did.
-- **Duration.** The baseline took several hours of agent time across turns.
-  Run each turn in the background with progress visible, and don't poll in a
-  loop.
+Decided with the owner: no app install.
+- **Library.** The user's library is cloned copy-on-write to
+  `~/.yap-replay/library`, which also serves as the 0.1.33 compatibility
+  check (the new build must open and edit the recording).
+- **Service and CLI.** This checkout's service runs on that clone, and `yap`
+  on the agent's PATH is this checkout's CLI, pinned to that service.
+- **Skill.** The personal yap skill points at this commit's skill for the
+  run.
+- **Working directory.** The agent works in a clean worktree at this commit,
+  without the spec, fixtures or checker.
+- **Rate limits.** If the agent is rate-limited, the runner resumes the same
+  session with "continue". That is a recorded deviation.
 
 ## Reading the transcript
 
@@ -94,25 +88,23 @@ remaining difference is explained.
 | Fixture labels painted over | Unlabelled shots used, or the agent passes `FIXTURE_LABEL=omit`. |
 | Any class-B refusal in the [audit](07-remaining-quality-gates.md) | Zero. Any quality or target miss arrives as an issue on a delivered output. |
 
-**Quality isn't lowered to pass.** The replay must still deliver a finished
-launch video for each turn. Review its export the way the baseline was
+**Quality isn't lowered to pass.** The run must still deliver the finished
+teaser. Review its export the way the baseline was
 reviewed:
 - frames;
 - rendered-speech ASR of the final mix;
 - section loudness.
 
-A replay that "passes" by skipping transcription or mastering fails.
+A run that "passes" by skipping transcription or mastering fails.
 
 ## Expected nondeterminism (not failures)
 
 - **Editorial choices.** A different cut, music or graphics design.
-- **A different number of turns of work.** Provided the issues above don't
+- **A different amount of work.** Provided the issues above don't
   recur.
 
 Judge the product's behaviour, not the agent's taste.
 
 ## Would change this slice
 
-- If the person asks for the music turn to be replayed, add it, with its
-  Duet dependency recorded.
 - If Opus 5.5 is no longer available, stop and ask. Don't substitute a model.
