@@ -6,6 +6,34 @@ The capture menu keeps its dark appearance after selecting a recording area and
 shows the latest recording below the action buttons with Play and Copy agent prompt
 actions. Screen recordings now include the pointer in the captured video.
 
+## 0.1.37
+
+Output by default: when an operation can produce a result, it does, and lists
+anything that fell short as typed `issues` on that result instead of refusing.
+Only an empty list is clean; the CLI's `--wait` line names how many issues a
+ready output carries.
+
+- **Long transcription.** A long recording transcribes in one request. Words at
+  a window seam that the two windows disagreed on publish with
+  `boundary-unresolved` instead of failing the whole transcript, and transcript
+  reads now report the issues of the transcript they read.
+- **Mastering.** Normalization and the limiter always publish their best result.
+  A target the peak ceiling can't allow reports `normalization-target-unmet`
+  with the loudest feasible target, so you can re-target in one step.
+- **Ranges.** A placement or read that runs past its source or project is clamped
+  to what exists and reported with `range-clamped`; one with no part inside
+  still refuses.
+- **More results publish with issues.** Font fallbacks draw with
+  `font-substituted` or `glyph-missing`, stateful audio processing restarts
+  after a gap in a recording with `support-gap`, and SRT exports keep markup
+  with `srt-literal-markup`.
+- **Clearer refusals.** A request that doesn't match its schema now names each
+  rejected field. A refusal over missing source support lists the supported
+  ranges to choose from.
+
+Recordings and libraries from earlier versions keep working. Older transcripts
+and prepared audio regenerate on their own where needed.
+
 ## 0.1.36
 
 Opening Yap at macOS login is now an explicit, consent-based CLI operation. The
