@@ -40,6 +40,7 @@ import { runtimeMaterializer } from "./runtime-materialization.js";
 import { TranscriptStore, type SpeechTranscriptionReceipt } from "@yap/core/transcript";
 import { TranscriptProcessing, assetTranscriptOwner } from "@yap/core/transcript-processing";
 import { SourceTranscriptRead } from "@yap/core/transcript-read";
+import { wordKind } from "@yap/core/word-kind";
 import {
   ImportedTranscriptStore,
   type ImportedTranscriptSource,
@@ -1773,6 +1774,64 @@ export async function startProjectService(options: {
               data: {
                 ...status,
                 published: publishedOutput(status.published, (value) => value.transcript),
+              },
+            };
+          }
+          case "transcript.disfluency.get": {
+            const { generation, range, limit = 100, cursor, ...selection } = operation.params;
+            const source: ImportedTranscriptSource = {
+              assetId: selection.assetId,
+              streamId: selection.streamId,
+              ...(selection.acquisitionId === undefined ? {} : { acquisitionId: selection.acquisitionId }),
+            };
+            const imported =
+              generation === undefined
+                ? importedTranscripts.find(source)
+                : (() => {
+                    try {
+                      return importedTranscripts.get(source, generation);
+                    } catch (error) {
+                      if (error instanceof CatalogError && error.code === "NOT_FOUND") return null;
+                      throw error;
+                    }
+                  })();
+            if (imported) {
+              const rows = imported.cues.flatMap((cue) =>
+                cue.words
+                  .filter((word) => !range || (word.source.endUs > range.startUs && word.source.startUs < range.endUs))
+                  .filter((word) => ["filler", "vocalization"].includes(wordKind(word.text)))
+                  .map((word) => ({
+                    type: "word" as const,
+                    text: word.text,
+                    sourceRange: word.source,
+                    kind: wordKind(word.text),
+                  })),
+              ).slice(cursor ? Number(cursor) : 0, (cursor ? Number(cursor) : 0) + limit);
+              return {
+                ok: true,
+                data: {
+                  state: "ready",
+                  generation: imported.generation,
+                  method: "word-kind-v1",
+                  coverage: "complete",
+                  page: { rows, nextCursor: null },
+                },
+              };
+            }
+            const current = transcripts.sourceStatus({ ...selection, ...(generation ? { generation } : {}) });
+            if (!current.published)
+              return { ok: true, data: { ...current, page: null } };
+            const read = new SourceTranscriptRead(transcriptStore, current.published.transcript);
+            const page = read.page({ range, limit: Math.max(limit, 1000), ...(cursor ? { cursor: JSON.parse(cursor) } : {}) });
+            const rows = page.rows.filter((row) => row.type === "word" && ["filler", "vocalization"].includes(row.kind));
+            return {
+              ok: true,
+              data: {
+                state: "ready",
+                generation: current.published.transcript.generation,
+                method: "word-kind-v1",
+                coverage: "complete",
+                page: { rows: rows.slice(0, limit), nextCursor: rows.length > limit ? JSON.stringify(page.nextCursor) : null },
               },
             };
           }

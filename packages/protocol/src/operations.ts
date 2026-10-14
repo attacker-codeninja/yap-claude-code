@@ -1113,6 +1113,22 @@ export const operationSchema = z.discriminatedUnion("operation", [
     ),
   z
     .object({
+      operation: z.literal("transcript.disfluency.get"),
+      params: sourceSelection
+        .extend({
+          generation: id.optional(),
+          range: range.optional(),
+          limit: z.int().min(1).max(1000).optional(),
+          cursor: z.string().min(1).max(8192).optional(),
+        })
+        .strict(),
+    })
+    .strict()
+    .describe(
+      "Read observed filler and vocalization evidence from a pinned source transcript. The lexical method reports only emitted words, preserves transcript generation and coverage, and never invents a missed filler or authorizes an edit.",
+    ),
+  z
+    .object({
       operation: z.literal("transcript.search"),
       params: z.union([
         projectTranscriptParams
