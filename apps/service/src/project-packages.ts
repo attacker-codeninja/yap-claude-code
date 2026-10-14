@@ -53,7 +53,6 @@ import {
   type ValidatedProjectPackage,
 } from "@yap/core/project-package";
 import {
-  importedTranscriptGenerationResource,
   type ImportedTranscriptStore,
   type PortableImportedTranscript,
 } from "@yap/core/imported-transcript";
