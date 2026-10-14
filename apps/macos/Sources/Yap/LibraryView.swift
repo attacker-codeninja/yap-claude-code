@@ -27,7 +27,7 @@ final class LibraryView: NSView, NSSearchFieldDelegate {
         self.perform = perform
         super.init(frame: NSRect(x: 0, y: 0, width: 768, height: 476))
         wantsLayer = true
-        layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        updateSurfaceColors()
         scrollView.drawsBackground = false
         scrollView.hasVerticalScroller = true
         scrollView.scrollerStyle = .overlay
@@ -66,9 +66,22 @@ final class LibraryView: NSView, NSSearchFieldDelegate {
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
         effectiveAppearance.performAsCurrentDrawingAppearance {
-            layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+            updateSurfaceColors()
             render()
         }
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard window != nil else { return }
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            updateSurfaceColors()
+            render()
+        }
+    }
+
+    private func updateSurfaceColors() {
+        layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
     }
 
     override func layout() {

@@ -1353,6 +1353,21 @@ export const operationSchema = z.discriminatedUnion("operation", [
       "Page raw cursor observations with explicit capture authority. Selected assets use sourceRange and require acquisitionId for captured video; project selectors use range/revisionId/trackIds and return each retained occurrence with exact projectAtUs. Raw coordinates, captureAtUs and integrity receipt remain unchanged; this does not simulate crop/zoom. Missing capture metadata reports unavailable coverage. Keep first-page coverage and continue while nextCursor exists, even on empty pages.",
     ),
   z
+    .object({ operation: z.literal("login.status"), params: z.object({}).strict() })
+    .strict()
+    .describe(
+      "Read whether Yap is registered to open at macOS login and whether macOS requires approval.",
+    ),
+  z
+    .object({
+      operation: z.literal("login.setEnabled"),
+      params: z.object({ enabled: z.boolean() }).strict(),
+    })
+    .strict()
+    .describe(
+      "Register or unregister Yap as a macOS login item after the user explicitly confirms the choice.",
+    ),
+  z
     .object({ operation: z.literal("update.status"), params: z.object({}).strict() })
     .strict()
     .describe(
@@ -1555,6 +1570,8 @@ const workerRun = MEDIA_WORKER_TIMEOUT_MS;
 // Drains and scans wait on other work finishing; a retry joins the same in-flight work.
 const drain = 180_000;
 const waits: Partial<Record<OperationName, number>> = {
+  "login.status": nativeCall,
+  "login.setEnabled": nativeCall,
   "update.status": nativeCall,
   "update.check": nativeCall,
   "update.setEnabled": nativeCall,

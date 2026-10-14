@@ -76,6 +76,13 @@ A new PATH line reaches only new login shells. In the current session, and for
 agents launched from the Dock, call the command by its full path,
 `~/.local/bin/yap`.
 
+Opening at login is a separate, opt-in choice. Ask the user whether Yap should
+open automatically when they sign in. Only after an explicit yes, call
+`~/.local/bin/yap login.setEnabled --params '{"enabled":true}'`; for no, leave it
+unregistered (or explicitly call the same operation with `false`). Verify the
+result with `~/.local/bin/yap login.status`. Do not infer consent from installing
+the app or the CLI.
+
 ## Verify installation separately from permissions
 
 1. Run `~/.local/bin/yap cli.status` and `~/.local/bin/yap skill.status`. Expect

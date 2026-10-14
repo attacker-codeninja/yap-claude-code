@@ -7,6 +7,7 @@ final class PreviewWindow: NSObject, PreviewPresenting, NSWindowDelegate {
     private var window: NSWindow?
     private var playerView: AVPlayerView?
     private var playerObservation: NSKeyValueObservation?
+    private var compositionTask: Task<Void, Never>?
     private var message: NSTextField?
     private var retry: NSButton?
     private var onRetry: (@MainActor () -> Void)?
@@ -102,9 +103,11 @@ final class PreviewWindow: NSObject, PreviewPresenting, NSWindowDelegate {
         let voice = AVURLAsset(url: URL(fileURLWithPath: narration),
             options: [AVURLAssetOverrideMIMETypeKey: "video/quicktime"])
         let composition = AVMutableComposition()
-        do {
-            guard let pictureTrack = try awaitAssetTrack(picture, mediaType: .video),
-                  let voiceTrack = try awaitAssetTrack(voice, mediaType: .audio) else {
+        compositionTask = Task { @MainActor [weak self] in
+          do {
+            let pictureTracks = try await picture.loadTracks(withMediaType: .video)
+            let voiceTracks = try await voice.loadTracks(withMediaType: .audio)
+            guard let pictureTrack = pictureTracks.first, let voiceTrack = voiceTracks.first else {
                 throw NSError(domain: "YapPreview", code: 1,
                     userInfo: [NSLocalizedDescriptionKey: "Recording media has no playable tracks."])
             }
@@ -118,23 +121,23 @@ final class PreviewWindow: NSObject, PreviewPresenting, NSWindowDelegate {
             try composedPicture.insertTimeRange(pictureTrack.timeRange, of: pictureTrack, at: .zero)
             try composedVoice.insertTimeRange(voiceTrack.timeRange, of: voiceTrack, at: .zero)
             let item = AVPlayerItem(asset: composition)
-            playerObservation = item.observe(\.status, options: [.new]) { item, _ in
+            self?.playerObservation = item.observe(\.status, options: [.new]) { item, _ in
                 guard item.status == .failed else { return }
             }
-            message?.isHidden = true
-            retry?.isHidden = true
-            playerView?.player = AVPlayer(playerItem: item)
-            playerView?.player?.play()
-        } catch {
-            show(title: title, message: error.localizedDescription, canRetry: false)
+            self?.message?.isHidden = true
+            self?.retry?.isHidden = true
+            self?.playerView?.player = AVPlayer(playerItem: item)
+            self?.playerView?.player?.play()
+          } catch {
+            guard !Task.isCancelled else { return }
+            self?.show(title: title, message: error.localizedDescription, canRetry: false)
+          }
         }
     }
 
-    private func awaitAssetTrack(_ asset: AVAsset, mediaType: AVMediaType) throws -> AVAssetTrack? {
-        asset.tracks(withMediaType: mediaType).first
-    }
-
     func close() {
+        compositionTask?.cancel()
+        compositionTask = nil
         playerObservation = nil
         playerView?.player?.pause()
         playerView?.player?.replaceCurrentItem(with: nil)

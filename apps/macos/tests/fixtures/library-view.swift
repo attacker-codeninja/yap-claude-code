@@ -9,6 +9,11 @@ import YapControls
         state.library.recent = [.init(recordingId: "fixture-recording", createdAt: "2026-10-05T19:18:00Z", state: "complete", sourceDurationUs: 154_000_000, interruptionReason: nil)]
         var actions: [ControlsAction] = []
         let view = LibraryView(state: state, exports: ExportsState()) { actions.append($0) }
+        view.appearance = NSAppearance(named: .darkAqua)
+        view.layoutSubtreeIfNeeded()
+        let sidebar = view.subviews.first { $0.frame.width == 146 }
+        precondition(sidebar?.layer?.backgroundColor != NSColor.white.cgColor,
+            "Dark-mode library sidebar must not resolve to a white surface")
         guard let play = view.control(identifier: "actions.fixture-recording.0") as? NSButton,
               let copy = view.control(identifier: "actions.fixture-recording.1") as? NSButton else {
             preconditionFailure("The recording exposes play and copy-agent-prompt buttons")
@@ -41,7 +46,7 @@ import YapControls
             let shot = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 768, height: height), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
             shot.title = labelled ? "Library · Synthetic presentation fixture" : "Library"
             shot.isReleasedWhenClosed = false
-            shot.appearance = NSAppearance(named: .aqua)
+            shot.appearance = name == "recordings" ? NSAppearance(named: .darkAqua) : NSAppearance(named: .aqua)
             shot.contentView = content
             shot.orderBack(nil)
             (content.control(identifier: "tab.\(tab.rawValue.lowercased())") as! NSButton).performClick(nil)
@@ -68,7 +73,7 @@ import YapControls
                     controlFrames[id] = [rect.minX, rect.minY, rect.width, rect.height]
                 }
             }
-            observations.append(["fixture": name, "facts": "synthetic", "contentWidthPoints": 768, "contentHeightPoints": height, "backingScale": shot.backingScaleFactor, "appearance": "aqua", "controls": controlFrames])
+            observations.append(["fixture": name, "facts": "synthetic", "contentWidthPoints": 768, "contentHeightPoints": height, "backingScale": shot.backingScaleFactor, "appearance": name == "recordings" ? "darkAqua" : "aqua", "controls": controlFrames])
             try! JSONSerialization.data(withJSONObject: observations, options: [.prettyPrinted, .sortedKeys]).write(to: URL(fileURLWithPath: "\(output)/native-metadata.json"))
             for id in ids {
                 if let control = content.control(identifier: id) {

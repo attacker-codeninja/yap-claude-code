@@ -86,7 +86,9 @@ cleanup.
 ## App updates, the yap command and skill lifecycle
 
 `update.status`, `update.check`, and `update.setEnabled` expose the native app
-updater. `cli.status`, `cli.install` and `cli.uninstall` expose the app-managed
+updater. `login.status` reads macOS login-item state and `login.setEnabled`
+registers or unregisters Yap after explicit user consent. `cli.status`, `cli.install`
+and `cli.uninstall` expose the app-managed
 `~/.local/bin/yap`: install writes the app's bundled launcher as fresh bytes and adds
 a marked PATH line only when no startup file already covers `~/.local/bin`;
 uninstall removes the command only while it is identical to the bundled one, and

@@ -1,4 +1,5 @@
 import AppKit
+import ServiceManagement
 import Darwin
 import YapControls
 import YapCapture
@@ -173,6 +174,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ?? .failure(ServiceFailure(code: "UPDATE_UNAVAILABLE", message: "Updates are installed manually in this build."))
     }
 
+    private func handleLogin(_ operation: String, _ params: Data) -> Result<Data, ServiceFailure> {
+        let service = SMAppService.mainApp
+        if operation == "login.status" {
+            let status: String
+            switch service.status {
+            case .enabled: status = "enabled"
+            case .requiresApproval: status = "requiresApproval"
+            case .notRegistered: status = "notRegistered"
+            case .notFound: status = "notFound"
+            @unknown default: status = "unknown"
+            }
+            return resultJSON(["status": status, "enabled": service.status == .enabled || service.status == .requiresApproval])
+        }
+        do {
+            let object = try JSONSerialization.jsonObject(with: params) as? [String: Any]
+            guard let enabled = object?["enabled"] as? Bool else {
+                return .failure(ServiceFailure(code: "INVALID_PARAMS", message: "login.setEnabled requires enabled."))
+            }
+            if enabled { try service.register() } else { try service.unregister() }
+            return handleLogin("login.status", Data("{}".utf8))
+        } catch {
+            return .failure(ServiceFailure(code: "LOGIN_ITEM_FAILED", message: error.localizedDescription))
+        }
+    }
+
+    private func resultJSON(_ value: [String: Any]) -> Result<Data, ServiceFailure> {
+        do { return .success(try JSONSerialization.data(withJSONObject: value)) }
+        catch { return .failure(ServiceFailure(code: "LOGIN_ITEM_FAILED", message: error.localizedDescription)) }
+    }
+
     /// Ordinary launch owns the service only. Nothing here starts capture or touches a
     /// permission-gated API, so launching the app prompts for nothing. Resolving the
     /// interpreter runs child processes, so it answers back on the main actor rather
@@ -196,6 +227,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                         return
                                     }
                                     answer(self.handleUpdate(operation, params))
+                                } else if operation == "login.status" || operation == "login.setEnabled" {
+                                    answer(self?.handleLogin(operation, params) ?? .failure(ServiceFailure(code: "LOGIN_UNAVAILABLE", message: "The native app is not available.")))
                                 } else if operation.hasPrefix("skill.") || operation.hasPrefix("cli.") {
                                     guard let controls = self?.controls else {
                                         answer(.failure(operation.hasPrefix("cli.")
