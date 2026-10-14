@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "vitest";
-import { mkdtempSync, rmSync, readFileSync, copyFileSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -526,7 +526,7 @@ test("an allocation request is a durable receipt that replays and refuses differ
   ).toThrow(expect.objectContaining({ code: "REQUEST_CONFLICT" }));
 });
 
-test("a pre-launch catalog is refused without mutating its legacy rows", () => {
+test("a pre-launch catalog is refused without mutating its bytes", () => {
   const { store, path, providers } = fixture();
   const { recording } = store.allocate();
   store.registerSource(recording.recordingId, 20);
@@ -535,12 +535,14 @@ test("a pre-launch catalog is refused without mutating its legacy rows", () => {
   expect(reopened.get(recording.recordingId).sourceDurationUs).toBe(20);
   reopened.close();
   const prior = join(roots.at(-1)!, "prior.sqlite");
-  copyFileSync(new URL("../fixtures/catalog-format-22.sqlite", import.meta.url), prior);
+  const old = new DatabaseSync(prior);
+  old.exec("PRAGMA user_version=28");
+  old.close();
   const priorBytes = readFileSync(prior);
   expect(() => new CaptureStore(prior, providers)).toThrow(
     expect.objectContaining({
       code: "UNSUPPORTED_CATALOG",
-      details: { format: 22, supportedFormat: catalogFormat },
+      details: { format: 28, supportedFormat: catalogFormat },
     }),
   );
   expect(readFileSync(prior)).toEqual(priorBytes);

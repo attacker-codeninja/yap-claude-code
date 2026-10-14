@@ -122,7 +122,8 @@ test("inspect, caption proposal and layout diagnostics stay pinned and read-only
   expect(diagnostics.ok).toBe(true);
   if (diagnostics.ok) {
     expect(diagnostics.data).toMatchObject({ revisionId: f.revision.id });
-    expect((diagnostics.data as any).issues.map((issue: any) => issue.code)).toContain("text-off-canvas");
+    const data = diagnostics.data as { issues: { code: string }[] };
+    expect(data.issues.map((issue) => issue.code)).toContain("text-off-canvas");
   }
   expect(await f.state()).toEqual(before);
   expect(await f.call("inspect.open", { projectId: f.project.projectId, revisionId: "missing" })).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });

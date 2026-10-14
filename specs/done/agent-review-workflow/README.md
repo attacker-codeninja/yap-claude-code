@@ -27,11 +27,9 @@ operations add no catalog columns because all of their facts are derived.
 
 The compatibility floor is the launch build at 7:03 PM PDT on October 12, 2026
 (Yap 0.1.33). Launch catalogs already use catalog format 29 and open unchanged.
-The checked-in format-22 database predates that floor, so the catalog owner
-refuses it byte-for-byte and keeps its old recording-edit rows as frozen
-provenance. This avoids inventing modern project history from a persisted shape
-that has no current owner. A future migration must be explicit, additive,
-atomic and recoverable; the current feature does not need one.
+Pre-launch catalogs are outside the support floor and are refused byte-for-byte.
+A future migration must be explicit, additive, atomic and recoverable; the
+current feature does not need one.
 
 The inspector's Export action uses `ExportController` and the existing
 `export.create`/`export.status` lifecycle. It pins the selected revision, chooses

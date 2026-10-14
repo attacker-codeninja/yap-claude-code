@@ -5,11 +5,10 @@
 - **Launch format 29 is the compatibility floor.** When a person opens a Yap
   library created by the launch build at 7:03 PM PDT on October 12, 2026, the
   catalog already has `PRAGMA user_version=29`, so the current readers open it
-  directly. The checked-in format-22 database is older than that floor and is
-  refused without rewriting bytes. This avoids pretending its recording-edit
-  rows are modern project history. The plan left the exact minimum timestamp
-  unspecified until the user supplied it; future catalog migrations still need
-  an explicit atomic owner. **Verdict: sound. Confidence: high.**
+  directly. Pre-launch catalogs are outside the support floor and are refused
+  without rewriting bytes. The plan left the exact minimum timestamp unspecified
+  until the user supplied it; future catalog migrations still need an explicit
+  atomic owner. **Verdict: sound. Confidence: high.**
 
 - **Inspection remains a read-only service operation.** `inspect.open` resolves
   a project and revision, asks the already-running native app to show the
