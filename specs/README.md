@@ -48,6 +48,10 @@ does, and reports what fell short as typed issues. It came from an agent making
 Yap's own launch video, and it keeps the refusal ledger, the dead ends and the
 fresh-agent acceptance run.
 
+[Transcript import and agent evidence](done/transcript-import-and-evidence/README.md)
+records provenance-preserving transcript imports, explicit optional alignment,
+missed-filler and pause evidence, and reversible speaker-attribution corrections.
+
 ## Archived plans
 
 The [reliable autonomous video editing rationale](done/video-editing-feedback/README.md)
@@ -79,9 +83,6 @@ processor proposal; the references do not select a model or authorize implementa
 current boundary between automatic transcription preparation and explicit
 secondary voice/speaker downloads.
 
-[Transcript import and agent evidence](transcript-import-and-evidence/README.md)
-plans provenance-preserving transcript imports, explicit optional alignment,
-missed-filler and pause evidence, and reversible speaker-attribution corrections.
 
 Activate a proposal through an explicit request, then reconcile it with current
 capabilities and evidence. A placeholder's candidate scope is neither a shipped
