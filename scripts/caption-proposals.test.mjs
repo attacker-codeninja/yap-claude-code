@@ -19,6 +19,8 @@ const word = (ordinal, text, startUs, endUs, extra = {}) => ({
   fragments: [{ source: { startUs, endUs }, project: { startUs, endUs } }],
   ...extra,
 });
+/** What an issue claims, without its prose. */
+const facts = (issues) => issues.map(({ code, evidence }) => ({ code, evidence }));
 const rows = [
   word(0, "hello,", 0, 400000),
   word(1, "world!", 400000, 900000),
@@ -84,7 +86,11 @@ test("explicit corrected caption drafts retain word truth, exact pins and separa
   ]);
   assert.deepEqual(output.proposals[0].words, rows.slice(0, 2));
   assert.equal(output.proposals[0].clip.source.text, "Hello,\nworld!");
-  assert.equal(output.proposals[0].violations[0].code, "RENDERED_LAYOUT_UNVERIFIED");
+  assert.deepEqual(output.issues, []);
+  assert.deepEqual(
+    output.proposals.map((p) => p.issues),
+    [[], []],
+  );
   assert.equal(output.proposals[0].geometry.processor.rect.y, 250);
 });
 
@@ -134,10 +140,9 @@ test("fractional retiming limits are exact and repeated/partial occurrences keep
     startUs: 100000,
     endUs: 1000000,
   });
-  assert.deepEqual(
-    output.proposals[2].violations.find((v) => v.code === "PARTIAL_WORD"),
-    { code: "PARTIAL_WORD", rowIndex: 2 },
-  );
+  assert.deepEqual(facts(output.proposals[2].issues), [
+    { code: "caption-word-partial", evidence: { rowIndex: 2 } },
+  ]);
 });
 
 test("multilingual graphemes and unbreakable words retain literal text while constraint failures remain visible", () => {
@@ -154,28 +159,45 @@ test("multilingual graphemes and unbreakable words retain literal text while con
     draft = output.proposals[0];
   assert.equal(draft.text, "e\u0301😀世界\nunbreakable");
   assert.deepEqual(draft.words, records);
-  assert.deepEqual(output.violations, [{ code: "UNSUPPORTED_CONSTRAINT", constraint: "maxWords" }]);
-  assert.deepEqual(
-    draft.violations.map((v) => v.code),
-    ["RENDERED_LAYOUT_UNVERIFIED", "SAFE_AREA", "GRAPHEME_WIDTH", "MINIMUM_DWELL", "READING_SPEED"],
-  );
-  assert.equal(draft.violations.find((v) => v.code === "READING_SPEED").charactersPerSecond, 75);
+  assert.deepEqual(facts(output.issues), [
+    { code: "caption-constraint-unsupported", evidence: { constraint: "maxWords" } },
+  ]);
+  const unmet = { code: "caption-constraint-unmet" };
+  assert.deepEqual(facts(draft.issues), [
+    {
+      ...unmet,
+      evidence: {
+        constraint: "safeArea",
+        requested: { x: 20, y: 20, width: 300, height: 60 },
+        measured: { x: -80, y: -10, width: 500, height: 90 },
+        canvas: { width: 640, height: 360 },
+      },
+    },
+    { ...unmet, evidence: { constraint: "widthGraphemes", requested: 4, measured: 11 } },
+    {
+      ...unmet,
+      evidence: {
+        constraint: "minDwellUs",
+        requested: 500000,
+        cue: { startUs: 0, endUs: 200000 },
+      },
+    },
+    { ...unmet, evidence: { constraint: "maxCps", requested: 30, measured: 75 } },
+  ]);
 });
 
 test("unavailable or source-only evidence never invents project time and every response obeys the UTF8 budget", () => {
-  const input = request();
-  input.entry.identity = { assetId: "asset", streamId: "audio", generation: "generation" };
-  assert.deepEqual(captionProposals(input).violations, [{ code: "PROJECT_PROJECTION_REQUIRED" }]);
-  assert.deepEqual(captionProposals(input).proposals, []);
-  input.maxBytes = 1024;
-  input.constraints.unsupported = "世界".repeat(1000);
-  assert.throws(() => captionProposals(input), { code: "OUTPUT_BUDGET_EXCEEDED" });
+  // No proposal can exist without project time or a complete pinned entry: these refuse.
+  const sourceOnly = request();
+  sourceOnly.entry.identity = { assetId: "asset", streamId: "audio", generation: "generation" };
+  assert.throws(() => captionProposals(sourceOnly), { code: "INVALID_REQUEST" });
   const incomplete = request();
   incomplete.entry.complete = false;
-  assert.deepEqual(captionProposals(incomplete).violations, [
-    { code: "INCOMPLETE_EVIDENCE", state: "ready", complete: false },
-  ]);
-  assert.deepEqual(captionProposals(incomplete).proposals, []);
+  assert.throws(() => captionProposals(incomplete), { code: "NOT_READY" });
+  const oversized = request();
+  oversized.maxBytes = 1024;
+  oversized.constraints.unsupported = "世界".repeat(1000);
+  assert.throws(() => captionProposals(oversized), { code: "OUTPUT_BUDGET_EXCEEDED" });
 });
 
 test("explicit gaps, skipped words and fragmented support split proposals without dropping selected rows", () => {
@@ -203,10 +225,10 @@ test("explicit gaps, skipped words and fragmented support split proposals withou
     output.proposals[2].projectFragments,
     records[4].fragments.map((fragment) => ({ rowIndex: 4, ...fragment })),
   );
-  assert.deepEqual(
-    output.proposals[2].violations.find((v) => v.code === "DISCONTINUOUS_WORD"),
-    { code: "DISCONTINUOUS_WORD", rowIndex: 4 },
-  );
+  assert.deepEqual(facts(output.proposals[2].issues).at(-1), {
+    code: "caption-word-discontinuous",
+    evidence: { rowIndex: 4, fragments: 2 },
+  });
   for (const indexes of [[0, 0], [2, 0], [0, 1], [99]])
     assert.throws(() => captionProposals({ ...input, rowIndexes: indexes }), {
       code: "INVALID_REQUEST",
@@ -251,10 +273,12 @@ test("large explicit selections respect the existing per-cue seed pin limit with
     output.proposals.map((p) => p.rowIndexes),
     [records.slice(0, 1000).map((_, i) => i), [1000]],
   );
-  assert.deepEqual(output.violations, [{ code: "CUE_WORD_PIN_LIMIT", maximum: 1000 }]);
+  assert.deepEqual(facts(output.issues), [
+    { code: "caption-cue-split", evidence: { maximumWords: 1000, rowIndex: 1000 } },
+  ]);
 });
 
-test("a literal display string beyond text admission limits is retained with a violation", () => {
+test("a literal display string beyond text admission limits is retained with an issue", () => {
   const text = "😀".repeat(4100),
     input = request([word(0, text, 0, 2000000)]);
   input.corrections = [];
@@ -262,8 +286,11 @@ test("a literal display string beyond text admission limits is retained with a v
   const draft = captionProposals(input).proposals[0];
   assert.equal(draft.text, text);
   assert.deepEqual(
-    draft.violations.find((v) => v.code === "TEXT_SIZE_LIMIT"),
-    { code: "TEXT_SIZE_LIMIT", maximumUTF16Units: 8192 },
+    facts(draft.issues).find((issue) => issue.code === "caption-text-too-long"),
+    {
+      code: "caption-text-too-long",
+      evidence: { maximumUTF16Units: 8192, utf16Units: 8200 },
+    },
   );
 });
 
@@ -281,9 +308,28 @@ test("reading-speed admission compares exact project duration at the boundary", 
   input.corrections = [];
   input.constraints.maxCps = 1;
   assert.equal(
-    captionProposals(input).proposals[0].violations.some((v) => v.code === "READING_SPEED"),
+    captionProposals(input).proposals[0].issues.some(
+      ({ code, evidence }) =>
+        code === "caption-constraint-unmet" && evidence.constraint === "maxCps",
+    ),
     true,
   );
+});
+
+test("a draft that breaks lines with wrapping off, or shows no text, is kept and flagged", () => {
+  const input = request([word(0, "one", 0, 1000000), word(1, "two", 3000000, 4000000)]);
+  input.corrections = [
+    { rowIndex: 0, text: "one\ntwo" },
+    { rowIndex: 1, text: " " },
+  ];
+  input.style.wrap = false;
+  const [broken, blank] = captionProposals(input).proposals;
+  assert.equal(broken.text, "one\ntwo");
+  assert.deepEqual(facts(broken.issues), [
+    { code: "caption-wrap-disabled", evidence: { lines: 2 } },
+  ]);
+  assert.equal(blank.text, " ");
+  assert.deepEqual(facts(blank.issues), [{ code: "caption-text-empty", evidence: {} }]);
 });
 
 test("wrapping retains meaningful caller separators rather than silently deleting them", () => {
@@ -311,10 +357,17 @@ test("instant word evidence remains visible without invented dwell or aborting n
   assert.equal(proposals[1].clip, null);
   assert.deepEqual(proposals[1].words, [instant]);
   assert.deepEqual(proposals[1].projectFragments, [{ rowIndex: 1, ...instant.fragments[0] }]);
-  assert.deepEqual(
-    proposals[1].violations.map((v) => v.code),
-    ["RENDERED_LAYOUT_UNVERIFIED", "MINIMUM_DWELL", "INSTANT_WORD", "READING_SPEED_UNDEFINED"],
-  );
+  assert.deepEqual(facts(proposals[1].issues), [
+    {
+      code: "caption-constraint-unmet",
+      evidence: {
+        constraint: "minDwellUs",
+        requested: 500000,
+        cue: { startUs: 200000, endUs: 200000 },
+      },
+    },
+    { code: "caption-instant-word", evidence: { rowIndex: 1 } },
+  ]);
   assert.equal(proposals[2].clip.source.text, "two");
 });
 
@@ -331,10 +384,7 @@ test("overlapping estimates use the widest exact envelope for dwell, speed and p
     proposal.clip.seed.words,
     input.entry.rows.map((row) => ({ ordinal: row.ordinal, sourceRange: row.sourceRange })),
   );
-  assert.equal(
-    proposal.violations.some((v) => ["MINIMUM_DWELL", "READING_SPEED"].includes(v.code)),
-    false,
-  );
+  assert.deepEqual(proposal.issues, []);
 });
 
 test("explicit highlighting maps corrected wrapped UTF-16 words to retained overlapping source windows", () => {
@@ -388,10 +438,10 @@ test("highlight runs preserve fragmented support and repeated occurrence identit
     { ordinal: 0, sourceRange: { startUs: 0, endUs: 1000000 } },
   ]);
   assert.deepEqual(
-    partial.violations.filter(({ code }) => ["PARTIAL_WORD", "DISCONTINUOUS_WORD"].includes(code)),
+    facts(partial.issues).filter(({ code }) => code.startsWith("caption-word-")),
     [
-      { code: "PARTIAL_WORD", rowIndex: 0 },
-      { code: "DISCONTINUOUS_WORD", rowIndex: 0 },
+      { code: "caption-word-partial", evidence: { rowIndex: 0 } },
+      { code: "caption-word-discontinuous", evidence: { rowIndex: 0, fragments: 2 } },
     ],
   );
   assert.equal(repeat.clip.seed.occurrenceClipId, "repeat");

@@ -91,6 +91,49 @@ const textFallbackSchema = z
   })
   .strict();
 
+const rowIndexSchema = z.int().nonnegative().max(Number.MAX_SAFE_INTEGER);
+const rectSchema = z
+  .object({ x: finite, y: finite, width: finite.positive(), height: finite.positive() })
+  .strict();
+/** A caption draft's project interval as the word evidence gave it; an instant word's is a point. */
+const cueSchema = z.object({ startUs: timeValueSchema, endUs: timeValueSchema }).strict();
+const requestedCount = z.int().positive().max(Number.MAX_SAFE_INTEGER);
+
+/**
+ * A caption draft misses a caller constraint. `constraint` is the request's own key; `requested` is
+ * its value and `measured` what the draft reached. Dwell keeps the exact cue interval instead of a
+ * difference, which a fractional interval can't always represent.
+ */
+const captionConstraintMissSchema = z.discriminatedUnion("constraint", [
+  z
+    .object({ constraint: z.literal("widthGraphemes"), requested: requestedCount, measured: index })
+    .strict(),
+  z
+    .object({ constraint: z.literal("maxLines"), requested: requestedCount, measured: index })
+    .strict(),
+  z
+    .object({ constraint: z.literal("minDwellUs"), requested: requestedCount, cue: cueSchema })
+    .strict(),
+  z
+    .object({ constraint: z.literal("maxDwellUs"), requested: requestedCount, cue: cueSchema })
+    .strict(),
+  z
+    .object({
+      constraint: z.literal("maxCps"),
+      requested: requestedCount,
+      measured: finite.nonnegative(),
+    })
+    .strict(),
+  z
+    .object({
+      constraint: z.literal("safeArea"),
+      requested: rectSchema,
+      measured: rectSchema,
+      canvas: z.object({ width: requestedCount, height: requestedCount }).strict(),
+    })
+    .strict(),
+]);
+
 export const issueSchema = z.discriminatedUnion("code", [
   issue(
     "issues-truncated",
@@ -291,6 +334,40 @@ export const issueSchema = z.discriminatedUnion("code", [
   issue("font-substituted", textFallbackSchema),
   // No installed face has a glyph for these code points; `used` drew a placeholder box.
   issue("glyph-missing", textFallbackSchema),
+  // Caption drafts (skills/yap/scripts/caption-proposals.mjs). `rowIndex` is the request's row.
+  // A request constraint the helper doesn't know was ignored.
+  issue("caption-constraint-unsupported", z.object({ constraint: z.string() }).strict()),
+  // A cue reached the seed's word-pin limit, so a new cue starts at `rowIndex`.
+  issue(
+    "caption-cue-split",
+    z.object({ maximumWords: z.literal(1000), rowIndex: rowIndexSchema }).strict(),
+  ),
+  issue("caption-constraint-unmet", captionConstraintMissSchema),
+  // The draft's text breaks across lines while the style turns wrapping off.
+  issue("caption-wrap-disabled", z.object({ lines: z.int().min(2).max(8192) }).strict()),
+  issue("caption-text-empty", z.object({}).strict()),
+  // Longer than a text clip admits, so applying the draft is refused.
+  issue(
+    "caption-text-too-long",
+    z
+      .object({
+        maximumUTF16Units: z.literal(8192),
+        utf16Units: z
+          .int()
+          .min(8193)
+          .max(1 << 30),
+      })
+      .strict(),
+  ),
+  // A point word: no dwell, no reading speed and no placeable clip (`clip: null`).
+  issue("caption-instant-word", z.object({ rowIndex: rowIndexSchema }).strict()),
+  // The clip trims part of the spoken word away.
+  issue("caption-word-partial", z.object({ rowIndex: rowIndexSchema }).strict()),
+  // The word plays in more than one project fragment.
+  issue(
+    "caption-word-discontinuous",
+    z.object({ rowIndex: rowIndexSchema, fragments: z.int().min(2).max(8192) }).strict(),
+  ),
 ]);
 
 export type Issue = z.infer<typeof issueSchema>;

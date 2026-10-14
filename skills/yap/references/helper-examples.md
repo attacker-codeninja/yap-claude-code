@@ -117,7 +117,7 @@ const read = async (path) => JSON.parse(await readFile(path, 'utf8'));
 console.log(JSON.stringify({...await read('caption-settings.json'), entry: await read('entry.json')}));
 ```
 
-The result is a draft with violations, not an applied or checked caption. A
+The result is a draft with issues, not an applied or checked caption. A
 `{label: "captions"}` reference is valid only within the edit batch that creates
 that label. Later revisions need the real returned track/clip IDs. Retain exact
 seed generations, word ordinals, occurrence IDs and fractional ranges. Inspect

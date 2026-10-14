@@ -9,6 +9,22 @@ export function budget(value, fallback, min, max, name) {
     throw failure("INVALID_REQUEST", `${name} is outside its supported range`);
   return result;
 }
+/**
+ * Yap's issue bound, for helpers that can't import it: the first 1000 issues, then one
+ * `issues-truncated` counting the rest. packages/protocol/src/skill-issues.test.ts pins the output.
+ */
+export function boundedIssues(issues) {
+  if (issues.length <= 1000) return issues;
+  const omitted = issues.length - 1000;
+  return [
+    ...issues.slice(0, 1000),
+    {
+      code: "issues-truncated",
+      message: omitted === 1 ? "1 more issue was omitted" : `${omitted} more issues were omitted`,
+      evidence: { omitted },
+    },
+  ];
+}
 /** Read an explicitly selected regular task file; never discover cache receipt paths. */
 export async function readTaskFile(path, maxBytes) {
   if (typeof path !== "string") throw failure("INVALID_RESPONSE", "Supply a task file path");

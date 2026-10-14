@@ -88,7 +88,7 @@ console.log(JSON.stringify({ok:true,data}));
   }
 });
 
-test("published caption example preserves selected occurrence pins and returns drafts with honest layout limits", async () => {
+test("published caption example preserves selected occurrence pins and returns drafts that report their issues", async () => {
   const reference = await readFile(join(root, "skills/yap/references/helper-examples.md"), "utf8");
   const code = reference.match(/```javascript\n\/\/ caption-request\n([\s\S]*?)```/)[1];
   const scratch = await mkdtemp(join(tmpdir(), "yap-caption-example-"));
@@ -154,7 +154,9 @@ test("published caption example preserves selected occurrence pins and returns d
     assert.deepEqual(output.proposals[0].words, [row]);
     assert.equal(output.proposals[0].clip.trackId, "returned-caption-track-89");
     assert.equal(output.proposals[0].clip.seed.generation, "opaque-generation-17");
-    assert.equal(output.proposals[0].violations[0].code, "RENDERED_LAYOUT_UNVERIFIED");
+    // A draft inside every caller constraint carries no issue; pixel fit is never claimed.
+    assert.deepEqual(output.issues, []);
+    assert.deepEqual(output.proposals[0].issues, []);
   } finally {
     await rm(scratch, { recursive: true, force: true });
   }
