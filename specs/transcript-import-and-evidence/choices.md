@@ -2,6 +2,14 @@
 
 ## Sound
 
+### Convenience review reports missing models instead of acquiring them
+
+The transcript review convenience operation now returns the same missing-model
+details as direct transcription. It does not silently start a download; the
+agent can ask the user and then call `model.prepare`. This preserves the
+explicit-download rule across both convenience and low-level paths. **Verdict:
+sound. Confidence: high.**
+
 ### Imported transcripts use a separate source-owned store
 
 When an agent imports a caption file, the existing ASR transcript tables cannot
