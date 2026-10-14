@@ -19,6 +19,9 @@ The useful editorial procedures are adapted into the consumer skill's
 Agents choose content and treatment under the user's request. The product returns
 primitives and evidence, and performs explicit non-destructive edits. A compact
 transcript, a silence candidate or a QC warning must never authorize an edit.
+An explicit reversible request is already authorization: do not add a confirmation
+gate or silently substitute a more clever policy. Preserve supplied inputs and
+make alignment, cleanup, correction and optimization explicit choices.
 
 Extend the existing asset, composition, revision, model, job and publication
 owners. Read helpers should pin evidence and avoid changing projects. Creative

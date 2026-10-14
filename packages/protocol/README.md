@@ -41,6 +41,20 @@ Issues never change the outcome of a request: a ready output with issues exits
 the CLI 0 and its settled `--wait` progress line names the issue count, while MCP
 reports an error only for a failed request.
 
+## Explicit intent and reversible defaults
+
+An explicit request is the caller choosing the policy. Reversibility removes the
+need for a confirmation gate: if the operation is admitted and undoable, perform
+it and publish the revision. Refuse malformed, unsupported or genuinely
+destructive requests, but do not add a second approval step for a reversible one.
+
+Defaults preserve supplied input semantics. Do not silently align, correct,
+clean up, optimize or reinterpret caller-provided media or evidence. Make those
+behaviors explicit options with their own receipts and issues. Retain the
+original input, provenance and uncertainty beside any derived result. A caller
+asking for a direct operation should get that operation; apply extra judgment
+only when the caller explicitly delegates it.
+
 ## Speech preparation and retained selection
 
 Preparation requests inference; reads and search consume retained evidence.

@@ -2,7 +2,11 @@
 
 Read [`README.md`](README.md) first: what the product is, how the repo fits together, and how to build and check it. Active plans live with their specs, and each one says what to do next. If a folder you're working in has a readme, read it before continuing. The readmes are written for you.
 
-These are the principles. Commands, flags and paths live with the code that owns them: the readmes, the manifests, and each tool's own usage text.
+The durable development principles live in [`DEVELOPMENT.md`](DEVELOPMENT.md).
+This file routes repository work and adds the local working rules below.
+Commands, flags and paths live with the code that owns them: the readmes, the
+manifests, and each tool's own usage text. The consumer [`yap` skill](skills/yap/SKILL.md)
+is for agents using Yap, it is not for you.
 
 ## Talking to the user
 

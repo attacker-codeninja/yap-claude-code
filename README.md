@@ -25,6 +25,21 @@ what makes your point land.
 
 **Just yap. Your agent makes it a great video.**
 
+## Yap is an agent toolkit, not a video editor
+
+Yap deliberately has no editing timeline, transcript editor or house style for
+people to operate. You tell your agent what you want, and the agent uses Yap's
+CLI or MCP operations to inspect evidence, choose the changes and make a
+non-destructive revision. The same operations work from every adapter, so a
+request means the same thing whether it comes from Claude Code, Codex, another
+harness or a script.
+
+Yap supplies the primitives: recordings, transcripts, frames, audio
+measurements, composition edits, processing, previews and exports. It does not
+decide what to cut, what to keep or what should look good. That boundary is
+intentional. It keeps Yap composable, lets each agent follow the user's context
+and taste, and makes every decision explicit, reviewable and undoable.
+
 **[Get started →](#get-started)** Your agent can install it for you.
 
 ## Communication in both directions
@@ -266,7 +281,8 @@ README artwork lives in [.github/readme](.github/readme).
 
 ### Development and evidence
 
-Follow [the working principles](AGENTS.md). The [root manifest](package.json)
+Follow the [development principles](DEVELOPMENT.md) and the repository routing in
+[AGENTS.md]. The [root manifest](package.json)
 owns build and check commands; package manifests own narrower checks and dependencies.
 The [build guide](scripts/README.md) explains native prerequisites and why building,
 installing and packaging are separate actions.

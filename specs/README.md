@@ -79,6 +79,10 @@ processor proposal; the references do not select a model or authorize implementa
 current boundary between automatic transcription preparation and explicit
 secondary voice/speaker downloads.
 
+[Transcript import and agent evidence](transcript-import-and-evidence/README.md)
+plans provenance-preserving transcript imports, explicit optional alignment,
+missed-filler and pause evidence, and reversible speaker-attribution corrections.
+
 Activate a proposal through an explicit request, then reconcile it with current
 capabilities and evidence. A placeholder's candidate scope is neither a shipped
 capability nor a new product policy. Keep unresolved decisions explicit instead of
