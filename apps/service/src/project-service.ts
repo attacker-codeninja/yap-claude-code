@@ -1716,13 +1716,6 @@ export async function startProjectService(options: {
           case "transcript.render.get":
             return { ok: true, data: renderedSpeech.get(operation.params) };
           case "transcript.import": {
-            if (operation.params.timingPolicy === "align")
-              throw new CatalogError(
-                "NOT_READY",
-                "Imported transcript alignment is not available yet; use timingPolicy:supplied",
-                { timingPolicy: "align" },
-                true,
-              );
             const source: ImportedTranscriptSource = {
               assetId: operation.params.assetId,
               streamId: operation.params.streamId,
@@ -1736,10 +1729,24 @@ export async function startProjectService(options: {
               operation.params.path,
               operation.params.format,
             );
+            const alignment =
+              operation.params.timingPolicy === "align"
+                ? imported.cues.map((cue) => {
+                    const status = alignments.prepareSource({
+                      ...source,
+                      channel: operation.params.channel ?? 0,
+                      sourceRange: cue.source,
+                      text: cue.text,
+                      modelId: operation.params.modelId ?? "nemo-ctc110",
+                    });
+                    return { cueId: cue.id, ...status };
+                  })
+                : undefined;
             return {
               ok: true,
               data: {
                 ...imported,
+                ...(alignment === undefined ? {} : { alignment }),
                 published: { generation: imported.generation, issues: [] },
               },
             };

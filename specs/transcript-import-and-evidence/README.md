@@ -7,8 +7,8 @@ editor interchange.
 ## Next Agent Prompt
 
 **Last updated:** 2026-10-14. **Status:** implementation in progress. Slices 01,
-03, 04, 05 and 07 have code and focused checks. The next pickup is slice 02;
-slice 06 remains the final integration/closeout pass.
+02, 03, 04, 05 and 07 have code and focused checks. Slice 06 remains the final
+integration/closeout pass.
 
 You are picking up the transcript-import-and-evidence spec. The next slice is
 **02-explicit-alignment**. First read this README, `DEVELOPMENT.md`, the owning
@@ -22,7 +22,7 @@ Global TODO:
 
 - [x] 00 — Finish the API audit and freeze the public seams.
 - [x] 01 — Import SRT, VTT and supported JSON with provenance and supplied timing.
-- [ ] 02 — Add explicit audio alignment without changing supplied input by default.
+- [x] 02 — Add explicit audio alignment without changing supplied input by default.
 - [x] 03 — Add missed-filler/disfluency evidence.
 - [x] 04 — Add pause/dead-air evidence with named detector policies.
 - [x] 05 — Add reversible speaker-attribution corrections.
@@ -180,8 +180,8 @@ feature.
   resolved RMS settings and unavailable support.
 - `transcript.disfluency.get` reports emitted lexical filler/vocalization rows;
   missed-disfluency measurement remains unsupported until a provider exists.
-- Slice 02 alignment and slice 06 package/project integration remain open. The
-  correction operation targets project evidence rows; direct imported cue reads
+- Slice 06 package/project integration remains open. The correction operation
+  targets project evidence rows; direct imported cue reads
   retain their source labels and are not rewritten. See `choices.md` for known
   gaps and decisions made during this pass.
 

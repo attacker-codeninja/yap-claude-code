@@ -834,11 +834,13 @@ export const operationSchema = z.discriminatedUnion("operation", [
           path: z.string().startsWith("/"),
           format: z.enum(["srt", "vtt", "json"]).optional(),
           timingPolicy: z.enum(["supplied", "align"]).default("supplied"),
+          modelId: id.optional(),
+          channel: z.int().nonnegative().optional(),
         })
         .strict(),
     })
     .describe(
-      "Import one local SRT, VTT or supported JSON transcript for an explicitly selected audio asset stream. Preserves raw bytes, parser provenance, cue boundaries, supplied timing, word timing and speaker labels. timingPolicy defaults to supplied; alignment is an explicit opt-in and does not silently replace supplied evidence.",
+      "Import one local SRT, VTT or supported JSON transcript for an explicitly selected audio asset stream. Preserves raw bytes, parser provenance, cue boundaries, supplied timing, word timing and speaker labels. timingPolicy defaults to supplied; align explicitly requests the existing alignment observer for each cue and keeps supplied evidence beside its derived result.",
     ),
   z
     .strictObject({

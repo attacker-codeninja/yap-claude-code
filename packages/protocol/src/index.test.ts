@@ -630,6 +630,33 @@ it("pause evidence accepts source and project selections with optional detector 
   ).toBe(true);
 });
 
+it("transcript import defaults to supplied timing and accepts explicit alignment", () => {
+  expect(
+    operationSchema.safeParse({
+      operation: "transcript.import",
+      params: {
+        requestId: "request",
+        assetId: "asset",
+        streamId: "audio",
+        path: "/tmp/captions.srt",
+      },
+    }).success,
+  ).toBe(true);
+  expect(
+    operationSchema.safeParse({
+      operation: "transcript.import",
+      params: {
+        requestId: "request-align",
+        assetId: "asset",
+        streamId: "audio",
+        path: "/tmp/captions.srt",
+        timingPolicy: "align",
+        modelId: "nemo-ctc110",
+      },
+    }).success,
+  ).toBe(true);
+});
+
 it("admits project alignment reads only with an explicit prepared tap identity", () => {
   const request = {
     operation: "alignment.get",

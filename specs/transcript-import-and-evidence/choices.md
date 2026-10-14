@@ -36,16 +36,23 @@ as evidence. It does not create an editing operation or a second audio reader.
 That keeps support gaps and cache identity under one owner. **Verdict: sound.
 Confidence: high.**
 
-## Unsound
+### Explicit import alignment schedules one observer per cue
 
-### Imported alignment is currently refused
+When an agent chooses `timingPolicy: "align"`, the import call keeps the
+supplied cue generation and schedules the existing alignment observer for each
+cue's literal text and range. The default supplied path schedules no observer.
+This keeps alignment explicit and lets the existing model readiness/error
+contract apply. **Verdict: sound. Confidence: medium.**
 
-The service accepts `timingPolicy: "supplied"` but returns a retryable refusal
-for `timingPolicy: "align"`. The unbuilt alternative would invoke the existing
-alignment owner and publish supplied and aligned evidence together. This choice
-does not satisfy the settled import contract. **Verdict: unsound. Corrected
-decision: explicit alignment must be wired to the existing alignment owner while
-preserving supplied text and timing. Confidence: high.**
+## Open integration
+
+### Imported alignment is returned as scheduled evidence
+
+The service now invokes the existing alignment owner for each imported cue when
+the agent explicitly selects `timingPolicy: "align"`, while keeping supplied
+cue data in the import receipt. A later integration pass still needs to join the
+published alignment generations back into imported reads. **Verdict: sound for
+explicit scheduling; remaining join work is slice 06. Confidence: medium.**
 
 ### Imported cue reads return empty literal search results
 
