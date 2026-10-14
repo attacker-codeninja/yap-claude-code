@@ -31,7 +31,8 @@ source identities, and reclaim only verified working files.
 ## Packages and jobs
 
 `package.open`, `package.status`, `package.adopt`, `package.close` manage
-editable package lifetimes. `job.get`, `job.retry`, and `job.cancel` observe or
+editable package lifetimes. Close a package when you're done with it, after
+adopting or inspecting, to free its staged copy. `job.get`, `job.retry`, and `job.cancel` observe or
 explicitly recover/cancel admitted background work. A read never retries a
 failed job implicitly.
 
