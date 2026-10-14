@@ -26,6 +26,7 @@ export type ImportedTranscriptReceipt = {
     metadata: Record<string, unknown>;
   };
   timingPolicy: "supplied" | "align";
+  alignment?: { modelId: string; channel: number };
   cues: ImportedCue[];
 };
 export type PortableImportedTranscript = {
@@ -33,6 +34,7 @@ export type PortableImportedTranscript = {
   source: ImportedTranscriptSource;
   origin: ImportedTranscriptReceipt["origin"];
   timingPolicy: "supplied" | "align";
+  alignment?: { modelId: string; channel: number };
   cues: ImportedCue[];
 };
 export function importedTranscriptGenerationResource(value: PortableImportedTranscript): string {
@@ -47,6 +49,8 @@ type StoredImport = {
   parser: string;
   timingBasis: "supplied";
   timingPolicy: "supplied" | "align";
+  alignmentModelId: string | null;
+  alignmentChannel: number | null;
   rawSha256: string;
   rawBytes: number;
   metadata: string;
@@ -69,6 +73,9 @@ function parseStored(row: StoredImport, cues: ImportedCue[]): ImportedTranscript
       metadata: JSON.parse(row.metadata) as Record<string, unknown>,
     },
     timingPolicy: row.timingPolicy,
+    ...(row.alignmentModelId === null
+      ? {}
+      : { alignment: { modelId: row.alignmentModelId, channel: row.alignmentChannel ?? 0 } }),
     cues,
   };
 }
@@ -85,6 +92,8 @@ export class ImportedTranscriptStore {
         requestId TEXT PRIMARY KEY, source TEXT NOT NULL, generation TEXT NOT NULL UNIQUE,
         format TEXT NOT NULL, parser TEXT NOT NULL, timingBasis TEXT NOT NULL,
         timingPolicy TEXT NOT NULL DEFAULT 'supplied',
+        alignmentModelId TEXT,
+        alignmentChannel INTEGER,
         rawSha256 TEXT NOT NULL, rawBytes INTEGER NOT NULL, metadata TEXT NOT NULL,
         state TEXT NOT NULL
       ) STRICT;
@@ -102,6 +111,10 @@ export class ImportedTranscriptStore {
       store.catalog.exec(
         "ALTER TABLE imported_transcripts ADD COLUMN timingPolicy TEXT NOT NULL DEFAULT 'supplied'",
       );
+    if (!columns.some((column) => column.name === "alignmentModelId"))
+      store.catalog.exec("ALTER TABLE imported_transcripts ADD COLUMN alignmentModelId TEXT");
+    if (!columns.some((column) => column.name === "alignmentChannel"))
+      store.catalog.exec("ALTER TABLE imported_transcripts ADD COLUMN alignmentChannel INTEGER");
   }
 
   async importPath(
@@ -110,6 +123,7 @@ export class ImportedTranscriptStore {
     path: string,
     format?: ImportedFormat,
     timingPolicy: "supplied" | "align" = "supplied",
+    alignment?: { modelId: string; channel: number },
   ): Promise<ImportedTranscriptReceipt> {
     this.validateSource(source);
     const existing = this.store.catalog
@@ -141,7 +155,7 @@ export class ImportedTranscriptStore {
     this.store.transaction(() => {
       this.store.catalog
         .prepare(
-          "INSERT INTO imported_transcripts(requestId,source,generation,format,parser,timingBasis,timingPolicy,rawSha256,rawBytes,metadata,state) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+          "INSERT INTO imported_transcripts(requestId,source,generation,format,parser,timingBasis,timingPolicy,alignmentModelId,alignmentChannel,rawSha256,rawBytes,metadata,state) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
         )
         .run(
           requestId,
@@ -151,6 +165,8 @@ export class ImportedTranscriptStore {
           JSON.stringify(parsed.parser),
           parsed.timingBasis,
           timingPolicy,
+          alignment?.modelId ?? null,
+          alignment?.channel ?? null,
           parsed.raw.sha256,
           parsed.raw.bytes,
           JSON.stringify(parsed.metadata),
@@ -235,6 +251,7 @@ export class ImportedTranscriptStore {
           source: receipt.source,
           origin: receipt.origin,
           timingPolicy: receipt.timingPolicy,
+          ...(receipt.alignment === undefined ? {} : { alignment: receipt.alignment }),
           cues: receipt.cues,
         };
       });
@@ -308,7 +325,7 @@ export class ImportedTranscriptStore {
     this.store.transaction(() => {
       this.store.catalog
         .prepare(
-          "INSERT INTO imported_transcripts(requestId,source,generation,format,parser,timingBasis,timingPolicy,rawSha256,rawBytes,metadata,state) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+          "INSERT INTO imported_transcripts(requestId,source,generation,format,parser,timingBasis,timingPolicy,alignmentModelId,alignmentChannel,rawSha256,rawBytes,metadata,state) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
         )
         .run(
           `package:${value.generation}`,
@@ -318,6 +335,8 @@ export class ImportedTranscriptStore {
           JSON.stringify(value.origin.parser),
           value.origin.timingBasis,
           value.timingPolicy,
+          value.alignment?.modelId ?? null,
+          value.alignment?.channel ?? null,
           value.origin.raw.sha256,
           value.origin.raw.bytes,
           JSON.stringify(value.origin.metadata),

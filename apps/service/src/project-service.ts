@@ -1780,6 +1780,12 @@ export async function startProjectService(options: {
               operation.params.path,
               operation.params.format,
               operation.params.timingPolicy,
+              operation.params.timingPolicy === "align"
+                ? {
+                    modelId: operation.params.modelId ?? "nemo-ctc110",
+                    channel: operation.params.channel ?? 0,
+                  }
+                : undefined,
             );
             const alignment =
               operation.params.timingPolicy === "align"
@@ -1970,6 +1976,16 @@ export async function startProjectService(options: {
                     }
                   })();
             if (imported) {
+              const joined =
+                imported.timingPolicy === "align"
+                  ? importedAlignmentView(
+                      imported,
+                      alignments,
+                      alignmentRecords,
+                      imported.alignment?.channel ?? 0,
+                      imported.alignment?.modelId ?? "nemo-ctc110",
+                    )
+                  : imported;
               if ("text" in params) {
                 const terms = params.text
                   .trim()
@@ -1983,7 +1999,7 @@ export async function startProjectService(options: {
                     generation: imported.generation,
                     origin: imported.origin,
                     page: {
-                      entries: imported.cues
+                      entries: joined.cues
                         .filter((cue) => {
                           const words = (
                             cue.words.length
@@ -2009,7 +2025,7 @@ export async function startProjectService(options: {
                   },
                 };
               }
-              const rows = imported.cues
+              const rows = joined.cues
                 .filter(
                   (cue) =>
                     !params.range ||

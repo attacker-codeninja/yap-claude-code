@@ -158,6 +158,9 @@ const resourceSchema = z.discriminatedUnion("kind", [
       metadata: z.record(z.string(), z.unknown()),
     }),
     timingPolicy: z.enum(["supplied", "align"]),
+    alignment: z
+      .strictObject({ modelId: z.string().min(1), channel: z.int().nonnegative() })
+      .optional(),
     cues: z.array(z.unknown()).max(100000),
   }),
 ]);
