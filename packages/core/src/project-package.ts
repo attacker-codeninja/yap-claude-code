@@ -242,7 +242,7 @@ export function resourceIdentity(resource: PortableDependency): ResourceReferenc
     case "imported-transcript-generation":
       return {
         kind: "imported-transcript-generation",
-        id: importedTranscriptGenerationResource(resource as unknown as PortableImportedTranscript),
+        id: importedTranscriptGenerationResource(resource),
       };
   }
 }

@@ -13,7 +13,7 @@ import {
 export type ImportedTranscriptSource = {
   assetId: string;
   streamId: string;
-  acquisitionId?: string;
+  acquisitionId?: string | undefined;
 };
 export type ImportedTranscriptReceipt = {
   generation: string;
@@ -26,7 +26,7 @@ export type ImportedTranscriptReceipt = {
     metadata: Record<string, unknown>;
   };
   timingPolicy: "supplied" | "align";
-  alignment?: { modelId: string; channel: number };
+  alignment?: { modelId: string; channel: number } | undefined;
   cues: ImportedCue[];
 };
 export type PortableImportedTranscript = {
@@ -34,10 +34,12 @@ export type PortableImportedTranscript = {
   source: ImportedTranscriptSource;
   origin: ImportedTranscriptReceipt["origin"];
   timingPolicy: "supplied" | "align";
-  alignment?: { modelId: string; channel: number };
+  alignment?: { modelId: string; channel: number } | undefined;
   cues: ImportedCue[];
 };
-export function importedTranscriptGenerationResource(value: PortableImportedTranscript): string {
+export function importedTranscriptGenerationResource(
+  value: Pick<PortableImportedTranscript, "generation" | "source">,
+): string {
   return JSON.stringify({ source: value.source, generation: value.generation });
 }
 
@@ -257,7 +259,9 @@ export class ImportedTranscriptStore {
       });
   }
 
-  portableFile(value: PortableImportedTranscript): IdentifiedFile {
+  portableFile(
+    value: Pick<PortableImportedTranscript, "source" | "generation" | "origin">,
+  ): IdentifiedFile {
     const path = join(
       this.home,
       "transcripts",

@@ -504,9 +504,8 @@ export class ProjectPackages {
         >;
         const identity = resourceIdentity(resource);
         if (!importedTranscriptInventory.has(identity.id)) {
-          importedTranscriptFiles[identity.id] = this.owners.importedTranscripts.portableFile(
-            value as unknown as PortableImportedTranscript,
-          );
+          importedTranscriptFiles[identity.id] =
+            this.owners.importedTranscripts.portableFile(value);
           importedTranscriptInventory.set(identity.id, resource);
         }
         return identity;
@@ -812,9 +811,7 @@ export class ProjectPackages {
       if (resource.kind === "transcript-generation")
         this.owners.transcriptRecords.portableFile(resource.metadata);
       if (resource.kind === "imported-transcript-generation")
-        this.owners.importedTranscripts.portableFile(
-          resource as unknown as PortableImportedTranscript,
-        );
+        this.owners.importedTranscripts.portableFile(resource);
       if (resource.kind === "index-generation")
         this.owners.indexRecords.metadata(resource.metadata);
       if (resource.kind === "project-index-generation")
