@@ -182,3 +182,9 @@ feature.
 - Slice 02 alignment, slice 05 speaker-attribution corrections and slice 06
   package/project integration remain open. See `choices.md` for known gaps and
   decisions made during this pass.
+
+Focused verification for the implemented passes: core import, audio waveform/
+pause, protocol operation schemas and service build all pass. The service test
+fixtures that require the native media worker remain unavailable in this checkout
+because `helpers/mac/.build/debug/yap-native` is absent; this is an environment
+blocker, not a product result.
