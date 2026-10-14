@@ -233,7 +233,7 @@ try {
       });
     }
   }
-  await call("transcript.prepare", selection);
+  await call("transcript.transcribe", selection);
   const full = await poll(
     () => call("transcript.get", { ...selection, limit: 1000 }),
     (value) => value.state === "ready",

@@ -49,8 +49,9 @@ const reads = new Map([
   ["frame.batch", "frame.batch"],
   ["index.frames", "index.frames"],
   ["audio.measure", "audio.measure"],
+  ["audio.pause.get", "audio.pause.get"],
   ["transcript.search", "transcript.search"],
-  ["transcript.prepare", "transcript.get"],
+  ["transcript.transcribe", "transcript.get"],
   ["transcript.review", "transcript.review"],
   ["transcript.render.prepare", "transcript.render.get"],
   ["transcript.render.retry", "transcript.render.get"],
@@ -61,7 +62,7 @@ const reads = new Map([
   ["capture.stop", "recording.get"],
   ["package.open", "package.status"],
   ["speaker.get", "speaker.get"],
-  ["alignment.prepare", "alignment.prepare"],
+  ["alignment.observe", "alignment.observe"],
   ["alignment.get", "alignment.get"],
   ["model.prepare", "model.status"],
   ["skill.install", "skill.status"],
@@ -182,7 +183,7 @@ export async function waitForWork(options: {
     read === "model.status" ? { modelId: request.params.modelId } : { ...request.params };
   const sourcePreparation =
     read === "transcript.get" &&
-    (request.operation === "transcript.prepare" ||
+    (request.operation === "transcript.transcribe" ||
       (request.operation === "transcript.retry" && "assetId" in request.params));
   if (sourcePreparation) {
     delete params.executionRange;

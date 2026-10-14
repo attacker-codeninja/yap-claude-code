@@ -91,7 +91,7 @@ try {
     text: "fortunate",
     modelId: "nemo-ctc110",
   };
-  const alignment = await call("alignment.prepare", request);
+  const alignment = await call("alignment.observe", request);
   const ready = await poll(
     () => call("job.get", { jobId: alignment.jobId }),
     (j) => j.state === "ready",

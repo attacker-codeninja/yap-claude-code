@@ -423,7 +423,7 @@ test("selected-source transcript preserves filler, phrase and ready retry throug
     [],
   );
   expect(requests).toEqual([]);
-  const pending = await f.call("transcript.prepare", selection);
+  const pending = await f.call("transcript.transcribe", selection);
   if (!pending.ok) throw new Error(JSON.stringify(pending));
   const jobId = (pending.data as { jobId: string }).jobId;
   await f.job(jobId, "ready");
@@ -641,7 +641,7 @@ test("ready source transcript reads carry the issues published with the transcri
   if (!imported.ok) throw new Error(JSON.stringify(imported));
   const ready = await f.job((imported.data as { jobId: string }).jobId, "ready");
   const selection = { assetId: ready.published!.output.assetId, streamId: "track:1" };
-  const pending = await f.call("transcript.prepare", selection);
+  const pending = await f.call("transcript.transcribe", selection);
   if (!pending.ok) throw new Error(JSON.stringify(pending));
   const { published: publication } = await f.job(
     (pending.data as { jobId: string }).jobId,

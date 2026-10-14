@@ -206,7 +206,7 @@ export async function prepareBatch(
       if (entry.status.state === "not_requested") {
         if (
           !(await request(
-            "transcript.prepare",
+            "transcript.transcribe",
             { assetId: item.import.published.output.assetId, streamId },
             (status) => {
               entry.status = status;

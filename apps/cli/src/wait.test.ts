@@ -313,7 +313,7 @@ test("alignment preparation waits for its admitted job and reuses the same liter
   const f = await fixture((request) => {
     if (request.operation === "job.get")
       return { ok: true, data: { ...job("ready"), target: { kind: "asset", assetId: "a" } } };
-    expect(request.operation).toBe("alignment.prepare");
+    expect(request.operation).toBe("alignment.observe");
     expect(request.params).toEqual(params);
     return {
       ok: true,
@@ -330,16 +330,16 @@ test("alignment preparation waits for its admitted job and reuses the same liter
             },
     };
   });
-  const output = await f.run("alignment.prepare", params, ["--wait", "--timeout-ms", "1000"]);
+  const output = await f.run("alignment.observe", params, ["--wait", "--timeout-ms", "1000"]);
   expect(output.code, output.stdout + output.stderr).toBe(0);
   expect(JSON.parse(output.stdout)).toMatchObject({
     data: { state: "ready", published: { output: { generation: "attempt" } } },
     wait: { state: "settled" },
   });
   expect(f.calls.map((r) => r.operation)).toEqual([
-    "alignment.prepare",
+    "alignment.observe",
     "job.get",
-    "alignment.prepare",
+    "alignment.observe",
   ]);
 });
 
@@ -347,7 +347,7 @@ test("bounded transcript preparation waits for its admitted generation without r
   const generation = "c6df7efc-a023-4c40-aa08-3b8b1c0b1b90";
   const selection = { assetId: "a", streamId: "s", acquisitionId: "acquired" };
   const f = await fixture((request) => {
-    if (request.operation === "transcript.prepare")
+    if (request.operation === "transcript.transcribe")
       return { ok: true, data: { ...selection, state: "processing", jobId: "job" } };
     if (request.operation === "job.get")
       return {
@@ -362,7 +362,7 @@ test("bounded transcript preparation waits for its admitted generation without r
     return { ok: true, data: { ...selection, state: "ready", generation, page: { rows: [] } } };
   });
   const output = await f.run(
-    "transcript.prepare",
+    "transcript.transcribe",
     {
       ...selection,
       executionRange: { startUs: 0, endUs: 1000000 },
@@ -376,7 +376,7 @@ test("bounded transcript preparation waits for its admitted generation without r
     wait: { state: "settled", job: { attemptId: generation } },
   });
   expect(f.calls.map((r) => r.operation)).toEqual([
-    "transcript.prepare",
+    "transcript.transcribe",
     "job.get",
     "transcript.get",
   ]);
@@ -397,7 +397,7 @@ test("a clamped transcript preparation keeps its range-clamped issue through the
     },
   };
   const f = await fixture((request) => {
-    if (request.operation === "transcript.prepare")
+    if (request.operation === "transcript.transcribe")
       return {
         ok: true,
         data: { ...selection, state: "processing", jobId: "job", issues: [clamp] },
@@ -413,13 +413,13 @@ test("a clamped transcript preparation keeps its range-clamped issue through the
     };
   });
   const output = await f.run(
-    "transcript.prepare",
+    "transcript.transcribe",
     { ...selection, executionRange: { startUs: 0, endUs: 5000 } },
     ["--wait", "--timeout-ms", "1000"],
   );
   expect(output.code, output.stdout + output.stderr).toBe(0);
   expect(JSON.parse(output.stdout).data.issues).toEqual([clamp]);
-  expect(output.stderr).toContain("transcript.prepare: ready (1 issues)");
+  expect(output.stderr).toContain("transcript.transcribe: ready (1 issues)");
 });
 
 test("a clamp joined to a full read page stays within the issue bound", async () => {
@@ -432,7 +432,7 @@ test("a clamp joined to a full read page stays within the issue bound", async ()
     { code: "issues-truncated", message: "5 more issues were omitted", evidence: { omitted: 5 } },
   ];
   const f = await fixture((request) => {
-    if (request.operation === "transcript.prepare")
+    if (request.operation === "transcript.transcribe")
       return {
         ok: true,
         data: { ...selection, state: "processing", jobId: "job", issues: [clamp] },
@@ -448,7 +448,7 @@ test("a clamp joined to a full read page stays within the issue bound", async ()
     };
   });
   const output = await f.run(
-    "transcript.prepare",
+    "transcript.transcribe",
     { ...selection, executionRange: { startUs: 0, endUs: 5000 } },
     ["--wait", "--timeout-ms", "1000"],
   );
@@ -457,7 +457,7 @@ test("a clamp joined to a full read page stays within the issue bound", async ()
   expect(issues).toHaveLength(1001);
   expect(issues[0]).toEqual(clamp);
   expect(issues.at(-1)).toMatchObject({ code: "issues-truncated", evidence: { omitted: 6 } });
-  expect(output.stderr).toContain("transcript.prepare: ready (1006 issues)");
+  expect(output.stderr).toContain("transcript.transcribe: ready (1006 issues)");
 });
 
 test.each(["processing", "ready"])(
@@ -474,7 +474,7 @@ test.each(["processing", "ready"])(
     };
     const published = { generation: 2, issues: [dropped] };
     const f = await fixture((request) => {
-      if (request.operation === "transcript.prepare")
+      if (request.operation === "transcript.transcribe")
         return {
           ok: true,
           data: {
@@ -496,10 +496,10 @@ test.each(["processing", "ready"])(
         data: { ...selection, state: "ready", generation, issues: [], published, page: {} },
       };
     });
-    const output = await f.run("transcript.prepare", selection, ["--wait", "--timeout-ms", "1000"]);
+    const output = await f.run("transcript.transcribe", selection, ["--wait", "--timeout-ms", "1000"]);
     expect(output.code, output.stdout + output.stderr).toBe(0);
     expect(JSON.parse(output.stdout).data.published.issues).toEqual([dropped]);
-    expect(output.stderr).toContain("transcript.prepare: ready (1 issues)");
+    expect(output.stderr).toContain("transcript.transcribe: ready (1 issues)");
   },
 );
 

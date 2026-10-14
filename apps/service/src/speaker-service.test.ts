@@ -48,7 +48,7 @@ test("public speaker source requests report missing optional preparation without
     sourceRange: speakerSource.observationRange,
     modelId: speakerSource.engine.modelId,
   };
-  const preparation = await f.call("speaker.prepare", input);
+  const preparation = await f.call("speaker.observe", input);
   const { sourceRange, ...selection } = input;
   const read = await f.call("speaker.get", { ...selection, observationRange: sourceRange });
   await writeFile(
@@ -120,7 +120,7 @@ test("public retained speaker pages survive service restart without runtime byte
     f.home,
   );
   const resumed = await restarted.call("speaker.get", { ...query, cursor });
-  const prepared = await restarted.call("speaker.prepare", input);
+  const prepared = await restarted.call("speaker.observe", input);
   await writeFile(
     join(f.home, "retained-public-pages.json"),
     JSON.stringify({ published, first, second, resumed, prepared }),

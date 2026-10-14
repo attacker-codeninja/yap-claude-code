@@ -44,7 +44,10 @@ export type TranscriptPreparation = SourceSelection & TranscriptExecutionSelecti
 
 export type PortableTranscriptPublication = z.infer<typeof retainedPublicationSchema>;
 /** The model owner as transcription sees it: readiness, the verified file list and its pins. */
-export type TranscriptionModels = ReturnType<Models["transcription"]>;
+export type TranscriptionModels = Omit<ReturnType<Models["transcription"]>, "notPrepared"> & {
+  /** Optional for lightweight embedded owners and test doubles. */
+  notPrepared?: () => CatalogError;
+};
 
 type AssetDomain = { assets: AssetStore; acquisitions: AcquisitionStore };
 export type TranscriptProcessingOptions = {
@@ -121,6 +124,9 @@ export class TranscriptProcessing {
   }
   recognitionReadiness() {
     return this.models.status();
+  }
+  recognitionNotPrepared() {
+    return this.models.notPrepared?.().details ?? {};
   }
   private sourceIdentity(
     selected: ReturnType<typeof selectedAudio>,
@@ -340,15 +346,18 @@ export class TranscriptProcessing {
     if (!status.jobId)
       throw new CatalogError(
         status.reason === "model_not_prepared" ? "MODEL_NOT_PREPARED" : "UNAVAILABLE",
-        status.reason ?? "Source transcript has not been requested; use transcript.prepare",
-        {},
+        status.reason ?? "Source transcript has not been requested; use transcript.transcribe",
+        status.reason === "model_not_prepared" ? (this.models.notPrepared?.().details ?? {}) : {},
         status.retryable,
       );
     if (
       ["failed", "unavailable", "canceled"].includes(this.jobs.job(status.jobId).state) &&
       this.models.status().state !== "ready"
     )
-      throw new CatalogError("MODEL_NOT_PREPARED", "Speech models are not prepared", {}, true);
+      throw (
+        this.models.notPrepared?.() ??
+        new CatalogError("MODEL_NOT_PREPARED", "Speech models are not prepared", {}, true)
+      );
     this.jobs.retry(status.jobId);
     return this.sourceStatus(selection);
   }
@@ -371,7 +380,10 @@ export class TranscriptProcessing {
     const selected = selectedAudio(this.asset, selection);
     if (!selected.track.available.length) throw new CatalogError("UNAVAILABLE", "no_audio");
     if (this.models.status().state !== "ready")
-      throw new CatalogError("MODEL_NOT_PREPARED", "Speech models are not prepared", {}, true);
+      throw (
+        this.models.notPrepared?.() ??
+        new CatalogError("MODEL_NOT_PREPARED", "Speech models are not prepared", {}, true)
+      );
     await this.cleanupAsset(selection.assetId, signal);
     return this.transcribeSource(
       {

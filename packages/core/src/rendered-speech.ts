@@ -187,7 +187,12 @@ export class RenderedSpeech {
     const pcm = this.pcm(extracted);
     this.owners.assets.retain({ kind: "job", id: job.jobId }, [pcm.assetId]);
     if (this.owners.transcripts.recognitionReadiness().state !== "ready")
-      throw new CatalogError("MODEL_NOT_PREPARED", "Speech models are not prepared", {}, true);
+      throw new CatalogError(
+        "MODEL_NOT_PREPARED",
+        "Speech model is not prepared; model.prepare will download/acquire and verify the transcription model/runtime files.",
+        this.owners.transcripts.recognitionNotPrepared(),
+        true,
+      );
     return { state: "ready" };
   }
   retry(input: RenderedSpeechInput) {

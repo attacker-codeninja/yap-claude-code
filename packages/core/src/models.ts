@@ -111,6 +111,60 @@ class Preparation {
     privateDirectory(join(this.models, manifest.name));
   }
 
+  /** Details an agent can show before asking the user to acquire an optional dependency. */
+  notPreparedError(purpose: ModelManifest["purpose"] = this.manifest.purpose): CatalogError {
+    const modelBytes = this.manifest.files.reduce((total, file) => total + file.bytes, 0);
+    const runtime = this.manifest.runtimeArtifact;
+    const runtimeBytes = runtime
+      ? runtime.acquisition
+        ? runtime.acquisition.files.reduce((total, file) => total + file.bytes, 0)
+        : runtime.entries.reduce(
+            (total, entry) => total + (entry.kind === "file" ? entry.bytes : 0),
+            0,
+          )
+      : 0;
+    const purposeLabel = purpose === "transcription" ? "transcription" : purpose;
+    const operation =
+      purpose === "transcription"
+        ? "transcript.transcribe"
+        : purpose === "alignment"
+          ? "alignment.observe"
+          : purpose === "speaker"
+            ? "speaker.observe"
+            : "voice.generate";
+    const scope = {
+      modelFiles: this.manifest.files.length,
+      modelBytes,
+      runtimeFiles: runtime
+        ? runtime.acquisition
+          ? runtime.acquisition.files.length
+          : runtime.entries.filter((entry) => entry.kind === "file").length
+        : 0,
+      runtimeBytes,
+      runtimeAcquisition: runtime?.acquisition
+        ? "registered acquisition"
+        : runtime
+          ? "registered runtime inventory"
+          : null,
+    };
+    const estimatedBytes = modelBytes + runtimeBytes;
+    return new CatalogError(
+      "MODEL_NOT_PREPARED",
+      `The ${purposeLabel} model/runtime is not prepared. model.prepare will download/acquire and verify the ${purposeLabel} model/runtime files before ${operation} can run.`,
+      {
+        modelId: this.manifest.name,
+        purpose,
+        downloadScope: scope,
+        estimatedBytes,
+        estimatedBytesKnown: true,
+        whyNeeded: `${operation} needs the registered ${purposeLabel} model/runtime to produce its evidence or audio output.`,
+        retryable: true,
+        retryOperation: operation,
+      },
+      true,
+    );
+  }
+
   private platformFailure(): CatalogError | undefined {
     const required = this.manifest.platform;
     if (required.system !== process.platform || required.architecture !== process.arch)
@@ -221,17 +275,7 @@ class Preparation {
         { purpose, selected: this.manifest.purpose },
       );
     const runtime = this.manifest.runtimeArtifact;
-    if (!runtime || (await this.status()).state !== "ready")
-      throw new CatalogError(
-        "MODEL_NOT_PREPARED",
-        purpose === "voice"
-          ? "Voice model and runtime are not prepared"
-          : purpose === "speaker"
-            ? "Speaker model and runtime are not prepared"
-            : "Alignment model and runtime are not prepared",
-        {},
-        true,
-      );
+    if (!runtime || (await this.status()).state !== "ready") throw this.notPreparedError(purpose);
     const cache = join(this.models, ".cache", this.manifest.name);
     await mkdir(cache, { recursive: true, mode: 0o700 });
     return {
@@ -266,13 +310,7 @@ class Preparation {
   nativeRequest(): SpeechModelRequest {
     const unsupported = this.platformFailure();
     if (unsupported) throw unsupported;
-    if (this.inspect() !== "ready")
-      throw new CatalogError(
-        "MODEL_NOT_PREPARED",
-        "Speech model is not prepared",
-        { state: this.snapshot().state },
-        true,
-      );
+    if (this.inspect() !== "ready") throw this.notPreparedError("transcription");
     return { directory: join(this.root, this.manifest.folderName), files: this.manifest.files };
   }
 
@@ -678,6 +716,9 @@ export class Models {
   runtime(modelId: string, purpose: "voice" | "speaker" | "alignment") {
     return this.selected(modelId).runtime(purpose);
   }
+  notPrepared(modelId: string, purpose: ModelManifest["purpose"] = "transcription") {
+    return this.selected(modelId).notPreparedError(purpose);
+  }
   /** The pinned original speaker contract, without exposing its full runtime inventory. */
   speaker(modelId: string) {
     const selected = this.selected(modelId),
@@ -753,6 +794,7 @@ export class Models {
       pins: selected.pins,
       status: () => selected.snapshot(),
       nativeRequest: async () => selected.nativeRequest(),
+      notPrepared: () => selected.notPreparedError("transcription"),
     };
   }
 }

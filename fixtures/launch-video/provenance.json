@@ -75,15 +75,15 @@
         "result": "TRANSCRIPT_BOUNDARY_DISAGREEMENT at seam 120000000 (left word 'I' [119120000,119200000])"
       },
       {
-        "request": "transcript.prepare executionRange 119000000..230000000",
+        "request": "transcript.transcribe executionRange 119000000..230000000",
         "result": "TRANSCRIPT_BOUNDARY_DISAGREEMENT at seam 219000000 ('video' [218600000,219000000])"
       },
       {
-        "request": "transcript.prepare executionRange 119000000..695104000/3",
+        "request": "transcript.transcribe executionRange 119000000..695104000/3",
         "result": "INVALID_SPEECH_TIMING: estimate ends ~231720000 past physical end 231701333"
       },
       {
-        "request": "transcript.prepare executionRange 219000000..231500000",
+        "request": "transcript.transcribe executionRange 219000000..231500000",
         "result": "INVALID_SPEECH_TIMING: estimate [231400000,231560000] exceeds window end 231500000"
       }
     ],

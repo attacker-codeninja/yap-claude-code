@@ -23,7 +23,7 @@ export async function captionSeeds({ service, call, out, home, font, picture, ad
     assetId: speech.id,
     streamId: speech.streams.find((stream) => stream.kind === "audio").id,
   };
-  await api("transcript.prepare", source);
+  await api("transcript.transcribe", source);
   const transcript = await poll(
     () => api("transcript.get", { ...source, limit: 1000 }),
     (value) => value.state === "ready",

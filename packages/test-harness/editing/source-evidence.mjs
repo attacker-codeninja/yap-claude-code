@@ -108,7 +108,7 @@ try {
   };
   const transcripts = [];
   for (const [index, selection] of selections.entries()) {
-    await call("transcript.prepare", selection);
+    await call("transcript.transcribe", selection);
     const first = await poll(
       () => call("transcript.get", { ...selection, limit: 1 }),
       (v) => v.state === "ready",
@@ -274,7 +274,7 @@ try {
   assert.equal(contexts[0].binding.assetId, contexts[1].binding.assetId);
   assert.notDeepEqual(contexts[0].binding.available, contexts[1].binding.available);
   const hit = await service.arm("speech.transcribe");
-  const preparing = await call("transcript.prepare", contexts[0].selection);
+  const preparing = await call("transcript.transcribe", contexts[0].selection);
   await hit();
   assert.ok(preparing.jobId);
   await call("job.cancel", { jobId: preparing.jobId }, { transport: "mcp" });
@@ -290,7 +290,7 @@ try {
   assert.equal(canceled.jobId, preparing.jobId);
   await call("transcript.retry", contexts[0].selection, { transport: "mcp" });
   for (const [index, item] of contexts.entries()) {
-    await call("transcript.prepare", item.selection);
+    await call("transcript.transcribe", item.selection);
     const result = await poll(
       () => call("transcript.get", { ...item.selection, limit: 1000 }),
       (v) => v.state === "ready",
@@ -324,7 +324,7 @@ try {
     assetId: contexts[0].binding.assetId,
     streamId: contexts[0].binding.streamId,
   };
-  await call("transcript.prepare", physicalSingle);
+  await call("transcript.transcribe", physicalSingle);
   const unmasked = await poll(
     () => call("transcript.get", { ...physicalSingle, limit: 1000 }),
     (v) => v.state === "ready",

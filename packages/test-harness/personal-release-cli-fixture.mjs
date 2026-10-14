@@ -163,7 +163,7 @@ switch (operation) {
       ],
     };
     break;
-  case "transcript.prepare":
+  case "transcript.transcribe":
     data = { ...params, state: "ready" };
     break;
   case "transcript.get":

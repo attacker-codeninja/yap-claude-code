@@ -147,7 +147,7 @@ through the shared native ordered arithmetic. Raw operands survive failed attemp
 retained source pages never invoke inference. Execution is offline. Original
 sidecar operands are captured before attempt cleanup, including model refusals.
 `speaker.get` reads retained source generations or their revision projection without
-native or model execution; `speaker.prepare` alone requests new acoustic work.
+native or model execution; `speaker.observe` alone requests new acoustic work.
 `speaker.bind` replaces caller-authored display labels for one retained generation;
 it never changes acoustic evidence or infers identity.
 `speaker.continuity.prepare/get` own the long-form quality envelope separately: they

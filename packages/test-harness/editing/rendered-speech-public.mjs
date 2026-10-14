@@ -79,7 +79,7 @@ try {
     executionRange: { startUs: 20500000, endUs: 26500000 },
   };
   const sourcePrepared = await poll(
-    () => call("transcript.prepare", sourceScope),
+    () => call("transcript.transcribe", sourceScope),
     (value) => value.state === "ready",
     "source recognition",
   );

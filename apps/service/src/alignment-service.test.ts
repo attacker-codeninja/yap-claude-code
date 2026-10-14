@@ -263,12 +263,12 @@ test("public alignment preparation refuses unavailable runtime and incomplete su
     text: alignmentSource.text,
     modelId: "nemo-ctc110",
   };
-  expect(await f.call("alignment.prepare", input)).toMatchObject({
+  expect(await f.call("alignment.observe", input)).toMatchObject({
     ok: true,
     data: { state: "unavailable", reason: "model_not_prepared", published: null },
   });
   expect(
-    await f.call("alignment.prepare", { ...input, sourceRange: { startUs: 0, endUs: 3000000 } }),
+    await f.call("alignment.observe", { ...input, sourceRange: { startUs: 0, endUs: 3000000 } }),
   ).toMatchObject({ ok: false, error: { code: "UNAVAILABLE_SUPPORT" } });
   expect(requests).toEqual(["media.probe"]);
 });
@@ -278,7 +278,7 @@ test("project alignment preparation resolves the project-owned tap before source
     if (operation === "media.probe") return { ok: true, data: probe };
     throw new Error(`Unexpected project alignment work ${operation}`);
   });
-  const result = await f.call("alignment.prepare", {
+  const result = await f.call("alignment.observe", {
     projectId: "missing-project",
     revisionId: "missing-revision",
     preparedResourceId: "prepared-project-tap",
@@ -334,7 +334,7 @@ test("a project alignment range past the revision is admitted clamped; one wholl
   });
   if (!placed.ok) throw new Error(JSON.stringify(placed));
   const request = (range: { startUs: number; endUs: number }) =>
-    f.call("alignment.prepare", {
+    f.call("alignment.observe", {
       projectId: project.projectId,
       preparedResourceId: "prepared-project-tap",
       tap: { target: { kind: "output" }, point: { kind: "processed" } },

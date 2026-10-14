@@ -115,7 +115,7 @@ try {
       }
       let generation;
       if (transcript) {
-        await call("transcript.prepare", { assetId: asset.id, streamId: asset.streams[0].id });
+        await call("transcript.transcribe", { assetId: asset.id, streamId: asset.streams[0].id });
         const sourceWords = await poll(
           () =>
             call("transcript.get", {

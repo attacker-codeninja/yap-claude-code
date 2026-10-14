@@ -92,7 +92,7 @@ try {
       modelId: "nemo-ctc110",
     };
     console.log(JSON.stringify({ name, state: "preparing" }));
-    const preparing = await call("alignment.prepare", selection);
+    const preparing = await call("alignment.observe", selection);
     const ready = await poll(
       () => call("job.get", { jobId: preparing.jobId }),
       (job) => job.state === "ready",

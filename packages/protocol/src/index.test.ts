@@ -633,7 +633,7 @@ it("admits project alignment reads only with an explicit prepared tap identity",
 it("admits alignment preparation over a pinned project tap", () => {
   expect(
     operationSchema.safeParse({
-      operation: "alignment.prepare",
+      operation: "alignment.observe",
       params: {
         projectId: "project",
         revisionId: "revision",

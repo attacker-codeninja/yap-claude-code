@@ -40,6 +40,10 @@ import { runtimeMaterializer } from "./runtime-materialization.js";
 import { TranscriptStore, type SpeechTranscriptionReceipt } from "@yap/core/transcript";
 import { TranscriptProcessing, assetTranscriptOwner } from "@yap/core/transcript-processing";
 import { SourceTranscriptRead } from "@yap/core/transcript-read";
+import {
+  ImportedTranscriptStore,
+  type ImportedTranscriptSource,
+} from "@yap/core/imported-transcript";
 import { AcquisitionStore, AcquisitionImporter } from "@yap/core/acquisitions";
 import { SourceEvidenceStore } from "@yap/core/evidence";
 import { MediaExports } from "./exports.js";
@@ -325,6 +329,18 @@ export async function startProjectService(options: {
       library,
       assetTranscriptOwner(assets, acquisitions),
     );
+    const importedTranscripts = new ImportedTranscriptStore(
+      catalog,
+      library,
+      (source: ImportedTranscriptSource) => {
+        const selected = selectSource(assets, acquisitions, source);
+        if (selected.stream.kind !== "audio")
+          throw new CatalogError(
+            "UNSUPPORTED_MEDIA",
+            "Imported transcript requires an audio stream",
+          );
+      },
+    );
     const projects = new ProjectStore(catalog, assets, transcriptStore, acquisitions);
     const files = new ManagedFiles(library, worker);
     const cache = new DerivedCache(catalog, library, (owner) => {
@@ -436,7 +452,7 @@ export async function startProjectService(options: {
           return scenes.execute({ job, signal });
         if (
           (job.target.kind === "asset" || job.target.kind === "project") &&
-          ["waveform", "spectrum", "acoustic-image", "loudness"].includes(job.artifact)
+          ["waveform", "spectrum", "acoustic-image", "loudness", "pause"].includes(job.artifact)
         )
           return acoustics.execute({ job, signal });
         if (
@@ -1334,7 +1350,7 @@ export async function startProjectService(options: {
             }
             return { ok: true, data: await models.status(modelId) };
           }
-          case "alignment.prepare": {
+          case "alignment.observe": {
             const params = operation.params;
             if ("projectId" in params) {
               const status = alignments.prepareProject(params);
@@ -1555,7 +1571,7 @@ export async function startProjectService(options: {
               },
             };
           }
-          case "speaker.prepare": {
+          case "speaker.observe": {
             const status = speakers.prepareSource(operation.params);
             return {
               ok: true,
@@ -1720,7 +1736,36 @@ export async function startProjectService(options: {
           }
           case "transcript.render.get":
             return { ok: true, data: renderedSpeech.get(operation.params) };
-          case "transcript.prepare": {
+          case "transcript.import": {
+            if (operation.params.timingPolicy === "align")
+              throw new CatalogError(
+                "NOT_READY",
+                "Imported transcript alignment is not available yet; use timingPolicy:supplied",
+                { timingPolicy: "align" },
+                true,
+              );
+            const source: ImportedTranscriptSource = {
+              assetId: operation.params.assetId,
+              streamId: operation.params.streamId,
+              ...(operation.params.acquisitionId === undefined
+                ? {}
+                : { acquisitionId: operation.params.acquisitionId }),
+            };
+            const imported = await importedTranscripts.importPath(
+              operation.params.requestId,
+              source,
+              operation.params.path,
+              operation.params.format,
+            );
+            return {
+              ok: true,
+              data: {
+                ...imported,
+                published: { generation: imported.generation, issues: [] },
+              },
+            };
+          }
+          case "transcript.transcribe": {
             transcripts.prepareSource(operation.params);
             const status = transcripts.sourceStatus(operation.params);
             return {
@@ -1785,6 +1830,67 @@ export async function startProjectService(options: {
                 "ARTIFACT_CHANGED",
                 "Transcript continuation used another speaker generation",
               );
+            const importedSource: ImportedTranscriptSource = {
+              assetId: selection.assetId,
+              streamId: selection.streamId,
+              ...(selection.acquisitionId === undefined
+                ? {}
+                : { acquisitionId: selection.acquisitionId }),
+            };
+            const imported =
+              generation === undefined
+                ? importedTranscripts.find(importedSource)
+                : (() => {
+                    try {
+                      return importedTranscripts.get(importedSource, generation);
+                    } catch (error) {
+                      if (error instanceof CatalogError && error.code === "NOT_FOUND") return null;
+                      throw error;
+                    }
+                  })();
+            if (imported) {
+              if ("text" in params)
+                return {
+                  ok: true,
+                  data: {
+                    state: "ready",
+                    generation: imported.generation,
+                    origin: imported.origin,
+                    page: {
+                      entries: [],
+                      nextCursor: null,
+                    },
+                  },
+                };
+              const rows = imported.cues
+                .filter(
+                  (cue) =>
+                    !params.range ||
+                    (cue.source.endUs > params.range.startUs &&
+                      cue.source.startUs < params.range.endUs),
+                )
+                .slice(0, params.limit ?? 250)
+                .map((cue) => ({
+                  type: "cue" as const,
+                  id: cue.id,
+                  ordinal: cue.ordinal,
+                  text: cue.text,
+                  sourceRange: cue.source,
+                  ...(cue.speaker === undefined
+                    ? { speaker: { state: "unknown" as const } }
+                    : { speaker: { state: "named" as const, name: cue.speaker } }),
+                  words: cue.words,
+                }));
+              return {
+                ok: true,
+                data: {
+                  state: "ready",
+                  generation: imported.generation,
+                  origin: imported.origin,
+                  page: { rows, nextCursor: null },
+                },
+              };
+            }
             const current = transcripts.sourceStatus({
               ...selection,
               ...(generation === undefined ? {} : { generation }),
@@ -2175,6 +2281,48 @@ export async function startProjectService(options: {
               },
             };
           }
+          case "audio.pause.get": {
+            const { limit = 100, cursor, ...selection } = operation.params;
+            const status = await acoustics.request({ ...selection, kind: "pause" });
+            const allIntervals =
+              status.published?.artifact.analysis.kind === "pause"
+                ? status.published.artifact.analysis.intervals
+                : [];
+            const published = status.published
+              ? {
+                  ...status.published,
+                  artifact: {
+                    ...status.published.artifact,
+                    analysis: {
+                      ...status.published.artifact.analysis,
+                      intervals: allIntervals.slice(
+                        cursor?.offset ?? 0,
+                        (cursor?.offset ?? 0) + limit,
+                      ),
+                    },
+                    nextCursor:
+                      (cursor?.offset ?? 0) + limit < allIntervals.length
+                        ? { offset: (cursor?.offset ?? 0) + limit }
+                        : null,
+                  },
+                }
+              : null;
+            return {
+              ok: true,
+              data: {
+                ...status,
+                published: publishedOutput(published, (value) => value.artifact),
+                delivery: published
+                  ? delivery.open(
+                      "projectId" in status
+                        ? { kind: "project", id: status.projectId }
+                        : { kind: "asset", id: status.assetId },
+                      () => cache.acquire(published.artifact.cacheId),
+                    )
+                  : null,
+              },
+            };
+          }
           case "audio.get":
           case "audio.retry": {
             const params = operation.params;
@@ -2429,7 +2577,20 @@ export async function startProjectService(options: {
             return operationError("NOT_READY", "Operation is not available in the project service");
         }
       } catch (error) {
-        return operationFailure(error);
+        const failure = operationFailure(error);
+        if (failure.ok === false && failure.error.code === "MODEL_NOT_PREPARED")
+          return {
+            ...failure,
+            error: {
+              ...failure.error,
+              details: {
+                ...failure.error.details,
+                operation: operation.operation,
+                selection: operation.params,
+              },
+            },
+          };
+        return failure;
       }
     };
     const serve: LocalHandler = (request, signal) => {

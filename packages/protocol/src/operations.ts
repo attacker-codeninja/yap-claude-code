@@ -295,6 +295,17 @@ const spectrogramParams = z.union([
   projectAudioParams.extend(spectrumFields),
   sourceAudioParams.extend(spectrumFields),
 ]);
+const pauseFields = {
+  thresholdRMS: z.number().finite().nonnegative().optional(),
+  minDurationUs: z.int().positive().optional(),
+  channel: z.int().nonnegative().optional(),
+  limit: z.int().min(1).max(500).optional(),
+  cursor: z.strictObject({ offset: z.int().nonnegative() }).optional(),
+};
+const pauseParams = z.union([
+  projectAudioParams.extend(pauseFields),
+  sourceAudioParams.extend(pauseFields),
+]);
 
 const projectIndexParams = projectFrameParams.omit({ atUs: true });
 const projectIndexReference = projectIndexParams
@@ -778,6 +789,24 @@ export const operationSchema = z.discriminatedUnion("operation", [
 
   z
     .strictObject({
+      operation: z.literal("transcript.import"),
+      params: z
+        .object({
+          requestId: id,
+          assetId: id,
+          streamId: id,
+          acquisitionId: id.optional(),
+          path: z.string().startsWith("/"),
+          format: z.enum(["srt", "vtt", "json"]).optional(),
+          timingPolicy: z.enum(["supplied", "align"]).default("supplied"),
+        })
+        .strict(),
+    })
+    .describe(
+      "Import one local SRT, VTT or supported JSON transcript for an explicitly selected audio asset stream. Preserves raw bytes, parser provenance, cue boundaries, supplied timing, word timing and speaker labels. timingPolicy defaults to supplied; alignment is an explicit opt-in and does not silently replace supplied evidence.",
+    ),
+  z
+    .strictObject({
       operation: z.literal("correspondence.prepare"),
       params: correspondencePrepareParamsSchema,
     })
@@ -794,7 +823,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
     ),
   z
     .strictObject({
-      operation: z.literal("alignment.prepare"),
+      operation: z.literal("alignment.observe"),
       params: z.union([
         sourceSelection
           .extend({
@@ -874,7 +903,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
       ]),
     })
     .describe(
-      "Read an explicit immutable alignment generation without model or native execution. An asset selector reads retained source evidence. A project selector with a source asset projects those rows through the exact revision map; a selector whose assetId is the prepared tap returned by alignment.prepare reads observations measured on that rendered tap and maps its source clock directly to project time without inventing a clip. preparedResourceId pins the project revision and tap; a project range past the revision is clamped to it and reports range-clamped in the result's issues. packageHandle selects published evidence in an open read-only package; its continuation binds that context. Supplied words retain conditional path estimates separately from greedy observed words; repeated correspondence stays unknown and unmatched text stays unmatched. Complete native ceil bounds outside physical support retain null sourceRange/refused_unowned_support, never clamped timing. Scores are complete uncalibrated native cells. Acoustic view requires caller thresholdRMS, labels measured RMS >=threshold active, and never assigns a word or authorizes an edit. Raw view returns original UTF8 operands in bounded base64 chunks, including unpublished managed-library refusals as state:captured with verified:false; those never expose ready rows. Continue while nextCursor exists, including empty pages. Continuations bind the generation, display range, view, operand and threshold.",
+      "Read an explicit immutable alignment generation without model or native execution. An asset selector reads retained source evidence. A project selector with a source asset projects those rows through the exact revision map; a selector whose assetId is the prepared tap returned by alignment.observe reads observations measured on that rendered tap and maps its source clock directly to project time without inventing a clip. preparedResourceId pins the project revision and tap; a project range past the revision is clamped to it and reports range-clamped in the result's issues. packageHandle selects published evidence in an open read-only package; its continuation binds that context. Supplied words retain conditional path estimates separately from greedy observed words; repeated correspondence stays unknown and unmatched text stays unmatched. Complete native ceil bounds outside physical support retain null sourceRange/refused_unowned_support, never clamped timing. Scores are complete uncalibrated native cells. Acoustic view requires caller thresholdRMS, labels measured RMS >=threshold active, and never assigns a word or authorizes an edit. Raw view returns original UTF8 operands in bounded base64 chunks, including unpublished managed-library refusals as state:captured with verified:false; those never expose ready rows. Continue while nextCursor exists, including empty pages. Continuations bind the generation, display range, view, operand and threshold.",
     ),
   z
     .strictObject({
@@ -911,7 +940,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
     ),
   z
     .strictObject({
-      operation: z.literal("speaker.prepare"),
+      operation: z.literal("speaker.observe"),
       params: sourceSelection
         .extend({ channel: z.int().nonnegative(), sourceRange: selectionRangeSchema, modelId: id })
         .strict(),
@@ -1042,7 +1071,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
     ),
   z
     .strictObject({
-      operation: z.literal("transcript.prepare"),
+      operation: z.literal("transcript.transcribe"),
       params: sourceTranscriptPreparation,
     })
     .describe(
@@ -1074,13 +1103,13 @@ export const operationSchema = z.discriminatedUnion("operation", [
     })
     .strict()
     .describe(
-      "Request a project transcript with projectId and optional revisionId, range and trackIds, or a selected asset-stream source transcript. Project rows retain occurrence identity and exact editorial fragments, ordered by project time; query windows do not change editorial partiality. Continue even when a project page is empty if nextCursor exists. Project continuations pin the original revision, source generations and any selected speaker generations/binding digests. Asset ranges use the normalized source clock; acquisitionId omission uses physical support. Reads and search never enqueue transcription or prepare models. Use transcript.prepare to request inference. generation selects retained source evidence; bounded preparations require that pin (a continuation already pins it). Omitted generation resolves only full-support preparation identity. Project sourceGenerations explicitly select bounded retained dependencies; speakerGenerations joins caller-selected speaker evidence to projected words without inferring identity; omitted selections resolve full-support identities. A ready project may prepare its read-only evidence manifest. Returns readiness until complete, then word and acquisition-gap rows in the selected time domain. issues holds the read's own range admission; a ready source read also carries published { generation, issues }, every issue published with that transcript, including those no row carries (word-dropped, an unpublished boundary peer), and each source dependency of a project read carries its transcript's issues. Unfiltered asset enumeration returns every retained observation, including points at the source end. Explicit source/project interval selections remain half-open. Words keep verbatim text, kind and a per-generation ID. A source read may include a generation-pinned speaker selector; each word is attributed only when one retained turn wholly covers it and no other speaker intersects it. A partial competing turn therefore remains overlap evidence; crossing turns without a complete covering turn and unobserved support remain explicit unknown, while multiple intersecting turns are overlap. The returned continuation pins the speaker binding digest so a rename cannot silently change a page. Without narration it is unavailable:no_narration; unprepared models are a retryable unavailable:model_not_prepared (see model.prepare). Continue with the returned cursor to pin selection, generation and range.",
+      "Request a project transcript with projectId and optional revisionId, range and trackIds, or a selected asset-stream source transcript. Project rows retain occurrence identity and exact editorial fragments, ordered by project time; query windows do not change editorial partiality. Continue even when a project page is empty if nextCursor exists. Project continuations pin the original revision, source generations and any selected speaker generations/binding digests. Asset ranges use the normalized source clock; acquisitionId omission uses physical support. Reads and search never enqueue transcription or prepare models. Use transcript.transcribe to request inference. generation selects retained source evidence; bounded preparations require that pin (a continuation already pins it). Omitted generation resolves only full-support preparation identity. Project sourceGenerations explicitly select bounded retained dependencies; speakerGenerations joins caller-selected speaker evidence to projected words without inferring identity; omitted selections resolve full-support identities. A ready project may prepare its read-only evidence manifest. Returns readiness until complete, then word and acquisition-gap rows in the selected time domain. issues holds the read's own range admission; a ready source read also carries published { generation, issues }, every issue published with that transcript, including those no row carries (word-dropped, an unpublished boundary peer), and each source dependency of a project read carries its transcript's issues. Unfiltered asset enumeration returns every retained observation, including points at the source end. Explicit source/project interval selections remain half-open. Words keep verbatim text, kind and a per-generation ID. A source read may include a generation-pinned speaker selector; each word is attributed only when one retained turn wholly covers it and no other speaker intersects it. A partial competing turn therefore remains overlap evidence; crossing turns without a complete covering turn and unobserved support remain explicit unknown, while multiple intersecting turns are overlap. The returned continuation pins the speaker binding digest so a rename cannot silently change a page. Without narration it is unavailable:no_narration; unprepared models are a retryable unavailable:model_not_prepared (see model.prepare). Continue with the returned cursor to pin selection, generation and range.",
     ),
   z
     .object({ operation: z.literal("transcript.review"), params: transcriptReviewParams })
     .strict()
     .describe(
-      "Review a bounded source or pinned-project transcript in one agent-friendly call. The operation may prepare/download Yap's registered pinned speech model and request missing transcription, then returns readiness, exact transcript rows, generation, continuation and, like transcript.get, the issues published with the transcript it reads. Poll the same request while model or transcript work is pending. It never invents words or edits a project. Use transcript.get for a strictly read-only retained read and transcript.prepare/model.prepare for explicit lifecycle control.",
+      "Review a bounded source or pinned-project transcript in one agent-friendly call. The operation may prepare/download Yap's registered pinned speech model and request missing transcription, then returns readiness, exact transcript rows, generation, continuation and, like transcript.get, the issues published with the transcript it reads. Poll the same request while model or transcript work is pending. It never invents words or edits a project. Use transcript.get for a strictly read-only retained read and transcript.transcribe/model.prepare for explicit lifecycle control.",
     ),
   z
     .object({
@@ -1119,7 +1148,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
     })
     .strict()
     .describe(
-      "Explicitly retry previously requested selected-source preparation with the same executionRange/context; initial work uses transcript.prepare. Models must already be prepared. A project selector retries only its evidence manifest (include the same text to retry phrase search); source preparation failures must be retried with their returned asset-stream selection. Keep the same acquisition selection; preparation uses a fresh generation after failure.",
+      "Explicitly retry previously requested selected-source preparation with the same executionRange/context; initial work uses transcript.transcribe. Models must already be prepared. A project selector retries only its evidence manifest (include the same text to retry phrase search); source preparation failures must be retried with their returned asset-stream selection. Keep the same acquisition selection; preparation uses a fresh generation after failure.",
     ),
   z
     .object({ operation: z.literal("model.list"), params: z.object({}).strict() })
@@ -1302,6 +1331,12 @@ export const operationSchema = z.discriminatedUnion("operation", [
     .strict()
     .describe(
       "Explicitly retry the same spectrogram, including failed measurements and audio prerequisites.",
+    ),
+  z
+    .object({ operation: z.literal("audio.pause.get"), params: pauseParams })
+    .strict()
+    .describe(
+      "Measure low-energy pause candidates for the selected source or pinned project audio without editing it. Omit detector settings to use the tested RMS technical default; thresholdRMS, minDurationUs and channel override it explicitly. The ready receipt exposes the resolved threshold, window, hop, channel, algorithm and version, and separates unavailable support from measured low energy. Continue with cursor while nextCursor exists; results are evidence only and do not authorize a cut.",
     ),
   z
     .object({
