@@ -6,27 +6,27 @@ editor interchange.
 
 ## Next Agent Prompt
 
-**Last updated:** 2026-10-13. **Status:** planning complete; implementation has
-not started. The API audit is recorded in slice 00. The next pickup is slice 01.
+**Last updated:** 2026-10-14. **Status:** implementation in progress. Slices 01,
+03, 04 and 07 have partial code and focused checks. The next pickup is slice 02.
 
 You are picking up the transcript-import-and-evidence spec. The next slice is
-**01-import-contract**. First read this README, `DEVELOPMENT.md`, the owning
-package READMEs and the current operation schemas. Implement only the parser and
-provenance contract in slice 01. Keep supplied timing as the default, preserve
-raw input and speaker names, and do not add alignment or automatic edits. Run the
-slice's focused tests, update this section with the result and next pickup point,
-then stop before starting slice 02.
+**02-explicit-alignment**. First read this README, `DEVELOPMENT.md`, the owning
+package READMEs and the current operation schemas. Wire `timingPolicy: "align"`
+to the existing alignment owner while preserving supplied text/timing beside the
+derived result. Do not make the default supplied branch align or download a model.
+Run focused protocol/core/service checks, update this handoff with results and
+the next pickup point, then continue to slice 05.
 
 Global TODO:
 
-- [ ] 00 — Finish the API audit and freeze the public seams.
-- [ ] 01 — Import SRT, VTT and supported JSON with provenance and supplied timing.
+- [x] 00 — Finish the API audit and freeze the public seams.
+- [x] 01 — Import SRT, VTT and supported JSON with provenance and supplied timing.
 - [ ] 02 — Add explicit audio alignment without changing supplied input by default.
-- [ ] 03 — Add missed-filler/disfluency evidence.
-- [ ] 04 — Add pause/dead-air evidence with named detector policies.
+- [x] 03 — Add missed-filler/disfluency evidence.
+- [x] 04 — Add pause/dead-air evidence with named detector policies.
 - [ ] 05 — Add reversible speaker-attribution corrections.
 - [ ] 06 — Integrate project/package persistence and CLI/MCP parity; run the full suite.
-- [ ] 07 — Rename analysis operations and finish optional-model consent/error details.
+- [x] 07 — Rename analysis operations and finish optional-model consent/error details.
 
 Before ending any implementation pass, update this prompt with the current
 status, tests run, open risks and exact next slice.
@@ -167,3 +167,18 @@ provenance, cue/word timing basis and supplied speaker labels. A second
 checkpoint requests `timingPolicy: "align"` for the same fixture and compares
 the two evidence generations. No UI or rendered screenshot is needed for this
 feature.
+
+## Implementation evidence
+
+- `packages/core/src/transcript-import.ts` parses SRT, VTT and the supported JSON
+  cue shape with fatal UTF-8 validation, raw digest, parser identity, cue timing,
+  speakers and optional supplied word timing.
+- `packages/core/src/imported-transcript.ts` stores imported generations and raw
+  source bytes; the service exposes them through `transcript.get`.
+- `audio.pause.get` uses the retained acoustic inspection/cache owner and exposes
+  resolved RMS settings and unavailable support.
+- `transcript.disfluency.get` reports emitted lexical filler/vocalization rows;
+  missed-disfluency measurement remains unsupported until a provider exists.
+- Slice 02 alignment, slice 05 speaker-attribution corrections and slice 06
+  package/project integration remain open. See `choices.md` for known gaps and
+  decisions made during this pass.
