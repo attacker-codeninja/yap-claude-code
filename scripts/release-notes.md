@@ -6,6 +6,11 @@ The capture menu keeps its dark appearance after selecting a recording area and
 shows the latest recording below the action buttons with Play and Copy agent prompt
 actions. Screen recordings now include the pointer in the captured video.
 
+## 0.1.38
+
+`package.adopt` and the skill now say to close a package once it's adopted.
+An unclosed package keeps its staged copy in the library until Yap restarts.
+
 ## 0.1.37
 
 Output by default: when an operation can produce a result, it does, and lists
