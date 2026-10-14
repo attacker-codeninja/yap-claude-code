@@ -237,7 +237,6 @@ export const qwenVoiceModel: ModelManifest = {
 /** The exact30s provider is first-party and uses the measured pinned NeMo acquisition. */
 export const speakerModel: ModelManifest = {
   ...originalSpeakerManifest,
-  autoPrepare: true,
   runtimeArtifact: {
     ...originalSpeakerManifest.runtimeArtifact!,
     digest: "42c54f575cb3c0ce6a469ea39182b64e33f35a5ab30eceb593ec055dcda61df2",

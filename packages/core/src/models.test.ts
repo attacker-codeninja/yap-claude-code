@@ -989,12 +989,11 @@ elif any(x.endswith("assemble.py") for x in a):
   for (const wrappers of Object.values(prepared)) expect(wrappers).toEqual([]);
 });
 
-test("the registered original speaker advertises first-party auto-preparation", async () => {
+test("the registered original speaker requires explicit preparation", async () => {
   const home = await mkdtemp("/tmp/yap-original-speaker-");
   cleanups.push(() => rm(home, { recursive: true, force: true }));
   const models = new Models(home, offline);
   expect(speakerModel).toMatchObject({
-    autoPrepare: true,
     runtimeArtifact: {
       acquisition: {
         recipe: "python-wheels-v1",
@@ -1008,6 +1007,7 @@ test("the registered original speaker advertises first-party auto-preparation", 
       },
     },
   });
+  expect(speakerModel.autoPrepare).toBeUndefined();
   expect(models.list().find((entry) => entry.modelId === "speaker-runtime-control")).toMatchObject({
     purpose: "speaker",
     descriptorDigest: "0616f0f01006fbaa76ebaaffc169da816b2f9afdb9288ae17d37e7357bdaf8a6",
