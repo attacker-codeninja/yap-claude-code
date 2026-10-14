@@ -2411,6 +2411,13 @@ export async function startProjectService(options: {
             };
           case "edit.apply":
             return { ok: true, data: projects.apply(operation.params.projectId, operation.params) };
+          case "speaker.correct":
+            return {
+              ok: true,
+              data: {
+                revision: projects.correctSpeakers(operation.params.projectId, operation.params),
+              },
+            };
           case "processing.get":
             return {
               ok: true,

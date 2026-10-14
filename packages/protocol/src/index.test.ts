@@ -781,3 +781,25 @@ describe("invalid params", () => {
     });
   });
 });
+
+it("admits exact, caller-authored speaker corrections", () => {
+  expect(
+    operationSchema.parse({
+      operation: "speaker.correct",
+      params: {
+        projectId: "p",
+        requestId: "r",
+        expectedRevisionId: "rev",
+        corrections: [
+          {
+            id: "fix",
+            occurrenceId: "clip",
+            target: { wordIds: ["w1"] },
+            value: { state: "overlap", slots: [0, 1] },
+            provenance: "human review",
+          },
+        ],
+      },
+    }),
+  ).toMatchObject({ operation: "speaker.correct" });
+});

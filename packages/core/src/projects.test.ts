@@ -132,6 +132,44 @@ test("no-op receipts do not grow history; undo and restore append identities and
   expect(store.history(id, page.nextCursor, 100).revisions.map((r) => r.ordinal)).toEqual([1, 2]);
 });
 
+test("speaker corrections are one reversible revision with stale and replay-safe request handling", async () => {
+  const { store } = await setup();
+  const created = store.create({ requestId: "create-speaker", canvas });
+  const request = {
+    requestId: "correct-speaker",
+    expectedRevisionId: created.revision.id,
+    corrections: [
+      {
+        id: "fix-1",
+        occurrenceId: "clip-a",
+        target: { wordIds: ["w7", "w8"] },
+        value: { state: "unknown" as const },
+        provenance: "caller reviewed the transcript",
+      },
+    ],
+  };
+  const corrected = store.correctSpeakers(created.project.projectId, request);
+  expect(corrected.speakerCorrections).toEqual(request.corrections);
+  expect(store.correctSpeakers(created.project.projectId, request)).toEqual(corrected);
+  expect(() =>
+    store.correctSpeakers(created.project.projectId, {
+      ...request,
+      requestId: "stale-speaker",
+    }),
+  ).toThrow(/revision has changed/);
+  const undone = store.undo(created.project.projectId, {
+    requestId: "undo-speaker",
+    expectedRevisionId: corrected.id,
+  });
+  expect(undone.speakerCorrections).toBeUndefined();
+  const restored = store.restore(created.project.projectId, {
+    requestId: "restore-speaker",
+    expectedRevisionId: undone.id,
+    targetRevisionId: corrected.id,
+  });
+  expect(restored.speakerCorrections).toEqual(request.corrections);
+});
+
 test("late failed edits retain no partial state; historical revisions retain admitted media", async () => {
   const { store, assets, home } = await setup();
   const path = join(home, "input.wav");

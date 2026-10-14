@@ -742,6 +742,7 @@ export class ProjectEvidenceInspection {
                   this.options.records,
                   this.options.speakers?.records,
                   this.options.speakers?.labels,
+                  this.options.projects.revision(input.projectId, manifest.query.revisionId).speakerCorrections ?? [],
                 ),
                 events: [],
                 speakers: [],

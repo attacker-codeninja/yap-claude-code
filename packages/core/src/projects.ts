@@ -21,6 +21,7 @@ import { TranscriptStore } from "./transcript.js";
 import { seedTextOperations, textSeeds, validateTextSeeds } from "./text-seeds.js";
 import { Catalog, CatalogError } from "./catalog.js";
 import { AssetStore, compositionAsset } from "./assets.js";
+import { speakerCorrectionSchema, type SpeakerCorrection } from "./speaker-attribution.js";
 
 export type Project = {
   projectId: string;
@@ -35,6 +36,7 @@ export type ProjectRevision = {
   createdAt: string;
   operation: "create" | "apply" | "undo" | "restore";
   document: EditBatchResult["document"];
+  speakerCorrections?: SpeakerCorrection[];
 };
 export type ProjectSnapshot = {
   project: Project;
@@ -69,6 +71,7 @@ const projectSnapshotSchema = z.strictObject({
         createdAt: z.string().min(1),
         operation: z.enum(["create", "apply", "undo", "restore"]),
         document: compositionSchema,
+        speakerCorrections: z.array(speakerCorrectionSchema).optional(),
       }),
     )
     .min(1)
@@ -107,7 +110,14 @@ export function validateProjectSnapshot(value: unknown): ProjectSnapshot {
     if (resources.size !== reference.resources.length)
       throw new CatalogError("INVALID_PACKAGE", "Revision dependency is repeated");
   }
-  return snapshot;
+  return {
+    ...snapshot,
+    revisions: snapshot.revisions.map((revision) =>
+      revision.speakerCorrections === undefined
+        ? ({ ...revision } as ProjectRevision)
+        : (revision as ProjectRevision),
+    ),
+  };
 }
 export type ProjectEditResult = {
   revision: ProjectRevision;
@@ -365,6 +375,31 @@ export class ProjectStore {
       ),
     );
   }
+  correctSpeakers(
+    projectId: string,
+    request: { requestId: string; expectedRevisionId: string; corrections: readonly SpeakerCorrection[] },
+  ): ProjectRevision {
+    return this.mutate(
+      projectId,
+      request.requestId,
+      { operation: "speaker.correct", expectedRevisionId: request.expectedRevisionId, corrections: request.corrections },
+      () => {
+        const current = this.current(projectId, request.expectedRevisionId);
+        const revision: ProjectRevision = {
+          ...current,
+          id: randomUUID(),
+          ordinal: current.ordinal + 1,
+          createdAt: new Date().toISOString(),
+          operation: "apply",
+          speakerCorrections: [...(current.speakerCorrections ?? []), ...request.corrections],
+        };
+        this.pushUndo(projectId, current.id);
+        this.insertRevision(revision);
+        this.publishHead(revision);
+        return revision;
+      },
+    );
+  }
   seedText(
     projectId: string,
     request: { requestId: string; expectedRevisionId: string; cues: unknown },
@@ -433,6 +468,7 @@ export class ProjectStore {
       createdAt: new Date().toISOString(),
       operation: "apply",
       document: edit.document,
+      ...(current.speakerCorrections === undefined ? {} : { speakerCorrections: current.speakerCorrections }),
     };
     this.insertRevision(revision, {
       origins: current.document.clips,

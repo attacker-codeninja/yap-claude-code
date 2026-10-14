@@ -367,6 +367,41 @@ export const operationSchema = z.discriminatedUnion("operation", [
     ),
   z
     .object({
+      operation: z.literal("speaker.correct"),
+      params: project
+        .extend({
+          requestId: id,
+          expectedRevisionId: id,
+          corrections: z
+            .array(
+              z
+                .object({
+                  id,
+                  occurrenceId: id,
+                  target: z.union([
+                    z.object({ wordIds: z.array(id).min(1) }).strict(),
+                    z.object({ range: range }).strict(),
+                  ]),
+                  value: z.union([
+                    z.object({ state: z.literal("attributed"), slot: z.int().min(0).max(3), displayName: z.string().trim().min(1).max(128).optional() }).strict(),
+                    z.object({ state: z.literal("overlap"), slots: z.array(z.int().min(0).max(3)).min(2).max(4) }).strict(),
+                    z.object({ state: z.literal("unknown") }).strict(),
+                  ]),
+                  provenance: z.string().min(1).max(4096),
+                })
+                .strict(),
+            )
+            .min(1)
+            .max(1000),
+        })
+        .strict(),
+    })
+    .strict()
+    .describe(
+      "Apply caller-authored speaker-attribution corrections to exact word identities or ranges in one reversible project revision. Retains the base attribution and correction provenance; it never changes acoustic evidence or source media.",
+    ),
+  z
+    .object({
       operation: z.literal("text.seed"),
       params: projectEdit.extend({ cues: textSeedCuesSchema }).strict(),
     })
