@@ -746,7 +746,7 @@
         "apps/service/src/loudness.ts": 1,
         "apps/service/src/portable-speakers.ts": 2,
         "apps/service/src/project-service.ts": 4,
-        "packages/core/src/acoustic-inspection.ts": 3,
+        "packages/core/src/acoustic-inspection.ts": 4,
         "packages/core/src/acquisitions.ts": 2,
         "packages/core/src/alignment-evidence.ts": 3,
         "packages/core/src/alignment-read.ts": 4,
@@ -754,6 +754,7 @@
         "packages/core/src/audio-extraction.ts": 1,
         "packages/core/src/audio-inspection.ts": 1,
         "packages/core/src/audio-spectrum.ts": 1,
+        "packages/core/src/audio-wave.ts": 1,
         "packages/core/src/capture-publication.ts": 1,
         "packages/core/src/capture-source-read.ts": 2,
         "packages/core/src/capture-store.ts": 6,
@@ -773,6 +774,7 @@
         "packages/core/src/source-speakers.ts": 3,
         "packages/core/src/speaker-evidence.ts": 2,
         "packages/core/src/speaker-read.ts": 2,
+        "packages/core/src/transcript-import.ts": 1,
         "packages/core/src/transcript-read.ts": 4,
         "packages/core/src/voice-generation.ts": 4,
         "packages/protocol/src/index.ts": 1
@@ -1267,7 +1269,8 @@
     "MODEL_NOT_PREPARED": {
       "category": "missing-prerequisite",
       "files": {
-        "packages/core/src/models.ts": 2,
+        "apps/service/src/project-service.ts": 1,
+        "packages/core/src/models.ts": 1,
         "packages/core/src/rendered-speech.ts": 2,
         "packages/core/src/transcript-processing.ts": 4
       }
@@ -1349,12 +1352,13 @@
         "apps/service/src/package-registry.ts": 2,
         "apps/service/src/portable-speakers.ts": 4,
         "apps/service/src/project-packages.ts": 4,
-        "apps/service/src/project-service.ts": 7,
+        "apps/service/src/project-service.ts": 9,
         "packages/core/src/acquisitions.ts": 7,
         "packages/core/src/alignment-evidence.ts": 2,
         "packages/core/src/assets.ts": 4,
         "packages/core/src/capture-store.ts": 2,
         "packages/core/src/files.ts": 2,
+        "packages/core/src/imported-transcript.ts": 1,
         "packages/core/src/jobs.ts": 3,
         "packages/core/src/prepared-audio.ts": 1,
         "packages/core/src/projects.ts": 3,
@@ -1379,7 +1383,7 @@
         "apps/service/src/loudness.ts": 1,
         "apps/service/src/project-packages.ts": 1,
         "apps/service/src/project-render.ts": 4,
-        "apps/service/src/project-service.ts": 12,
+        "apps/service/src/project-service.ts": 13,
         "apps/service/src/source-export.ts": 2,
         "helpers/mac/Sources/YapAudio/CompositionRetime.swift": 4,
         "helpers/mac/Sources/YapAudio/CompositionState.swift": 3,
@@ -1886,7 +1890,7 @@
         "helpers/mac/Sources/YapWire/MovieMux.swift": 1,
         "packages/composition/src/caption-sidecars.ts": 1,
         "packages/composition/src/errors.ts": 1,
-        "packages/core/src/acoustic-inspection.ts": 2,
+        "packages/core/src/acoustic-inspection.ts": 3,
         "packages/core/src/audio-inspection.ts": 1,
         "skills/yap/scripts/timeline-inspection.mjs": 1
       }
@@ -1918,7 +1922,7 @@
         "apps/service/src/asset-conversion.ts": 1,
         "apps/service/src/ffmpeg-input.ts": 4,
         "apps/service/src/hdr-conversion.ts": 5,
-        "apps/service/src/project-service.ts": 1,
+        "apps/service/src/project-service.ts": 2,
         "helpers/mac/Sources/YapFrames/SourceImageRenderer.swift": 1,
         "helpers/mac/Sources/YapMedia/CompressedVideoInspection.swift": 1,
         "helpers/mac/Sources/YapMedia/CubeLUT.swift": 2,
