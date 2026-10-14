@@ -23,7 +23,10 @@ own contracts rather than inventing asynchronous work.
 
 Output by default: an operation that can produce its output does, and reports
 each problem with it as an issue. Refusal stays for malformed or ambiguous input,
-conflicts, resource bounds, missing prerequisites and destructive actions. The
+conflicts, resource bounds, missing prerequisites, destructive actions and
+execution that failed. A request that doesn't match its operation schema refuses
+with `INVALID_PARAMS`, whose `details.invalid` names each rejected field's path
+and message; `admitOperation` is that one admission for the CLI and service. The
 [issue vocabulary](../composition/src/issues.ts) is the only registry: kebab-case
 codes, so they never collide with UPPER_SNAKE refusal codes, each with typed
 evidence that names what was requested and what was produced. Issues are not
@@ -32,6 +35,8 @@ ranked; ordering problems is an editorial call left to the caller.
 Every publication envelope carries `issues`, empty when the output is clean, and
 export status carries the issues of its export. An output is bounded to 1000
 issues; past that, a final `issues-truncated` issue counts what was omitted.
+Bounding is idempotent, so lists from several reads combine without losing that
+count.
 Issues never change the outcome of a request: a ready output with issues exits
 the CLI 0 and its settled `--wait` progress line names the issue count, while MCP
 reports an error only for a failed request.
