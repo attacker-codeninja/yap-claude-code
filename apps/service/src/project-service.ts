@@ -70,7 +70,7 @@ import { openControl, type ControlChannel } from "./control.js";
 import type { Readable, Writable } from "node:stream";
 import { JobQueue, type JobTargets } from "@yap/core/jobs";
 import {
-  operationSchema,
+  admitOperation,
   publishedOutput,
   operationNames,
   operationError,
@@ -1011,12 +1011,8 @@ export async function startProjectService(options: {
       if (closing) return operationError("SERVICE_STOPPED", "Service is closing", true);
       if (!operationNames.has(request.operation))
         return operationError("UNKNOWN_OPERATION", "Unknown service operation");
-      const parsed = operationSchema.safeParse({
-        operation: request.operation,
-        params: request.params,
-      });
-      if (!parsed.success)
-        return operationError("INVALID_PARAMS", "Parameters do not match the operation schema");
+      const parsed = admitOperation({ operation: request.operation, params: request.params });
+      if (!parsed.ok) return parsed;
       const operation = parsed.data;
       try {
         switch (operation.operation) {

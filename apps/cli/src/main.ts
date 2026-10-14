@@ -25,6 +25,7 @@ import {
 } from "@yap/client";
 import {
   operationNames,
+  admitOperation,
   operationSchema,
   FrameError,
   REQUEST_FRAME_BYTES,
@@ -49,8 +50,9 @@ function failure(
   code: string,
   message: string,
   retryable = false,
+  details: Record<string, unknown> = {},
 ): Extract<OperationResponse, { ok: false }> {
-  return { id, ...operationError(code, message, retryable) };
+  return { id, ...operationError(code, message, retryable, details) };
 }
 
 function capabilities(operation?: string) {
@@ -77,6 +79,7 @@ class UsageError extends Error {
   constructor(
     readonly code: string,
     message: string,
+    readonly details: Record<string, unknown> = {},
   ) {
     super(message);
   }
@@ -85,7 +88,8 @@ class UsageError extends Error {
 function errorResult(id: string, error: unknown): Extract<OperationResponse, { ok: false }> {
   if (error instanceof ArtifactDeliveryError)
     return failure(id, error.code, error.message, error.retryable);
-  if (error instanceof UsageError) return failure(id, error.code, error.message);
+  if (error instanceof UsageError)
+    return failure(id, error.code, error.message, false, error.details);
   if (error instanceof LocalTransportError)
     return failure(
       id,
@@ -111,8 +115,9 @@ function request(id: string, operation: string, params: unknown): OperationReque
     );
   const sending = parseRequest({ id, operation, params });
   encodeJsonLine(sending, REQUEST_FRAME_BYTES);
-  if (!operationSchema.safeParse({ operation, params }).success)
-    throw new UsageError("INVALID_PARAMS", "Parameters do not match the operation schema.");
+  const admitted = admitOperation({ operation, params });
+  if (!admitted.ok)
+    throw new UsageError(admitted.error.code, admitted.error.message, admitted.error.details);
   return sending;
 }
 

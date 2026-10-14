@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { RESPONSE_FRAME_BYTES } from "./framing.js";
+import { operationSchema } from "./operations.js";
 
 export const requestSchema = z
   .object({
@@ -88,6 +89,22 @@ export function operationError(
   details: Record<string, unknown> = {},
 ): OperationFailure {
   return { ok: false, error: { code, message, retryable, details } };
+}
+
+/**
+ * Schema admission shared by every peer. A rejection names each rejected field, so a caller can
+ * fix the request in one step instead of re-reading the whole schema.
+ */
+export function admitOperation(
+  request: unknown,
+): { ok: true; data: z.infer<typeof operationSchema> } | OperationFailure {
+  const parsed = operationSchema.safeParse(request);
+  if (parsed.success) return { ok: true, data: parsed.data };
+  return operationError("INVALID_PARAMS", "Parameters do not match the operation schema", false, {
+    invalid: parsed.error.issues
+      .slice(0, 20)
+      .map((issue) => ({ path: issue.path.join("."), message: issue.message })),
+  });
 }
 
 // The app's inherited pipe carries many frames from one trusted peer, so an

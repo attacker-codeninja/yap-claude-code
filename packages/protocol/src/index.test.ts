@@ -6,6 +6,7 @@ import {
   captureSelectionSchema,
   captureReportSchema,
   nativeStartSchema,
+  admitOperation,
   operationSchema,
   operationNames,
   parseRequest,
@@ -728,4 +729,33 @@ it("ordinary project index references remain usable without face observations", 
     },
   ])
     expect(operationSchema.parse(request).params).toMatchObject(request.params);
+});
+
+describe("invalid params", () => {
+  it("name every rejected field so a caller can fix the request in one step", () => {
+    expect(
+      admitOperation({
+        operation: "export.create",
+        params: {
+          projectId: "p",
+          exportId: "not-a-uuid",
+          directory: "/tmp",
+          leaf: "a.mp4",
+          kind: "video",
+        },
+      }),
+    ).toMatchObject({
+      ok: false,
+      error: {
+        code: "INVALID_PARAMS",
+        details: {
+          invalid: expect.arrayContaining([{ path: "params.exportId", message: "Invalid UUID" }]),
+        },
+      },
+    });
+    expect(admitOperation({ operation: "service.health", params: {} })).toEqual({
+      ok: true,
+      data: { operation: "service.health", params: {} },
+    });
+  });
 });

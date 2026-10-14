@@ -748,13 +748,12 @@
     "INVALID_PARAMS": {
       "category": "malformed",
       "files": {
-        "apps/cli/src/main.ts": 1,
         "apps/service/src/asset-conversion.ts": 1,
         "apps/service/src/exports.ts": 3,
         "apps/service/src/join-verification.ts": 4,
         "apps/service/src/loudness.ts": 1,
         "apps/service/src/portable-speakers.ts": 2,
-        "apps/service/src/project-service.ts": 5,
+        "apps/service/src/project-service.ts": 4,
         "packages/core/src/acoustic-inspection.ts": 3,
         "packages/core/src/acquisitions.ts": 2,
         "packages/core/src/alignment-evidence.ts": 3,
@@ -783,7 +782,8 @@
         "packages/core/src/speaker-evidence.ts": 2,
         "packages/core/src/speaker-read.ts": 2,
         "packages/core/src/transcript-read.ts": 4,
-        "packages/core/src/voice-generation.ts": 4
+        "packages/core/src/voice-generation.ts": 4,
+        "packages/protocol/src/index.ts": 1
       }
     },
     "INVALID_PATH": {
