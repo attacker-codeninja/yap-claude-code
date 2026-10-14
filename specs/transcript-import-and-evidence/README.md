@@ -175,7 +175,9 @@ feature.
   cue shape with fatal UTF-8 validation, raw digest, parser identity, cue timing,
   speakers and optional supplied word timing.
 - `packages/core/src/imported-transcript.ts` stores imported generations and raw
-  source bytes; the service exposes them through `transcript.get`.
+  source bytes; the service exposes them through `transcript.get`. Package export
+  and adoption still use the ASR transcript resource owner and do not yet carry
+  imported cue generations.
 - `audio.pause.get` uses the retained acoustic inspection/cache owner and exposes
   resolved RMS settings and unavailable support.
 - `transcript.disfluency.get` reports emitted lexical filler/vocalization rows;

@@ -44,6 +44,15 @@ cue's literal text and range. The default supplied path schedules no observer.
 This keeps alignment explicit and lets the existing model readiness/error
 contract apply. **Verdict: sound. Confidence: medium.**
 
+### Alignment is returned as per-cue job status before package joining
+
+The current import response includes one existing alignment job/status per cue;
+the imported generation remains readable immediately with supplied timing. The
+unbuilt alternative would add a new combined imported-alignment database owner.
+Keeping alignment jobs separate avoids a second evidence engine, but slice 06
+must make those dependencies durable in package export/adoption. **Verdict:
+sound as an incremental seam. Confidence: medium.**
+
 ## Open integration
 
 ### Imported alignment is returned as scheduled evidence
