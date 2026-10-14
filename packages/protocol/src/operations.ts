@@ -946,7 +946,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
         .strict(),
     })
     .describe(
-      "Explicitly prepare one selected source channel over a complete caller-selected support range of 80ms-grid mono16k cells, from 80ms through at most thirty seconds. Each preparation is one independent generation; separate windows do not share or imply speaker identity. Joins the same observation; job.retry owns failed/canceled recovery. First-party Yap speech models/runtime inputs are prepared through their pinned acquisition descriptor by default; verified local sources may be supplied. An admitted native decoder is still required. Never fills holes, mixes channels, infers edits or modifies original media.",
+      "Observe one selected source channel over a complete caller-selected support range of 80ms-grid mono16k cells, from 80ms through at most thirty seconds. Each observation is one independent generation; separate windows do not share or imply speaker identity. Joins the same observation; job.retry owns failed/canceled recovery. If the optional model/runtime is unavailable, return retryable MODEL_NOT_PREPARED details; do not acquire it automatically. An admitted native decoder is still required. Never fills holes, mixes channels, infers edits or modifies original media.",
     ),
   z
     .strictObject({
@@ -1109,7 +1109,7 @@ export const operationSchema = z.discriminatedUnion("operation", [
     .object({ operation: z.literal("transcript.review"), params: transcriptReviewParams })
     .strict()
     .describe(
-      "Review a bounded source or pinned-project transcript in one agent-friendly call. The operation may prepare/download Yap's registered pinned speech model and request missing transcription, then returns readiness, exact transcript rows, generation, continuation and, like transcript.get, the issues published with the transcript it reads. Poll the same request while model or transcript work is pending. It never invents words or edits a project. Use transcript.get for a strictly read-only retained read and transcript.transcribe/model.prepare for explicit lifecycle control.",
+      "Review a bounded source or pinned-project transcript in one agent-friendly call. Call it directly; if the optional model/runtime is unavailable, return retryable MODEL_NOT_PREPARED details so the agent can ask the user before model.prepare. The operation returns readiness, exact transcript rows, generation, continuation and, like transcript.get, the issues published with the transcript it reads. Poll the same request while transcription work is pending. It never invents words or edits a project.",
     ),
   z
     .object({
