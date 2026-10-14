@@ -120,8 +120,9 @@ changes alone cannot enumerate edited joins.
 
 For suspected clipped speech, compare the rendered excerpt with its retained
 source in a complete sentence. Re-transcribe the changed excerpt when useful;
-prepare Yap's registered local transcription model through `model.prepare` when
-needed for this check. Missing or changed words prompt
+call the transcript operation directly. If it reports `MODEL_NOT_PREPARED`, ask
+the user before using `model.prepare` to acquire the registered local model/runtime.
+Missing or changed words prompt
 boundary investigation, not automatic text correction. ASR can omit or mishear
 words, so combine it with waveform/spectrogram and any available listening.
 Do not treat transcript agreement as proof that every phoneme survived, or

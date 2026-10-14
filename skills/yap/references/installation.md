@@ -97,8 +97,10 @@ the app or the CLI.
    Gatekeeper to bypass it.
 4. Discover `capture.sources` and `capture.status` before an actual recording
    request. Screen, microphone and camera permissions are separate user actions.
-   Yap-owned speech/voice models are prepared automatically when a requested
-   first-class feature needs them; status and help reads never download models.
+   The default transcript model is prepared automatically. Optional alignment,
+   speaker and voice models are downloaded only after a capability reports
+   `MODEL_NOT_PREPARED` and the user approves `model.prepare`; status and help
+   reads never download models.
 
 Report a short checklist: release tag, app path, command (`cli.status` and whether
 it is on PATH), skill (`skill.status`), service health, and that permissions are

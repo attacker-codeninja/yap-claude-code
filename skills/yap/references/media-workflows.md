@@ -37,11 +37,13 @@ For imported speech, select the returned `assetId` and audio `streamId` explicit
 when requesting a source transcript; include `acquisitionId` only when you intend
 its capture gaps. These ranges are normalized file timestamps, not project time.
 Keep the complete returned cursor when paging or searching; changing selection or
-generation requires a fresh read. The app prepares models marked for the product
-lifecycle in the background at install and update; reads wait for that work but do
-not own a new download. Prepare speech explicitly with `transcript.prepare` when a
-bounded or new execution is required; `transcript.get` and search inspect retained
-evidence and never run inference. A preparation's `executionRange` limits primary
+generation requires a fresh read. The app prepares the default transcript model in
+the background at install and update; ordinary calls use it directly. Call
+`transcript.prepare` when a bounded or new execution is required;
+`transcript.get` and search inspect retained evidence and never run inference. If
+an operation reports `MODEL_NOT_PREPARED`, ask the user before acquiring the
+optional model/runtime, then use `model.prepare` and retry after it is ready. A
+preparation's `executionRange` limits primary
 source ownership; its outer `context` expands decoding without extending that
 ownership. A read's `range` only filters retained observations. Pin the returned
 `generation` when reading bounded evidence; omitting it selects full-support
@@ -61,23 +63,22 @@ the engine timed impossibly. Check those words against the audio or the raw
 evidence; never repair word timestamps.
 
 When the installed release advertises `transcript.review`, use it as the
-agent-friendly bounded review operation. It may prepare/download Yap's
-registered, pinned local speech model and enqueue the selected transcription;
-poll the same request through model and transcription readiness, then preserve
-the normal rows, generation and continuation it returns. It never invents
+agent-friendly bounded review operation. Call it directly to enqueue the selected
+transcription and preserve the normal rows, generation and continuation it
+returns. If it reports `MODEL_NOT_PREPARED`, ask the user before acquiring the
+optional model/runtime, then prepare and retry as described above. It never invents
 words or edits a project. `transcript.get` remains strictly read-only, while
-`model.prepare` and `transcript.prepare` remain the explicit lifecycle controls
-for advanced callers.
+`model.prepare` remains the explicit, user-approved model download and
+verification control; `transcript.prepare` is the inference operation.
 
-Discover registered IDs, purposes and source requirements with `model.list`, then
-inspect `model.status` with the selected `modelId`. Call `model.prepare` by default
-when the requested Yap feature needs its registered model/runtime; this separate
-preparation may download pinned inputs under its advertised acquisition policy and
-needs no additional permission. If an explicit request still returns
-`unavailable:model_not_prepared`, use `model.prepare` as recovery for a failed or
-interrupted lifecycle download, poll until `ready`, then retry the same selection.
-Supply verified local sources when required instead of guessing temporary paths or
-installing dependencies during reads. Keep incidental probes read-only. Diagnose
+Call the requested feature directly. If it returns
+`unavailable:model_not_prepared`, read its model ID, purpose, download scope and
+size, ask the user whether to download it, then call `model.prepare` only after an
+explicit yes; poll until `ready` and retry the same selection. `model.prepare`
+downloads/acquires and verifies the selected model/runtime; it does not perform
+transcription, alignment, speaker analysis or voice generation. Supply verified
+local sources when required instead of guessing temporary paths or installing
+dependencies during reads. Keep incidental probes read-only. Diagnose
 failed/canceled work before explicit transcript retry and surface the exact returned
 reason when a retry still fails. Phrase search can cross accepted inference seams,
 but cannot cross unavailable, unobserved or skipped source support. Preserve
@@ -86,11 +87,11 @@ enumeration retains all observations; explicit source/project ranges use half-op
 membership. Never turn an instant into playable duration or treat overlapping
 estimates as clean cuts. A source phrase cannot cross an inference segment.
 
-When anonymous speaker observations are requested, inspect `speaker.prepare` and
-`speaker.get` help first. Discover the registered model through `model.list`; first-party
-preparation downloads its pinned model/runtime inputs by default through the
-advertised acquisition descriptor. A verified local runtime/model source may still
-be supplied when available. Select one explicit source
+When anonymous speaker observations are requested, call `speaker.prepare` and
+`speaker.get` directly. If the operation reports a missing model, ask the user
+before using `model.prepare` to download its pinned model/runtime inputs. A
+verified local runtime/model source may still be supplied when available. Select
+one explicit source
 channel and a complete caller-selected range of 80ms score cells, from 80ms
 through at most 30 seconds, with the start on the 16k sample grid. Separate
 windows are independent observations; slot numbers do not carry identity across

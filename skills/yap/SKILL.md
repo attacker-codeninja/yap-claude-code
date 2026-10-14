@@ -32,16 +32,17 @@ material settles a choice that would change the result materially, such as which
 of several recordings they meant. When the user requests alternatives, keep
 those alternatives open.
 
-**Evidence requests include readiness.** The app acquires models marked for the
-product lifecycle in the background at install and update, so an explicit request
-to watch, understand, transcribe or edit a recording should normally only wait for
-that preparation to finish. If a request still returns
-`unavailable:model_not_prepared`, verify the model catalog with `model.list` and
-`model.status`; use `model.prepare` as the advertised recovery for a failed or
-interrupted lifecycle download, then retry the same transcript selection. This
-fallback applies to an explicit media request; incidental readiness probes remain
-read-only. If preparation or transcription fails, preserve and report the returned
-error code and reason, and do not retry an unchanged failed payload indefinitely.
+**Evidence requests include readiness.** Call the requested capability directly.
+Do not call `model.prepare` as a preflight: ordinary capability calls and status
+reads do not download anything. If a call returns `MODEL_NOT_PREPARED` or
+`unavailable:model_not_prepared`, read its details and explain to the user which
+optional model/runtime is missing, what it is for, what will be downloaded and the
+reported size or scope. Ask whether they want that download. Only after an explicit
+yes, call `model.prepare`, poll `model.status` until it settles, and retry the
+original capability with the same selection. `model.prepare` acquires and verifies
+model/runtime files; it does not run transcription, alignment, speaker analysis or
+voice generation. If the error does not include the details needed for that
+question, report the exact error instead of guessing or downloading.
 
 ## Installation
 
@@ -108,11 +109,11 @@ unavailable; do not claim it reopened or retry writes blindly.
    provenance in the task workspace. Use useful available tools. Recommend
    missing external capabilities only when materially useful or required; do not
    install external tools/models or set up accounts by default. For Yap's own
-   requested features, prepare needed registered local models/runtime through
-   `model.prepare` by default, following the installed acquisition contract;
-   do not ask permission again. Ordinary inference and status reads never
-   download dependencies. Done when the workflow's
-   required capabilities have evidence-backed readiness or explicit gaps.
+   requested features, call the needed capability directly. Do not prepare a
+   model in advance. If the call reports `MODEL_NOT_PREPARED`, follow the
+   user-consent recovery above and record the model/runtime details and the
+   user's decision. Done when the workflow's required capabilities have
+   evidence-backed readiness or an explicit gap.
 
 2. **Write the brief.** Save, in a task workspace, what the user asked for and
    your decision for every material choice they left open: audience, length,
@@ -167,8 +168,9 @@ unavailable; do not claim it reopened or retry writes blindly.
 
 4. **Read the evidence.** Inspect transcript and visual evidence to locate the
    content the brief needs. Treat readiness as a bounded state machine:
-   `unavailable:model_not_prepared` means prepare the registered transcription
-   model and retry; `processing` means poll the same request; `failed` means
+   `unavailable:model_not_prepared` means read the model details, ask the user
+   before downloading an optional model/runtime, then use `model.prepare` only
+   after consent and retry; `processing` means poll the same request; `failed` means
    diagnose the returned reason and use the advertised retry only after the cause
    is resolved. Follow returned pagination cursors, including empty pages with a
    next cursor. Preserve the transcript generation when using word identities. An
@@ -185,14 +187,15 @@ unavailable; do not claim it reopened or retry writes blindly.
    operations. When advertised, use `transcript.review` for a bounded,
    read-only transcript page and `cursor.render` for the same source or pinned
    project times with a visible pointer trail. `transcript.review` is the
-   agent-friendly convenience call: it may prepare/download Yap's registered,
-   pinned local speech model and transcribe the selected bounded range. Poll the
-   same request through model and transcription readiness; do not make the agent
-   discover `model.prepare` first. Pin the returned generation, revision,
+   agent-friendly convenience call: call it directly to request the selected
+   bounded range. If it reports `MODEL_NOT_PREPARED`, use the returned details to
+   ask the user before downloading an optional model/runtime; do not make the
+   agent discover `model.prepare` as a preflight. Pin the returned generation, revision,
    acquisition and continuation exactly as returned. It never invents words or
    edits a project. If it is absent, use the lower-level
-   `model.prepare`/`transcript.prepare`/`transcript.get` and `cursor.raw` plus
-   `frame.get` path below.
+   `transcript.prepare`/`transcript.get` and `cursor.raw` plus `frame.get` path
+   below. `model.prepare` is only the user-approved download and
+   verification recovery described above.
 
 5. **Edit.** Inspect uncertain cut boundaries using bounded audio excerpts and
    nearby frames. Choose narration, system audio, or mix intentionally. Transcript

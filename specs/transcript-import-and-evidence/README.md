@@ -26,6 +26,7 @@ Global TODO:
 - [ ] 04 — Add pause/dead-air evidence with named detector policies.
 - [ ] 05 — Add reversible speaker-attribution corrections.
 - [ ] 06 — Integrate project/package persistence and CLI/MCP parity; run the full suite.
+- [ ] 07 — Rename analysis operations and finish optional-model consent/error details.
 
 Before ending any implementation pass, update this prompt with the current
 status, tests run, open risks and exact next slice.
@@ -66,6 +67,18 @@ without turning detection into automatic editing.
 - The agent may override the detector settings explicitly. Do not add a
   capabilities endpoint until the installed build has more than one meaningful
   detector policy or mode to discover.
+- `model.prepare` is a dependency operation. It downloads/acquires and verifies
+  the selected model and runtime files; it does not transcribe, align, observe
+  speakers or generate voice audio. The default transcript model is acquired
+  automatically and has no customer-facing preparation step.
+- Agents call the requested capability directly. They do not call
+  `model.prepare` as a preflight. If an operation returns `MODEL_NOT_PREPARED`,
+  its message and details must say that `model.prepare` will download/acquire and
+  verify the named model/runtime files, identify `modelId`, purpose, what will be
+  downloaded, estimated bytes or a clearly stated size scope, why the operation
+  needs it, and that the failure is retryable. The agent uses those details to ask
+  the user whether to download the optional model/runtime, calls `model.prepare`
+  only after a yes, waits for readiness and retries the original request.
 - Original media and prior revisions remain intact if parsing, alignment or
   publication fails.
 
@@ -95,14 +108,22 @@ describe ownership and behavior for planning:
    operation, or an equivalent edit operation owned by the existing revision
    reducer. It targets pinned occurrences/words and retains the base attribution
    and correction provenance side by side.
+6. **Model lifecycle and analysis names** keep separate owners and outputs:
+   `model.prepare` downloads and verifies dependencies; `transcript.transcribe`
+   generates transcript evidence; `alignment.observe` generates alignment
+   evidence; `speaker.observe` generates speaker evidence; and `voice.generate`
+   creates a durable generated-audio asset. Rename the existing public analysis
+   operations in one hard-cutover slice; CLI and MCP derive the same names and
+   schemas, with no compatibility aliases unless a later decision adds them.
 
 ## API audit findings to carry forward
 
 - `transcript.get` and `transcript.search` are appropriately read-only.
-- `transcript.review` is an explicit convenience that may prepare models and
-  request missing transcription. Keep that behavior documented, but never reuse
-  it for transcript import or a supposedly read-only imported-transcript read.
-- `alignment.prepare` already treats supplied text literally and preserves
+- `transcript.review` is an explicit convenience that may request missing
+  transcription. It follows the same direct-call and user-approved optional
+  model recovery as the lower-level operations; never reuse it for transcript
+  import or a supposedly read-only imported-transcript read.
+- `alignment.observe` already treats supplied text literally and preserves
   conditional evidence. Reuse its owner and bounded-window behavior.
 - `wordKind` is a lexical classification of emitted text. It is not missed-filler
   detection and must not be advertised as one.

@@ -70,9 +70,12 @@ reference and text.
 ## Models and runtime
 
 `model.list`, `model.status`, and `model.prepare` discover, inspect and prepare
-registered local models. `service.health` reports readiness without starting a
-capture; `service.tools` reports the selected app's verified Node and media
-tools.
+registered local models. Call a requested feature directly; use `model.prepare`
+only after a `MODEL_NOT_PREPARED` error has explained the optional download and
+the user has approved it. `model.prepare` acquires and verifies model/runtime
+files; it does not run inference. `service.health` reports readiness without
+starting a capture; `service.tools` reports the selected app's verified Node and
+media tools.
 
 ## Capture
 

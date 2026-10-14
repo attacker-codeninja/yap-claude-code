@@ -34,23 +34,21 @@ assets.
 
 For feedback review, discover `transcript.review`, `cursor.render` and their
 advertised retry/readiness behavior in the installed operation help. `transcript.review`
-is intentionally the convenience owner for registered model preparation and
-bounded transcription; callers should not have to discover `model.prepare`
-first. Record whether each operation is present and its exact CLI/service
-version. Newer skill text must not be treated as proof that an older release
-implements these operations; fall back to the explicit preparation/read and
-raw-coordinate pipeline when they are absent.
+is the convenience owner for bounded transcription; call it directly. If it
+reports `MODEL_NOT_PREPARED`, use the returned model purpose, download scope and
+size to ask the user before calling `model.prepare`. Record whether each
+operation is present and its exact CLI/service version. Newer skill text must not
+be treated as proof that an older release implements these operations; fall back
+to the explicit evidence pipeline when they are absent.
 
-Use useful available capabilities. For Yap's first-class features, inspect
-`model.list` and `model.status`, then call the existing `model.prepare` owner
-when their registered local model/runtime is needed. This preparation, including
-the pinned download when advertised, is part of fulfilling the request by default;
-do not ask the user for separate permission. Follow the registered acquisition
-policy and verified local-source requirements. If that policy cannot acquire a
-required source, report the concrete preparation gap instead of inventing a URL
-or calling the first-class feature an external add-on. Ordinary status, reads and
-inference still acquire nothing. An explicit user constraint against downloads
-overrides the default.
+Use useful available capabilities. Call a requested Yap feature directly; do not
+use `model.list`, `model.status` or `model.prepare` as a preflight. If the feature
+returns `MODEL_NOT_PREPARED`, inspect the returned model ID, purpose, download
+scope/size and reason, ask the user whether to acquire it, then call
+`model.prepare` only after an explicit yes. Poll `model.status` and retry the
+same request. `model.prepare` acquires and verifies model/runtime files; it does
+not perform inference. If the error omits those details, report the concrete gap
+instead of guessing a download or source.
 
 Recommend a missing **external** capability only when it
 would materially improve the requested result or is required—such as an explicit
