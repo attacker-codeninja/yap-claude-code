@@ -47,9 +47,9 @@ video, audio, captions, and editable packages. `artifact.read`,
 
 `index.get`, `index.retry`, `index.coverage`, `index.frame`, `index.frames`,
 `face.trajectory.get`, `correspondence.prepare`, `correspondence.get`,
-`alignment.prepare`, `alignment.get`, `cursor.render`, `cursor.render.retry`,
+`alignment.observe`, `alignment.get`, `cursor.render`, `cursor.render.retry`,
 `speaker.continuity.prepare`,
-`speaker.continuity.get`, `speaker.prepare`, `speaker.get`, `speaker.bind`,
+`speaker.continuity.get`, `speaker.observe`, `speaker.get`, `speaker.bind`,
 `join.verify`, `timeline.events`, and `cursor.raw` expose measured visual,
 audio, timing, face, speaker, alignment and join evidence. Evidence is
 information; it never authorizes an edit.
@@ -57,7 +57,7 @@ information; it never authorizes an edit.
 ## Transcript, audio and visual processing
 
 `transcript.review`, `transcript.render.prepare`, `transcript.render.retry`,
-`transcript.render.get`, `transcript.prepare`, `transcript.get`,
+`transcript.render.get`, `transcript.transcribe`, `transcript.get`,
 `transcript.search`, and `transcript.retry` provide source/project text and
 rendered speech evidence. `audio.extract`, `audio.prepare`, `audio.get`,
 `audio.measure`, and `audio.retry` provide retained or measured PCM.

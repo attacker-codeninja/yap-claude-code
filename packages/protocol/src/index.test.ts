@@ -608,6 +608,28 @@ it("loudness admission keeps source/project selectors exclusive and channel inte
     ).toBe(false);
 });
 
+it("pause evidence accepts source and project selections with optional detector overrides", () => {
+  expect(
+    operationSchema.safeParse({
+      operation: "audio.pause.get",
+      params: { assetId: "asset", streamId: "audio", thresholdRMS: 0.01, minDurationUs: 300_000 },
+    }).success,
+  ).toBe(true);
+  expect(
+    operationSchema.safeParse({
+      operation: "audio.pause.get",
+      params: {
+        projectId: "project",
+        revisionId: "revision",
+        range: { startUs: 0, endUs: 1_000_000 },
+        tap: { target: { kind: "output" }, point: { kind: "processed" } },
+        cursor: { offset: 100 },
+        limit: 50,
+      },
+    }).success,
+  ).toBe(true);
+});
+
 it("admits project alignment reads only with an explicit prepared tap identity", () => {
   const request = {
     operation: "alignment.get",

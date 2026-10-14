@@ -6,6 +6,7 @@ import {
   fromTime,
   toTime,
   rational,
+  sampleAt,
   type TimeValue,
 } from "@yap/composition";
 import { createHash } from "node:crypto";
@@ -22,7 +23,7 @@ import {
   type SourceAudioArtifact,
   type ProjectAudioArtifact,
 } from "./audio-inspection.js";
-import { waveformBuckets, sampleGrid, validateAudioWave } from "./audio-wave.js";
+import { pauseIntervals, waveformBuckets, sampleGrid, validateAudioWave } from "./audio-wave.js";
 import { spectralLayout, spectralWindows } from "./audio-spectrum.js";
 import { acousticImageRequest, type AcousticImageRequest } from "./acoustic-image.js";
 
@@ -52,6 +53,16 @@ const loudnessOptions = waveformOptions.omit({ bucketFrames: true, policy: true 
   signalRecipe: loudnessSignalSchema,
   scope: z.enum(["full-signal", "excerpt"]),
 });
+const pauseOptions = waveformOptions.omit({ bucketFrames: true, policy: true }).extend({
+  policy: z.literal("pause-rms-v1"),
+  thresholdRMS: z.number().finite().nonnegative(),
+  windowFrames: z.int().positive(),
+  hopFrames: z.int().positive(),
+  channel: z.int().nonnegative().nullable(),
+  minDurationUs: z.number().int().positive(),
+  windowUs: z.int().positive(),
+  hopUs: z.int().positive(),
+});
 export { loudnessMeasurementSchema, type LoudnessMeasurement } from "./audio-measurement.js";
 export type LoudnessAnalyzer = {
   implementationId: string;
@@ -65,7 +76,13 @@ export type LoudnessAnalyzer = {
     signal: AbortSignal,
   ): Promise<LoudnessMeasurement>;
 };
-const optionsSchema = z.union([waveformOptions, spectrumOptions, loudnessOptions]);
+const optionsSchema = z.union([waveformOptions, spectrumOptions, loudnessOptions, pauseOptions]);
+const PAUSE_DEFAULTS = {
+  thresholdRMS: 0.01,
+  windowUs: 20_000,
+  hopUs: 10_000,
+  minDurationUs: 300_000,
+} as const;
 export type AcousticInput = MediaAudioInput & { format?: "json" | "image" | undefined } & (
     | { kind?: "waveform"; bucketFrames?: number | undefined }
     | { kind: "spectrum"; fftFrames?: number | undefined; hopFrames?: number | undefined }
@@ -73,6 +90,12 @@ export type AcousticInput = MediaAudioInput & { format?: "json" | "image" | unde
         kind: "loudness";
         channelInterpretation?: "native" | "dual-mono" | undefined;
         truePeak?: boolean | undefined;
+      }
+    | {
+        kind: "pause";
+        thresholdRMS?: number | undefined;
+        minDurationUs?: number | undefined;
+        channel?: number | undefined;
       }
   );
 type AudioArtifact = SourceAudioArtifact | ProjectAudioArtifact;
@@ -124,6 +147,21 @@ export type AcousticArtifact = ReturnType<typeof metadata> & {
         signalRecipe: z.infer<typeof loudnessSignalSchema>;
         scope: "full-signal" | "excerpt";
         measurement: LoudnessMeasurement;
+      }
+    | {
+        kind: "pause";
+        thresholdRMS: number;
+        windowUs: number;
+        hopUs: number;
+        channel: number | null;
+        minDurationUs: number;
+        algorithm: "rms-window-v1";
+        intervals: {
+          range: ReturnType<typeof metadata>["range"];
+          durationUs: number;
+          rms: number;
+        }[];
+        unavailable: ReturnType<typeof metadata>["unavailable"];
       };
   audio: { jobId: string; generation: number };
 };
@@ -156,6 +194,14 @@ export type AcousticRenderer = {
   render(request: AcousticImageRequest, signal: AbortSignal): Promise<unknown>;
 };
 const lost = (message: string) => new CatalogError("ARTIFACT_CHANGED", message, {}, true);
+function audioUnavailableSamples(audio: AudioArtifact) {
+  return "projectId" in audio
+    ? audio.unavailable.flatMap((entry) => entry.ranges)
+    : audio.unavailable.map((range) => ({
+        start: sampleAt(fromTime(range.startUs), audio.sampleRate),
+        end: sampleAt(fromTime(range.endUs), audio.sampleRate),
+      }));
+}
 /** Acoustic derivatives retain audio provenance; only a rebuild needs the disposable PCM bytes. */
 export class AcousticInspection {
   constructor(
@@ -212,6 +258,47 @@ export class AcousticInspection {
             ? ("full-signal" as const)
             : ("excerpt" as const),
         },
+      };
+    }
+    if (input.kind === "pause") {
+      const {
+        kind,
+        thresholdRMS = PAUSE_DEFAULTS.thresholdRMS,
+        minDurationUs = PAUSE_DEFAULTS.minDurationUs,
+        channel,
+        ...selection
+      } = input;
+      const recipe = this.owners.audio.recipe(selection),
+        clock = recipe.sampleClock;
+      if (!clock)
+        throw new CatalogError(
+          "UNSUPPORTED_FORMAT",
+          "Pause detection requires an integral sample rate",
+        );
+      if (channel !== undefined && (recipe.channels === undefined || channel >= recipe.channels))
+        throw new CatalogError("INVALID_PARAMS", "Pause channel is outside the selected audio");
+      const windowFrames = Math.max(
+        1,
+        Math.round((PAUSE_DEFAULTS.windowUs * clock.sampleRate) / 1_000_000),
+      );
+      const hopFrames = Math.max(
+        1,
+        Math.round((PAUSE_DEFAULTS.hopUs * clock.sampleRate) / 1_000_000),
+      );
+      return {
+        recipe,
+        selection: recipe.selection,
+        parameters: {
+          policy: "pause-rms-v1" as const,
+          thresholdRMS,
+          windowFrames,
+          hopFrames,
+          channel: channel ?? null,
+          minDurationUs,
+          windowUs: PAUSE_DEFAULTS.windowUs,
+          hopUs: PAUSE_DEFAULTS.hopUs,
+        },
+        artifact: kind,
       };
     }
     if (input.kind === "spectrum") {
@@ -388,7 +475,7 @@ export class AcousticInspection {
   }
   private pinned(job: Job, options: z.infer<typeof optionsSchema>) {
     const source = this.owners.jobs.job(options.audioJobId);
-    if (source.artifact !== "audio" || !isDeepStrictEqual(source.target, job.target))
+    if (!["audio", "audio-file"].includes(source.artifact) || !isDeepStrictEqual(source.target, job.target))
       throw lost("Acoustic dependency does not belong to its selected audio target");
     const status = this.owners.jobs.status(source);
     if (
@@ -492,7 +579,7 @@ export class AcousticInspection {
     if (job.artifact === "acoustic-image") return this.executeImage(execution, raw);
     const parsed = optionsSchema.safeParse(raw);
     if (
-      !["waveform", "spectrum", "loudness"].includes(job.artifact) ||
+      !["waveform", "spectrum", "loudness", "pause"].includes(job.artifact) ||
       !parsed.success ||
       (job.target.kind !== "asset" && job.target.kind !== "project")
     )
@@ -556,6 +643,60 @@ export class AcousticInspection {
           fftFrames: options.fftFrames,
           hopFrames: options.hopFrames,
           columnCount: result.columns.length,
+        };
+      } else if (options.policy === "pause-rms-v1") {
+        const pause = options;
+        validateAudioWave(lease, audio);
+        const result = await pauseIntervals(
+          lease,
+          audio,
+          {
+            windowFrames: pause.windowFrames,
+            hopFrames: pause.hopFrames,
+            thresholdRMS: pause.thresholdRMS,
+            ...(pause.channel === null ? {} : { channel: pause.channel }),
+            unavailable: audioUnavailableSamples(audio),
+          },
+          signal,
+        );
+        const intervals = result.intervals
+          .filter(
+            (interval) =>
+              Math.round(
+                ((interval.sampleRange.end - interval.sampleRange.start) * 1_000_000) /
+                  audio.sampleRate,
+              ) >= pause.minDurationUs,
+          )
+          .map((interval) => {
+            const startUs = toTime(
+              rational(BigInt(interval.sampleRange.start) * 1_000_000n, BigInt(audio.sampleRate)),
+            );
+            const endUs = toTime(
+              rational(BigInt(interval.sampleRange.end) * 1_000_000n, BigInt(audio.sampleRate)),
+            );
+            return {
+              range: { startUs, endUs },
+              durationUs: Math.round(
+                ((interval.sampleRange.end - interval.sampleRange.start) * 1_000_000) /
+                  audio.sampleRate,
+              ),
+              rms: interval.rms,
+            };
+          });
+        analysis = {
+          kind: "pause",
+          thresholdRMS: pause.thresholdRMS,
+          windowUs: PAUSE_DEFAULTS.windowUs,
+          hopUs: PAUSE_DEFAULTS.hopUs,
+          channel: pause.channel,
+          minDurationUs: pause.minDurationUs,
+          algorithm: "rms-window-v1",
+          intervals,
+          unavailable: description.unavailable,
+        };
+        measurements = {
+          ...analysis,
+          coverage: description.unavailable.length ? "partial" : "complete",
         };
       } else {
         assertLoudnessCoverage(audio);

@@ -2284,10 +2284,9 @@ export async function startProjectService(options: {
           case "audio.pause.get": {
             const { limit = 100, cursor, ...selection } = operation.params;
             const status = await acoustics.request({ ...selection, kind: "pause" });
-            const allIntervals =
-              status.published?.artifact.analysis.kind === "pause"
-                ? status.published.artifact.analysis.intervals
-                : [];
+            const allIntervals = status.published?.artifact.analysis.kind === "pause"
+              ? status.published.artifact.analysis.intervals
+              : [];
             const published = status.published
               ? {
                   ...status.published,
@@ -2301,7 +2300,8 @@ export async function startProjectService(options: {
                       ),
                     },
                     nextCursor:
-                      (cursor?.offset ?? 0) + limit < allIntervals.length
+                      (cursor?.offset ?? 0) + limit <
+                      allIntervals.length
                         ? { offset: (cursor?.offset ?? 0) + limit }
                         : null,
                   },

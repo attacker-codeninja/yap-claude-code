@@ -2107,7 +2107,7 @@ test("a persisted queued voice request reaches its initialized owner after start
       data: {
         state: "failed",
         errorCode: "MODEL_NOT_PREPARED",
-        reason: "Voice model and runtime are not prepared",
+        reason: expect.stringContaining("model.prepare will download/acquire and verify"),
       },
     });
 });

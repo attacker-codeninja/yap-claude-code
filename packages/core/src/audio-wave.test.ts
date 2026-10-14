@@ -1,6 +1,6 @@
 import { spectralWindows } from "./audio-spectrum.js";
 import { expect, test } from "vitest";
-import { readAudioWave, waveformBuckets } from "./audio-wave.js";
+import { pauseIntervals, readAudioWave, waveformBuckets } from "./audio-wave.js";
 import type { RetainedRead } from "./files.js";
 function fixture(values: number[][], start = 0, rate = 48000) {
   const channels = values[0]!.length,
@@ -107,6 +107,24 @@ test("absolute buckets preserve independent channels and clipped sample windows 
     new AbortController().signal,
   );
   expect(ranged.buckets).toEqual([result.buckets[1]]);
+});
+
+test("pause intervals report contiguous low-energy windows and skip unavailable support", async () => {
+  const f = fixture([
+    ...Array.from({ length: 4 }, () => [0.5]),
+    ...Array.from({ length: 8 }, () => [0]),
+    ...Array.from({ length: 4 }, () => [0.5]),
+  ], 0, 10);
+  const result = await pauseIntervals(
+    f.read,
+    f.audio,
+    { windowFrames: 2, hopFrames: 2, thresholdRMS: 0.1, unavailable: [{ start: 8, end: 10 }] },
+    new AbortController().signal,
+  );
+  expect(result.intervals).toEqual([
+    { sampleRange: { start: 4, end: 8 }, rms: 0 },
+    { sampleRange: { start: 10, end: 12 }, rms: 0 },
+  ]);
 });
 
 test("resolution cap refuses before reading and fractional source clocks stay sample based", async () => {

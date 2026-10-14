@@ -26,6 +26,7 @@ export const artifactOperations = new Set([
   "frame.get",
   "frame.retry",
   "audio.measure",
+  "audio.pause.get",
   "audio.get",
   "audio.retry",
   "waveform.get",

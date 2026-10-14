@@ -193,7 +193,7 @@ unavailable; do not claim it reopened or retry writes blindly.
    agent discover `model.prepare` as a preflight. Pin the returned generation, revision,
    acquisition and continuation exactly as returned. It never invents words or
    edits a project. If it is absent, use the lower-level
-   `transcript.prepare`/`transcript.get` and `cursor.raw` plus `frame.get` path
+   `transcript.transcribe`/`transcript.get` and `cursor.raw` plus `frame.get` path
    below. `model.prepare` is only the user-approved download and
    verification recovery described above.
 

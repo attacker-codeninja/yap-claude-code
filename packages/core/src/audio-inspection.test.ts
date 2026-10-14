@@ -142,7 +142,7 @@ async function fixture(
         isCapturing: () => false,
       },
       execute: (execution) =>
-        ["waveform", "spectrum", "acoustic-image", "loudness"].includes(execution.job.artifact)
+        ["waveform", "spectrum", "acoustic-image", "loudness", "pause"].includes(execution.job.artifact)
           ? waveform.execute(execution)
           : inspection.execute(execution),
     });
@@ -217,7 +217,7 @@ test("source WAV jobs pin selection/support, retain actual job references and re
   await f.jobs.idle();
   const ready = await f.inspection.request(selection),
     audio = ready.published!.audio;
-  expect(ready.state).toBe("ready");
+  expect(ready.state, JSON.stringify(ready)).toBe("ready");
   expect(audio.unavailable).toEqual([
     { startUs: 100000, endUs: 200000 },
     { startUs: 800000, endUs: 1000000 },
@@ -277,7 +277,7 @@ test("cancellation fences late renderer output and only explicit retry admits an
   await f.inspection.retry(input);
   await f.jobs.idle();
   const ready = await f.inspection.request(input);
-  expect(ready.state).toBe("ready");
+  expect(ready.state, JSON.stringify(ready)).toBe("ready");
   expect(calls).toBe(2);
   expect(ready.published!.audio.sampleRange).toEqual({ start: 3, end: 9599 });
   expect(ready.published!.audio.unavailable).toEqual([{ startUs: 71, endUs: 100000 }]);
@@ -502,7 +502,7 @@ test("acoustic images reuse cached measurements and explicit retry rebuilds evic
       await f.jobs.idle();
     }
     const result = await f.waveform.request(input);
-    expect(result.state).toBe("ready");
+    expect(result.state, JSON.stringify(result)).toBe("ready");
     return result;
   };
   const first = await prepare();
@@ -554,7 +554,7 @@ test("cached spectral jobs preserve full versus ranged measurements and survive 
     await f.waveform.request({ ...input, range });
     await f.jobs.idle();
     const result = await f.waveform.request({ ...input, range });
-    expect(result.state).toBe("ready");
+    expect(result.state, JSON.stringify(result)).toBe("ready");
     return result;
   };
   const full = await prepare({ startUs: 200000, endUs: 220000 });
@@ -633,7 +633,7 @@ test("waveform jobs reuse bounded audio recipes, publish source axes and survive
   await f.jobs.idle();
   const ready = await f.waveform.request(input),
     artifact = ready.published!.artifact;
-  expect(ready.state).toBe("ready");
+  expect(ready.state, JSON.stringify(ready)).toBe("ready");
   expect(renders).toBe(1);
   const document = JSON.parse(await readFile(artifact.file, "utf8"));
   expect(document).toMatchObject({
@@ -944,4 +944,23 @@ test("loudness missing-support refusal preserves rational source endpoints and d
   await expect(
     f.waveform.request({ ...f.selection, kind: "loudness", channelInterpretation: "dual-mono" }),
   ).rejects.toMatchObject({ code: "INVALID_PARAMS" });
+});
+
+test("pause analysis exposes resolved detector settings and low-energy intervals", async () => {
+  const f = await fixture();
+  const pending = await f.waveform.request({ ...f.selection, kind: "pause", minDurationUs: 100_000 });
+  await f.jobs.idle();
+  await f.waveform.request({ ...f.selection, kind: "pause", minDurationUs: 100_000 });
+  await f.jobs.idle();
+  const ready = await f.waveform.request({ ...f.selection, kind: "pause", minDurationUs: 100_000 });
+  expect(ready.state, JSON.stringify(ready)).toBe("ready");
+  expect(ready.published!.artifact.analysis).toMatchObject({
+    kind: "pause",
+    thresholdRMS: 0.01,
+    windowUs: 20_000,
+    hopUs: 10_000,
+    minDurationUs: 100_000,
+    algorithm: "rms-window-v1",
+  });
+  expect(ready.jobId).toEqual(expect.any(String));
 });

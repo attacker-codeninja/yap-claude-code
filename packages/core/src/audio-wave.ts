@@ -114,6 +114,81 @@ export type WaveformBucket = {
   partial: boolean;
   channels: { min: number; max: number; rms: number }[];
 };
+
+export type PauseInterval = {
+  sampleRange: { start: number; end: number };
+  rms: number;
+};
+
+/**
+ * Find contiguous low-energy windows in retained PCM. This is evidence only:
+ * unavailable windows are skipped and never interpreted as silence.
+ */
+export async function pauseIntervals(
+  file: RetainedRead,
+  audio: AudioSamples,
+  options: {
+    windowFrames: number;
+    hopFrames: number;
+    thresholdRMS: number;
+    channel?: number;
+    unavailable?: readonly { start: number; end: number }[];
+  },
+  signal: AbortSignal,
+) {
+  const { windowFrames, hopFrames, thresholdRMS, channel, unavailable = [] } = options;
+  if (
+    !Number.isSafeInteger(windowFrames) ||
+    windowFrames < 1 ||
+    !Number.isSafeInteger(hopFrames) ||
+    hopFrames < 1 ||
+    !Number.isFinite(thresholdRMS) ||
+    thresholdRMS < 0 ||
+    (channel !== undefined &&
+      (!Number.isSafeInteger(channel) || channel < 0 || channel >= audio.channels))
+  )
+    throw new CatalogError("INVALID_PARAMS", "Invalid pause detector settings");
+  const { dataOffset } = validateAudioWave(file, audio);
+  const block = Buffer.alloc(windowFrames * audio.channels * 4);
+  const intervals: PauseInterval[] = [];
+  const overlapsUnavailable = (start: number, end: number) =>
+    unavailable.some((gap) => gap.start < end && gap.end > start);
+  for (
+    let start = audio.sampleRange.start;
+    start + windowFrames <= audio.sampleRange.end;
+    start += hopFrames
+  ) {
+    signal.throwIfAborted();
+    if (overlapsUnavailable(start, start + windowFrames)) continue;
+    const bytes = windowFrames * audio.channels * 4;
+    if (
+      file.read(
+        block.subarray(0, bytes),
+        dataOffset + (start - audio.sampleRange.start) * audio.channels * 4,
+      ) !== bytes
+    )
+      invalid("Truncated PCM samples");
+    const squares = Array.from({ length: audio.channels }, () => 0);
+    for (let frame = 0; frame < windowFrames; frame++) {
+      for (let c = 0; c < audio.channels; c++) {
+        const value = block.readFloatLE((frame * audio.channels + c) * 4);
+        if (!Number.isFinite(value)) invalid("PCM contains a non-finite sample");
+        squares[c]! += value * value;
+      }
+    }
+    const rms = Math.sqrt(
+      (channel === undefined ? Math.max(...squares) : squares[channel]!) / windowFrames,
+    );
+    if (rms >= thresholdRMS) continue;
+    const previous = intervals.at(-1);
+    if (previous && previous.sampleRange.end >= start) {
+      previous.sampleRange.end = Math.max(previous.sampleRange.end, start + windowFrames);
+      previous.rms = Math.min(previous.rms, rms);
+    } else intervals.push({ sampleRange: { start, end: start + windowFrames }, rms });
+    await setImmediate(undefined, { signal });
+  }
+  return { intervals };
+}
 /** Plan the absolute grid and refuse oversized detail before preparing or reading PCM. */
 export function sampleGrid(
   audio: Pick<AudioSamples, "frames" | "sampleRange">,

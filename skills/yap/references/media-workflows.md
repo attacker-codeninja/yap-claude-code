@@ -39,7 +39,7 @@ its capture gaps. These ranges are normalized file timestamps, not project time.
 Keep the complete returned cursor when paging or searching; changing selection or
 generation requires a fresh read. The app prepares the default transcript model in
 the background at install and update; ordinary calls use it directly. Call
-`transcript.prepare` when a bounded or new execution is required;
+`transcript.transcribe` when a bounded or new execution is required;
 `transcript.get` and search inspect retained evidence and never run inference. If
 an operation reports `MODEL_NOT_PREPARED`, ask the user before acquiring the
 optional model/runtime, then use `model.prepare` and retry after it is ready. A
@@ -69,7 +69,7 @@ returns. If it reports `MODEL_NOT_PREPARED`, ask the user before acquiring the
 optional model/runtime, then prepare and retry as described above. It never invents
 words or edits a project. `transcript.get` remains strictly read-only, while
 `model.prepare` remains the explicit, user-approved model download and
-verification control; `transcript.prepare` is the inference operation.
+verification control; `transcript.transcribe` is the inference operation.
 
 Call the requested feature directly. If it returns
 `unavailable:model_not_prepared`, read its model ID, purpose, download scope and
@@ -87,7 +87,7 @@ enumeration retains all observations; explicit source/project ranges use half-op
 membership. Never turn an instant into playable duration or treat overlapping
 estimates as clean cuts. A source phrase cannot cross an inference segment.
 
-When anonymous speaker observations are requested, call `speaker.prepare` and
+When anonymous speaker observations are requested, call `speaker.observe` and
 `speaker.get` directly. If the operation reports a missing model, ask the user
 before using `model.prepare` to download its pinned model/runtime inputs. A
 verified local runtime/model source may still be supplied when available. Select
