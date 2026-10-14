@@ -13,6 +13,7 @@ import {
   collectPortableResources,
   resourceIdentity,
   resourceMembers,
+  staleTranscriptIssues,
   type PortableResource,
 } from "./project-package.js";
 
@@ -553,4 +554,12 @@ test("an imported package drops a stale transcript no revision pins and keeps on
     dependencies: [resourceIdentity(pinned)],
   });
   expect(validated.stale).toEqual([resourceIdentity(dropped)]);
+  // The recipient is told what was left out, so it knows to regenerate it.
+  expect(staleTranscriptIssues(validated.stale)).toEqual([
+    {
+      code: "derived-stale-skipped",
+      message: "A transcript from an older recipe was left out; the recipient regenerates it",
+      evidence: { kind: "transcript-generation", id: resourceIdentity(dropped).id },
+    },
+  ]);
 });

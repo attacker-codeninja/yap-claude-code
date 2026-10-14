@@ -107,6 +107,28 @@ validity ranges on it. If they no longer fit, stored validation refuses the
 batch. That case is rare, so it stays strict. _Implementing agent · slice 06e ·
 medium._
 
+**A caption request with no project time, or an unfinished transcript, refuses
+(departs from slice 07k).** Slice 07k migrated every caption `violations[]`
+code. Two of them never had a draft beside them: a source-scoped entry has no
+project time to place a cue, and an unready or still-paging entry is not the
+complete pinned evidence the helper is defined over. They returned an empty
+`proposals` with a violation, which is a refusal reporting success. Now a
+source-only entry is `INVALID_REQUEST` and an incomplete one is `NOT_READY`,
+both codes the skill scripts already use. The rejected alternative was an
+empty output with an issue. Drafting from the selected rows of a ready entry
+that is still paging would be sound, because every selected row is present;
+revisit if agents hit `NOT_READY` there. _Implementing agent · slice 07k ·
+medium._
+
+**Skill helpers carry their own copy of the issue bound.** Helpers ship to the
+user without `@yap/composition`, so `inspection-artifacts.mjs` exports a
+`boundedIssues` that keeps 1000 issues and appends one `issues-truncated`. It
+doesn't fold earlier markers, because a helper never receives bounded input.
+`skill-issues.test.ts` validates caption output past the bound against
+`issuesSchema`. That is a second owner of the bound, pinned by a test. The
+rejected alternative, bundling composition into the skill, would ship zod and
+the whole schema module. _Implementing agent · slice 07k · medium._
+
 ### High confidence
 
 **Decision A: an unresolved seam word publishes, with `boundary-unresolved`.**
@@ -358,10 +380,36 @@ malformed-curve and bound errors each name their fix in `details`; a clock error
 names `clock`, `slot` and `expectedKey`. _Implementing agent · slice 06b ·
 high._
 
-**The refusal ledger classifies every UPPER_SNAKE literal, per file.** Refusals
+**Caption drafts report `issues`; 18 violation codes became nine issue codes
+and two refusals.** Each proposal and the whole output carry bounded `issues`,
+at the levels `violations` sat. Every missed caller constraint shares one code,
+`caption-constraint-unmet`, whose `constraint` is the request's own key
+(`widthGraphemes`, `maxLines`, `minDwellUs`, `maxDwellUs`, `maxCps`,
+`safeArea`), with `requested` and `measured`. Dwell keeps the exact cue
+interval, because a fractional difference can overflow a safe integer. This
+follows `framing-constraint-unmet`. The others are
+`caption-constraint-unsupported`, `caption-cue-split` (one per split, naming
+the row that starts the new cue, where the old code reported once),
+`caption-wrap-disabled`, `caption-text-empty`, `caption-text-too-long`,
+`caption-instant-word`, `caption-word-partial` and
+`caption-word-discontinuous`. `READING_SPEED_UNDEFINED` folded into
+`caption-instant-word`, which already means there's no duration.
+`RENDERED_LAYOUT_UNVERIFIED` was on every draft, so it was deleted, like
+`caption-styling-discarded`: a helper that never renders is a property of the
+helper, and its usage text says so. _Implementing agent · slice 07k · high._
+
+**Registry hygiene lives in the refusal ledger test.** It reuses the ledger's
+scan of product source. A code's own `issue("code", …)` registration doesn't
+count as producing it, and only test files count as asserting it. It found one
+code that was produced but never asserted: `derived-stale-skipped`. The
+package-import test now pins the issue the recipient receives. _Implementing
+agent · slice 01 rule 6 · high._
+
+**The refusal ledger classifies every UPPER_SNAKE literal, per file (corrected).** Refusals
 go through helpers, so scanning constructor calls would miss them. UPPER_SNAKE
 per-item diagnostics are `issue-code` and stay outside the kebab-case registry;
-examples are capture recovery states and caption-proposal violations.
+examples are capture recovery states and delivery-check findings. Corrected:
+caption-proposal violations were the other example until they became issues.
 `pendingConversion` is empty and must stay so. _Implementing agent · slice 01a ·
 high._
 

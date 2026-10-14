@@ -312,12 +312,6 @@
         "helpers/mac/Sources/YapWire/PublicationOperation.swift": 1
       }
     },
-    "CUE_WORD_PIN_LIMIT": {
-      "category": "issue-code",
-      "files": {
-        "skills/yap/scripts/caption-proposals.mjs": 2
-      }
-    },
     "DECODE_FAILED": {
       "category": "execution-failure",
       "files": {
@@ -360,12 +354,6 @@
         "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 1
       }
     },
-    "DISCONTINUOUS_WORD": {
-      "category": "issue-code",
-      "files": {
-        "skills/yap/scripts/caption-proposals.mjs": 1
-      }
-    },
     "DOMAIN_MAX": {
       "category": "issue-code",
       "files": {
@@ -376,12 +364,6 @@
       "category": "issue-code",
       "files": {
         "helpers/mac/Sources/YapMedia/CubeLUT.swift": 2
-      }
-    },
-    "EMPTY_DISPLAY_TEXT": {
-      "category": "issue-code",
-      "files": {
-        "skills/yap/scripts/caption-proposals.mjs": 1
       }
     },
     "ENCODER_UNAVAILABLE": {
@@ -479,12 +461,6 @@
         "packages/protocol/src/framing.ts": 5
       }
     },
-    "GRAPHEME_WIDTH": {
-      "category": "issue-code",
-      "files": {
-        "skills/yap/scripts/caption-proposals.mjs": 1
-      }
-    },
     "HUMAN_QA_REQUIRED": {
       "category": "issue-code",
       "files": {
@@ -497,22 +473,10 @@
         "packages/core/src/jobs.ts": 1
       }
     },
-    "INCOMPLETE_EVIDENCE": {
-      "category": "issue-code",
-      "files": {
-        "skills/yap/scripts/caption-proposals.mjs": 1
-      }
-    },
     "INSPECTION_FAILED": {
       "category": "execution-failure",
       "files": {
         "skills/yap/scripts/timeline-inspection.mjs": 1
-      }
-    },
-    "INSTANT_WORD": {
-      "category": "issue-code",
-      "files": {
-        "skills/yap/scripts/caption-proposals.mjs": 1
       }
     },
     "INTERNAL_ERROR": {
@@ -938,7 +902,7 @@
         "packages/core/src/project-evidence.ts": 2,
         "packages/core/src/transcript.ts": 1,
         "packages/core/src/voice-profile.ts": 1,
-        "skills/yap/scripts/caption-proposals.mjs": 12,
+        "skills/yap/scripts/caption-proposals.mjs": 13,
         "skills/yap/scripts/compact-transcripts.mjs": 2,
         "skills/yap/scripts/delivered-scenes.mjs": 5,
         "skills/yap/scripts/dialogue-proposals.mjs": 4,
@@ -1220,12 +1184,6 @@
         "skills/yap/scripts/yap-cli.mjs": 1
       }
     },
-    "LINE_COUNT": {
-      "category": "issue-code",
-      "files": {
-        "skills/yap/scripts/caption-proposals.mjs": 1
-      }
-    },
     "LUT_3D_SIZE": {
       "category": "not-a-refusal",
       "files": {
@@ -1248,12 +1206,6 @@
       "category": "execution-failure",
       "files": {
         "helpers/mac/Sources/YapCapture/CaptureAudioMaterializer.swift": 1
-      }
-    },
-    "MAXIMUM_DWELL": {
-      "category": "issue-code",
-      "files": {
-        "skills/yap/scripts/caption-proposals.mjs": 1
       }
     },
     "MEDIA_UNAVAILABLE": {
@@ -1293,12 +1245,6 @@
       "files": {
         "helpers/mac/Sources/YapCapture/CameraCaptureInput.swift": 1,
         "helpers/mac/Sources/YapCapture/CaptureInputSession.swift": 1
-      }
-    },
-    "MINIMUM_DWELL": {
-      "category": "issue-code",
-      "files": {
-        "skills/yap/scripts/caption-proposals.mjs": 1
       }
     },
     "MISSING_MEDIA": {
@@ -1480,6 +1426,7 @@
         "packages/core/src/source-index-materialization.ts": 1,
         "packages/core/src/speaker-evidence.ts": 1,
         "packages/core/src/speaker-processing.ts": 1,
+        "skills/yap/scripts/caption-proposals.mjs": 1,
         "skills/yap/scripts/delivered-scenes.mjs": 2,
         "skills/yap/scripts/join-repair.mjs": 2
       }
@@ -1577,12 +1524,6 @@
         "helpers/mac/Sources/YapWire/MediaRecovery.swift": 1
       }
     },
-    "PARTIAL_WORD": {
-      "category": "issue-code",
-      "files": {
-        "skills/yap/scripts/caption-proposals.mjs": 1
-      }
-    },
     "PERMISSION_REQUIRED": {
       "category": "missing-prerequisite",
       "files": {
@@ -1609,12 +1550,6 @@
         "packages/core/src/screenshot-index.ts": 1,
         "packages/core/src/speaker-evidence.ts": 1,
         "packages/core/src/transcript.ts": 2
-      }
-    },
-    "PROJECT_PROJECTION_REQUIRED": {
-      "category": "malformed",
-      "files": {
-        "skills/yap/scripts/caption-proposals.mjs": 1
       }
     },
     "PUBLICATION_BUSY": {
@@ -1656,18 +1591,6 @@
         "helpers/mac/Sources/YapWire/PublicationOperation.swift": 1
       }
     },
-    "READING_SPEED": {
-      "category": "issue-code",
-      "files": {
-        "skills/yap/scripts/caption-proposals.mjs": 1
-      }
-    },
-    "READING_SPEED_UNDEFINED": {
-      "category": "issue-code",
-      "files": {
-        "skills/yap/scripts/caption-proposals.mjs": 1
-      }
-    },
     "RECORDING_BUSY": {
       "category": "resource-bound",
       "files": {
@@ -1704,12 +1627,6 @@
       "category": "missing-prerequisite",
       "files": {
         "skills/yap/scripts/use-case-routing.mjs": 1
-      }
-    },
-    "RENDERED_LAYOUT_UNVERIFIED": {
-      "category": "issue-code",
-      "files": {
-        "skills/yap/scripts/caption-proposals.mjs": 1
       }
     },
     "RENDER_WORKSPACE_BUSY": {
@@ -1752,12 +1669,6 @@
       "category": "execution-failure",
       "files": {
         "skills/yap/scripts/review-bundle.mjs": 1
-      }
-    },
-    "SAFE_AREA": {
-      "category": "issue-code",
-      "files": {
-        "skills/yap/scripts/caption-proposals.mjs": 1
       }
     },
     "SERVICE_STOPPED": {
@@ -1876,12 +1787,6 @@
         "packages/core/src/storage.ts": 1
       }
     },
-    "TEXT_SIZE_LIMIT": {
-      "category": "resource-bound",
-      "files": {
-        "skills/yap/scripts/caption-proposals.mjs": 1
-      }
-    },
     "TRANSCRIPTION_FAILED": {
       "category": "execution-failure",
       "files": {
@@ -1970,12 +1875,6 @@
       "category": "malformed",
       "files": {
         "helpers/mac/Sources/YapFrames/MovieClock.swift": 1
-      }
-    },
-    "UNSUPPORTED_CONSTRAINT": {
-      "category": "malformed",
-      "files": {
-        "skills/yap/scripts/caption-proposals.mjs": 1
       }
     },
     "UNSUPPORTED_DESTINATION": {
@@ -2075,12 +1974,6 @@
       "category": "missing-prerequisite",
       "files": {
         "apps/service/src/project-service.ts": 1
-      }
-    },
-    "WRAPPING_DISABLED": {
-      "category": "issue-code",
-      "files": {
-        "skills/yap/scripts/caption-proposals.mjs": 1
       }
     },
     "WRITE_FAILED": {

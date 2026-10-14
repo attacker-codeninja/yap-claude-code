@@ -201,14 +201,14 @@ For bounded draft grouping, use the bundled Node runtime to run
 JSON input). Supply one complete pinned project entry from the compact transcript
 helper, explicitly selected row indexes, any requested display corrections, and
 caller-chosen limits/style/safe area. It returns ordinary text clip and geometry
-drafts with exact raw word pins and projected fragments, plus violations; it does
-not transcribe or apply edits. Apply chosen drafts separately against the pinned
-revision. Grapheme counts constrain proposals, not pixel fit. Every draft retains
-an unverified-layout diagnostic until actual applied frames establish glyph
-coverage, clipping and readability. Dwell and reading speed describe the word
-support envelope; partial/discontinuous word diagnostics must remain visible.
-Instant words retain point evidence with `clip: null` and explicit unsupported
-dwell/speed diagnostics; they have no invented placeable duration.
+drafts with exact raw word pins and projected fragments, plus `issues` on the
+output and on each draft; it does not transcribe or apply edits. Apply chosen
+drafts separately against the pinned revision. Grapheme counts constrain
+proposals, not pixel fit: no draft is checked against pixels, so actual applied
+frames establish glyph coverage, clipping and readability. Dwell and reading
+speed describe the word support envelope; partial and discontinuous word issues
+must remain visible. Instant words retain point evidence with `clip: null` and
+`caption-instant-word`; they have no invented placeable duration.
 
 For requested word highlighting, choose explicit active/inactive colors in the
 draft style. The helper maps each corrected literal word to its retained source

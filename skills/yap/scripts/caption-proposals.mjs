@@ -1,5 +1,5 @@
 import { pathToFileURL } from "node:url";
-import { budget, failure, runJsonHelper } from "./inspection-artifacts.mjs";
+import { boundedIssues, budget, failure, runJsonHelper } from "./inspection-artifacts.mjs";
 
 const graphemes = new Intl.Segmenter("und", { granularity: "grapheme" });
 const length = (text) => [...graphemes.segment(text)].length;
@@ -126,7 +126,7 @@ export function captionProposals(request) {
     area.height <= 0
   )
     throw failure("INVALID_REQUEST", "Supply a positive finite safe-area rectangle");
-  const violations = [];
+  const issues = [];
   const known = new Set([
     "widthGraphemes",
     "maxLines",
@@ -139,32 +139,31 @@ export function captionProposals(request) {
     "safeArea",
   ]);
   for (const key of Object.keys(constraints))
-    if (!known.has(key)) violations.push({ code: "UNSUPPORTED_CONSTRAINT", constraint: key });
+    if (!known.has(key))
+      issues.push({
+        code: "caption-constraint-unsupported",
+        message: `Unsupported constraint ${JSON.stringify(key)} was ignored`,
+        evidence: { constraint: key },
+      });
+  // Without project time or the whole pinned entry no draft can exist, so these refuse.
+  if (!entry.identity?.projectId || !entry.identity?.revisionId)
+    throw failure(
+      "INVALID_REQUEST",
+      "Captions need a project transcript entry; read the transcript through the project revision",
+    );
+  if (entry.state !== "ready" || !entry.complete)
+    throw failure(
+      "NOT_READY",
+      `The transcript entry is ${entry.state === "ready" ? "incomplete" : `"${entry.state}"`}; continue the compact transcript until it is complete and ready`,
+    );
   const output = {
     version: 1,
     identity: entry.identity,
     rowIndexes,
     constraints,
     proposals: [],
-    violations,
+    issues,
   };
-  const finish = () => {
-    const maxBytes = budget(request.maxBytes, 1024 * 1024, 1024, 8 * 1024 * 1024, "maxBytes");
-    if (Buffer.byteLength(JSON.stringify(output) + "\n") > maxBytes)
-      throw failure(
-        "OUTPUT_BUDGET_EXCEEDED",
-        "Pinned caption proposals exceed maxBytes; select fewer rows or increase the budget",
-      );
-    return output;
-  };
-  if (!entry.identity?.projectId || !entry.identity?.revisionId) {
-    violations.push({ code: "PROJECT_PROJECTION_REQUIRED" });
-    return finish();
-  }
-  if (entry.state !== "ready" || !entry.complete) {
-    violations.push({ code: "INCOMPLETE_EVIDENCE", state: entry.state, complete: entry.complete });
-    return finish();
-  }
   const corrections = new Map();
   for (const correction of request.corrections ?? []) {
     if (
@@ -255,8 +254,12 @@ export function captionProposals(request) {
       current = [];
       currentLines = [""];
       range = appendLine(currentLines, word.text, constraints.separator, width);
-      if (pinsFull && !violations.some((item) => item.code === "CUE_WORD_PIN_LIMIT"))
-        violations.push({ code: "CUE_WORD_PIN_LIMIT", maximum: 1000 });
+      if (pinsFull)
+        issues.push({
+          code: "caption-cue-split",
+          message: `A cue reached 1000 word pins, so a new cue starts at row ${word.index}`,
+          evidence: { maximumWords: 1000, rowIndex: word.index },
+        });
     } else currentLines = candidateLines;
     current.push({ ...word, range });
   }
@@ -282,41 +285,89 @@ export function captionProposals(request) {
     const first = group[0].row,
       projectEnd = groupEnd(group);
     const text = renderedLines.join("\n");
-    const cueViolations = [
-      {
-        code: "RENDERED_LAYOUT_UNVERIFIED",
-        checks: ["pixel-width", "glyph-coverage", "clipping", "contrast", "legibility"],
-      },
-    ];
-    if (!safe) cueViolations.push({ code: "SAFE_AREA", rect, safeArea: area });
-    if (!style.wrap && renderedLines.length > 1) cueViolations.push({ code: "WRAPPING_DISABLED" });
-    if (renderedLines.some((line) => length(line) > width))
-      cueViolations.push({ code: "GRAPHEME_WIDTH", maximum: width });
+    const cueIssues = [];
+    const unmet = (evidence, message) =>
+      cueIssues.push({ code: "caption-constraint-unmet", message, evidence });
+    const cue = { startUs: start(first), endUs: projectEnd };
+    if (!safe)
+      unmet(
+        {
+          constraint: "safeArea",
+          requested: area,
+          measured: rect,
+          canvas: { width: canvas.width, height: canvas.height },
+        },
+        "The caption rectangle or safe area leaves the canvas or each other",
+      );
+    const widest = Math.max(...renderedLines.map(length));
+    if (widest > width)
+      unmet(
+        { constraint: "widthGraphemes", requested: width, measured: widest },
+        `A line is ${widest} graphemes wide; ${width} were requested`,
+      );
     if (renderedLines.length > maxLines)
-      cueViolations.push({ code: "LINE_COUNT", maximum: maxLines });
-    if (!text.trim()) cueViolations.push({ code: "EMPTY_DISPLAY_TEXT" });
+      unmet(
+        { constraint: "maxLines", requested: maxLines, measured: renderedLines.length },
+        `The text has ${renderedLines.length} lines; at most ${maxLines} were requested`,
+      );
+    if (!style.wrap && renderedLines.length > 1)
+      cueIssues.push({
+        code: "caption-wrap-disabled",
+        message: "The text breaks across lines while the style turns wrapping off",
+        evidence: { lines: renderedLines.length },
+      });
+    if (!text.trim())
+      cueIssues.push({
+        code: "caption-text-empty",
+        message: "The display text is empty",
+        evidence: {},
+      });
     if (text.length > 8192)
-      cueViolations.push({ code: "TEXT_SIZE_LIMIT", maximumUTF16Units: 8192 });
+      cueIssues.push({
+        code: "caption-text-too-long",
+        message: "The display text exceeds the 8192 UTF-16 units a text clip admits",
+        evidence: { maximumUTF16Units: 8192, utf16Units: text.length },
+      });
     if (!gapAtLeast(projectEnd, start(first), minimum))
-      cueViolations.push({ code: "MINIMUM_DWELL", minimumUs: minimum });
+      unmet(
+        { constraint: "minDwellUs", requested: minimum, cue },
+        "The cue is shorter than the minimum dwell",
+      );
     if (gapCompare(projectEnd, start(first), maximum) > 0)
-      cueViolations.push({ code: "MAXIMUM_DWELL", maximumUs: maximum });
-    if (first.instant) cueViolations.push({ code: "INSTANT_WORD", rowIndex: group[0].index });
+      unmet(
+        { constraint: "maxDwellUs", requested: maximum, cue },
+        "The cue is longer than the maximum dwell",
+      );
     const [en, ed] = time(projectEnd),
       [sn, sd] = time(start(first));
     const readingNumerator = BigInt(length(text.replaceAll("\n", ""))) * 1000000n * ed * sd,
       durationNumerator = en * sd - sn * ed;
-    if (first.instant) cueViolations.push({ code: "READING_SPEED_UNDEFINED" });
-    else if (readingNumerator > BigInt(maxCps) * durationNumerator)
-      cueViolations.push({
-        code: "READING_SPEED",
-        charactersPerSecond: Number(readingNumerator) / Number(durationNumerator),
-        maximum: maxCps,
+    if (first.instant)
+      cueIssues.push({
+        code: "caption-instant-word",
+        message: "An instant word has no dwell or reading speed, so no clip was drafted",
+        evidence: { rowIndex: group[0].index },
       });
+    else if (readingNumerator > BigInt(maxCps) * durationNumerator) {
+      const measured = Number(readingNumerator) / Number(durationNumerator);
+      unmet(
+        { constraint: "maxCps", requested: maxCps, measured },
+        `The cue reads at ${measured} characters per second; at most ${maxCps} were requested`,
+      );
+    }
     for (const word of group) {
-      if (word.row.partial) cueViolations.push({ code: "PARTIAL_WORD", rowIndex: word.index });
+      if (word.row.partial)
+        cueIssues.push({
+          code: "caption-word-partial",
+          message: `Row ${word.index} is only partly inside its clip`,
+          evidence: { rowIndex: word.index },
+        });
       if (word.row.fragments.length > 1)
-        cueViolations.push({ code: "DISCONTINUOUS_WORD", rowIndex: word.index });
+        cueIssues.push({
+          code: "caption-word-discontinuous",
+          message: `Row ${word.index} plays in ${word.row.fragments.length} project fragments`,
+          evidence: { rowIndex: word.index, fragments: word.row.fragments.length },
+        });
     }
     output.proposals.push({
       rowIndexes: group.map((word) => word.index),
@@ -381,16 +432,23 @@ export function captionProposals(request) {
           pivot: { x: 0.5, y: 0.5 },
         },
       },
-      violations: cueViolations,
+      issues: boundedIssues(cueIssues),
     });
   }
-  return finish();
+  output.issues = boundedIssues(issues);
+  const maxBytes = budget(request.maxBytes, 1024 * 1024, 1024, 8 * 1024 * 1024, "maxBytes");
+  if (Buffer.byteLength(JSON.stringify(output) + "\n") > maxBytes)
+    throw failure(
+      "OUTPUT_BUDGET_EXCEEDED",
+      "Pinned caption proposals exceed maxBytes; select fewer rows or increase the budget",
+    );
+  return output;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   if (process.argv.includes("--help"))
     console.log(
-      "Usage: node caption-proposals.mjs < request.json\nPure caption drafts from one complete pinned compact-transcript entry, explicit rowIndexes/corrections, caption track, canvas, text style and constraints. Constraints: widthGraphemes, maxLines, minDwellUs/maxDwellUs, maxCps, pauseUs, breakOnPunctuation, separator, safeArea {x,y,width,height}; optional maxBytes. Returns ordinary text clip/geometry drafts, exact word pins/fragments and violations. Explicit style.highlight {activeColor,inactiveColor} emits corrected display UTF16 timedWords mapped to retained source fragments; empty corrections have no run. Instant points retain evidence with clip:null and explicit unsupported dwell/speed. Never calls CLI, transcribes or applies edits. Pixel/glyph fit requires explicit application and actual frame.get inspection.",
+      "Usage: node caption-proposals.mjs < request.json\nPure caption drafts from one complete pinned compact-transcript entry, explicit rowIndexes/corrections, caption track, canvas, text style and constraints. Constraints: widthGraphemes, maxLines, minDwellUs/maxDwellUs, maxCps, pauseUs, breakOnPunctuation, separator, safeArea {x,y,width,height}; optional maxBytes. Returns ordinary text clip/geometry drafts and exact word pins/fragments, with Yap issues at two levels: the output's issues (unsupported constraints, cues split at the 1000-word seed pin limit) and each proposal's (caption-constraint-unmet naming the request key with requested/measured values, wrapping off, empty or over-long text, instant, partial or discontinuous words), each list bounded at 1000. A source-only entry refuses INVALID_REQUEST; an incomplete or unready one refuses NOT_READY. Explicit style.highlight {activeColor,inactiveColor} emits corrected display UTF16 timedWords mapped to retained source fragments; empty corrections have no run. Instant points retain evidence with clip:null and caption-instant-word. Never calls CLI, transcribes or applies edits. Drafts are never pixel-checked: glyph fit, clipping and legibility need explicit application and actual frame.get inspection.",
     );
   else await runJsonHelper(captionProposals);
 }
