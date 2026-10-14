@@ -4,12 +4,17 @@ Status: implementation in progress; compatibility floor and catalog boundary are
 
 ## Next Agent Prompt
 
-Current status: all implementation slices are landed in the working tree. The
+Current status: all implementation slices are landed and committed in
+`366dc992`. The
 public read-only operations are `inspect.open`/`inspect`, `caption.propose` and
 `layout.diagnostics`; the native preview owner now supplies revision selection
 and Downloads export. Focused protocol, service, core and native-control checks
 are green. The remaining pickup is the whole-repository/native validation pass,
-then review and archival.
+then review and archival. The repository-wide `bun test` gate was attempted once
+and stopped after environment failures unrelated to this feature: missing
+native/app/Sparkle fixtures and permissions, no Node 24 runtime, Bun/node:test
+API mismatches, and a pre-existing transcript model-state expectation. The
+focused feature checks remain green.
 The supported compatibility floor is the launch build at 7:03 PM PDT on
 October 12, 2026 (Yap 0.1.33). Its catalogs already use format 29 and open
 unchanged. Pre-launch format-22 fixtures remain refusal/provenance inputs; they
