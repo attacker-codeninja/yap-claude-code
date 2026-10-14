@@ -88,8 +88,8 @@ final class PreviewController {
     }
 
     private func loadTimeline(for target: MediaTarget, generation: UUID) {
-        Task { @MainActor in
-            guard self.generation == generation else { return }
+        Task { @MainActor [weak self] in
+            guard let self, self.generation == generation else { return }
             do {
                 let data = try await call("revision.history", ["projectId": target.id, "limit": 100])
                 let page = try JSONDecoder().decode(History.self, from: data)
