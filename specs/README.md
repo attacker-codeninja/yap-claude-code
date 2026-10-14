@@ -35,6 +35,10 @@ replacement, admission, signing and explicit skill-lifecycle boundaries, with
 published-artifact and scoped native/agent evidence. Release publishing remains
 owned by the [tag workflow](../scripts/README.md#versioned-github-releases).
 
+[Agent review workflow](done/agent-review-workflow/README.md) records the native
+revision inspection surface, launch-floor catalog boundary, read-only caption and
+layout evidence, timeline selection and revision-pinned Downloads export.
+
 [FFmpeg parity and agent media workflows](done/ffmpeg-parity/README.md) records
 bundled media tools, explicit offline treatments and task-side agent workflows.
 
