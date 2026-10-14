@@ -37,6 +37,7 @@ jobs:
             packages
             helpers
             scripts
+            skills
             .github
             specs/done/agent-editing/assets/00-corpus
       - id: source

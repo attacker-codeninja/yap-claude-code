@@ -6,6 +6,11 @@ The capture menu keeps its dark appearance after selecting a recording area and
 shows the latest recording below the action buttons with Play and Copy agent prompt
 actions. Screen recordings now include the pointer in the captured video.
 
+## 0.1.40
+
+The release workflow now includes the bundled Yap skill in its sparse checkout,
+so the signed app can package the same agent instructions used by local builds.
+
 ## 0.1.39
 
 The native review workflow now gives agents and people one pinned inspection
