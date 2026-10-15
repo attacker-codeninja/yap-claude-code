@@ -271,7 +271,7 @@ for personal keep/remove judgments.
   The [conditional alignment worker](helpers/alignment/README.md) preserves the
   supplied-text interpretation and full native operands of its pinned provider.
 
-The [website](apps/site/README.md) is the public download page, with the same
+The [website](apps/site/README.md) is the public product page, with the same
 instructions as plain text for agents.
 
 The consumer [yap skill](skills/yap/SKILL.md) teaches external agents

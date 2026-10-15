@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -74,4 +74,17 @@ test("both open-in links carry the exact prompt, unsent", () => {
   const encoded = encodeURIComponent(agentPrompt);
   assert.ok(page.includes(`claude-cli://open?q=${encoded}`));
   assert.ok(page.includes(`codex://new?prompt=${encoded}`));
+});
+
+test("the page streams the launch video from its host and ships the poster", () => {
+  const out = mkdtempSync(join(tmpdir(), "yap-site-"));
+  build({ out, siteUrl, readme });
+  const page = readFileSync(join(out, "index.html"), "utf8");
+  const video = page.match(/<video[^>]*>/)?.[0];
+  assert.ok(video, "page has a video");
+  assert.match(video, /\bcontrols\b/);
+  assert.match(video, /preload="(none|metadata)"/, "a visit doesn't download the whole film");
+  assert.match(page, /<source src="https:\/\/[^"]+\.mp4" type="video\/mp4">/, "film is hosted, not in the repo");
+  const poster = video.match(/poster="\/([^"]+)"/)?.[1];
+  assert.ok(poster && statSync(join(out, poster)).size > 0, "poster is shipped");
 });

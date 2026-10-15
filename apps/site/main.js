@@ -24,6 +24,17 @@ for (const button of document.querySelectorAll("[data-copy]")) {
   });
 }
 
+// The poster stays clean until someone presses play; the native controls take over from there.
+const film = document.querySelector(".film-player video");
+const play = document.querySelector(".film-play");
+film.controls = false;
+play.hidden = false;
+play.addEventListener("click", () => {
+  play.remove();
+  film.controls = true;
+  film.play();
+});
+
 // The blobs watch the cursor.
 const eyes = [...document.querySelectorAll(".blob .eyes")];
 if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {

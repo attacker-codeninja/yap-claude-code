@@ -16,6 +16,11 @@ as plain text at `/llms.txt` for agents.
   together.
 - **Artwork has one home.** Illustrations are copied from `.github/readme` at
   build time; the site keeps no copies.
+- **Video stays out of the repository.** Every deploy clones the repository, so
+  the launch film streams from the `justyap-media` Vercel Blob store and
+  [content.mjs](content.mjs) holds its URL; only its poster ships with the site.
+  To replace the film, upload a web encode under a new pathname with
+  `vercel blob put` and point `launchVideo.src` at it.
 - **No dependencies, no framework.** [build.mjs](build.mjs) writes static files
   to `dist/`. There is no download button: agents are the only install route, and
   the page's Open in Claude Code / Open in Codex links only pre-fill the prompt.

@@ -7,7 +7,13 @@ import * as content from "./content.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const artwork = join(here, "../../.github/readme");
-const staticFiles = ["style.css", "main.js", "favicon.svg", "og.png"];
+const staticFiles = [
+  "style.css",
+  "main.js",
+  "favicon.svg",
+  "og.png",
+  content.launchVideo.poster,
+];
 
 /** Production origin: explicit SITE_URL, else Vercel's production domain, else local preview. */
 function defaultSiteUrl() {
@@ -151,6 +157,17 @@ function renderPage(siteUrl) {
         <p class="fine req">${requirements} · Free</p>
       </div>
     </div>
+  </section>
+
+  <section class="film" aria-label="Launch video">
+    <p class="hand film-label">${escape(content.launchVideo.label)}</p>
+    <div class="film-player">
+      <video controls playsinline preload="none" poster="/${content.launchVideo.poster}" width="1920" height="1080">
+        <source src="${content.launchVideo.src}" type="video/mp4">
+      </video>
+      <button class="film-play" type="button" aria-label="Play the launch video" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button>
+    </div>
+    <p class="fine">${prose(content.launchVideo.caption)}</p>
   </section>
 
   <section class="asks">

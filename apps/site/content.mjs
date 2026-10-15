@@ -33,6 +33,17 @@ export const meta = {
     "Yap gives Claude Code, Codex and any agent the eyes, ears and hands to record, understand and edit video on your Mac. Free, local, and your originals are never touched.",
 };
 
+/**
+ * The launch film: one take, four cameras, edited by an agent with Yap. The film is a web encode
+ * on the justyap Vercel Blob store, kept out of the repository; the poster ships with the site.
+ */
+export const launchVideo = {
+  src: "https://dgl4bh1uqqy7y9zf.public.blob.vercel-storage.com/launch/yap-launch-v3.mp4",
+  poster: "launch-poster.jpg",
+  label: "made with yap",
+  caption: "Four cameras, one take, zero manual editing. An agent cut this launch video with Yap.",
+};
+
 export const asks = [
   "Watch this recording of the checkout bug and fix it.",
   "Tighten this into a 60-second product demo. Cut the dead air and false starts.",

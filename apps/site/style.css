@@ -329,6 +329,53 @@ h1 span {
   color: var(--orange);
 }
 
+/* Launch film */
+.film {
+  padding-top: 1rem;
+  text-align: center;
+}
+.film-label {
+  color: var(--blue);
+  font-size: 1.6rem;
+  margin: 0 0 0.6rem;
+}
+.film-player {
+  position: relative;
+}
+.film video {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--ink);
+  border: 2.5px solid var(--ink);
+  border-radius: 18px;
+  box-shadow: 6px 6px 0 var(--orange);
+}
+.film .fine {
+  margin-top: 1.4rem;
+}
+.film-play {
+  position: absolute;
+  inset: 76% auto auto 50%; /* the gutter below the poster's headline */
+  width: clamp(3.5rem, 9vw, 5.5rem);
+  height: clamp(3.5rem, 9vw, 5.5rem);
+  padding: 0 0 0 0.3rem;
+  border: 2.5px solid var(--paper);
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 5px 5px 0 var(--orange);
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  transition: transform 0.15s;
+}
+.film-play:hover {
+  transform: translate(-50%, -50%) scale(1.06);
+}
+.film-play svg {
+  width: 45%;
+  fill: var(--paper);
+}
+
 /* Speech bubbles */
 .asks h2 {
   text-align: center;
