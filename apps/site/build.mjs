@@ -165,7 +165,7 @@ function renderPage(siteUrl) {
       <video controls playsinline preload="none" poster="/${content.launchVideo.poster}" width="1920" height="1080">
         <source src="${content.launchVideo.src}" type="video/mp4">
       </video>
-      <button class="film-play" type="button" aria-label="Play the launch video" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button>
+      <button class="film-play" type="button" aria-label="Play the launch video" hidden><span class="film-play-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6.5v11l9-5.5z"/></svg></span></button>
     </div>
     <p class="fine">${prose(content.launchVideo.caption)}</p>
   </section>

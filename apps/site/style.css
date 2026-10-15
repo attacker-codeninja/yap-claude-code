@@ -354,25 +354,45 @@ h1 span {
 .film .fine {
   margin-top: 1.4rem;
 }
+/* The whole poster is the play button; the circle sits in the gutter below the poster's headline. */
 .film-play {
   position: absolute;
-  inset: 76% auto auto 50%; /* the gutter below the poster's headline */
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  background: none;
+  cursor: pointer;
+}
+.film-play-icon {
+  position: absolute;
+  top: 76%;
+  left: 50%;
+  display: grid;
+  place-items: center;
   width: clamp(3.5rem, 9vw, 5.5rem);
   height: clamp(3.5rem, 9vw, 5.5rem);
-  padding: 0 0 0 0.3rem;
   border: 2.5px solid var(--paper);
   border-radius: 50%;
   background: var(--ink);
   box-shadow: 5px 5px 0 var(--orange);
-  cursor: pointer;
   transform: translate(-50%, -50%);
-  transition: transform 0.15s;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
 }
-.film-play:hover {
-  transform: translate(-50%, -50%) scale(1.06);
+.film-play:hover .film-play-icon {
+  transform: translate(calc(-50% - 2px), calc(-50% - 2px)) scale(1.06);
+  box-shadow: 7px 7px 0 var(--orange);
 }
-.film-play svg {
-  width: 45%;
+.film-play:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 4px;
+}
+/* The triangle's centroid sits at the circle's centre, which is what reads as centred. */
+.film-play-icon svg {
+  display: block;
+  width: 50%;
   fill: var(--paper);
 }
 
