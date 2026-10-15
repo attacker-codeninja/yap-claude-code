@@ -6,6 +6,13 @@ The capture menu keeps its dark appearance after selecting a recording area and
 shows the latest recording below the action buttons with Play and Copy agent prompt
 actions. Screen recordings now include the pointer in the captured video.
 
+## 0.1.41
+
+The bundled yap skill now checks the feed preview frame before delivering a
+video meant for a feed such as X. Feeds preview from the first moments of
+playback, so a fade-in from an empty background posts as a blank card; the skill
+holds the intended preview frame briefly and verifies it in the delivered file.
+
 ## 0.1.40
 
 The native review workflow now gives agents and people one pinned inspection
