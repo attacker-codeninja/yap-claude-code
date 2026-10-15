@@ -64,6 +64,16 @@ phone-size reading and review the first and last seconds at normal speed. A clip
 may be fast, but do not trade away word boundaries, speaker meaning or the visual
 cause of a result just to add more beats.
 
+## Feed preview frame
+
+Feeds such as X take the preview from the first moments of playback, not from a
+chosen poster, and skip a one-frame title. A video that fades in from an empty
+background therefore previews as a blank card; that is the tell. Hold the frame
+you want as the preview for about 0.3 s before the opening moves, and shift the
+audio by the same amount. Match the hold's background to the opening so playback
+does not flash. Check the delivered file, not the timeline: frames from its first
+0.3 s must each read as the intended preview.
+
 ## Shape selection
 
 The user's purpose determines the ending:

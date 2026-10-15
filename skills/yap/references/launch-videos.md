@@ -58,6 +58,8 @@ dialogue levels before mastering the mix, then verify the encoded delivery rathe
 than weakening a strict target to make a render pass.
 
 Review the opening, every changed join, the ending and representative middle in
-the rendered candidate. Repair observed defects within a bounded budget, rerun
-the changed checks and record any remaining uncertainty. The user gives the
-direction; watching or listening by the user is never a required QA step.
+the rendered candidate. For a feed post, also check the [feed preview
+frame](video-use-cases.md#feed-preview-frame). Repair observed defects within a
+bounded budget, rerun the changed checks and record any remaining uncertainty. The
+user gives the direction; watching or listening by the user is never a required QA
+step.
